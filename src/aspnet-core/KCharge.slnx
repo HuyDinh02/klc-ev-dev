@@ -5,6 +5,7 @@
     <Project Path="src/KCharge.DbMigrator/KCharge.DbMigrator.csproj" />
     <Project Path="src/KCharge.Domain.Shared/KCharge.Domain.Shared.csproj" />
     <Project Path="src/KCharge.Domain/KCharge.Domain.csproj" />
+    <Project Path="src/KCharge.Driver.BFF/KCharge.Driver.BFF.csproj" />
     <Project Path="src/KCharge.EntityFrameworkCore/KCharge.EntityFrameworkCore.csproj" />
     <Project Path="src/KCharge.HttpApi.Client/KCharge.HttpApi.Client.csproj" />
     <Project Path="src/KCharge.HttpApi.Host/KCharge.HttpApi.Host.csproj" />

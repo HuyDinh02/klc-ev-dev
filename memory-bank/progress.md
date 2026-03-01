@@ -195,7 +195,76 @@ GET    /api/v1/e-invoices/{id}/pdf-url    - Get PDF download URL
 ### Core Modules Status:
 - [x] **MOD-015: E-Invoice** - E-invoice generation, retry, cancellation (MISA, Viettel, VNPT providers)
 
+## Phase 4 — Driver BFF API ✅
+
+### Driver BFF Structure:
+```
+src/aspnet-core/src/KCharge.Driver.BFF/
+├── Program.cs                    - Minimal API entry point
+├── appsettings.json              - Configuration
+├── Endpoints/                    - API endpoint modules
+│   ├── StationEndpoints.cs       - Nearby stations, station details
+│   ├── SessionEndpoints.cs       - Start/stop charging, history
+│   ├── PaymentEndpoints.cs       - Payment processing, methods
+│   ├── ProfileEndpoints.cs       - User profile, statistics
+│   ├── VehicleEndpoints.cs       - Vehicle CRUD
+│   └── NotificationEndpoints.cs  - Notifications, FCM registration
+├── Services/                     - BFF services with Redis caching
+│   ├── ICacheService.cs          - Cache interface
+│   ├── RedisCacheService.cs      - Redis implementation
+│   ├── StationBffService.cs      - Station queries with cache
+│   ├── SessionBffService.cs      - Session management
+│   ├── PaymentBffService.cs      - Payment processing
+│   ├── ProfileBffService.cs      - User profile
+│   ├── VehicleBffService.cs      - Vehicle management
+│   └── NotificationBffService.cs - Notifications
+└── Hubs/
+    └── DriverHub.cs              - SignalR for real-time updates
+```
+
+### Driver BFF API Endpoints (port 5001):
+```
+GET    /api/v1/stations/nearby           - Find nearby stations
+GET    /api/v1/stations/{id}             - Get station details
+GET    /api/v1/stations/{id}/connectors  - Get connector status
+POST   /api/v1/sessions/start            - Start charging session
+POST   /api/v1/sessions/{id}/stop        - Stop charging session
+GET    /api/v1/sessions/active           - Get active session
+GET    /api/v1/sessions/{id}             - Get session details
+GET    /api/v1/sessions/history          - Session history
+POST   /api/v1/payments/process          - Process payment
+GET    /api/v1/payments/history          - Payment history
+GET    /api/v1/payments/{id}             - Payment details
+GET    /api/v1/payment-methods           - List payment methods
+POST   /api/v1/payment-methods           - Add payment method
+DELETE /api/v1/payment-methods/{id}      - Delete payment method
+POST   /api/v1/payment-methods/{id}/set-default - Set default method
+GET    /api/v1/profile                   - Get user profile
+PUT    /api/v1/profile                   - Update profile
+GET    /api/v1/profile/statistics        - User charging stats
+GET    /api/v1/vehicles                  - List vehicles
+GET    /api/v1/vehicles/default          - Get default vehicle
+GET    /api/v1/vehicles/{id}             - Get vehicle
+POST   /api/v1/vehicles                  - Add vehicle
+PUT    /api/v1/vehicles/{id}             - Update vehicle
+DELETE /api/v1/vehicles/{id}             - Delete vehicle
+POST   /api/v1/vehicles/{id}/set-default - Set default vehicle
+GET    /api/v1/notifications             - List notifications
+GET    /api/v1/notifications/unread-count - Unread count
+PUT    /api/v1/notifications/{id}/read   - Mark as read
+PUT    /api/v1/notifications/read-all    - Mark all as read
+POST   /api/v1/devices/register          - Register FCM token
+WS     /hubs/driver                      - SignalR real-time hub
+```
+
+### Features:
+- .NET Minimal API (lightweight, performance-focused)
+- Redis cache-first pattern for fast responses
+- Cursor-based pagination
+- SignalR for real-time session updates
+- JWT Bearer authentication
+- Health checks for PostgreSQL and Redis
+
 ### Remaining:
-- [ ] Driver BFF API setup
 - [ ] Admin Portal (React/Next.js)
 - [ ] Mobile App (React Native/Expo)
