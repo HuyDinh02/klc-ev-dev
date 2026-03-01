@@ -153,7 +153,7 @@ export default function DashboardPage() {
                     className="text-xs"
                   />
                   <Tooltip
-                    formatter={(value: number) => formatCurrency(value)}
+                    formatter={(value) => formatCurrency(Number(value) || 0)}
                     labelStyle={{ color: "var(--foreground)" }}
                     contentStyle={{
                       backgroundColor: "var(--card)",

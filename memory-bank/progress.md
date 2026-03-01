@@ -282,7 +282,16 @@ src/admin-portal/
 │   │   │   ├── page.tsx          # Dashboard home (KPIs, charts)
 │   │   │   ├── stations/         # Station management
 │   │   │   ├── sessions/         # Charging sessions
-│   │   │   └── faults/           # Fault management
+│   │   │   ├── faults/           # Fault management
+│   │   │   ├── monitoring/       # Real-time monitoring
+│   │   │   ├── tariffs/          # Tariff management
+│   │   │   ├── payments/         # Payment transactions
+│   │   │   ├── groups/           # Station groups
+│   │   │   ├── audit-logs/       # Audit log viewer
+│   │   │   ├── e-invoices/       # E-invoice management
+│   │   │   ├── alerts/           # Admin alerts
+│   │   │   ├── maintenance/      # Maintenance tasks
+│   │   │   └── settings/         # System settings
 │   │   └── login/                # Authentication
 │   ├── components/
 │   │   ├── layout/               # Sidebar, Header
@@ -306,6 +315,15 @@ src/admin-portal/
 - [x] Stations (grid view, enable/disable)
 - [x] Sessions (active/completed filtering)
 - [x] Faults (status workflow)
+- [x] Monitoring (real-time station/connector status)
+- [x] Tariffs (CRUD, activate/deactivate, set default)
+- [x] Payments (transaction list, stats, filters)
+- [x] Groups (station groups management)
+- [x] Audit Logs (activity tracking, export CSV)
+- [x] E-Invoices (MISA/Viettel/VNPT, retry/cancel)
+- [x] Alerts (admin alerts, acknowledge)
+- [x] Maintenance (task scheduling)
+- [x] Settings (system configuration)
 - [x] Login (mock auth)
 
 **Note:** Requires Node.js >= 20.9.0
