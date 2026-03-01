@@ -1,0 +1,3 @@
+[submodule "ocpp-simulator"]
+	path = ocpp-simulator
+	url = https://github.com/dallmann-consulting/OCPP.Core.git

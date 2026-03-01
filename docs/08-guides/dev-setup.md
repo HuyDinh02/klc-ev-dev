@@ -276,6 +276,60 @@ npx expo start
 # Scan QR code with Expo Go app (iOS/Android)
 ```
 
+## Step 9: Run OCPP.Core Simulator (Optional)
+
+The OCPP.Core simulator provides a charging station emulator for testing OCPP 1.6J/2.0/2.1 integration.
+
+### Prerequisites
+- **.NET 8 SDK** — Required for OCPP.Core (uses .NET 8, not .NET 10)
+  ```bash
+  # macOS
+  brew install dotnet@8
+
+  # Set environment for .NET 8
+  export DOTNET_ROOT="/opt/homebrew/opt/dotnet@8/libexec"
+  export PATH="/opt/homebrew/opt/dotnet@8/bin:$PATH"
+  ```
+
+### Start OCPP.Core Server (WebSocket Server)
+```bash
+# Terminal 5 — OCPP WebSocket Server
+cd ocpp-simulator/OCPP.Core.Server
+export DOTNET_ROOT="/opt/homebrew/opt/dotnet@8/libexec"
+/opt/homebrew/opt/dotnet@8/bin/dotnet run
+
+# Server listens on:
+# - HTTP: http://localhost:8081
+# - HTTPS: https://localhost:8091
+```
+
+### Start OCPP.Core Management (Web UI)
+```bash
+# Terminal 6 — OCPP Management UI
+cd ocpp-simulator/OCPP.Core.Management
+export DOTNET_ROOT="/opt/homebrew/opt/dotnet@8/libexec"
+/opt/homebrew/opt/dotnet@8/bin/dotnet run
+
+# Management UI: http://localhost:8082
+# Login: admin / t3st
+```
+
+### OCPP Connection URL
+Simulators connect to: `ws://localhost:8081/OCPP/<chargepoint-id>`
+
+Example: `ws://localhost:8081/OCPP/station42`
+
+### Testing with Browser Simulators
+OCPP.Core includes browser-based simulators:
+- OCPP 1.6: Open `ocpp-simulator/Simulators/simple simulator1.6.html`
+- OCPP 2.0: Open `ocpp-simulator/Simulators/OCPP-2.0-CP-Simulator.html`
+- Multi-connector: Open `ocpp-simulator/Simulators/simple simulator1.6_multi_connector.html`
+
+In the simulator:
+1. Enter Central Station URL: `ws://localhost:8081/OCPP/station42`
+2. Click "Connect"
+3. Start/Stop transactions as needed
+
 ## Development Workflow
 
 ### Running Tests
