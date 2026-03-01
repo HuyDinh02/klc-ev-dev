@@ -1,6 +1,6 @@
 # Progress
 
-## Current Phase: Phase 3 — Implementation 🔄 (Core Modules Complete)
+## Current Phase: Phase 5 — Admin Portal & Mobile App 🔄
 
 ## Phase 0 — Setup ✅
 - [x] GitHub repo initialized
@@ -264,6 +264,14 @@ WS     /hubs/driver                      - SignalR real-time hub
 - SignalR for real-time session updates
 - JWT Bearer authentication
 - Health checks for PostgreSQL and Redis
+
+### Verified:
+- [x] Health check endpoint working
+- [x] Nearby stations endpoint working (returns empty data - no seeded stations)
+- [x] Scalar API documentation at /scalar/v1
+- [x] OpenAPI spec at /openapi/v1.json
+
+## Phase 5 — Admin Portal & Mobile App 🔄
 
 ### Remaining:
 - [ ] Admin Portal (React/Next.js)
