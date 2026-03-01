@@ -181,8 +181,21 @@ GET    /api/v1/audit-logs/entity-changes/{id}/property-changes - Property change
 GET    /api/v1/audit-logs/export          - Export to CSV
 ```
 
+#### E-Invoice (MOD-015)
+```
+GET    /api/v1/e-invoices                 - List e-invoices
+GET    /api/v1/e-invoices/{id}            - Get e-invoice detail
+GET    /api/v1/e-invoices/by-invoice/{id} - Get by invoice ID
+POST   /api/v1/e-invoices                 - Generate e-invoice
+POST   /api/v1/e-invoices/{id}/retry      - Retry failed e-invoice
+POST   /api/v1/e-invoices/{id}/cancel     - Cancel e-invoice
+GET    /api/v1/e-invoices/{id}/pdf-url    - Get PDF download URL
+```
+
+### Core Modules Status:
+- [x] **MOD-015: E-Invoice** - E-invoice generation, retry, cancellation (MISA, Viettel, VNPT providers)
+
 ### Remaining:
-- [ ] E-Invoice (MOD-015) - E-invoice integration
 - [ ] Driver BFF API setup
 - [ ] Admin Portal (React/Next.js)
 - [ ] Mobile App (React Native/Expo)

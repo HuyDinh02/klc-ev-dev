@@ -79,4 +79,12 @@ public static class KChargePermissions
         public const string Default = GroupName + ".AuditLogs";
         public const string Export = Default + ".Export";
     }
+
+    public static class EInvoices
+    {
+        public const string Default = GroupName + ".EInvoices";
+        public const string Generate = Default + ".Generate";
+        public const string Retry = Default + ".Retry";
+        public const string Cancel = Default + ".Cancel";
+    }
 }

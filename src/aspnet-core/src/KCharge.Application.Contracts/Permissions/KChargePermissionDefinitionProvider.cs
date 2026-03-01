@@ -24,6 +24,12 @@ public class KChargePermissionDefinitionProvider : PermissionDefinitionProvider
         connectorsPermission.AddChild(KChargePermissions.Connectors.Delete, L("Permission:Connectors.Delete"));
         connectorsPermission.AddChild(KChargePermissions.Connectors.Enable, L("Permission:Connectors.Enable"));
         connectorsPermission.AddChild(KChargePermissions.Connectors.Disable, L("Permission:Connectors.Disable"));
+
+        // E-Invoice permissions
+        var eInvoicesPermission = myGroup.AddPermission(KChargePermissions.EInvoices.Default, L("Permission:EInvoices"));
+        eInvoicesPermission.AddChild(KChargePermissions.EInvoices.Generate, L("Permission:EInvoices.Generate"));
+        eInvoicesPermission.AddChild(KChargePermissions.EInvoices.Retry, L("Permission:EInvoices.Retry"));
+        eInvoicesPermission.AddChild(KChargePermissions.EInvoices.Cancel, L("Permission:EInvoices.Cancel"));
     }
 
     private static LocalizableString L(string name)
