@@ -199,7 +199,7 @@ GET    /api/v1/e-invoices/{id}/pdf-url    - Get PDF download URL
 
 ### Driver BFF Structure:
 ```
-src/aspnet-core/src/KCharge.Driver.BFF/
+src/backend/src/KCharge.Driver.BFF/
 ├── Program.cs                    - Minimal API entry point
 ├── appsettings.json              - Configuration
 ├── Endpoints/                    - API endpoint modules

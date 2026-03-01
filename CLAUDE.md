@@ -47,16 +47,22 @@ EV Charging Station Management System (CSMS) — B2C platform quản lý trạm 
 docker compose up -d
 
 # Run Admin API
-cd src/EVCharging.Admin.HttpApi.Host && dotnet run
+cd src/backend/src/KCharge.HttpApi.Host && dotnet run
 
 # Run Driver BFF
-cd src/EVCharging.Driver.BFF && dotnet run
+cd src/backend/src/KCharge.Driver.BFF && dotnet run
+
+# Run Admin Portal
+cd src/admin-portal && npm run dev
+
+# Run Mobile App
+cd src/driver-app && npx expo start
 
 # Run tests
-dotnet test
+dotnet test src/backend
 
 # DB migration
-dotnet ef database update -p src/EVCharging.EntityFrameworkCore
+dotnet ef database update -p src/backend/src/KCharge.EntityFrameworkCore
 ```
 
 ## Key Conventions

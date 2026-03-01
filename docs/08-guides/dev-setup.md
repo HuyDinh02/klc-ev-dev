@@ -144,7 +144,7 @@ Email__Password=
 
 ### Per-Project Environment Variables
 
-**Admin API** — `src/EVCharging.Admin.HttpApi.Host/appsettings.Development.json`
+**Admin API** — `src/backend/src/KCharge.HttpApi.Host/appsettings.Development.json`
 ```json
 {
   "ConnectionStrings": {
@@ -162,7 +162,7 @@ Email__Password=
 }
 ```
 
-**Driver BFF API** — `src/EVCharging.Driver.BFF/appsettings.Development.json`
+**Driver BFF API** — `src/backend/src/KCharge.Driver.BFF/appsettings.Development.json`
 ```json
 {
   "ConnectionStrings": {
@@ -181,7 +181,7 @@ Run Entity Framework migrations to create database schema:
 
 ```bash
 # Navigate to EF project
-cd src/EVCharging.EntityFrameworkCore
+cd src/backend/src/KCharge.EntityFrameworkCore
 
 # Apply migrations
 dotnet ef database update
@@ -194,7 +194,7 @@ Expected output:
 ```
 Build started...
 Build succeeded.
-Done. Migrated EVCharging.EntityFrameworkCore to 2026-03-01_001_InitialCreate
+Done. Migrated KCharge.EntityFrameworkCore to 2026-03-01_001_InitialCreate
 ```
 
 ### Verify Database
@@ -213,7 +213,7 @@ psql -h localhost -U postgres -d EVCharging
 
 ```bash
 # Terminal 1 — Admin API
-cd src/EVCharging.Admin.HttpApi.Host
+cd src/backend/src/KCharge.HttpApi.Host
 dotnet run
 ```
 
@@ -233,7 +233,7 @@ info: Microsoft.Hosting.Lifetime[0]
 
 ```bash
 # Terminal 2 — Driver BFF
-cd src/EVCharging.Driver.BFF
+cd src/backend/src/KCharge.Driver.BFF
 dotnet run
 ```
 
@@ -251,24 +251,24 @@ info: Microsoft.Hosting.Lifetime[0]
 
 ## Step 8: Start Frontend (Optional)
 
-**Mobile Frontend** (React Native with Expo):
+**Admin Portal** (Next.js):
 ```bash
 # Terminal 3
-cd frontend/mobile
-npm install
-npm start
-
-# Scan QR code with Expo Go app (iOS/Android)
-```
-
-**Web Dashboard** (React/Next.js):
-```bash
-# Terminal 4
-cd frontend/web
+cd src/admin-portal
 npm install
 npm run dev
 
-# Open http://localhost:3000
+# Open http://localhost:3001
+```
+
+**Mobile App** (React Native with Expo):
+```bash
+# Terminal 4
+cd src/driver-app
+npm install
+npx expo start
+
+# Scan QR code with Expo Go app (iOS/Android)
 ```
 
 ## Development Workflow
@@ -279,7 +279,7 @@ npm run dev
 dotnet test
 
 # Specific test project
-dotnet test src/EVCharging.Tests/EVCharging.Tests.csproj
+dotnet test src/backend/test/KCharge.Tests/KCharge.Tests.csproj
 
 # With coverage
 dotnet test /p:CollectCoverage=true /p:CoverageFormat=opencover
@@ -287,7 +287,7 @@ dotnet test /p:CollectCoverage=true /p:CoverageFormat=opencover
 
 ### Creating New Migration
 ```bash
-cd src/EVCharging.EntityFrameworkCore
+cd src/backend/src/KCharge.EntityFrameworkCore
 dotnet ef migrations add MigrationName
 dotnet ef database update
 ```

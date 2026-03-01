@@ -73,7 +73,7 @@ For high-availability and auto-scaling:
 
 ### Building Docker Images
 
-**Dockerfile for Admin API** (`src/EVCharging.Admin.HttpApi.Host/Dockerfile`):
+**Dockerfile for Admin API** (`src/backend/src/KCharge.HttpApi.Host/Dockerfile`):
 ```dockerfile
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
@@ -110,7 +110,7 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
 ENTRYPOINT ["dotnet", "EVCharging.Admin.HttpApi.Host.dll"]
 ```
 
-**Dockerfile for Driver BFF** (`src/EVCharging.Driver.BFF/Dockerfile`):
+**Dockerfile for Driver BFF** (`src/backend/src/KCharge.Driver.BFF/Dockerfile`):
 ```dockerfile
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
@@ -145,12 +145,12 @@ ENTRYPOINT ["dotnet", "EVCharging.Driver.BFF.dll"]
 ### Building Images
 ```bash
 # Build Admin API
-docker build -t ev-charging-admin:latest \
-  -f src/EVCharging.Admin.HttpApi.Host/Dockerfile .
+docker build -t kcharge-admin:latest \
+  -f src/backend/src/KCharge.HttpApi.Host/Dockerfile .
 
 # Build Driver BFF
-docker build -t ev-charging-driver:latest \
-  -f src/EVCharging.Driver.BFF/Dockerfile .
+docker build -t kcharge-driver:latest \
+  -f src/backend/src/KCharge.Driver.BFF/Dockerfile .
 
 # Tag for ECR
 docker tag ev-charging-admin:latest \
@@ -642,13 +642,13 @@ jobs:
       - name: Build and push Admin API
         run: |
           docker build -t $ECR_REGISTRY/$ADMIN_API_IMAGE:latest \
-            -f src/EVCharging.Admin.HttpApi.Host/Dockerfile .
+            -f src/backend/src/KCharge.HttpApi.Host/Dockerfile .
           docker push $ECR_REGISTRY/$ADMIN_API_IMAGE:latest
 
       - name: Build and push Driver API
         run: |
           docker build -t $ECR_REGISTRY/$DRIVER_API_IMAGE:latest \
-            -f src/EVCharging.Driver.BFF/Dockerfile .
+            -f src/backend/src/KCharge.Driver.BFF/Dockerfile .
           docker push $ECR_REGISTRY/$DRIVER_API_IMAGE:latest
 
   deploy:
