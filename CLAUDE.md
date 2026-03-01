@@ -15,7 +15,8 @@ EV Charging Station Management System (CSMS) — B2C platform quản lý trạm 
 
 ## Architecture
 - Driver BFF API (port 5001): .NET Minimal API, Redis cache-first, read replicas
-- Admin API (port 5000): Full ABP layered architecture
+- Admin API (port 44305): Full ABP layered architecture (HTTPS)
+- Admin Portal (port 3001): Next.js frontend
 - Shared Domain Layer between both APIs
 
 ## Documentation

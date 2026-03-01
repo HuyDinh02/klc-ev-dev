@@ -68,12 +68,15 @@ ev-charging-redis       Up X seconds
 
 ### Docker Compose Services
 The `docker-compose.yml` includes:
-- **PostgreSQL 16** — Port 5432
+- **PostgreSQL 16** — Port 5433 (mapped from container's 5432)
   - Username: `postgres`
   - Password: `postgres`
-  - Database: `EVCharging`
+  - Database: `KCharge`
 - **Redis 7** — Port 6379
   - No authentication (development only)
+- **pgAdmin** — Port 8080 (optional, use `--profile tools`)
+  - Email: `admin@kcharge.local`
+  - Password: `admin`
 
 ### Alternative: Local PostgreSQL & Redis
 If you prefer local installation (not Docker):
@@ -118,7 +121,7 @@ Create `.env` file in repository root:
 ```env
 # Database
 ASPNETCORE_ENVIRONMENT=Development
-ConnectionStrings__Default=Server=localhost;Port=5432;Database=EVCharging;User Id=postgres;Password=postgres;
+ConnectionStrings__Default=Server=localhost;Port=5433;Database=KCharge;User Id=postgres;Password=postgres;
 
 # Redis
 Redis__Connection=localhost:6379
@@ -148,7 +151,7 @@ Email__Password=
 ```json
 {
   "ConnectionStrings": {
-    "Default": "Server=localhost;Port=5432;Database=EVCharging;User Id=postgres;Password=postgres;"
+    "Default": "Server=localhost;Port=5433;Database=KCharge;User Id=postgres;Password=postgres;"
   },
   "Redis": {
     "Connection": "localhost:6379"
@@ -166,7 +169,7 @@ Email__Password=
 ```json
 {
   "ConnectionStrings": {
-    "Default": "Server=localhost;Port=5432;Database=EVCharging;User Id=postgres;Password=postgres;",
+    "Default": "Server=localhost;Port=5433;Database=KCharge;User Id=postgres;Password=postgres;",
     "ReadReplica": "Server=localhost-read-replica;Port=5432;Database=EVCharging;User Id=postgres;Password=postgres;"
   },
   "Redis": {
@@ -209,7 +212,7 @@ psql -h localhost -U postgres -d EVCharging
 \q
 ```
 
-## Step 6: Run Admin API (Port 5000)
+## Step 6: Run Admin API (Port 44305)
 
 ```bash
 # Terminal 1 — Admin API
@@ -220,14 +223,16 @@ dotnet run
 Expected output:
 ```
 info: Microsoft.Hosting.Lifetime[0]
-      Now listening on: http://localhost:5000
+      Now listening on: https://localhost:44305
 info: Microsoft.Hosting.Lifetime[0]
       Application started. Press Ctrl+C to stop.
 ```
 
 ### Access Admin API
-- Swagger UI: http://localhost:5000/swagger
-- Health Check: http://localhost:5000/health
+- Swagger UI: https://localhost:44305/swagger
+- Health Check: https://localhost:44305/health
+
+> **Note:** The API uses HTTPS with a self-signed certificate. Accept the certificate warning in your browser.
 
 ## Step 7: Run Driver BFF API (Port 5001)
 
