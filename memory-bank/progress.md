@@ -273,6 +273,48 @@ WS     /hubs/driver                      - SignalR real-time hub
 
 ## Phase 5 — Admin Portal & Mobile App 🔄
 
+### Admin Portal (Next.js) ✅
+```
+src/admin-portal/
+├── src/
+│   ├── app/
+│   │   ├── (dashboard)/          # Dashboard layout with sidebar
+│   │   │   ├── page.tsx          # Dashboard home (KPIs, charts)
+│   │   │   ├── stations/         # Station management
+│   │   │   ├── sessions/         # Charging sessions
+│   │   │   └── faults/           # Fault management
+│   │   └── login/                # Authentication
+│   ├── components/
+│   │   ├── layout/               # Sidebar, Header
+│   │   ├── ui/                   # Button, Card, Badge
+│   │   └── providers.tsx         # React Query provider
+│   └── lib/
+│       ├── api.ts                # API client (axios)
+│       ├── store.ts              # Zustand stores
+│       └── utils.ts              # Utilities
+```
+
+**Tech Stack:**
+- Next.js 16 + React 19 + TailwindCSS
+- React Query for data fetching
+- Zustand for state management
+- Recharts for visualizations
+- SignalR client for real-time
+
+**Pages Implemented:**
+- [x] Dashboard (KPIs, revenue chart, connector status)
+- [x] Stations (grid view, enable/disable)
+- [x] Sessions (active/completed filtering)
+- [x] Faults (status workflow)
+- [x] Login (mock auth)
+
+**Note:** Requires Node.js >= 20.9.0
+
+**To run:**
+```bash
+cd src/admin-portal
+npm run dev  # http://localhost:3001
+```
+
 ### Remaining:
-- [ ] Admin Portal (React/Next.js)
 - [ ] Mobile App (React Native/Expo)
