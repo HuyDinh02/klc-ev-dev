@@ -1,0 +1,20 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/KCharge.Application.Contracts/KCharge.Application.Contracts.csproj" />
+    <Project Path="src/KCharge.Application/KCharge.Application.csproj" />
+    <Project Path="src/KCharge.DbMigrator/KCharge.DbMigrator.csproj" />
+    <Project Path="src/KCharge.Domain.Shared/KCharge.Domain.Shared.csproj" />
+    <Project Path="src/KCharge.Domain/KCharge.Domain.csproj" />
+    <Project Path="src/KCharge.EntityFrameworkCore/KCharge.EntityFrameworkCore.csproj" />
+    <Project Path="src/KCharge.HttpApi.Client/KCharge.HttpApi.Client.csproj" />
+    <Project Path="src/KCharge.HttpApi.Host/KCharge.HttpApi.Host.csproj" />
+    <Project Path="src/KCharge.HttpApi/KCharge.HttpApi.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/KCharge.Application.Tests/KCharge.Application.Tests.csproj" />
+    <Project Path="test/KCharge.Domain.Tests/KCharge.Domain.Tests.csproj" />
+    <Project Path="test/KCharge.EntityFrameworkCore.Tests/KCharge.EntityFrameworkCore.Tests.csproj" />
+    <Project Path="test/KCharge.HttpApi.Client.ConsoleTestApp/KCharge.HttpApi.Client.ConsoleTestApp.csproj" />
+    <Project Path="test/KCharge.TestBase/KCharge.TestBase.csproj" />
+  </Folder>
+</Solution>

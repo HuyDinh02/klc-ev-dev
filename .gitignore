@@ -1,0 +1,59 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+[Dd]ebug/
+[Rr]elease/
+packages/
+*.nupkg
+project.lock.json
+*.nuget.props
+*.nuget.targets
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp
+.pnp.js
+
+# React Native
+*.jsbundle
+ios/Pods/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+appsettings.*.json
+!appsettings.json
+
+# Docker
+docker-compose.override.yml
+
+# Project specific
+docs/**/originals/*.docx
+docs/**/originals/*.xlsx
+*.tmp
+
+# Build outputs
+dist/
+build/
+publish/
