@@ -30,6 +30,47 @@ public class KChargePermissionDefinitionProvider : PermissionDefinitionProvider
         eInvoicesPermission.AddChild(KChargePermissions.EInvoices.Generate, L("Permission:EInvoices.Generate"));
         eInvoicesPermission.AddChild(KChargePermissions.EInvoices.Retry, L("Permission:EInvoices.Retry"));
         eInvoicesPermission.AddChild(KChargePermissions.EInvoices.Cancel, L("Permission:EInvoices.Cancel"));
+
+        // Tariff permissions
+        var tariffsPermission = myGroup.AddPermission(KChargePermissions.Tariffs.Default, L("Permission:Tariffs"));
+        tariffsPermission.AddChild(KChargePermissions.Tariffs.Create, L("Permission:Tariffs.Create"));
+        tariffsPermission.AddChild(KChargePermissions.Tariffs.Update, L("Permission:Tariffs.Update"));
+        tariffsPermission.AddChild(KChargePermissions.Tariffs.Activate, L("Permission:Tariffs.Activate"));
+        tariffsPermission.AddChild(KChargePermissions.Tariffs.Deactivate, L("Permission:Tariffs.Deactivate"));
+
+        // Session permissions
+        var sessionsPermission = myGroup.AddPermission(KChargePermissions.Sessions.Default, L("Permission:Sessions"));
+        sessionsPermission.AddChild(KChargePermissions.Sessions.ViewAll, L("Permission:Sessions.ViewAll"));
+
+        // Fault permissions
+        var faultsPermission = myGroup.AddPermission(KChargePermissions.Faults.Default, L("Permission:Faults"));
+        faultsPermission.AddChild(KChargePermissions.Faults.Update, L("Permission:Faults.Update"));
+
+        // Alert permissions
+        var alertsPermission = myGroup.AddPermission(KChargePermissions.Alerts.Default, L("Permission:Alerts"));
+        alertsPermission.AddChild(KChargePermissions.Alerts.Acknowledge, L("Permission:Alerts.Acknowledge"));
+
+        // Monitoring permissions
+        var monitoringPermission = myGroup.AddPermission(KChargePermissions.Monitoring.Default, L("Permission:Monitoring"));
+        monitoringPermission.AddChild(KChargePermissions.Monitoring.Dashboard, L("Permission:Monitoring.Dashboard"));
+        monitoringPermission.AddChild(KChargePermissions.Monitoring.StatusHistory, L("Permission:Monitoring.StatusHistory"));
+        monitoringPermission.AddChild(KChargePermissions.Monitoring.EnergySummary, L("Permission:Monitoring.EnergySummary"));
+
+        // Station Group permissions
+        var stationGroupsPermission = myGroup.AddPermission(KChargePermissions.StationGroups.Default, L("Permission:StationGroups"));
+        stationGroupsPermission.AddChild(KChargePermissions.StationGroups.Create, L("Permission:StationGroups.Create"));
+        stationGroupsPermission.AddChild(KChargePermissions.StationGroups.Update, L("Permission:StationGroups.Update"));
+        stationGroupsPermission.AddChild(KChargePermissions.StationGroups.Delete, L("Permission:StationGroups.Delete"));
+        stationGroupsPermission.AddChild(KChargePermissions.StationGroups.Assign, L("Permission:StationGroups.Assign"));
+
+        // Payment permissions
+        var paymentsPermission = myGroup.AddPermission(KChargePermissions.Payments.Default, L("Permission:Payments"));
+        paymentsPermission.AddChild(KChargePermissions.Payments.ViewAll, L("Permission:Payments.ViewAll"));
+        paymentsPermission.AddChild(KChargePermissions.Payments.Refund, L("Permission:Payments.Refund"));
+
+        // Audit Log permissions
+        var auditLogsPermission = myGroup.AddPermission(KChargePermissions.AuditLogs.Default, L("Permission:AuditLogs"));
+        auditLogsPermission.AddChild(KChargePermissions.AuditLogs.Export, L("Permission:AuditLogs.Export"));
     }
 
     private static LocalizableString L(string name)
