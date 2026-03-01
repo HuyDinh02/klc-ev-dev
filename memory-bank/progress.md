@@ -316,5 +316,69 @@ cd src/admin-portal
 npm run dev  # http://localhost:3001
 ```
 
-### Remaining:
-- [ ] Mobile App (React Native/Expo)
+### Mobile App (React Native/Expo) ✅
+```
+src/driver-app/
+├── App.tsx                      # Entry point with navigation
+├── app.json                     # Expo configuration
+├── src/
+│   ├── api/                     # API client & endpoints
+│   │   ├── client.ts            # Axios client with auth interceptors
+│   │   ├── stations.ts          # Station API (nearby, details)
+│   │   ├── sessions.ts          # Session API (start/stop, history)
+│   │   ├── payments.ts          # Payment API (process, methods)
+│   │   ├── profile.ts           # Profile & vehicle API
+│   │   └── notifications.ts     # Notification API
+│   ├── stores/                  # Zustand state management
+│   │   ├── authStore.ts         # Authentication state
+│   │   ├── sessionStore.ts      # Active session state
+│   │   └── locationStore.ts     # User location state
+│   ├── screens/                 # App screens
+│   │   ├── HomeScreen.tsx       # Station finder (list view)
+│   │   ├── StationDetailScreen.tsx # Connector details, start charging
+│   │   ├── SessionScreen.tsx    # Live charging session with SignalR
+│   │   ├── HistoryScreen.tsx    # Past sessions list
+│   │   ├── ProfileScreen.tsx    # User profile, vehicles, stats
+│   │   └── LoginScreen.tsx      # Authentication
+│   ├── navigation/              # React Navigation setup
+│   │   ├── RootNavigator.tsx    # Auth flow + stack navigation
+│   │   └── MainNavigator.tsx    # Bottom tabs (Home, History, Profile)
+│   ├── components/common/       # Reusable UI components
+│   │   ├── Button.tsx           # Primary/secondary/outline buttons
+│   │   ├── Card.tsx             # Card container with shadows
+│   │   └── Badge.tsx            # Status badges
+│   ├── hooks/
+│   │   └── useSignalR.ts        # Real-time session updates
+│   ├── constants/
+│   │   ├── colors.ts            # Theme colors (Blue, White, Orange)
+│   │   └── config.ts            # API URLs, map config
+│   └── types/
+│       └── index.ts             # TypeScript types
+```
+
+**Tech Stack:**
+- Expo SDK 53 (React Native)
+- React Navigation (tabs + stack)
+- Zustand for state management
+- SignalR for real-time updates
+- Axios for API calls
+- expo-secure-store for auth tokens
+- expo-location for GPS
+
+**Screens Implemented:**
+- [x] Login (mock auth: driver@kcharge.vn / driver123)
+- [x] Home (station list with availability)
+- [x] Station Detail (connectors, start charging)
+- [x] Session (live charging with meter values)
+- [x] History (past sessions with stats)
+- [x] Profile (user info, vehicles, statistics)
+
+**Note:** Requires Node.js >= 20.9.0
+
+**To run:**
+```bash
+cd src/driver-app
+npx expo start  # Press 'i' for iOS, 'a' for Android
+```
+
+## Phase 5 Complete ✅
