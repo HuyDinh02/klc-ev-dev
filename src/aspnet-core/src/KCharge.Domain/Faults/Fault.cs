@@ -150,4 +150,28 @@ public class Fault : FullAuditedEntity<Guid>
             throw new ArgumentException("Priority must be between 1 and 4", nameof(priority));
         Priority = priority;
     }
+
+    public void UpdateStatus(FaultStatus newStatus, string? notes = null)
+    {
+        switch (newStatus)
+        {
+            case FaultStatus.Investigating:
+                StartInvestigation();
+                break;
+            case FaultStatus.Resolved:
+                Status = FaultStatus.Resolved;
+                ResolvedAt = DateTime.UtcNow;
+                ResolutionNotes = notes;
+                break;
+            case FaultStatus.Closed:
+                Close(notes);
+                break;
+            case FaultStatus.Open:
+                if (Status == FaultStatus.Resolved || Status == FaultStatus.Closed)
+                {
+                    Reopen();
+                }
+                break;
+        }
+    }
 }

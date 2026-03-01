@@ -28,5 +28,10 @@ public enum StationStatus
     /// <summary>
     /// Station has a fault and cannot be used.
     /// </summary>
-    Faulted = 4
+    Faulted = 4,
+
+    /// <summary>
+    /// Station has been decommissioned and retired from service.
+    /// </summary>
+    Decommissioned = 5
 }
