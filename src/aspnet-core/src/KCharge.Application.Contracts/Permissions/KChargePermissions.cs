@@ -49,4 +49,34 @@ public static class KChargePermissions
         public const string Default = GroupName + ".Alerts";
         public const string Acknowledge = Default + ".Acknowledge";
     }
+
+    public static class Monitoring
+    {
+        public const string Default = GroupName + ".Monitoring";
+        public const string Dashboard = Default + ".Dashboard";
+        public const string StatusHistory = Default + ".StatusHistory";
+        public const string EnergySummary = Default + ".EnergySummary";
+    }
+
+    public static class StationGroups
+    {
+        public const string Default = GroupName + ".StationGroups";
+        public const string Create = Default + ".Create";
+        public const string Update = Default + ".Update";
+        public const string Delete = Default + ".Delete";
+        public const string Assign = Default + ".Assign";
+    }
+
+    public static class Payments
+    {
+        public const string Default = GroupName + ".Payments";
+        public const string ViewAll = Default + ".ViewAll";
+        public const string Refund = Default + ".Refund";
+    }
+
+    public static class AuditLogs
+    {
+        public const string Default = GroupName + ".AuditLogs";
+        public const string Export = Default + ".Export";
+    }
 }

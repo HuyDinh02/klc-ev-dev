@@ -69,6 +69,7 @@ public class KChargeDbContext :
     public DbSet<PaymentTransaction> PaymentTransactions { get; set; }
     public DbSet<Invoice> Invoices { get; set; }
     public DbSet<EInvoice> EInvoices { get; set; }
+    public DbSet<UserPaymentMethod> UserPaymentMethods { get; set; }
 
     // Faults
     public DbSet<Fault> Faults { get; set; }
@@ -383,6 +384,21 @@ public static class KChargeDbContextModelCreatingExtensions
             b.HasIndex(x => x.PhoneNumber);
             b.HasIndex(x => x.Email);
             b.HasIndex(x => x.IsActive);
+        });
+
+        // UserPaymentMethod
+        builder.Entity<UserPaymentMethod>(b =>
+        {
+            b.ToTable(KChargeConsts.DbTablePrefix + "UserPaymentMethods", KChargeConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.DisplayName).IsRequired().HasMaxLength(100);
+            b.Property(x => x.TokenReference).IsRequired().HasMaxLength(500);
+            b.Property(x => x.LastFourDigits).HasMaxLength(4);
+
+            b.HasIndex(x => x.UserId);
+            b.HasIndex(x => x.IsActive);
+            b.HasIndex(x => new { x.UserId, x.IsDefault }).HasFilter("\"IsDefault\" = true");
         });
     }
 }

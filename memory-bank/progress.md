@@ -34,12 +34,18 @@
 ### Core Modules Completed:
 - [x] **MOD-001: Station Management** - Full CRUD with decommission, enable/disable
 - [x] **MOD-002: Connector Management** - Full CRUD with enable/disable
+- [x] **MOD-003: Real-time Monitoring** - SignalR hub, dashboard, status history, energy summary
+- [x] **MOD-004: Energy Metering** - Station/connector energy summaries
 - [x] **MOD-005: Fault Management** - Fault tracking, status updates, filtering
 - [x] **MOD-006: OCPP Integration** - Database persistence for all OCPP messages
 - [x] **MOD-007: Tariff Configuration** - Tariff CRUD, cost calculation
+- [x] **MOD-008: Payment & Billing** - Payment processing, payment methods, invoices
 - [x] **MOD-009: Vehicle Management** - Vehicle CRUD, set default vehicle
 - [x] **MOD-010: Charging Session** - Session lifecycle (start/stop), history, meter values
+- [x] **MOD-011: User Account** - Profile management, phone/email verification, statistics
 - [x] **MOD-012: Notifications** - User notifications, alerts for admin
+- [x] **MOD-013: Station Grouping** - Group CRUD, assign/unassign stations
+- [x] **MOD-014: Audit Log** - Query audit logs, entity changes, CSV export
 
 ### API Endpoints Created:
 
@@ -119,13 +125,63 @@ GET    /api/v1/alerts                   - List alerts (admin)
 POST   /api/v1/alerts/{id}/acknowledge  - Acknowledge alert
 ```
 
+#### Real-time Monitoring
+```
+GET    /api/v1/monitoring/dashboard                    - Dashboard overview
+GET    /api/v1/monitoring/stations/{id}/status-history - Status change history
+GET    /api/v1/monitoring/stations/{id}/energy-summary - Station energy summary
+GET    /api/v1/monitoring/connectors/{id}/energy-summary - Connector energy summary
+WS     /hubs/monitoring                                 - SignalR real-time hub
+```
+
+#### Station Groups
+```
+POST   /api/v1/station-groups                   - Create group
+GET    /api/v1/station-groups                   - List groups
+GET    /api/v1/station-groups/{id}              - Get group detail
+PUT    /api/v1/station-groups/{id}              - Update group
+DELETE /api/v1/station-groups/{id}              - Delete group
+POST   /api/v1/station-groups/{id}/assign       - Assign station to group
+DELETE /api/v1/station-groups/{id}/stations/{stationId} - Unassign station
+```
+
+#### Payments
+```
+POST   /api/v1/payments/process           - Process payment
+GET    /api/v1/payments/history           - Payment history
+GET    /api/v1/payments/{id}              - Get payment detail
+POST   /api/v1/payments/callback/{gateway} - Payment gateway callback
+POST   /api/v1/payment-methods            - Add payment method
+GET    /api/v1/payment-methods            - List payment methods
+DELETE /api/v1/payment-methods/{id}       - Delete payment method
+POST   /api/v1/payment-methods/{id}/set-default - Set default method
+GET    /api/v1/invoices/{id}              - Get invoice
+GET    /api/v1/invoices/by-payment/{id}   - Get invoice by payment
+```
+
+#### User Profile
+```
+GET    /api/v1/profile                    - Get profile
+PUT    /api/v1/profile                    - Update profile
+POST   /api/v1/profile/phone              - Update phone
+POST   /api/v1/profile/phone/verify       - Verify phone
+POST   /api/v1/profile/email              - Update email
+POST   /api/v1/profile/email/verify       - Verify email
+POST   /api/v1/profile/change-password    - Change password
+GET    /api/v1/profile/statistics         - Get user statistics
+POST   /api/v1/profile/deactivate         - Deactivate account
+```
+
+#### Audit Logs
+```
+GET    /api/v1/audit-logs                 - List audit logs
+GET    /api/v1/audit-logs/{id}            - Get audit log detail
+GET    /api/v1/audit-logs/entity-changes  - List entity changes
+GET    /api/v1/audit-logs/entity-changes/{id}/property-changes - Property changes
+GET    /api/v1/audit-logs/export          - Export to CSV
+```
+
 ### Remaining:
-- [ ] Real-time Monitoring (MOD-003) - SignalR hub for live updates
-- [ ] Energy Metering (MOD-004) - Advanced metering analytics
-- [ ] Payment & Billing (MOD-008) - Payment gateway integration
-- [ ] User Account (MOD-011) - Profile, payment methods
-- [ ] Station Grouping (MOD-013) - Hierarchical grouping
-- [ ] Audit Log (MOD-014) - Activity logging
 - [ ] E-Invoice (MOD-015) - E-invoice integration
 - [ ] Driver BFF API setup
 - [ ] Admin Portal (React/Next.js)

@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using KCharge.EntityFrameworkCore;
+using KCharge.Hubs;
 using KCharge.MultiTenancy;
 using KCharge.Ocpp;
 using Volo.Abp.AspNetCore.Mvc.UI.Theme.LeptonXLite;
@@ -72,6 +73,7 @@ public class KChargeHttpApiHostModule : AbpModule
         ConfigureCors(context, configuration);
         ConfigureSwaggerServices(context, configuration);
         ConfigureOcppServices(context);
+        ConfigureSignalR(context);
     }
 
     private void ConfigureOcppServices(ServiceConfigurationContext context)
@@ -80,6 +82,13 @@ public class KChargeHttpApiHostModule : AbpModule
         context.Services.AddSingleton<OcppConnectionManager>();
         context.Services.AddScoped<OcppMessageHandler>();
         context.Services.AddHostedService<HeartbeatMonitorService>();
+    }
+
+    private void ConfigureSignalR(ServiceConfigurationContext context)
+    {
+        // Add SignalR for real-time monitoring
+        context.Services.AddSignalR();
+        context.Services.AddScoped<IMonitoringNotifier, MonitoringNotifier>();
     }
 
     private void ConfigureAuthentication(ServiceConfigurationContext context)
@@ -239,6 +248,10 @@ public class KChargeHttpApiHostModule : AbpModule
 
         app.UseAuditing();
         app.UseAbpSerilogEnrichers();
-        app.UseConfiguredEndpoints();
+        app.UseConfiguredEndpoints(endpoints =>
+        {
+            // Map SignalR hub for real-time monitoring
+            endpoints.MapHub<MonitoringHub>("/hubs/monitoring");
+        });
     }
 }
