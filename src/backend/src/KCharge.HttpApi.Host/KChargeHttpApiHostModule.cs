@@ -15,6 +15,7 @@ using KCharge.Ocpp;
 using Volo.Abp.AspNetCore.Mvc.UI.Theme.LeptonXLite;
 using Volo.Abp.AspNetCore.Mvc.UI.Theme.LeptonXLite.Bundling;
 using Microsoft.OpenApi;
+using OpenIddict.Server;
 using OpenIddict.Validation.AspNetCore;
 using Volo.Abp;
 using Volo.Abp.Account;
@@ -49,6 +50,8 @@ public class KChargeHttpApiHostModule : AbpModule
 {
     public override void PreConfigureServices(ServiceConfigurationContext context)
     {
+        var hostingEnvironment = context.Services.GetHostingEnvironment();
+
         PreConfigure<OpenIddictBuilder>(builder =>
         {
             builder.AddValidation(options =>
@@ -58,6 +61,17 @@ public class KChargeHttpApiHostModule : AbpModule
                 options.UseAspNetCore();
             });
         });
+
+        // Configure OpenIddict server with ephemeral signing keys (avoids macOS Keychain issues)
+        if (hostingEnvironment.IsDevelopment())
+        {
+            PreConfigure<OpenIddictServerBuilder>(serverBuilder =>
+            {
+                serverBuilder.AddEphemeralEncryptionKey()
+                             .AddEphemeralSigningKey()
+                             .DisableAccessTokenEncryption();
+            });
+        }
     }
 
     public override void ConfigureServices(ServiceConfigurationContext context)

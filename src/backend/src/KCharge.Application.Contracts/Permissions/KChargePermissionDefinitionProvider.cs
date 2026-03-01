@@ -71,6 +71,21 @@ public class KChargePermissionDefinitionProvider : PermissionDefinitionProvider
         // Audit Log permissions
         var auditLogsPermission = myGroup.AddPermission(KChargePermissions.AuditLogs.Default, L("Permission:AuditLogs"));
         auditLogsPermission.AddChild(KChargePermissions.AuditLogs.Export, L("Permission:AuditLogs.Export"));
+
+        // User Management permissions
+        var userManagementPermission = myGroup.AddPermission(KChargePermissions.UserManagement.Default, L("Permission:UserManagement"));
+        userManagementPermission.AddChild(KChargePermissions.UserManagement.Create, L("Permission:UserManagement.Create"));
+        userManagementPermission.AddChild(KChargePermissions.UserManagement.Update, L("Permission:UserManagement.Update"));
+        userManagementPermission.AddChild(KChargePermissions.UserManagement.Delete, L("Permission:UserManagement.Delete"));
+        userManagementPermission.AddChild(KChargePermissions.UserManagement.ManageRoles, L("Permission:UserManagement.ManageRoles"));
+        userManagementPermission.AddChild(KChargePermissions.UserManagement.ManagePermissions, L("Permission:UserManagement.ManagePermissions"));
+
+        // Role Management permissions
+        var roleManagementPermission = myGroup.AddPermission(KChargePermissions.RoleManagement.Default, L("Permission:RoleManagement"));
+        roleManagementPermission.AddChild(KChargePermissions.RoleManagement.Create, L("Permission:RoleManagement.Create"));
+        roleManagementPermission.AddChild(KChargePermissions.RoleManagement.Update, L("Permission:RoleManagement.Update"));
+        roleManagementPermission.AddChild(KChargePermissions.RoleManagement.Delete, L("Permission:RoleManagement.Delete"));
+        roleManagementPermission.AddChild(KChargePermissions.RoleManagement.ManagePermissions, L("Permission:RoleManagement.ManagePermissions"));
     }
 
     private static LocalizableString L(string name)

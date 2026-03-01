@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using KCharge.Stations;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Volo.Abp.Application.Dtos;
 
@@ -31,6 +32,7 @@ public class StationController : KChargeController
     /// Gets a station by ID with all connectors.
     /// </summary>
     [HttpGet("{id:guid}")]
+    [AllowAnonymous]
     public async Task<ActionResult<StationDto>> GetAsync(Guid id)
     {
         var result = await _stationAppService.GetAsync(id);
@@ -41,6 +43,7 @@ public class StationController : KChargeController
     /// Gets a paginated list of stations.
     /// </summary>
     [HttpGet]
+    [AllowAnonymous]
     public async Task<ActionResult<PagedResultDto<StationListDto>>> GetListAsync([FromQuery] GetStationListDto input)
     {
         var result = await _stationAppService.GetListAsync(input);

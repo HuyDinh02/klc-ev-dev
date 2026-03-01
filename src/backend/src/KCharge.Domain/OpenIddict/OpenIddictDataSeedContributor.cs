@@ -102,6 +102,21 @@ public class OpenIddictDataSeedContributor : IDataSeedContributor, ITransientDep
                 clientUri: swaggerRootUrl
             );
         }
+
+        // API Client (for password grant - testing and mobile apps)
+        await CreateApplicationAsync(
+            name: "KCharge_Api",
+            type: OpenIddictConstants.ClientTypes.Confidential,
+            consentType: OpenIddictConstants.ConsentTypes.Implicit,
+            displayName: "KCharge API Client",
+            secret: "1q2w3e*",
+            grantTypes: new List<string>
+            {
+                OpenIddictConstants.GrantTypes.Password,
+                OpenIddictConstants.GrantTypes.RefreshToken
+            },
+            scopes: commonScopes
+        );
     }
 
     private async Task CreateApplicationAsync(

@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using KCharge.Tariffs;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Volo.Abp.Application.Dtos;
 
@@ -25,6 +26,7 @@ public class TariffController : KChargeController
     }
 
     [HttpGet("{id:guid}")]
+    [AllowAnonymous]
     public async Task<ActionResult<TariffPlanDto>> GetAsync(Guid id)
     {
         var result = await _tariffAppService.GetAsync(id);
@@ -32,6 +34,7 @@ public class TariffController : KChargeController
     }
 
     [HttpGet]
+    [AllowAnonymous]
     public async Task<ActionResult<PagedResultDto<TariffPlanListDto>>> GetListAsync([FromQuery] GetTariffPlanListDto input)
     {
         var result = await _tariffAppService.GetListAsync(input);

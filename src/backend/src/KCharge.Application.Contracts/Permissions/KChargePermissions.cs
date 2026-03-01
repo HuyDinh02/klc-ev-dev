@@ -87,4 +87,23 @@ public static class KChargePermissions
         public const string Retry = Default + ".Retry";
         public const string Cancel = Default + ".Cancel";
     }
+
+    public static class UserManagement
+    {
+        public const string Default = GroupName + ".UserManagement";
+        public const string Create = Default + ".Create";
+        public const string Update = Default + ".Update";
+        public const string Delete = Default + ".Delete";
+        public const string ManageRoles = Default + ".ManageRoles";
+        public const string ManagePermissions = Default + ".ManagePermissions";
+    }
+
+    public static class RoleManagement
+    {
+        public const string Default = GroupName + ".RoleManagement";
+        public const string Create = Default + ".Create";
+        public const string Update = Default + ".Update";
+        public const string Delete = Default + ".Delete";
+        public const string ManagePermissions = Default + ".ManagePermissions";
+    }
 }
