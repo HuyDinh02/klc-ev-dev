@@ -1,15 +1,17 @@
 using KCharge.Driver;
 using KCharge.Driver.Endpoints;
 using KCharge.Driver.Services;
-using KCharge.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore;
+using Scalar.AspNetCore;
 using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Add ABP with Autofac
+builder.Host.UseAutofac();
+builder.Services.AddApplication<DriverBffModule>();
+
 // Configure services
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddOpenApi();
 
 // Add CORS for mobile app
 builder.Services.AddCors(options =>
@@ -20,12 +22,6 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod()
               .AllowAnyHeader();
     });
-});
-
-// Add DbContext with read replica support
-builder.Services.AddDbContext<KChargeDbContext>(options =>
-{
-    options.UseNpgsql(builder.Configuration.GetConnectionString("Default"));
 });
 
 // Add Redis caching
@@ -62,11 +58,14 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
+// Initialize ABP
+await app.InitializeApplicationAsync();
+
 // Configure middleware
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    app.MapOpenApi();
+    app.MapScalarApiReference();
 }
 
 app.UseCors("MobileApp");
@@ -87,4 +86,4 @@ app.MapNotificationEndpoints();
 // Map SignalR hub
 app.MapHub<DriverHub>("/hubs/driver");
 
-app.Run();
+await app.RunAsync();

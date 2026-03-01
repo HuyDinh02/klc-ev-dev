@@ -8,10 +8,10 @@ public static class StationEndpoints
     public static void MapStationEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/v1/stations")
-            .WithTags("Stations")
-            .RequireAuthorization();
+            .WithTags("Stations");
 
         // GET /api/v1/stations/nearby?lat=...&lon=...&radius=...&limit=...
+        // Public endpoint - no auth required
         group.MapGet("/nearby", async (
             [FromQuery] double lat,
             [FromQuery] double lon,
