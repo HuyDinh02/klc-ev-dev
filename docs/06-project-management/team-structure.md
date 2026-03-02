@@ -17,7 +17,7 @@
 | BA | TBD | Business analysis, requirement translation |
 | CE | TBD | Customer engagement, client communication |
 
-## Client Team (K-Charge)
+## Client Team (KLC)
 
 | Role | Responsibility |
 |------|---------------|

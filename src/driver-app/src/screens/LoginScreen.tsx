@@ -32,10 +32,10 @@ export function LoginScreen() {
       // Mock login for development
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      if (email === 'driver@kcharge.vn' && password === 'driver123') {
+      if (email === 'driver@klc.vn' && password === 'driver123') {
         await login('mock-token', {
           id: '1',
-          email: 'driver@kcharge.vn',
+          email: 'driver@klc.vn',
           fullName: 'Test Driver',
           isPhoneVerified: true,
           isEmailVerified: true,
@@ -60,7 +60,7 @@ export function LoginScreen() {
           <View style={styles.logoContainer}>
             <Text style={styles.logoText}>K</Text>
           </View>
-          <Text style={styles.title}>KCharge</Text>
+          <Text style={styles.title}>KLC</Text>
           <Text style={styles.subtitle}>EV Charging Made Simple</Text>
         </View>
 
@@ -115,7 +115,7 @@ export function LoginScreen() {
 
         <View style={styles.demoCredentials}>
           <Text style={styles.demoTitle}>Demo Credentials</Text>
-          <Text style={styles.demoText}>Email: driver@kcharge.vn</Text>
+          <Text style={styles.demoText}>Email: driver@klc.vn</Text>
           <Text style={styles.demoText}>Password: driver123</Text>
         </View>
       </KeyboardAvoidingView>

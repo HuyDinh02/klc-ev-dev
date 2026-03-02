@@ -6,8 +6,8 @@
 
 ## 1. Project Summary
 
-**Project:** EV Charging Station Management System (CSMS) for K-Charge
-**Client:** K-Charge | **Developer:** EmeSoft
+**Project:** EV Charging Station Management System (CSMS) for KLC
+**Client:** KLC | **Developer:** EmeSoft
 **Timeline:** March 1 → June 1, 2026 (MVP Go-live) — 4 months
 **CTO/Tech Lead:** Hung (hung.nguyen@emesoft.net)
 
@@ -92,15 +92,15 @@ Every layer is fully populated with real content — no placeholder TODOs remain
 ### ABP Project Structure (Target)
 ```
 src/
-├── KCharge.Domain.Shared/        # Enums, constants, shared DTOs
-├── KCharge.Domain/                # Entities, domain services, repo interfaces
-├── KCharge.Application.Contracts/ # DTOs, service interfaces
-├── KCharge.Application/           # Service implementations, MediatR handlers
-├── KCharge.EntityFrameworkCore/   # DbContext, repos, migrations
-├── KCharge.HttpApi/               # API controllers
-├── KCharge.HttpApi.Host/          # Admin API host (port 5000)
-├── KCharge.Driver.BFF/            # Driver BFF host (port 5001)
-└── KCharge.DbMigrator/            # Migration tool
+├── KLC.Domain.Shared/        # Enums, constants, shared DTOs
+├── KLC.Domain/                # Entities, domain services, repo interfaces
+├── KLC.Application.Contracts/ # DTOs, service interfaces
+├── KLC.Application/           # Service implementations, MediatR handlers
+├── KLC.EntityFrameworkCore/   # DbContext, repos, migrations
+├── KLC.HttpApi/               # API controllers
+├── KLC.HttpApi.Host/          # Admin API host (port 5000)
+├── KLC.Driver.BFF/            # Driver BFF host (port 5001)
+└── KLC.DbMigrator/            # Migration tool
 ```
 
 ---
@@ -147,10 +147,10 @@ This is what Claude Code should implement next, in order:
 dotnet tool install -g Volo.Abp.Cli
 
 # Create solution from ABP template
-abp new KCharge -t app --no-ui -dbms PostgreSQL --connection-string "Host=localhost;Port=5432;Database=KCharge;Username=postgres;Password=postgres"
+abp new KLC -t app --no-ui -dbms PostgreSQL --connection-string "Host=localhost;Port=5432;Database=KLC;Username=postgres;Password=postgres"
 ```
 - Rename/restructure projects to match the target structure in Section 4
-- Add `KCharge.Driver.BFF` project (Minimal API)
+- Add `KLC.Driver.BFF` project (Minimal API)
 - Configure dual API hosting (Admin on 5000, BFF on 5001)
 - Add MediatR, AutoMapper, Serilog NuGet packages
 
@@ -162,19 +162,19 @@ Create `docker-compose.yml` with:
 - Health checks for both services
 
 ### Step 2.3 — Domain Entities
-Implement all entities from Section 5 in `KCharge.Domain/`:
+Implement all entities from Section 5 in `KLC.Domain/`:
 - Follow ABP conventions: `FullAuditedAggregateRoot<Guid>` for aggregate roots
-- Add enums in `KCharge.Domain.Shared/`: StationStatus, ConnectorStatus, ConnectorType, SessionStatus, FaultStatus, PaymentStatus, AlertType, EInvoiceProvider, EInvoiceStatus
+- Add enums in `KLC.Domain.Shared/`: StationStatus, ConnectorStatus, ConnectorType, SessionStatus, FaultStatus, PaymentStatus, AlertType, EInvoiceProvider, EInvoiceStatus
 - Add domain events for key state changes
 - Enforce business rules in entity constructors/methods (DDD principle)
 
 ### Step 2.4 — EF Core DbContext & Migrations
-In `KCharge.EntityFrameworkCore/`:
-- Configure `KChargeDbContext` with all entity mappings
+In `KLC.EntityFrameworkCore/`:
+- Configure `KLCDbContext` with all entity mappings
 - Add proper indexes (StationCode, OcppTransactionId, session lookups)
 - Configure soft delete, audit fields
 - Create initial migration
-- Run via `KCharge.DbMigrator`
+- Run via `KLC.DbMigrator`
 
 ### Step 2.5 — OCPP WebSocket Server
 Create OCPP 1.6J WebSocket endpoint:

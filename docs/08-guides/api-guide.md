@@ -91,8 +91,8 @@ Complete guide to RESTful API design, authentication, versioning, and usage patt
 Use URL path versioning (not headers):
 
 ```
-https://api.kcharge.vn/admin/api/v1/stations
-https://api.kcharge.vn/driver/api/v1/charging-sessions
+https://api.klc.vn/admin/api/v1/stations
+https://api.klc.vn/driver/api/v1/charging-sessions
 ```
 
 ### Version Lifecycle
@@ -129,9 +129,9 @@ Example migration guide:
 
 **Request:**
 ```bash
-curl -X POST https://api.kcharge.vn/connect/token \
+curl -X POST https://api.klc.vn/connect/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "grant_type=password&username=driver@kcharge.vn&password=password123&client_id=EVCharging_Driver&client_secret=SECRET&scope=openid%20profile%20email"
+  -d "grant_type=password&username=driver@klc.vn&password=password123&client_id=EVCharging_Driver&client_secret=SECRET&scope=openid%20profile%20email"
 ```
 
 **Response:**
@@ -149,7 +149,7 @@ curl -X POST https://api.kcharge.vn/connect/token \
 All subsequent API requests must include Authorization header:
 
 ```bash
-curl -X GET https://api.kcharge.vn/driver/api/v1/stations \
+curl -X GET https://api.klc.vn/driver/api/v1/stations \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 ```
 
@@ -158,7 +158,7 @@ JWT tokens include:
 ```json
 {
   "sub": "550e8400-e29b-41d4-a716-446655440000",  // User ID
-  "email": "driver@kcharge.vn",
+  "email": "driver@klc.vn",
   "name": "Nguyễn Văn A",
   "role": ["Driver"],  // Authorization role
   "iat": 1677600600,   // Issued at
@@ -170,7 +170,7 @@ JWT tokens include:
 When access token expires, use refresh token:
 
 ```bash
-curl -X POST https://api.kcharge.vn/connect/token \
+curl -X POST https://api.klc.vn/connect/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "grant_type=refresh_token&refresh_token=RTK_REFRESH_TOKEN&client_id=EVCharging_Driver&client_secret=SECRET"
 ```
@@ -358,7 +358,7 @@ Client should wait `retryAfter` seconds before retrying.
 **Request:**
 ```bash
 POST /api/v1/stations HTTP/1.1
-Host: api.kcharge.vn
+Host: api.klc.vn
 Authorization: Bearer {access_token}
 Content-Type: application/json
 
@@ -395,7 +395,7 @@ Content-Type: application/json
 **Request:**
 ```bash
 GET /api/v1/stations/550e8400-e29b-41d4-a716-446655440000 HTTP/1.1
-Host: api.kcharge.vn
+Host: api.klc.vn
 Authorization: Bearer {access_token}
 ```
 
@@ -436,7 +436,7 @@ Authorization: Bearer {access_token}
 **Request:**
 ```bash
 PUT /api/v1/stations/550e8400-e29b-41d4-a716-446655440000 HTTP/1.1
-Host: api.kcharge.vn
+Host: api.klc.vn
 Authorization: Bearer {access_token}
 Content-Type: application/json
 
@@ -465,7 +465,7 @@ Content-Type: application/json
 **Request:**
 ```bash
 GET /api/v1/stations?pageSize=20&filter=Phú%20Mỹ%20Hưng HTTP/1.1
-Host: api.kcharge.vn
+Host: api.klc.vn
 Authorization: Bearer {access_token}
 ```
 
@@ -496,7 +496,7 @@ Authorization: Bearer {access_token}
 **Request:**
 ```bash
 DELETE /api/v1/stations/550e8400-e29b-41d4-a716-446655440000 HTTP/1.1
-Host: api.kcharge.vn
+Host: api.klc.vn
 Authorization: Bearer {access_token}
 ```
 
@@ -510,7 +510,7 @@ Authorization: Bearer {access_token}
 **Request:**
 ```bash
 GET /api/v1/stations/nearby?latitude=10.7769&longitude=106.6966&distance=10 HTTP/1.1
-Host: api.kcharge.vn
+Host: api.klc.vn
 Authorization: Bearer {access_token}
 ```
 
@@ -547,7 +547,7 @@ Authorization: Bearer {access_token}
 **Request:**
 ```bash
 POST /api/v1/charging-sessions/start HTTP/1.1
-Host: api.kcharge.vn
+Host: api.klc.vn
 Authorization: Bearer {access_token}
 Content-Type: application/json
 
@@ -577,7 +577,7 @@ Content-Type: application/json
 **Request:**
 ```bash
 GET /api/v1/charging-sessions/770g0511-g4bd-63f6-c929-558877662222 HTTP/1.1
-Host: api.kcharge.vn
+Host: api.klc.vn
 Authorization: Bearer {access_token}
 ```
 
@@ -602,7 +602,7 @@ Authorization: Bearer {access_token}
 **Request:**
 ```bash
 POST /api/v1/charging-sessions/770g0511-g4bd-63f6-c929-558877662222/stop HTTP/1.1
-Host: api.kcharge.vn
+Host: api.klc.vn
 Authorization: Bearer {access_token}
 Content-Type: application/json
 
@@ -628,7 +628,7 @@ Content-Type: application/json
 ## Swagger/OpenAPI Documentation
 
 ### Admin API Swagger
-Access at: `https://api.kcharge.vn/admin/swagger`
+Access at: `https://api.klc.vn/admin/swagger`
 
 Swagger configuration in `Program.cs`:
 ```csharp
@@ -692,29 +692,29 @@ public async Task<ActionResult<ChargingStationDto>> GetAsync(
 ### Using cURL
 ```bash
 # Get token
-TOKEN=$(curl -s -X POST https://api.kcharge.vn/connect/token \
+TOKEN=$(curl -s -X POST https://api.klc.vn/connect/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "grant_type=password&username=driver@kcharge.vn&password=password&client_id=EVCharging_Driver&client_secret=SECRET" \
+  -d "grant_type=password&username=driver@klc.vn&password=password&client_id=EVCharging_Driver&client_secret=SECRET" \
   | jq -r '.access_token')
 
 # Make request
-curl -X GET https://api.kcharge.vn/driver/api/v1/stations \
+curl -X GET https://api.klc.vn/driver/api/v1/stations \
   -H "Authorization: Bearer $TOKEN"
 ```
 
 ### Using Postman
-1. Import Swagger JSON: `https://api.kcharge.vn/admin/swagger/v1/swagger.json`
+1. Import Swagger JSON: `https://api.klc.vn/admin/swagger/v1/swagger.json`
 2. Configure OAuth2 collection variable:
-   - Token URL: `https://api.kcharge.vn/connect/token`
+   - Token URL: `https://api.klc.vn/connect/token`
    - Client ID: `EVCharging_Admin`
    - Client Secret: `{SECRET}`
 3. Requests auto-include Authorization header
 
 ### Using Insomnia
-1. File → Import → URL: `https://api.kcharge.vn/admin/swagger/v1/swagger.json`
+1. File → Import → URL: `https://api.klc.vn/admin/swagger/v1/swagger.json`
 2. Create OAuth2 request environment:
    - Grant Type: Password
-   - Access Token URL: `https://api.kcharge.vn/connect/token`
+   - Access Token URL: `https://api.klc.vn/connect/token`
    - Client ID: `EVCharging_Admin`
 
 ## API Backward Compatibility

@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "KCharge",
-    "slug": "kcharge-driver",
+    "name": "KLC",
+    "slug": "klc-driver",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "scheme": "kcharge",
+    "scheme": "klc",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -14,14 +14,14 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "vn.kcharge.driver",
+      "bundleIdentifier": "vn.klc.driver",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "KCharge needs your location to find nearby charging stations.",
-        "NSCameraUsageDescription": "KCharge needs camera access to scan QR codes at charging stations."
+        "NSLocationWhenInUseUsageDescription": "KLC needs your location to find nearby charging stations.",
+        "NSCameraUsageDescription": "KLC needs camera access to scan QR codes at charging stations."
       }
     },
     "android": {
-      "package": "vn.kcharge.driver",
+      "package": "vn.klc.driver",
       "adaptiveIcon": {
         "backgroundColor": "#0066CC",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -44,13 +44,13 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow KCharge to access your camera to scan QR codes."
+          "cameraPermission": "Allow KLC to access your camera to scan QR codes."
         }
       ]
     ],
     "extra": {
       "eas": {
-        "projectId": "kcharge-driver"
+        "projectId": "klc-driver"
       }
     }
   }

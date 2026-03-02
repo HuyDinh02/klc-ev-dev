@@ -1,6 +1,6 @@
 # EV Charging CSMS — Documentation
 
-9-layer documentation architecture for the K-Charge EV Charging Station Management System.
+9-layer documentation architecture for the KLC EV Charging Station Management System.
 
 ## Layers
 

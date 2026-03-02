@@ -70,7 +70,7 @@ export default function AuditLogsPage() {
       if (dateFrom) params.startTime = dateFrom;
       if (dateTo) params.endTime = dateTo;
 
-      const res = await api.get("/api/v1/audit-logs", { params });
+      const res = await api.get("/audit-logs", { params });
       return res.data;
     },
   });
@@ -82,7 +82,7 @@ export default function AuditLogsPage() {
       if (dateFrom) params.startTime = dateFrom;
       if (dateTo) params.endTime = dateTo;
 
-      const res = await api.get("/api/v1/audit-logs/export", {
+      const res = await api.get("/audit-logs/export", {
         params,
         responseType: "blob",
       });

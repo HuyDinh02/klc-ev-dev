@@ -1,7 +1,7 @@
 -- ============================================================
--- KCharge EV Charging CSMS - Demo Seed Data (With Auth)
+-- KLC EV Charging CSMS - Demo Seed Data (With Auth)
 -- ============================================================
--- Run with: PGPASSWORD=postgres psql -h localhost -p 5433 -U postgres -d KCharge -f scripts/seed-demo-data.sql
+-- Run with: PGPASSWORD=postgres psql -h localhost -p 5433 -U postgres -d KLC -f scripts/seed-demo-data.sql
 -- ============================================================
 
 -- ============================================================
@@ -29,11 +29,11 @@ VALUES
 INSERT INTO "AbpUsers" ("Id", "TenantId", "UserName", "NormalizedUserName", "Name", "Surname", "Email", "NormalizedEmail", "EmailConfirmed", "PasswordHash", "SecurityStamp", "IsExternal", "PhoneNumber", "PhoneNumberConfirmed", "IsActive", "TwoFactorEnabled", "LockoutEnd", "LockoutEnabled", "AccessFailedCount", "ShouldChangePasswordOnNextLogin", "EntityVersion", "LastPasswordChangeTime", "ExtraProperties", "ConcurrencyStamp", "CreationTime", "IsDeleted")
 VALUES
 -- Admin user (full access)
-('aaaaaaaa-0001-0001-0001-000000000001', NULL, 'admin', 'ADMIN', 'Admin', 'System', 'admin@kcharge.vn', 'ADMIN@KCHARGE.VN', true, 'AQAAAAIAAYagAAAAEBU9tr2cNLRUx4IZ+LyvffX2xVYLIM156L5jEOTYPQ6ihyvDGP4kDIToS7WhmeJMmw==', 'SEED-ADMIN-001', false, '0900000001', true, true, false, NULL, true, 0, false, 0, NOW(), '{}', 'seed-user-admin', NOW(), false),
+('aaaaaaaa-0001-0001-0001-000000000001', NULL, 'admin', 'ADMIN', 'Admin', 'System', 'admin@klc.vn', 'ADMIN@KLC.VN', true, 'AQAAAAIAAYagAAAAEBU9tr2cNLRUx4IZ+LyvffX2xVYLIM156L5jEOTYPQ6ihyvDGP4kDIToS7WhmeJMmw==', 'SEED-ADMIN-001', false, '0900000001', true, true, false, NULL, true, 0, false, 0, NOW(), '{}', 'seed-user-admin', NOW(), false),
 -- Operator user (station management)
-('aaaaaaaa-0001-0001-0001-000000000002', NULL, 'operator', 'OPERATOR', 'Operator', 'User', 'operator@kcharge.vn', 'OPERATOR@KCHARGE.VN', true, 'AQAAAAIAAYagAAAAEBU9tr2cNLRUx4IZ+LyvffX2xVYLIM156L5jEOTYPQ6ihyvDGP4kDIToS7WhmeJMmw==', 'SEED-OP-001', false, '0900000002', true, true, false, NULL, true, 0, false, 0, NOW(), '{}', 'seed-user-op', NOW(), false),
+('aaaaaaaa-0001-0001-0001-000000000002', NULL, 'operator', 'OPERATOR', 'Operator', 'User', 'operator@klc.vn', 'OPERATOR@KLC.VN', true, 'AQAAAAIAAYagAAAAEBU9tr2cNLRUx4IZ+LyvffX2xVYLIM156L5jEOTYPQ6ihyvDGP4kDIToS7WhmeJMmw==', 'SEED-OP-001', false, '0900000002', true, true, false, NULL, true, 0, false, 0, NOW(), '{}', 'seed-user-op', NOW(), false),
 -- Viewer user (read-only)
-('aaaaaaaa-0001-0001-0001-000000000003', NULL, 'viewer', 'VIEWER', 'Viewer', 'User', 'viewer@kcharge.vn', 'VIEWER@KCHARGE.VN', true, 'AQAAAAIAAYagAAAAEBU9tr2cNLRUx4IZ+LyvffX2xVYLIM156L5jEOTYPQ6ihyvDGP4kDIToS7WhmeJMmw==', 'SEED-VIEW-001', false, '0900000003', true, true, false, NULL, true, 0, false, 0, NOW(), '{}', 'seed-user-viewer', NOW(), false);
+('aaaaaaaa-0001-0001-0001-000000000003', NULL, 'viewer', 'VIEWER', 'Viewer', 'User', 'viewer@klc.vn', 'VIEWER@KLC.VN', true, 'AQAAAAIAAYagAAAAEBU9tr2cNLRUx4IZ+LyvffX2xVYLIM156L5jEOTYPQ6ihyvDGP4kDIToS7WhmeJMmw==', 'SEED-VIEW-001', false, '0900000003', true, true, false, NULL, true, 0, false, 0, NOW(), '{}', 'seed-user-viewer', NOW(), false);
 
 -- Assign Roles to Users
 INSERT INTO "AbpUserRoles" ("UserId", "RoleId", "TenantId")
@@ -45,96 +45,96 @@ VALUES
 -- Grant Permissions to Admin Role (all permissions)
 INSERT INTO "AbpPermissionGrants" ("Id", "TenantId", "Name", "ProviderName", "ProviderKey")
 VALUES
--- Admin gets all KCharge permissions
-(gen_random_uuid(), NULL, 'KCharge.Stations', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.Stations.Create', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.Stations.Update', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.Stations.Delete', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.Stations.Decommission', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.Connectors', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.Connectors.Create', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.Connectors.Update', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.Connectors.Delete', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.Connectors.Enable', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.Connectors.Disable', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.Tariffs', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.Tariffs.Create', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.Tariffs.Update', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.Tariffs.Activate', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.Tariffs.Deactivate', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.Sessions', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.Sessions.ViewAll', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.Faults', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.Faults.Update', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.Alerts', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.Alerts.Acknowledge', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.Monitoring', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.Monitoring.Dashboard', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.Monitoring.StatusHistory', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.Monitoring.EnergySummary', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.StationGroups', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.StationGroups.Create', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.StationGroups.Update', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.StationGroups.Delete', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.StationGroups.Assign', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.Payments', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.Payments.ViewAll', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.Payments.Refund', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.AuditLogs', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.AuditLogs.Export', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.EInvoices', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.EInvoices.Generate', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.EInvoices.Retry', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.EInvoices.Cancel', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.UserManagement', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.UserManagement.Create', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.UserManagement.Update', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.UserManagement.Delete', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.UserManagement.ManageRoles', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.UserManagement.ManagePermissions', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.RoleManagement', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.RoleManagement.Create', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.RoleManagement.Update', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.RoleManagement.Delete', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KCharge.RoleManagement.ManagePermissions', 'R', 'admin');
+-- Admin gets all KLC permissions
+(gen_random_uuid(), NULL, 'KLC.Stations', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Stations.Create', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Stations.Update', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Stations.Delete', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Stations.Decommission', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Connectors', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Connectors.Create', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Connectors.Update', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Connectors.Delete', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Connectors.Enable', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Connectors.Disable', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Tariffs', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Tariffs.Create', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Tariffs.Update', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Tariffs.Activate', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Tariffs.Deactivate', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Sessions', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Sessions.ViewAll', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Faults', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Faults.Update', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Alerts', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Alerts.Acknowledge', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Monitoring', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Monitoring.Dashboard', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Monitoring.StatusHistory', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Monitoring.EnergySummary', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.StationGroups', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.StationGroups.Create', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.StationGroups.Update', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.StationGroups.Delete', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.StationGroups.Assign', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Payments', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Payments.ViewAll', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Payments.Refund', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.AuditLogs', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.AuditLogs.Export', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.EInvoices', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.EInvoices.Generate', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.EInvoices.Retry', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.EInvoices.Cancel', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.UserManagement', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.UserManagement.Create', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.UserManagement.Update', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.UserManagement.Delete', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.UserManagement.ManageRoles', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.UserManagement.ManagePermissions', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.RoleManagement', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.RoleManagement.Create', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.RoleManagement.Update', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.RoleManagement.Delete', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.RoleManagement.ManagePermissions', 'R', 'admin');
 
 -- Grant Permissions to Operator Role (station management, monitoring, faults)
 INSERT INTO "AbpPermissionGrants" ("Id", "TenantId", "Name", "ProviderName", "ProviderKey")
 VALUES
-(gen_random_uuid(), NULL, 'KCharge.Stations', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KCharge.Stations.Update', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KCharge.Connectors', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KCharge.Connectors.Update', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KCharge.Connectors.Enable', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KCharge.Connectors.Disable', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KCharge.Tariffs', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KCharge.Sessions', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KCharge.Sessions.ViewAll', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KCharge.Faults', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KCharge.Faults.Update', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KCharge.Alerts', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KCharge.Alerts.Acknowledge', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KCharge.Monitoring', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KCharge.Monitoring.Dashboard', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KCharge.Monitoring.StatusHistory', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KCharge.Monitoring.EnergySummary', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KCharge.StationGroups', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KCharge.Payments', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KCharge.Payments.ViewAll', 'R', 'operator');
+(gen_random_uuid(), NULL, 'KLC.Stations', 'R', 'operator'),
+(gen_random_uuid(), NULL, 'KLC.Stations.Update', 'R', 'operator'),
+(gen_random_uuid(), NULL, 'KLC.Connectors', 'R', 'operator'),
+(gen_random_uuid(), NULL, 'KLC.Connectors.Update', 'R', 'operator'),
+(gen_random_uuid(), NULL, 'KLC.Connectors.Enable', 'R', 'operator'),
+(gen_random_uuid(), NULL, 'KLC.Connectors.Disable', 'R', 'operator'),
+(gen_random_uuid(), NULL, 'KLC.Tariffs', 'R', 'operator'),
+(gen_random_uuid(), NULL, 'KLC.Sessions', 'R', 'operator'),
+(gen_random_uuid(), NULL, 'KLC.Sessions.ViewAll', 'R', 'operator'),
+(gen_random_uuid(), NULL, 'KLC.Faults', 'R', 'operator'),
+(gen_random_uuid(), NULL, 'KLC.Faults.Update', 'R', 'operator'),
+(gen_random_uuid(), NULL, 'KLC.Alerts', 'R', 'operator'),
+(gen_random_uuid(), NULL, 'KLC.Alerts.Acknowledge', 'R', 'operator'),
+(gen_random_uuid(), NULL, 'KLC.Monitoring', 'R', 'operator'),
+(gen_random_uuid(), NULL, 'KLC.Monitoring.Dashboard', 'R', 'operator'),
+(gen_random_uuid(), NULL, 'KLC.Monitoring.StatusHistory', 'R', 'operator'),
+(gen_random_uuid(), NULL, 'KLC.Monitoring.EnergySummary', 'R', 'operator'),
+(gen_random_uuid(), NULL, 'KLC.StationGroups', 'R', 'operator'),
+(gen_random_uuid(), NULL, 'KLC.Payments', 'R', 'operator'),
+(gen_random_uuid(), NULL, 'KLC.Payments.ViewAll', 'R', 'operator');
 
 -- Grant Permissions to Viewer Role (read-only)
 INSERT INTO "AbpPermissionGrants" ("Id", "TenantId", "Name", "ProviderName", "ProviderKey")
 VALUES
-(gen_random_uuid(), NULL, 'KCharge.Stations', 'R', 'viewer'),
-(gen_random_uuid(), NULL, 'KCharge.Connectors', 'R', 'viewer'),
-(gen_random_uuid(), NULL, 'KCharge.Tariffs', 'R', 'viewer'),
-(gen_random_uuid(), NULL, 'KCharge.Sessions', 'R', 'viewer'),
-(gen_random_uuid(), NULL, 'KCharge.Faults', 'R', 'viewer'),
-(gen_random_uuid(), NULL, 'KCharge.Alerts', 'R', 'viewer'),
-(gen_random_uuid(), NULL, 'KCharge.Monitoring', 'R', 'viewer'),
-(gen_random_uuid(), NULL, 'KCharge.Monitoring.Dashboard', 'R', 'viewer'),
-(gen_random_uuid(), NULL, 'KCharge.StationGroups', 'R', 'viewer'),
-(gen_random_uuid(), NULL, 'KCharge.Payments', 'R', 'viewer');
+(gen_random_uuid(), NULL, 'KLC.Stations', 'R', 'viewer'),
+(gen_random_uuid(), NULL, 'KLC.Connectors', 'R', 'viewer'),
+(gen_random_uuid(), NULL, 'KLC.Tariffs', 'R', 'viewer'),
+(gen_random_uuid(), NULL, 'KLC.Sessions', 'R', 'viewer'),
+(gen_random_uuid(), NULL, 'KLC.Faults', 'R', 'viewer'),
+(gen_random_uuid(), NULL, 'KLC.Alerts', 'R', 'viewer'),
+(gen_random_uuid(), NULL, 'KLC.Monitoring', 'R', 'viewer'),
+(gen_random_uuid(), NULL, 'KLC.Monitoring.Dashboard', 'R', 'viewer'),
+(gen_random_uuid(), NULL, 'KLC.StationGroups', 'R', 'viewer'),
+(gen_random_uuid(), NULL, 'KLC.Payments', 'R', 'viewer');
 
 -- ============================================================
 -- 1. TARIFF PLANS (3 plans)
@@ -153,7 +153,7 @@ UPDATE "AppChargingStations" SET "TariffPlanId" = 'd1111111-1111-1111-1111-11111
 -- ============================================================
 -- 2. APP USERS (10 users)
 -- ============================================================
-DELETE FROM "AppAppUsers" WHERE "Email" LIKE '%@demo.kcharge.vn' OR "Email" LIKE '%@abc-corp.vn' OR "Email" LIKE '%@grab.vn';
+DELETE FROM "AppAppUsers" WHERE "Email" LIKE '%@demo.klc.vn' OR "Email" LIKE '%@abc-corp.vn' OR "Email" LIKE '%@grab.vn';
 DELETE FROM "AppAppUsers" WHERE "Id" IN (
   'e1111111-1111-1111-1111-111111111111', 'e1111111-1111-1111-1111-111111111112', 'e1111111-1111-1111-1111-111111111113',
   'e1111111-1111-1111-1111-111111111114', 'e1111111-1111-1111-1111-111111111115', 'e1111111-1111-1111-1111-111111111116',
@@ -163,16 +163,16 @@ DELETE FROM "AppAppUsers" WHERE "Id" IN (
 
 INSERT INTO "AppAppUsers" ("Id", "IdentityUserId", "FullName", "PhoneNumber", "Email", "IsPhoneVerified", "IsEmailVerified", "AvatarUrl", "PreferredLanguage", "IsNotificationsEnabled", "FcmToken", "WalletBalance", "IsActive", "LastLoginAt", "CreationTime", "IsDeleted")
 VALUES
-('e1111111-1111-1111-1111-111111111111', 'e1111111-1111-1111-1111-111111111111', 'Nguyễn Văn An', '0901234001', 'nguyen.an@demo.kcharge.vn', true, true, NULL, 'vi', true, NULL, 2500000, true, NOW() - INTERVAL '1 hour', NOW() - INTERVAL '30 days', false),
-('e1111111-1111-1111-1111-111111111112', 'e1111111-1111-1111-1111-111111111112', 'Trần Thị Bình', '0901234002', 'tran.binh@demo.kcharge.vn', true, true, NULL, 'vi', true, NULL, 1800000, true, NOW() - INTERVAL '2 hours', NOW() - INTERVAL '25 days', false),
-('e1111111-1111-1111-1111-111111111113', 'e1111111-1111-1111-1111-111111111113', 'Lê Văn Cường', '0901234003', 'le.cuong@demo.kcharge.vn', true, false, NULL, 'vi', true, NULL, 3200000, true, NOW() - INTERVAL '3 hours', NOW() - INTERVAL '20 days', false),
-('e1111111-1111-1111-1111-111111111114', 'e1111111-1111-1111-1111-111111111114', 'Phạm Thị Dung', '0901234004', 'pham.dung@demo.kcharge.vn', true, true, NULL, 'vi', false, NULL, 500000, true, NOW() - INTERVAL '1 day', NOW() - INTERVAL '15 days', false),
-('e1111111-1111-1111-1111-111111111115', 'e1111111-1111-1111-1111-111111111115', 'Hoàng Văn Em', '0901234005', 'hoang.em@demo.kcharge.vn', false, false, NULL, 'vi', true, NULL, 4500000, true, NOW() - INTERVAL '2 days', NOW() - INTERVAL '10 days', false),
-('e1111111-1111-1111-1111-111111111116', 'e1111111-1111-1111-1111-111111111116', 'John Smith', '0901234006', 'john.smith@demo.kcharge.vn', true, true, NULL, 'en', true, NULL, 5000000, true, NOW() - INTERVAL '5 hours', NOW() - INTERVAL '28 days', false),
-('e1111111-1111-1111-1111-111111111117', 'e1111111-1111-1111-1111-111111111117', 'Sarah Johnson', '0901234007', 'sarah.j@demo.kcharge.vn', true, true, NULL, 'en', true, NULL, 2200000, true, NOW() - INTERVAL '6 hours', NOW() - INTERVAL '22 days', false),
+('e1111111-1111-1111-1111-111111111111', 'e1111111-1111-1111-1111-111111111111', 'Nguyễn Văn An', '0901234001', 'nguyen.an@demo.klc.vn', true, true, NULL, 'vi', true, NULL, 2500000, true, NOW() - INTERVAL '1 hour', NOW() - INTERVAL '30 days', false),
+('e1111111-1111-1111-1111-111111111112', 'e1111111-1111-1111-1111-111111111112', 'Trần Thị Bình', '0901234002', 'tran.binh@demo.klc.vn', true, true, NULL, 'vi', true, NULL, 1800000, true, NOW() - INTERVAL '2 hours', NOW() - INTERVAL '25 days', false),
+('e1111111-1111-1111-1111-111111111113', 'e1111111-1111-1111-1111-111111111113', 'Lê Văn Cường', '0901234003', 'le.cuong@demo.klc.vn', true, false, NULL, 'vi', true, NULL, 3200000, true, NOW() - INTERVAL '3 hours', NOW() - INTERVAL '20 days', false),
+('e1111111-1111-1111-1111-111111111114', 'e1111111-1111-1111-1111-111111111114', 'Phạm Thị Dung', '0901234004', 'pham.dung@demo.klc.vn', true, true, NULL, 'vi', false, NULL, 500000, true, NOW() - INTERVAL '1 day', NOW() - INTERVAL '15 days', false),
+('e1111111-1111-1111-1111-111111111115', 'e1111111-1111-1111-1111-111111111115', 'Hoàng Văn Em', '0901234005', 'hoang.em@demo.klc.vn', false, false, NULL, 'vi', true, NULL, 4500000, true, NOW() - INTERVAL '2 days', NOW() - INTERVAL '10 days', false),
+('e1111111-1111-1111-1111-111111111116', 'e1111111-1111-1111-1111-111111111116', 'John Smith', '0901234006', 'john.smith@demo.klc.vn', true, true, NULL, 'en', true, NULL, 5000000, true, NOW() - INTERVAL '5 hours', NOW() - INTERVAL '28 days', false),
+('e1111111-1111-1111-1111-111111111117', 'e1111111-1111-1111-1111-111111111117', 'Sarah Johnson', '0901234007', 'sarah.j@demo.klc.vn', true, true, NULL, 'en', true, NULL, 2200000, true, NOW() - INTERVAL '6 hours', NOW() - INTERVAL '22 days', false),
 ('e1111111-1111-1111-1111-111111111118', 'e1111111-1111-1111-1111-111111111118', 'Công ty ABC Corp', '0901234008', 'fleet@abc-corp.vn', true, true, NULL, 'vi', true, NULL, 50000000, true, NOW() - INTERVAL '30 minutes', NOW() - INTERVAL '60 days', false),
 ('e1111111-1111-1111-1111-111111111119', 'e1111111-1111-1111-1111-111111111119', 'Grab Vietnam', '0901234009', 'ev-fleet@grab.vn', true, true, NULL, 'vi', true, NULL, 100000000, true, NOW() - INTERVAL '15 minutes', NOW() - INTERVAL '90 days', false),
-('e1111111-1111-1111-1111-111111111120', 'e1111111-1111-1111-1111-111111111120', 'Võ Thị Giang', '0901234010', 'vo.giang@demo.kcharge.vn', true, true, NULL, 'vi', true, NULL, 1500000, true, NOW() - INTERVAL '4 hours', NOW() - INTERVAL '5 days', false);
+('e1111111-1111-1111-1111-111111111120', 'e1111111-1111-1111-1111-111111111120', 'Võ Thị Giang', '0901234010', 'vo.giang@demo.klc.vn', true, true, NULL, 'vi', true, NULL, 1500000, true, NOW() - INTERVAL '4 hours', NOW() - INTERVAL '5 days', false);
 
 -- ============================================================
 -- 3. VEHICLES (15 vehicles)
@@ -200,32 +200,32 @@ VALUES
 -- ============================================================
 -- 4. CHARGING SESSIONS (20 completed sessions)
 -- ============================================================
-DELETE FROM "AppMeterValues" WHERE "SessionId" IN (SELECT "Id" FROM "AppChargingSessions" WHERE "IdTag" LIKE 'KCHARGE-%');
-DELETE FROM "AppChargingSessions" WHERE "IdTag" LIKE 'KCHARGE-%';
+DELETE FROM "AppMeterValues" WHERE "SessionId" IN (SELECT "Id" FROM "AppChargingSessions" WHERE "IdTag" LIKE 'KLC-%');
+DELETE FROM "AppChargingSessions" WHERE "IdTag" LIKE 'KLC-%';
 
 INSERT INTO "AppChargingSessions" ("Id", "UserId", "VehicleId", "StationId", "ConnectorNumber", "OcppTransactionId", "Status", "StartTime", "EndTime", "MeterStart", "MeterStop", "TotalEnergyKwh", "TotalCost", "TariffPlanId", "RatePerKwh", "StopReason", "IdTag", "ExtraProperties", "ConcurrencyStamp", "CreationTime", "IsDeleted")
 VALUES
 -- Completed sessions (Status=5)
-('11111111-0001-0001-0001-000000000001', 'e1111111-1111-1111-1111-111111111111', 'f1111111-1111-1111-1111-111111111101', 'b1111111-1111-1111-1111-111111111111', 1, 1001, 5, NOW() - INTERVAL '2 days 14 hours', NOW() - INTERVAL '2 days 12 hours 30 minutes', 0, 35500, 35.500, 156200, 'd1111111-1111-1111-1111-111111111111', 4400.00, 'Local', 'KCHARGE-001', '{}', 'seed-s001', NOW() - INTERVAL '2 days 14 hours', false),
-('11111111-0001-0001-0001-000000000002', 'e1111111-1111-1111-1111-111111111112', 'f1111111-1111-1111-1111-111111111103', 'b1111111-1111-1111-1111-111111111112', 1, 1002, 5, NOW() - INTERVAL '2 days 10 hours', NOW() - INTERVAL '2 days 8 hours 45 minutes', 0, 28000, 28.000, 123200, 'd1111111-1111-1111-1111-111111111111', 4400.00, 'Remote', 'KCHARGE-002', '{}', 'seed-s002', NOW() - INTERVAL '2 days 10 hours', false),
-('11111111-0001-0001-0001-000000000003', 'e1111111-1111-1111-1111-111111111113', 'f1111111-1111-1111-1111-111111111104', 'b2222222-2222-2222-2222-222222222221', 1, 1003, 5, NOW() - INTERVAL '1 day 16 hours', NOW() - INTERVAL '1 day 15 hours 20 minutes', 0, 42000, 42.000, 184800, 'd1111111-1111-1111-1111-111111111111', 4400.00, 'EVDisconnected', 'KCHARGE-003', '{}', 'seed-s003', NOW() - INTERVAL '1 day 16 hours', false),
-('11111111-0001-0001-0001-000000000004', 'e1111111-1111-1111-1111-111111111114', 'f1111111-1111-1111-1111-111111111106', 'b2222222-2222-2222-2222-222222222222', 1, 1004, 5, NOW() - INTERVAL '1 day 12 hours', NOW() - INTERVAL '1 day 10 hours 15 minutes', 0, 22500, 22.500, 99000, 'd1111111-1111-1111-1111-111111111111', 4400.00, 'Local', 'KCHARGE-001', '{}', 'seed-s004', NOW() - INTERVAL '1 day 12 hours', false),
-('11111111-0001-0001-0001-000000000005', 'e1111111-1111-1111-1111-111111111115', 'f1111111-1111-1111-1111-111111111107', 'b3333333-3333-3333-3333-333333333331', 1, 1005, 5, NOW() - INTERVAL '1 day 8 hours', NOW() - INTERVAL '1 day 6 hours', 0, 55000, 55.000, 242000, 'd1111111-1111-1111-1111-111111111111', 4400.00, 'Local', 'KCHARGE-VIP-001', '{}', 'seed-s005', NOW() - INTERVAL '1 day 8 hours', false),
-('11111111-0001-0001-0001-000000000006', 'e1111111-1111-1111-1111-111111111116', 'f1111111-1111-1111-1111-111111111108', 'b1111111-1111-1111-1111-111111111111', 2, 1006, 5, NOW() - INTERVAL '10 hours', NOW() - INTERVAL '9 hours 30 minutes', 0, 18000, 18.000, 79200, 'd1111111-1111-1111-1111-111111111111', 4400.00, 'Local', 'KCHARGE-001', '{}', 'seed-s006', NOW() - INTERVAL '10 hours', false),
-('11111111-0001-0001-0001-000000000007', 'e1111111-1111-1111-1111-111111111117', 'f1111111-1111-1111-1111-111111111109', 'b1111111-1111-1111-1111-111111111112', 2, 1007, 5, NOW() - INTERVAL '8 hours', NOW() - INTERVAL '6 hours 45 minutes', 0, 32000, 32.000, 140800, 'd1111111-1111-1111-1111-111111111111', 4400.00, 'Remote', 'KCHARGE-002', '{}', 'seed-s007', NOW() - INTERVAL '8 hours', false),
-('11111111-0001-0001-0001-000000000008', 'e1111111-1111-1111-1111-111111111118', 'f1111111-1111-1111-1111-111111111110', 'b2222222-2222-2222-2222-222222222221', 2, 1008, 5, NOW() - INTERVAL '6 hours', NOW() - INTERVAL '5 hours', 0, 25000, 25.000, 110000, 'd1111111-1111-1111-1111-111111111111', 4400.00, 'Local', 'KCHARGE-VIP-001', '{}', 'seed-s008', NOW() - INTERVAL '6 hours', false),
-('11111111-0001-0001-0001-000000000009', 'e1111111-1111-1111-1111-111111111118', 'f1111111-1111-1111-1111-111111111111', 'b2222222-2222-2222-2222-222222222222', 2, 1009, 5, NOW() - INTERVAL '5 hours', NOW() - INTERVAL '4 hours 20 minutes', 0, 20000, 20.000, 88000, 'd1111111-1111-1111-1111-111111111111', 4400.00, 'Local', 'KCHARGE-VIP-001', '{}', 'seed-s009', NOW() - INTERVAL '5 hours', false),
-('11111111-0001-0001-0001-000000000010', 'e1111111-1111-1111-1111-111111111119', 'f1111111-1111-1111-1111-111111111113', 'b1111111-1111-1111-1111-111111111111', 1, 1010, 5, NOW() - INTERVAL '4 hours', NOW() - INTERVAL '3 hours', 0, 38000, 38.000, 167200, 'd1111111-1111-1111-1111-111111111111', 4400.00, 'Local', 'KCHARGE-VIP-001', '{}', 'seed-s010', NOW() - INTERVAL '4 hours', false),
-('11111111-0001-0001-0001-000000000011', 'e1111111-1111-1111-1111-111111111120', 'f1111111-1111-1111-1111-111111111115', 'b3333333-3333-3333-3333-333333333331', 2, 1011, 5, NOW() - INTERVAL '3 hours', NOW() - INTERVAL '2 hours 15 minutes', 0, 28500, 28.500, 125400, 'd1111111-1111-1111-1111-111111111111', 4400.00, 'Remote', 'KCHARGE-003', '{}', 'seed-s011', NOW() - INTERVAL '3 hours', false),
-('11111111-0001-0001-0001-000000000012', 'e1111111-1111-1111-1111-111111111111', 'f1111111-1111-1111-1111-111111111102', 'b1111111-1111-1111-1111-111111111112', 1, 1012, 5, NOW() - INTERVAL '2 hours', NOW() - INTERVAL '1 hour 30 minutes', 0, 15000, 15.000, 66000, 'd1111111-1111-1111-1111-111111111111', 4400.00, 'Local', 'KCHARGE-001', '{}', 'seed-s012', NOW() - INTERVAL '2 hours', false),
-('11111111-0001-0001-0001-000000000013', 'e1111111-1111-1111-1111-111111111112', 'f1111111-1111-1111-1111-111111111103', 'b1111111-1111-1111-1111-111111111113', 1, 1013, 5, NOW() - INTERVAL '3 days 9 hours', NOW() - INTERVAL '3 days 7 hours', 0, 45000, 45.000, 198000, 'd1111111-1111-1111-1111-111111111111', 4400.00, 'Local', 'KCHARGE-002', '{}', 'seed-s013', NOW() - INTERVAL '3 days 9 hours', false),
-('11111111-0001-0001-0001-000000000014', 'e1111111-1111-1111-1111-111111111113', 'f1111111-1111-1111-1111-111111111105', 'b2222222-2222-2222-2222-222222222221', 1, 1014, 5, NOW() - INTERVAL '4 days 11 hours', NOW() - INTERVAL '4 days 9 hours 30 minutes', 0, 38500, 38.500, 169400, 'd1111111-1111-1111-1111-111111111111', 4400.00, 'EVDisconnected', 'KCHARGE-003', '{}', 'seed-s014', NOW() - INTERVAL '4 days 11 hours', false),
-('11111111-0001-0001-0001-000000000015', 'e1111111-1111-1111-1111-111111111116', 'f1111111-1111-1111-1111-111111111108', 'b2222222-2222-2222-2222-222222222222', 3, 1015, 5, NOW() - INTERVAL '5 days 15 hours', NOW() - INTERVAL '5 days 14 hours', 0, 52000, 52.000, 228800, 'd1111111-1111-1111-1111-111111111111', 4400.00, 'Local', 'KCHARGE-001', '{}', 'seed-s015', NOW() - INTERVAL '5 days 15 hours', false),
-('11111111-0001-0001-0001-000000000016', 'e1111111-1111-1111-1111-111111111117', 'f1111111-1111-1111-1111-111111111109', 'b3333333-3333-3333-3333-333333333331', 1, 1016, 5, NOW() - INTERVAL '6 days 8 hours', NOW() - INTERVAL '6 days 6 hours 30 minutes', 0, 41000, 41.000, 180400, 'd1111111-1111-1111-1111-111111111111', 4400.00, 'Remote', 'KCHARGE-002', '{}', 'seed-s016', NOW() - INTERVAL '6 days 8 hours', false),
-('11111111-0001-0001-0001-000000000017', 'e1111111-1111-1111-1111-111111111114', 'f1111111-1111-1111-1111-111111111106', 'b1111111-1111-1111-1111-111111111111', 1, 1017, 5, NOW() - INTERVAL '1 day 18 hours', NOW() - INTERVAL '1 day 16 hours 45 minutes', 0, 30000, 30.000, 181500, 'd2222222-2222-2222-2222-222222222222', 6050.00, 'Local', 'KCHARGE-001', '{}', 'seed-s017', NOW() - INTERVAL '1 day 18 hours', false),
-('11111111-0001-0001-0001-000000000018', 'e1111111-1111-1111-1111-111111111115', 'f1111111-1111-1111-1111-111111111107', 'b1111111-1111-1111-1111-111111111112', 2, 1018, 5, NOW() - INTERVAL '2 days 7 hours', NOW() - INTERVAL '2 days 5 hours', 0, 60000, 60.000, 363000, 'd2222222-2222-2222-2222-222222222222', 6050.00, 'Local', 'KCHARGE-VIP-001', '{}', 'seed-s018', NOW() - INTERVAL '2 days 7 hours', false),
-('11111111-0001-0001-0001-000000000019', 'e1111111-1111-1111-1111-111111111118', 'f1111111-1111-1111-1111-111111111112', 'b2222222-2222-2222-2222-222222222221', 1, 1019, 5, NOW() - INTERVAL '1 day 4 hours', NOW() - INTERVAL '1 day 2 hours', 0, 70000, 70.000, 215600, 'd3333333-3333-3333-3333-333333333333', 3080.00, 'Local', 'KCHARGE-VIP-001', '{}', 'seed-s019', NOW() - INTERVAL '1 day 4 hours', false),
-('11111111-0001-0001-0001-000000000020', 'e1111111-1111-1111-1111-111111111119', 'f1111111-1111-1111-1111-111111111114', 'b2222222-2222-2222-2222-222222222222', 1, 1020, 5, NOW() - INTERVAL '3 days 3 hours', NOW() - INTERVAL '3 days 1 hour', 0, 55000, 55.000, 169400, 'd3333333-3333-3333-3333-333333333333', 3080.00, 'Local', 'KCHARGE-VIP-001', '{}', 'seed-s020', NOW() - INTERVAL '3 days 3 hours', false);
+('11111111-0001-0001-0001-000000000001', 'e1111111-1111-1111-1111-111111111111', 'f1111111-1111-1111-1111-111111111101', 'b1111111-1111-1111-1111-111111111111', 1, 1001, 5, NOW() - INTERVAL '2 days 14 hours', NOW() - INTERVAL '2 days 12 hours 30 minutes', 0, 35500, 35.500, 156200, 'd1111111-1111-1111-1111-111111111111', 4400.00, 'Local', 'KLC-001', '{}', 'seed-s001', NOW() - INTERVAL '2 days 14 hours', false),
+('11111111-0001-0001-0001-000000000002', 'e1111111-1111-1111-1111-111111111112', 'f1111111-1111-1111-1111-111111111103', 'b1111111-1111-1111-1111-111111111112', 1, 1002, 5, NOW() - INTERVAL '2 days 10 hours', NOW() - INTERVAL '2 days 8 hours 45 minutes', 0, 28000, 28.000, 123200, 'd1111111-1111-1111-1111-111111111111', 4400.00, 'Remote', 'KLC-002', '{}', 'seed-s002', NOW() - INTERVAL '2 days 10 hours', false),
+('11111111-0001-0001-0001-000000000003', 'e1111111-1111-1111-1111-111111111113', 'f1111111-1111-1111-1111-111111111104', 'b2222222-2222-2222-2222-222222222221', 1, 1003, 5, NOW() - INTERVAL '1 day 16 hours', NOW() - INTERVAL '1 day 15 hours 20 minutes', 0, 42000, 42.000, 184800, 'd1111111-1111-1111-1111-111111111111', 4400.00, 'EVDisconnected', 'KLC-003', '{}', 'seed-s003', NOW() - INTERVAL '1 day 16 hours', false),
+('11111111-0001-0001-0001-000000000004', 'e1111111-1111-1111-1111-111111111114', 'f1111111-1111-1111-1111-111111111106', 'b2222222-2222-2222-2222-222222222222', 1, 1004, 5, NOW() - INTERVAL '1 day 12 hours', NOW() - INTERVAL '1 day 10 hours 15 minutes', 0, 22500, 22.500, 99000, 'd1111111-1111-1111-1111-111111111111', 4400.00, 'Local', 'KLC-001', '{}', 'seed-s004', NOW() - INTERVAL '1 day 12 hours', false),
+('11111111-0001-0001-0001-000000000005', 'e1111111-1111-1111-1111-111111111115', 'f1111111-1111-1111-1111-111111111107', 'b3333333-3333-3333-3333-333333333331', 1, 1005, 5, NOW() - INTERVAL '1 day 8 hours', NOW() - INTERVAL '1 day 6 hours', 0, 55000, 55.000, 242000, 'd1111111-1111-1111-1111-111111111111', 4400.00, 'Local', 'KLC-VIP-001', '{}', 'seed-s005', NOW() - INTERVAL '1 day 8 hours', false),
+('11111111-0001-0001-0001-000000000006', 'e1111111-1111-1111-1111-111111111116', 'f1111111-1111-1111-1111-111111111108', 'b1111111-1111-1111-1111-111111111111', 2, 1006, 5, NOW() - INTERVAL '10 hours', NOW() - INTERVAL '9 hours 30 minutes', 0, 18000, 18.000, 79200, 'd1111111-1111-1111-1111-111111111111', 4400.00, 'Local', 'KLC-001', '{}', 'seed-s006', NOW() - INTERVAL '10 hours', false),
+('11111111-0001-0001-0001-000000000007', 'e1111111-1111-1111-1111-111111111117', 'f1111111-1111-1111-1111-111111111109', 'b1111111-1111-1111-1111-111111111112', 2, 1007, 5, NOW() - INTERVAL '8 hours', NOW() - INTERVAL '6 hours 45 minutes', 0, 32000, 32.000, 140800, 'd1111111-1111-1111-1111-111111111111', 4400.00, 'Remote', 'KLC-002', '{}', 'seed-s007', NOW() - INTERVAL '8 hours', false),
+('11111111-0001-0001-0001-000000000008', 'e1111111-1111-1111-1111-111111111118', 'f1111111-1111-1111-1111-111111111110', 'b2222222-2222-2222-2222-222222222221', 2, 1008, 5, NOW() - INTERVAL '6 hours', NOW() - INTERVAL '5 hours', 0, 25000, 25.000, 110000, 'd1111111-1111-1111-1111-111111111111', 4400.00, 'Local', 'KLC-VIP-001', '{}', 'seed-s008', NOW() - INTERVAL '6 hours', false),
+('11111111-0001-0001-0001-000000000009', 'e1111111-1111-1111-1111-111111111118', 'f1111111-1111-1111-1111-111111111111', 'b2222222-2222-2222-2222-222222222222', 2, 1009, 5, NOW() - INTERVAL '5 hours', NOW() - INTERVAL '4 hours 20 minutes', 0, 20000, 20.000, 88000, 'd1111111-1111-1111-1111-111111111111', 4400.00, 'Local', 'KLC-VIP-001', '{}', 'seed-s009', NOW() - INTERVAL '5 hours', false),
+('11111111-0001-0001-0001-000000000010', 'e1111111-1111-1111-1111-111111111119', 'f1111111-1111-1111-1111-111111111113', 'b1111111-1111-1111-1111-111111111111', 1, 1010, 5, NOW() - INTERVAL '4 hours', NOW() - INTERVAL '3 hours', 0, 38000, 38.000, 167200, 'd1111111-1111-1111-1111-111111111111', 4400.00, 'Local', 'KLC-VIP-001', '{}', 'seed-s010', NOW() - INTERVAL '4 hours', false),
+('11111111-0001-0001-0001-000000000011', 'e1111111-1111-1111-1111-111111111120', 'f1111111-1111-1111-1111-111111111115', 'b3333333-3333-3333-3333-333333333331', 2, 1011, 5, NOW() - INTERVAL '3 hours', NOW() - INTERVAL '2 hours 15 minutes', 0, 28500, 28.500, 125400, 'd1111111-1111-1111-1111-111111111111', 4400.00, 'Remote', 'KLC-003', '{}', 'seed-s011', NOW() - INTERVAL '3 hours', false),
+('11111111-0001-0001-0001-000000000012', 'e1111111-1111-1111-1111-111111111111', 'f1111111-1111-1111-1111-111111111102', 'b1111111-1111-1111-1111-111111111112', 1, 1012, 5, NOW() - INTERVAL '2 hours', NOW() - INTERVAL '1 hour 30 minutes', 0, 15000, 15.000, 66000, 'd1111111-1111-1111-1111-111111111111', 4400.00, 'Local', 'KLC-001', '{}', 'seed-s012', NOW() - INTERVAL '2 hours', false),
+('11111111-0001-0001-0001-000000000013', 'e1111111-1111-1111-1111-111111111112', 'f1111111-1111-1111-1111-111111111103', 'b1111111-1111-1111-1111-111111111113', 1, 1013, 5, NOW() - INTERVAL '3 days 9 hours', NOW() - INTERVAL '3 days 7 hours', 0, 45000, 45.000, 198000, 'd1111111-1111-1111-1111-111111111111', 4400.00, 'Local', 'KLC-002', '{}', 'seed-s013', NOW() - INTERVAL '3 days 9 hours', false),
+('11111111-0001-0001-0001-000000000014', 'e1111111-1111-1111-1111-111111111113', 'f1111111-1111-1111-1111-111111111105', 'b2222222-2222-2222-2222-222222222221', 1, 1014, 5, NOW() - INTERVAL '4 days 11 hours', NOW() - INTERVAL '4 days 9 hours 30 minutes', 0, 38500, 38.500, 169400, 'd1111111-1111-1111-1111-111111111111', 4400.00, 'EVDisconnected', 'KLC-003', '{}', 'seed-s014', NOW() - INTERVAL '4 days 11 hours', false),
+('11111111-0001-0001-0001-000000000015', 'e1111111-1111-1111-1111-111111111116', 'f1111111-1111-1111-1111-111111111108', 'b2222222-2222-2222-2222-222222222222', 3, 1015, 5, NOW() - INTERVAL '5 days 15 hours', NOW() - INTERVAL '5 days 14 hours', 0, 52000, 52.000, 228800, 'd1111111-1111-1111-1111-111111111111', 4400.00, 'Local', 'KLC-001', '{}', 'seed-s015', NOW() - INTERVAL '5 days 15 hours', false),
+('11111111-0001-0001-0001-000000000016', 'e1111111-1111-1111-1111-111111111117', 'f1111111-1111-1111-1111-111111111109', 'b3333333-3333-3333-3333-333333333331', 1, 1016, 5, NOW() - INTERVAL '6 days 8 hours', NOW() - INTERVAL '6 days 6 hours 30 minutes', 0, 41000, 41.000, 180400, 'd1111111-1111-1111-1111-111111111111', 4400.00, 'Remote', 'KLC-002', '{}', 'seed-s016', NOW() - INTERVAL '6 days 8 hours', false),
+('11111111-0001-0001-0001-000000000017', 'e1111111-1111-1111-1111-111111111114', 'f1111111-1111-1111-1111-111111111106', 'b1111111-1111-1111-1111-111111111111', 1, 1017, 5, NOW() - INTERVAL '1 day 18 hours', NOW() - INTERVAL '1 day 16 hours 45 minutes', 0, 30000, 30.000, 181500, 'd2222222-2222-2222-2222-222222222222', 6050.00, 'Local', 'KLC-001', '{}', 'seed-s017', NOW() - INTERVAL '1 day 18 hours', false),
+('11111111-0001-0001-0001-000000000018', 'e1111111-1111-1111-1111-111111111115', 'f1111111-1111-1111-1111-111111111107', 'b1111111-1111-1111-1111-111111111112', 2, 1018, 5, NOW() - INTERVAL '2 days 7 hours', NOW() - INTERVAL '2 days 5 hours', 0, 60000, 60.000, 363000, 'd2222222-2222-2222-2222-222222222222', 6050.00, 'Local', 'KLC-VIP-001', '{}', 'seed-s018', NOW() - INTERVAL '2 days 7 hours', false),
+('11111111-0001-0001-0001-000000000019', 'e1111111-1111-1111-1111-111111111118', 'f1111111-1111-1111-1111-111111111112', 'b2222222-2222-2222-2222-222222222221', 1, 1019, 5, NOW() - INTERVAL '1 day 4 hours', NOW() - INTERVAL '1 day 2 hours', 0, 70000, 70.000, 215600, 'd3333333-3333-3333-3333-333333333333', 3080.00, 'Local', 'KLC-VIP-001', '{}', 'seed-s019', NOW() - INTERVAL '1 day 4 hours', false),
+('11111111-0001-0001-0001-000000000020', 'e1111111-1111-1111-1111-111111111119', 'f1111111-1111-1111-1111-111111111114', 'b2222222-2222-2222-2222-222222222222', 1, 1020, 5, NOW() - INTERVAL '3 days 3 hours', NOW() - INTERVAL '3 days 1 hour', 0, 55000, 55.000, 169400, 'd3333333-3333-3333-3333-333333333333', 3080.00, 'Local', 'KLC-VIP-001', '{}', 'seed-s020', NOW() - INTERVAL '3 days 3 hours', false);
 
 -- ============================================================
 -- 5. PAYMENT TRANSACTIONS (20 payments)
@@ -317,7 +317,7 @@ VALUES
 ('55555555-0001-0001-0001-000000000012', 'e1111111-1111-1111-1111-111111111111', 1, 'Sạc hoàn tất', 'Đã sạc 15 kWh. Chi phí: 66.000đ', false, NULL, '{}', '/sessions', true, NOW() - INTERVAL '1 hour 30 minutes', NOW() - INTERVAL '1 hour 30 minutes'),
 ('55555555-0001-0001-0001-000000000013', 'e1111111-1111-1111-1111-111111111120', 1, 'Sạc hoàn tất', 'Kia EV6 đã sạc 28.5 kWh', false, NULL, '{}', '/sessions', true, NOW() - INTERVAL '2 hours 15 minutes', NOW() - INTERVAL '2 hours 15 minutes'),
 ('55555555-0001-0001-0001-000000000014', 'e1111111-1111-1111-1111-111111111111', 5, 'Khuyến mãi mới', 'Giảm 20% phí sạc vào khung giờ 22h-6h', false, NULL, '{}', '/promotions', true, NOW() - INTERVAL '12 hours', NOW() - INTERVAL '12 hours'),
-('55555555-0001-0001-0001-000000000015', 'e1111111-1111-1111-1111-111111111114', 7, 'Số dư thấp', 'Ví KCharge còn 500.000đ', false, NULL, '{}', '/wallet', true, NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day');
+('55555555-0001-0001-0001-000000000015', 'e1111111-1111-1111-1111-111111111114', 7, 'Số dư thấp', 'Ví KLC còn 500.000đ', false, NULL, '{}', '/wallet', true, NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day');
 
 -- ============================================================
 -- 9. ALERTS (5 admin alerts)
@@ -357,6 +357,6 @@ SELECT 'Total Revenue (VND)' AS metric, TO_CHAR(SUM("TotalCost"), 'FM999,999,999
 SELECT 'Total Energy (kWh)' AS metric, ROUND(SUM("TotalEnergyKwh")::numeric, 2) AS value FROM "AppChargingSessions" WHERE "Status" = 5 AND "IsDeleted" = false;
 SELECT '' AS separator;
 SELECT '=== Admin User Credentials ===' AS info;
-SELECT 'admin@kcharge.vn / Admin@123 (Full access)' AS credentials;
-SELECT 'operator@kcharge.vn / Admin@123 (Station management)' AS credentials;
-SELECT 'viewer@kcharge.vn / Admin@123 (Read-only)' AS credentials;
+SELECT 'admin@klc.vn / Admin@123 (Full access)' AS credentials;
+SELECT 'operator@klc.vn / Admin@123 (Station management)' AS credentials;
+SELECT 'viewer@klc.vn / Admin@123 (Read-only)' AS credentials;

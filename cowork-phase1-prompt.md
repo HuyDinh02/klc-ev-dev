@@ -6,7 +6,7 @@
 
 ## Instructions
 
-You are helping build the EV Charging CSMS (K-Charge) project. I have uploaded the following project files:
+You are helping build the EV Charging CSMS (KLC) project. I have uploaded the following project files:
 
 1. **BRD** — Business Requirements Document
 2. **Kickoff Document** — Project kickoff presentation/notes

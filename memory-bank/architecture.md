@@ -15,15 +15,15 @@ Both APIs share: Domain entities (FullAuditedAggregateRoot<Guid>), Domain servic
 ## ABP Project Structure
 ```
 src/
-├── KCharge.Domain.Shared/        # Enums, constants
-├── KCharge.Domain/                # Entities, domain services, repo interfaces
-├── KCharge.Application.Contracts/ # DTOs, service interfaces
-├── KCharge.Application/           # Service implementations, MediatR handlers
-├── KCharge.EntityFrameworkCore/   # DbContext, repos, migrations
-├── KCharge.HttpApi/               # API controllers
-├── KCharge.HttpApi.Host/          # Admin API host
-├── KCharge.Driver.BFF/            # Driver BFF host
-└── KCharge.DbMigrator/            # Migration tool
+├── KLC.Domain.Shared/        # Enums, constants
+├── KLC.Domain/                # Entities, domain services, repo interfaces
+├── KLC.Application.Contracts/ # DTOs, service interfaces
+├── KLC.Application/           # Service implementations, MediatR handlers
+├── KLC.EntityFrameworkCore/   # DbContext, repos, migrations
+├── KLC.HttpApi/               # API controllers
+├── KLC.HttpApi.Host/          # Admin API host
+├── KLC.Driver.BFF/            # Driver BFF host
+└── KLC.DbMigrator/            # Migration tool
 ```
 
 ## Key Patterns

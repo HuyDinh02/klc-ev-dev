@@ -63,7 +63,7 @@ export default function AlertsPage() {
         params.isAcknowledged = acknowledgedFilter === "acknowledged";
       }
 
-      const res = await api.get("/api/v1/alerts", { params });
+      const res = await api.get("/alerts", { params });
       return res.data;
     },
   });
@@ -96,7 +96,7 @@ export default function AlertsPage() {
   // Acknowledge all alerts
   const acknowledgeAllMutation = useMutation({
     mutationFn: async () => {
-      await api.post("/api/v1/alerts/acknowledge-all");
+      await api.post("/alerts/acknowledge-all");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["alerts"] });

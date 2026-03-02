@@ -73,7 +73,7 @@ For high-availability and auto-scaling:
 
 ### Building Docker Images
 
-**Dockerfile for Admin API** (`src/backend/src/KCharge.HttpApi.Host/Dockerfile`):
+**Dockerfile for Admin API** (`src/backend/src/KLC.HttpApi.Host/Dockerfile`):
 ```dockerfile
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
@@ -110,7 +110,7 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
 ENTRYPOINT ["dotnet", "EVCharging.Admin.HttpApi.Host.dll"]
 ```
 
-**Dockerfile for Driver BFF** (`src/backend/src/KCharge.Driver.BFF/Dockerfile`):
+**Dockerfile for Driver BFF** (`src/backend/src/KLC.Driver.BFF/Dockerfile`):
 ```dockerfile
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
@@ -145,12 +145,12 @@ ENTRYPOINT ["dotnet", "EVCharging.Driver.BFF.dll"]
 ### Building Images
 ```bash
 # Build Admin API
-docker build -t kcharge-admin:latest \
-  -f src/backend/src/KCharge.HttpApi.Host/Dockerfile .
+docker build -t klc-admin:latest \
+  -f src/backend/src/KLC.HttpApi.Host/Dockerfile .
 
 # Build Driver BFF
-docker build -t kcharge-driver:latest \
-  -f src/backend/src/KCharge.Driver.BFF/Dockerfile .
+docker build -t klc-driver:latest \
+  -f src/backend/src/KLC.Driver.BFF/Dockerfile .
 
 # Tag for ECR
 docker tag ev-charging-admin:latest \
@@ -302,7 +302,7 @@ server {
 
 server {
     listen 443 ssl http2;
-    server_name api.kcharge.vn;
+    server_name api.klc.vn;
 
     ssl_certificate /etc/nginx/ssl/cert.pem;
     ssl_certificate_key /etc/nginx/ssl/key.pem;
@@ -353,7 +353,7 @@ server {
 # Set environment variables
 export DB_PASSWORD="secure_password_here"
 export REDIS_PASSWORD="redis_secure_password"
-export DOMAIN="api.kcharge.vn"
+export DOMAIN="api.klc.vn"
 
 # Start containers
 docker compose -f docker-compose.prod.yml up -d
@@ -478,7 +478,7 @@ aws elbv2 create-target-group \
 ASPNETCORE_ENVIRONMENT=Staging
 ConnectionStrings__Default=Server=ev-charging-staging.c9akciq32.us-east-1.rds.amazonaws.com;Database=EVCharging_Staging;User Id=postgres;Password=***;
 Redis__Connection=ev-charging-redis-staging.abc123.ng.0001.use1.cache.amazonaws.com:6379
-AuthServer__Authority=https://staging-api.kcharge.vn
+AuthServer__Authority=https://staging-api.klc.vn
 Serilog__MinimumLevel=Information
 OCPP__MaxConnections=500
 ```
@@ -490,10 +490,10 @@ ASPNETCORE_ENVIRONMENT=Production
 ConnectionStrings__Default=Server=ev-charging-prod.c9akciq32.us-east-1.rds.amazonaws.com;Database=EVCharging;User Id=postgres;Password=***;
 ConnectionStrings__ReadReplica=Server=ev-charging-read-replica.c9akciq32.us-east-1.rds.amazonaws.com;Database=EVCharging;User Id=postgres;Password=***;
 Redis__Connection=ev-charging-redis-prod.abc123.ng.0001.use1.cache.amazonaws.com:6379
-AuthServer__Authority=https://api.kcharge.vn
+AuthServer__Authority=https://api.klc.vn
 Serilog__MinimumLevel=Warning
 OCPP__MaxConnections=5000
-CORS__Origins=https://app.kcharge.vn,https://admin.kcharge.vn
+CORS__Origins=https://app.klc.vn,https://admin.klc.vn
 ```
 
 ## Health Checks & Monitoring
@@ -642,13 +642,13 @@ jobs:
       - name: Build and push Admin API
         run: |
           docker build -t $ECR_REGISTRY/$ADMIN_API_IMAGE:latest \
-            -f src/backend/src/KCharge.HttpApi.Host/Dockerfile .
+            -f src/backend/src/KLC.HttpApi.Host/Dockerfile .
           docker push $ECR_REGISTRY/$ADMIN_API_IMAGE:latest
 
       - name: Build and push Driver API
         run: |
           docker build -t $ECR_REGISTRY/$DRIVER_API_IMAGE:latest \
-            -f src/backend/src/KCharge.Driver.BFF/Dockerfile .
+            -f src/backend/src/KLC.Driver.BFF/Dockerfile .
           docker push $ECR_REGISTRY/$DRIVER_API_IMAGE:latest
 
   deploy:
@@ -677,8 +677,8 @@ jobs:
 
       - name: Verify deployment
         run: |
-          curl -f https://api.kcharge.vn/health || exit 1
-          curl -f https://api.kcharge.vn/admin/health || exit 1
+          curl -f https://api.klc.vn/health || exit 1
+          curl -f https://api.klc.vn/admin/health || exit 1
 ```
 
 ## Rollback Procedure
@@ -744,7 +744,7 @@ Enable AOF (Append-Only File) in ElastiCache:
 ### Load Testing
 ```bash
 # Using Apache Bench
-ab -n 10000 -c 100 https://api.kcharge.vn/driver/api/v1/stations
+ab -n 10000 -c 100 https://api.klc.vn/driver/api/v1/stations
 
 # Using k6
 k6 run load-test.js

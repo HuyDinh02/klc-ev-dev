@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "KCharge Admin",
+  title: "KLC Admin",
   description: "EV Charging Station Management System",
 };
 

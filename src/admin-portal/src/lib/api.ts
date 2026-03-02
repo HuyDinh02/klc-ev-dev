@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://localhost:44305";
 
 export const api = axios.create({
   baseURL: `${API_BASE_URL}/api/v1`,
@@ -8,6 +8,40 @@ export const api = axios.create({
     "Content-Type": "application/json",
   },
 });
+
+// Auth API - uses different content type and endpoint
+export const authApi = {
+  login: async (username: string, password: string) => {
+    const response = await axios.post(
+      `${API_BASE_URL}/connect/token`,
+      new URLSearchParams({
+        grant_type: "password",
+        username,
+        password,
+        client_id: "KLC_Api",
+        client_secret: "1q2w3e*",
+        scope: "KLC",
+      }),
+      {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      }
+    );
+    return response.data;
+  },
+
+  // Parse JWT token to extract user info
+  parseToken: (token: string): { sub: string; preferred_username: string; email: string; role: string; given_name: string; family_name: string } | null => {
+    try {
+      const base64Payload = token.split(".")[1];
+      const payload = JSON.parse(atob(base64Payload));
+      return payload;
+    } catch {
+      return null;
+    }
+  },
+};
 
 // Request interceptor to add auth token
 api.interceptors.request.use(

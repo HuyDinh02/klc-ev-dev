@@ -65,7 +65,7 @@ export default function PaymentsPage() {
       if (dateTo) params.toDate = dateTo;
       if (searchQuery) params.search = searchQuery;
 
-      const res = await api.get("/api/v1/payments/history", { params });
+      const res = await api.get("/payments/history", { params });
       return res.data;
     },
   });

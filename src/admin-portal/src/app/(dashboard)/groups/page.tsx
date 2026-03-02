@@ -53,7 +53,7 @@ export default function StationGroupsPage() {
   const { data: groups, isLoading } = useQuery<StationGroup[]>({
     queryKey: ["station-groups"],
     queryFn: async () => {
-      const res = await api.get("/api/v1/station-groups");
+      const res = await api.get("/station-groups");
       return res.data.items || [];
     },
   });
@@ -62,7 +62,7 @@ export default function StationGroupsPage() {
   const { data: unassignedStations } = useQuery<Station[]>({
     queryKey: ["unassigned-stations"],
     queryFn: async () => {
-      const res = await api.get("/api/v1/stations", {
+      const res = await api.get("/stations", {
         params: { groupId: null, maxResultCount: 100 },
       });
       return (res.data.items || []).filter((s: Station) => !s.groupId);
@@ -73,7 +73,7 @@ export default function StationGroupsPage() {
   // Create group
   const createMutation = useMutation({
     mutationFn: async (data: { name: string; description: string }) => {
-      const res = await api.post("/api/v1/station-groups", data);
+      const res = await api.post("/station-groups", data);
       return res.data;
     },
     onSuccess: () => {

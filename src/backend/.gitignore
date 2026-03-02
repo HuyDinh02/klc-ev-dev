@@ -251,15 +251,15 @@ paket-files/
 .idea/
 *.sln.iml
 
-# KCharge
-src/KCharge.Web/Logs/*
-src/KCharge.Web.Host/Logs/*
-src/KCharge.AuthServer/Logs/*
-src/KCharge.HttpApi.Host/Logs/*
-src/KCharge.HttpApi.Host/Logs/*
-src/KCharge.DbMigrator/Logs/*
-src/KCharge.Blazor.Server/Logs/*
-src/KCharge.Blazor.Server.Tiered/Logs/*
+# KLC
+src/KLC.Web/Logs/*
+src/KLC.Web.Host/Logs/*
+src/KLC.AuthServer/Logs/*
+src/KLC.HttpApi.Host/Logs/*
+src/KLC.HttpApi.Host/Logs/*
+src/KLC.DbMigrator/Logs/*
+src/KLC.Blazor.Server/Logs/*
+src/KLC.Blazor.Server.Tiered/Logs/*
 
 # Use abp install-libs to restore.
 **/wwwroot/libs/*

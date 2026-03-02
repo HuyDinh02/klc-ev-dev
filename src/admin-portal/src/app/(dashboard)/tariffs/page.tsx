@@ -65,7 +65,7 @@ export default function TariffsPage() {
   const { data: tariffs, isLoading } = useQuery<Tariff[]>({
     queryKey: ["tariffs"],
     queryFn: async () => {
-      const res = await api.get("/api/v1/tariffs");
+      const res = await api.get("/tariffs");
       return res.data.items || [];
     },
   });
@@ -73,7 +73,7 @@ export default function TariffsPage() {
   // Create tariff
   const createMutation = useMutation({
     mutationFn: async (data: TariffFormData) => {
-      const res = await api.post("/api/v1/tariffs", data);
+      const res = await api.post("/tariffs", data);
       return res.data;
     },
     onSuccess: () => {

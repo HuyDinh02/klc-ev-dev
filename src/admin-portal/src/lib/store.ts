@@ -5,7 +5,7 @@ interface User {
   id: string;
   username: string;
   email: string;
-  role: "Admin" | "Operator" | "Finance" | "TechnicalSupport";
+  role: string; // admin, operator, viewer, or custom roles
 }
 
 interface AuthState {

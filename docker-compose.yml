@@ -3,11 +3,11 @@
 services:
   postgres:
     image: postgres:16
-    container_name: kcharge-postgres
+    container_name: klc-postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: KCharge
+      POSTGRES_DB: KLC
     ports:
       - "5433:5432"
     volumes:
@@ -21,7 +21,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: kcharge-redis
+    container_name: klc-redis
     ports:
       - "6379:6379"
     volumes:
@@ -36,9 +36,9 @@ services:
 
   pgadmin:
     image: dpage/pgadmin4:latest
-    container_name: kcharge-pgadmin
+    container_name: klc-pgadmin
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@kcharge.local
+      PGADMIN_DEFAULT_EMAIL: admin@klc.local
       PGADMIN_DEFAULT_PASSWORD: admin
       PGADMIN_CONFIG_SERVER_MODE: 'False'
     ports:

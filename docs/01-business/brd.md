@@ -1,5 +1,5 @@
 # Business Requirements Document (BRD)
-## EV Charging Station Management System — K-Charge
+## EV Charging Station Management System — KLC
 
 > Status: APPROVED | Version: 0.1 | Last Updated: 2026-02-26 | PIC: Nam Mai
 
@@ -7,7 +7,7 @@
 
 ## 1. Executive Summary
 
-The client (K-Charge) plans to establish a subsidiary company in Vietnam to operate an independent EV charging station network. The strategic goal is to contribute to a more open EV ecosystem, allowing multiple electric vehicle brands to access charging infrastructure rather than being limited to a single manufacturer ecosystem.
+The client (KLC) plans to establish a subsidiary company in Vietnam to operate an independent EV charging station network. The strategic goal is to contribute to a more open EV ecosystem, allowing multiple electric vehicle brands to access charging infrastructure rather than being limited to a single manufacturer ecosystem.
 
 To support this vision, the client requires a centralized software system consisting of:
 

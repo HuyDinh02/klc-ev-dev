@@ -81,7 +81,7 @@ export default function EInvoicesPage() {
       if (dateTo) params.toDate = dateTo;
       if (searchQuery) params.search = searchQuery;
 
-      const res = await api.get("/api/v1/e-invoices", { params });
+      const res = await api.get("/e-invoices", { params });
       return res.data;
     },
   });

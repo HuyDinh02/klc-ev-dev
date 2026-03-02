@@ -56,7 +56,7 @@ export function Sidebar() {
           {!isCollapsed && (
             <Link href="/" className="flex items-center gap-2">
               <Zap className="h-6 w-6 text-primary" />
-              <span className="text-lg font-bold">KCharge</span>
+              <span className="text-lg font-bold">KLC</span>
             </Link>
           )}
           <Button variant="ghost" size="icon" onClick={toggle} className="ml-auto">

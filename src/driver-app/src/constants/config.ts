@@ -2,12 +2,12 @@ export const Config = {
   // Driver BFF API
   API_BASE_URL: __DEV__
     ? 'http://localhost:5001/api/v1'
-    : 'https://api.kcharge.vn/api/v1',
+    : 'https://api.klc.vn/api/v1',
 
   // SignalR Hub
   SIGNALR_HUB_URL: __DEV__
     ? 'http://localhost:5001/hubs/driver'
-    : 'https://api.kcharge.vn/hubs/driver',
+    : 'https://api.klc.vn/hubs/driver',
 
   // Google Maps (placeholder - need real key)
   GOOGLE_MAPS_API_KEY: 'YOUR_GOOGLE_MAPS_API_KEY',

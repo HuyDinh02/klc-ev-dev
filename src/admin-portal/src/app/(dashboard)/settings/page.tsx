@@ -48,14 +48,14 @@ interface SystemSettings {
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<SystemSettings>({
-    siteName: "KCharge CSMS",
+    siteName: "KLC CSMS",
     timezone: "Asia/Ho_Chi_Minh",
     currency: "VND",
     language: "vi",
     emailNotifications: true,
     smsNotifications: false,
     pushNotifications: true,
-    alertEmail: "admin@kcharge.vn",
+    alertEmail: "admin@klc.vn",
     ocppWebSocketPort: 5002,
     ocppHeartbeatInterval: 60,
     ocppMeterValueInterval: 30,

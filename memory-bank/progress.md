@@ -23,7 +23,7 @@
 - [x] memory-bank/ (10 context files for AI agents)
 
 ## Phase 2 — Scaffold & Infrastructure ✅
-- [x] ABP solution scaffold (`abp new KCharge` with PostgreSQL)
+- [x] ABP solution scaffold (`abp new KLC` with PostgreSQL)
 - [x] Docker Compose setup (PostgreSQL 16, Redis 7, pgAdmin)
 - [x] Domain entities implementation (15 entities + 12 enums)
 - [x] EF Core DbContext + InitialCreate migration
@@ -199,7 +199,7 @@ GET    /api/v1/e-invoices/{id}/pdf-url    - Get PDF download URL
 
 ### Driver BFF Structure:
 ```
-src/backend/src/KCharge.Driver.BFF/
+src/backend/src/KLC.Driver.BFF/
 ├── Program.cs                    - Minimal API entry point
 ├── appsettings.json              - Configuration
 ├── Endpoints/                    - API endpoint modules
@@ -384,7 +384,7 @@ src/driver-app/
 - expo-location for GPS
 
 **Screens Implemented:**
-- [x] Login (mock auth: driver@kcharge.vn / driver123)
+- [x] Login (mock auth: driver@klc.vn / driver123)
 - [x] Home (station list with availability)
 - [x] Station Detail (connectors, start charging)
 - [x] Session (live charging with meter values)

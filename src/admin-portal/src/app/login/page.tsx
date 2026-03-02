@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Zap, Eye, EyeOff } from "lucide-react";
+import { Zap, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuthStore } from "@/lib/store";
+import { authApi } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,24 +23,47 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      // In production, call the auth API
-      // For development, use mock login
-      if (email === "admin@kcharge.vn" && password === "admin123") {
-        login(
-          {
-            id: "1",
-            username: "Admin",
-            email: "admin@kcharge.vn",
-            role: "Admin",
-          },
-          "mock-jwt-token"
-        );
-        router.push("/");
+      // Call the real OpenIddict token endpoint
+      const tokenResponse = await authApi.login(email, password);
+
+      if (tokenResponse.access_token) {
+        // Parse JWT to extract user info
+        const payload = authApi.parseToken(tokenResponse.access_token);
+
+        if (payload) {
+          const user = {
+            id: payload.sub,
+            username: payload.preferred_username || payload.given_name,
+            email: payload.email,
+            role: payload.role || "admin",
+          };
+
+          login(user, tokenResponse.access_token);
+          router.push("/");
+        } else {
+          setError("Failed to parse authentication token");
+        }
       } else {
-        setError("Invalid email or password");
+        setError("Invalid response from server");
       }
-    } catch {
-      setError("An error occurred. Please try again.");
+    } catch (err: unknown) {
+      console.error("Login error:", err);
+
+      // Handle different error types
+      if (err && typeof err === "object" && "response" in err) {
+        const axiosError = err as { response?: { data?: { error_description?: string; error?: string }; status?: number } };
+        if (axiosError.response?.data?.error_description) {
+          setError(axiosError.response.data.error_description);
+        } else if (axiosError.response?.data?.error) {
+          setError(axiosError.response.data.error);
+        } else if (axiosError.response?.status === 400) {
+          setError("Invalid username or password");
+        } else {
+          setError("Authentication failed. Please try again.");
+        }
+      } else {
+        setError("Unable to connect to server. Please check your connection.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -53,7 +77,7 @@ export default function LoginPage() {
             <Zap className="h-8 w-8 text-primary-foreground" />
           </div>
           <div>
-            <CardTitle className="text-2xl">KCharge Admin</CardTitle>
+            <CardTitle className="text-2xl">KLC Admin</CardTitle>
             <CardDescription>
               Sign in to manage your charging network
             </CardDescription>
@@ -62,22 +86,24 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                {error}
+              <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                <span>{error}</span>
               </div>
             )}
 
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-medium">
-                Email
+                Username or Email
               </label>
               <input
                 id="email"
-                type="email"
+                type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@kcharge.vn"
+                placeholder="admin"
                 required
+                autoComplete="username"
                 className="h-10 w-full rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
@@ -94,12 +120,13 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
                   required
+                  autoComplete="current-password"
                   className="h-10 w-full rounded-md border bg-background px-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
                   {showPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -116,9 +143,12 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 rounded-md bg-muted p-4 text-sm">
-            <p className="font-medium">Demo Credentials:</p>
-            <p className="text-muted-foreground">Email: admin@kcharge.vn</p>
-            <p className="text-muted-foreground">Password: admin123</p>
+            <p className="font-medium mb-2">Demo Credentials:</p>
+            <div className="space-y-1 text-muted-foreground">
+              <p><span className="font-medium text-foreground">Admin:</span> admin / Admin@123</p>
+              <p><span className="font-medium text-foreground">Operator:</span> operator / Admin@123</p>
+              <p><span className="font-medium text-foreground">Viewer:</span> viewer / Admin@123</p>
+            </div>
           </div>
         </CardContent>
       </Card>

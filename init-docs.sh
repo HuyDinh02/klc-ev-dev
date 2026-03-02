@@ -1,6 +1,6 @@
 #!/bin/bash
 # init-docs.sh — Initialize EV Charging CSMS Documentation Structure
-# 9-layer documentation architecture for K-Charge CSMS project
+# 9-layer documentation architecture for KLC CSMS project
 # Run: bash init-docs.sh
 
 set -e
@@ -28,7 +28,7 @@ EOF
 
 cat > docs/01-business/brd.md << 'EOF'
 # Business Requirements Document (BRD)
-## EV Charging Station Management System — K-Charge
+## EV Charging Station Management System — KLC
 
 > Status: DRAFT | Version: 0.1 | Last Updated: 2026-03-01
 
@@ -57,7 +57,7 @@ cat > docs/01-business/stakeholder-analysis.md << 'EOF'
 
 | Role | Name/Org | Interest | Influence |
 |------|----------|----------|-----------|
-| Client | K-Charge | Product owner, business requirements | High |
+| Client | KLC | Product owner, business requirements | High |
 | Developer | EmeSoft | Technical implementation | High |
 | End Users | EV Drivers | App usability, reliability | Medium |
 | Operators | Station Operators | Monitoring, management | High |
@@ -699,10 +699,10 @@ cat > docs/08-guides/api-guide.md << 'EOF'
 - Bearer token authentication
 
 ## Admin API (port 5000)
-Base URL: `https://api.kcharge.vn/admin/`
+Base URL: `https://api.klc.vn/admin/`
 
 ## Driver BFF API (port 5001)
-Base URL: `https://api.kcharge.vn/driver/`
+Base URL: `https://api.klc.vn/driver/`
 
 <!-- TODO: Detailed API usage examples -->
 EOF
@@ -1081,7 +1081,7 @@ echo "📁 Creating docs/ root README"
 cat > docs/README.md << 'EOF'
 # EV Charging CSMS — Documentation
 
-9-layer documentation architecture for the K-Charge EV Charging Station Management System.
+9-layer documentation architecture for the KLC EV Charging Station Management System.
 
 ## Layers
 

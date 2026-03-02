@@ -1,10 +1,10 @@
 # Project Brief — EV Charging CSMS
 
 ## What
-EV Charging Station Management System for K-Charge (Vietnam). B2C platform managing charging stations with Admin Portal + Mobile App.
+EV Charging Station Management System for KLC (Vietnam). B2C platform managing charging stations with Admin Portal + Mobile App.
 
 ## Who
-- **Client:** K-Charge (establishing subsidiary in Vietnam)
+- **Client:** KLC (establishing subsidiary in Vietnam)
 - **Developer:** EmeSoft (CTO: Hung, 5 developers)
 - **Users:** EV drivers (mobile app), operators/admin (web portal)
 

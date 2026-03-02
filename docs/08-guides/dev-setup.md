@@ -71,11 +71,11 @@ The `docker-compose.yml` includes:
 - **PostgreSQL 16** — Port 5433 (mapped from container's 5432)
   - Username: `postgres`
   - Password: `postgres`
-  - Database: `KCharge`
+  - Database: `KLC`
 - **Redis 7** — Port 6379
   - No authentication (development only)
 - **pgAdmin** — Port 8080 (optional, use `--profile tools`)
-  - Email: `admin@kcharge.local`
+  - Email: `admin@klc.local`
   - Password: `admin`
 
 ### Alternative: Local PostgreSQL & Redis
@@ -121,7 +121,7 @@ Create `.env` file in repository root:
 ```env
 # Database
 ASPNETCORE_ENVIRONMENT=Development
-ConnectionStrings__Default=Server=localhost;Port=5433;Database=KCharge;User Id=postgres;Password=postgres;
+ConnectionStrings__Default=Server=localhost;Port=5433;Database=KLC;User Id=postgres;Password=postgres;
 
 # Redis
 Redis__Connection=localhost:6379
@@ -147,11 +147,11 @@ Email__Password=
 
 ### Per-Project Environment Variables
 
-**Admin API** — `src/backend/src/KCharge.HttpApi.Host/appsettings.Development.json`
+**Admin API** — `src/backend/src/KLC.HttpApi.Host/appsettings.Development.json`
 ```json
 {
   "ConnectionStrings": {
-    "Default": "Server=localhost;Port=5433;Database=KCharge;User Id=postgres;Password=postgres;"
+    "Default": "Server=localhost;Port=5433;Database=KLC;User Id=postgres;Password=postgres;"
   },
   "Redis": {
     "Connection": "localhost:6379"
@@ -165,11 +165,11 @@ Email__Password=
 }
 ```
 
-**Driver BFF API** — `src/backend/src/KCharge.Driver.BFF/appsettings.Development.json`
+**Driver BFF API** — `src/backend/src/KLC.Driver.BFF/appsettings.Development.json`
 ```json
 {
   "ConnectionStrings": {
-    "Default": "Server=localhost;Port=5433;Database=KCharge;User Id=postgres;Password=postgres;",
+    "Default": "Server=localhost;Port=5433;Database=KLC;User Id=postgres;Password=postgres;",
     "ReadReplica": "Server=localhost-read-replica;Port=5432;Database=EVCharging;User Id=postgres;Password=postgres;"
   },
   "Redis": {
@@ -184,7 +184,7 @@ Run Entity Framework migrations to create database schema:
 
 ```bash
 # Navigate to EF project
-cd src/backend/src/KCharge.EntityFrameworkCore
+cd src/backend/src/KLC.EntityFrameworkCore
 
 # Apply migrations
 dotnet ef database update
@@ -197,7 +197,7 @@ Expected output:
 ```
 Build started...
 Build succeeded.
-Done. Migrated KCharge.EntityFrameworkCore to 2026-03-01_001_InitialCreate
+Done. Migrated KLC.EntityFrameworkCore to 2026-03-01_001_InitialCreate
 ```
 
 ### Verify Database
@@ -216,7 +216,7 @@ psql -h localhost -U postgres -d EVCharging
 
 ```bash
 # Terminal 1 — Admin API
-cd src/backend/src/KCharge.HttpApi.Host
+cd src/backend/src/KLC.HttpApi.Host
 dotnet run
 ```
 
@@ -238,7 +238,7 @@ info: Microsoft.Hosting.Lifetime[0]
 
 ```bash
 # Terminal 2 — Driver BFF
-cd src/backend/src/KCharge.Driver.BFF
+cd src/backend/src/KLC.Driver.BFF
 dotnet run
 ```
 
@@ -338,7 +338,7 @@ In the simulator:
 dotnet test
 
 # Specific test project
-dotnet test src/backend/test/KCharge.Tests/KCharge.Tests.csproj
+dotnet test src/backend/test/KLC.Tests/KLC.Tests.csproj
 
 # With coverage
 dotnet test /p:CollectCoverage=true /p:CoverageFormat=opencover
@@ -346,7 +346,7 @@ dotnet test /p:CollectCoverage=true /p:CoverageFormat=opencover
 
 ### Creating New Migration
 ```bash
-cd src/backend/src/KCharge.EntityFrameworkCore
+cd src/backend/src/KLC.EntityFrameworkCore
 dotnet ef migrations add MigrationName
 dotnet ef database update
 ```

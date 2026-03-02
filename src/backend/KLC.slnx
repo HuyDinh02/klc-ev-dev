@@ -1,0 +1,21 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/KLC.Application.Contracts/KLC.Application.Contracts.csproj" />
+    <Project Path="src/KLC.Application/KLC.Application.csproj" />
+    <Project Path="src/KLC.DbMigrator/KLC.DbMigrator.csproj" />
+    <Project Path="src/KLC.Domain.Shared/KLC.Domain.Shared.csproj" />
+    <Project Path="src/KLC.Domain/KLC.Domain.csproj" />
+    <Project Path="src/KLC.Driver.BFF/KLC.Driver.BFF.csproj" />
+    <Project Path="src/KLC.EntityFrameworkCore/KLC.EntityFrameworkCore.csproj" />
+    <Project Path="src/KLC.HttpApi.Client/KLC.HttpApi.Client.csproj" />
+    <Project Path="src/KLC.HttpApi.Host/KLC.HttpApi.Host.csproj" />
+    <Project Path="src/KLC.HttpApi/KLC.HttpApi.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/KLC.Application.Tests/KLC.Application.Tests.csproj" />
+    <Project Path="test/KLC.Domain.Tests/KLC.Domain.Tests.csproj" />
+    <Project Path="test/KLC.EntityFrameworkCore.Tests/KLC.EntityFrameworkCore.Tests.csproj" />
+    <Project Path="test/KLC.HttpApi.Client.ConsoleTestApp/KLC.HttpApi.Client.ConsoleTestApp.csproj" />
+    <Project Path="test/KLC.TestBase/KLC.TestBase.csproj" />
+  </Folder>
+</Solution>

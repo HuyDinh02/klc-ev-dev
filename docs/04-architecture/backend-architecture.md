@@ -10,15 +10,15 @@ The backend follows ABP Framework's DDD layered architecture:
 
 ```
 src/
-├── KCharge.Domain.Shared/        # Constants, enums, shared DTOs
-├── KCharge.Domain/                # Entities, Aggregate Roots, Domain Services, Repository interfaces
-├── KCharge.Application.Contracts/ # Application service interfaces, DTOs
-├── KCharge.Application/           # Application service implementations
-├── KCharge.EntityFrameworkCore/   # EF Core DbContext, Repositories, Migrations
-├── KCharge.HttpApi/               # API Controllers
-├── KCharge.HttpApi.Host/          # Admin API Host (port 5000)
-├── KCharge.Driver.BFF/            # Driver BFF API Host (port 5001)
-└── KCharge.DbMigrator/            # Database migration console app
+├── KLC.Domain.Shared/        # Constants, enums, shared DTOs
+├── KLC.Domain/                # Entities, Aggregate Roots, Domain Services, Repository interfaces
+├── KLC.Application.Contracts/ # Application service interfaces, DTOs
+├── KLC.Application/           # Application service implementations
+├── KLC.EntityFrameworkCore/   # EF Core DbContext, Repositories, Migrations
+├── KLC.HttpApi/               # API Controllers
+├── KLC.HttpApi.Host/          # Admin API Host (port 5000)
+├── KLC.Driver.BFF/            # Driver BFF API Host (port 5001)
+└── KLC.DbMigrator/            # Database migration console app
 ```
 
 ## 2. Layer Responsibilities

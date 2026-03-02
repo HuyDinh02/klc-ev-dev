@@ -8,7 +8,7 @@
 
 Vietnam's EV market is experiencing rapid growth driven by government policies promoting green transportation, increasing environmental awareness, and domestic manufacturers like VinFast. The EV charging infrastructure is in early stages, creating significant opportunity for independent networks.
 
-K-Charge aims to establish an **open charging ecosystem** — allowing multiple EV brands to access shared infrastructure rather than being locked into single-manufacturer ecosystems.
+KLC aims to establish an **open charging ecosystem** — allowing multiple EV brands to access shared infrastructure rather than being locked into single-manufacturer ecosystems.
 
 ---
 
@@ -20,7 +20,7 @@ The client plans to establish a subsidiary company in Vietnam to operate an inde
 
 ## 3. Competitive Landscape
 
-The Vietnam market features manufacturer-tied networks (e.g., VinFast's proprietary network) and a growing but fragmented independent charging segment. K-Charge differentiates through brand-agnostic approach, OCPP standard compliance for hardware vendor flexibility, and integrated digital experience via mobile app and admin portal.
+The Vietnam market features manufacturer-tied networks (e.g., VinFast's proprietary network) and a growing but fragmented independent charging segment. KLC differentiates through brand-agnostic approach, OCPP standard compliance for hardware vendor flexibility, and integrated digital experience via mobile app and admin portal.
 
 ---
 

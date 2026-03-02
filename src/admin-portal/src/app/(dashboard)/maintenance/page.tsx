@@ -86,7 +86,7 @@ export default function MaintenancePage() {
   const { data: stations } = useQuery({
     queryKey: ["stations-list"],
     queryFn: async () => {
-      const res = await api.get("/api/v1/stations", {
+      const res = await api.get("/stations", {
         params: { maxResultCount: 100 },
       });
       return res.data.items || [];

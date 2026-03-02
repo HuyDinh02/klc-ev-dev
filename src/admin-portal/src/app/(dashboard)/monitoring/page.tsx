@@ -52,7 +52,7 @@ export default function MonitoringPage() {
   const { data: dashboard, refetch } = useQuery<DashboardStats>({
     queryKey: ["monitoring-dashboard"],
     queryFn: async () => {
-      const res = await api.get("/api/v1/monitoring/dashboard");
+      const res = await api.get("/monitoring/dashboard");
       return res.data;
     },
     refetchInterval: 10000, // Refresh every 10 seconds
@@ -62,7 +62,7 @@ export default function MonitoringPage() {
   const { data: stations } = useQuery<StationStatus[]>({
     queryKey: ["monitoring-stations"],
     queryFn: async () => {
-      const res = await api.get("/api/v1/stations", {
+      const res = await api.get("/stations", {
         params: { maxResultCount: 50 },
       });
       return res.data.items || [];
