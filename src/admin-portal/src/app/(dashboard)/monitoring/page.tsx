@@ -1,10 +1,18 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { api } from "@/lib/api";
+import { monitoringApi, api } from "@/lib/api";
+import {
+  useMonitoringHub,
+  type StationStatusUpdate,
+  type ConnectorStatusUpdate,
+  type AlertNotification,
+  type SessionUpdate,
+  type ConnectionStatus,
+} from "@/lib/signalr";
 import {
   Activity,
   Zap,
@@ -14,6 +22,8 @@ import {
   Battery,
   TrendingUp,
   Clock,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 
 interface DashboardStats {
@@ -33,11 +43,11 @@ interface StationStatus {
   id: string;
   name: string;
   status: "Online" | "Offline" | "Faulted";
-  connectors: ConnectorStatus[];
+  connectors: ConnectorStatusItem[];
   lastHeartbeat: string;
 }
 
-interface ConnectorStatus {
+interface ConnectorStatusItem {
   id: string;
   connectorId: number;
   status: "Available" | "Charging" | "Faulted" | "Unavailable";
@@ -45,20 +55,138 @@ interface ConnectorStatus {
   sessionId?: string;
 }
 
-export default function MonitoringPage() {
-  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+interface RealtimeAlert {
+  alertId: string;
+  stationName: string | null;
+  alertType: string;
+  message: string;
+  timestamp: string;
+}
 
-  // Fetch dashboard data
-  const { data: dashboard, refetch } = useQuery<DashboardStats>({
-    queryKey: ["monitoring-dashboard"],
-    queryFn: async () => {
-      const res = await api.get("/monitoring/dashboard");
-      return res.data;
+function ConnectionIndicator({ status }: { status: ConnectionStatus }) {
+  if (status === "connected") {
+    return (
+      <div className="flex items-center gap-1.5 text-green-600">
+        <Wifi className="h-4 w-4" />
+        <span className="text-xs font-medium">Live</span>
+        <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+      </div>
+    );
+  }
+  if (status === "connecting") {
+    return (
+      <div className="flex items-center gap-1.5 text-yellow-600">
+        <Wifi className="h-4 w-4" />
+        <span className="text-xs font-medium">Connecting...</span>
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center gap-1.5 text-muted-foreground">
+      <WifiOff className="h-4 w-4" />
+      <span className="text-xs font-medium">Polling (10s)</span>
+    </div>
+  );
+}
+
+export default function MonitoringPage() {
+  const queryClient = useQueryClient();
+  const [realtimeAlerts, setRealtimeAlerts] = useState<RealtimeAlert[]>([]);
+  const [lastEvent, setLastEvent] = useState<Date | null>(null);
+
+  // SignalR event handlers
+  const onStationStatusChanged = useCallback(
+    (update: StationStatusUpdate) => {
+      setLastEvent(new Date());
+      // Update station in cache
+      queryClient.setQueryData<StationStatus[]>(
+        ["monitoring-stations"],
+        (old) =>
+          old?.map((s) =>
+            s.id === update.stationId
+              ? { ...s, status: update.newStatus as StationStatus["status"] }
+              : s
+          )
+      );
+      // Refetch dashboard for updated counts
+      queryClient.invalidateQueries({ queryKey: ["monitoring-dashboard"] });
     },
-    refetchInterval: 10000, // Refresh every 10 seconds
+    [queryClient]
+  );
+
+  const onConnectorStatusChanged = useCallback(
+    (update: ConnectorStatusUpdate) => {
+      setLastEvent(new Date());
+      queryClient.setQueryData<StationStatus[]>(
+        ["monitoring-stations"],
+        (old) =>
+          old?.map((s) =>
+            s.id === update.stationId
+              ? {
+                  ...s,
+                  connectors: s.connectors.map((c) =>
+                    c.connectorId === update.connectorNumber
+                      ? {
+                          ...c,
+                          status:
+                            update.newStatus as ConnectorStatusItem["status"],
+                        }
+                      : c
+                  ),
+                }
+              : s
+          )
+      );
+      queryClient.invalidateQueries({ queryKey: ["monitoring-dashboard"] });
+    },
+    [queryClient]
+  );
+
+  const onAlertCreated = useCallback((alert: AlertNotification) => {
+    setLastEvent(new Date());
+    setRealtimeAlerts((prev) =>
+      [
+        {
+          alertId: alert.alertId,
+          stationName: alert.stationName,
+          alertType: alert.alertType,
+          message: alert.message,
+          timestamp: alert.timestamp,
+        },
+        ...prev,
+      ].slice(0, 10)
+    );
+  }, []);
+
+  const onSessionUpdated = useCallback(
+    (_update: SessionUpdate) => {
+      setLastEvent(new Date());
+      queryClient.invalidateQueries({ queryKey: ["monitoring-dashboard"] });
+    },
+    [queryClient]
+  );
+
+  const { status: hubStatus } = useMonitoringHub({
+    onStationStatusChanged,
+    onConnectorStatusChanged,
+    onAlertCreated,
+    onSessionUpdated,
   });
 
-  // Fetch station statuses
+  // Fallback polling — slower when SignalR is connected
+  const pollingInterval = hubStatus === "connected" ? 60000 : 10000;
+
+  // Fetch dashboard stats (initial + fallback polling)
+  const { data: dashboard } = useQuery<DashboardStats>({
+    queryKey: ["monitoring-dashboard"],
+    queryFn: async () => {
+      const res = await monitoringApi.getDashboard();
+      return res.data;
+    },
+    refetchInterval: pollingInterval,
+  });
+
+  // Fetch station statuses (initial + fallback polling)
   const { data: stations } = useQuery<StationStatus[]>({
     queryKey: ["monitoring-stations"],
     queryFn: async () => {
@@ -67,16 +195,8 @@ export default function MonitoringPage() {
       });
       return res.data.items || [];
     },
-    refetchInterval: 10000,
+    refetchInterval: pollingInterval,
   });
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setLastUpdate(new Date());
-      refetch();
-    }, 10000);
-    return () => clearInterval(interval);
-  }, [refetch]);
 
   const stats = dashboard || {
     totalStations: 0,
@@ -91,7 +211,9 @@ export default function MonitoringPage() {
     todayRevenue: 0,
   };
 
-  const getStatusColor = (status: string): "success" | "default" | "secondary" | "destructive" => {
+  const getStatusColor = (
+    status: string
+  ): "success" | "default" | "secondary" | "destructive" => {
     switch (status) {
       case "Online":
       case "Available":
@@ -118,10 +240,14 @@ export default function MonitoringPage() {
             Live system status and performance metrics
           </p>
         </div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Clock className="h-4 w-4" />
-          <span>Last update: {lastUpdate.toLocaleTimeString()}</span>
-          <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+        <div className="flex items-center gap-4">
+          <ConnectionIndicator status={hubStatus} />
+          {lastEvent && (
+            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <Clock className="h-4 w-4" />
+              <span>Last event: {lastEvent.toLocaleTimeString()}</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -129,7 +255,9 @@ export default function MonitoringPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Station Status</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Station Status
+            </CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -186,7 +314,9 @@ export default function MonitoringPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Sessions</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Active Sessions
+            </CardTitle>
             <Zap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -199,7 +329,9 @@ export default function MonitoringPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Today's Energy</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Today&apos;s Energy
+            </CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -240,17 +372,18 @@ export default function MonitoringPage() {
                           conn.status === "Available"
                             ? "bg-green-100 text-green-700"
                             : conn.status === "Charging"
-                            ? "bg-blue-100 text-blue-700"
-                            : conn.status === "Faulted"
-                            ? "bg-red-100 text-red-700"
-                            : "bg-gray-100 text-gray-700"
+                              ? "bg-blue-100 text-blue-700"
+                              : conn.status === "Faulted"
+                                ? "bg-red-100 text-red-700"
+                                : "bg-gray-100 text-gray-700"
                         }`}
                         title={`Connector ${conn.connectorId}: ${conn.status}`}
                       >
                         #{conn.connectorId}
                       </div>
                     ))}
-                    {(!station.connectors || station.connectors.length === 0) && (
+                    {(!station.connectors ||
+                      station.connectors.length === 0) && (
                       <div className="flex-1 h-8 rounded bg-gray-100 flex items-center justify-center text-xs text-gray-500">
                         No connectors
                       </div>
@@ -284,7 +417,25 @@ export default function MonitoringPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            {stats.faultedConnectors > 0 ? (
+            {realtimeAlerts.length > 0 ? (
+              realtimeAlerts.map((alert) => (
+                <div
+                  key={alert.alertId}
+                  className="flex items-center gap-3 rounded-lg bg-yellow-50 p-3 text-yellow-800"
+                >
+                  <AlertTriangle className="h-5 w-5 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">
+                      [{alert.alertType}] {alert.stationName || "System"}
+                    </p>
+                    <p className="text-sm truncate">{alert.message}</p>
+                  </div>
+                  <span className="text-xs text-yellow-600 shrink-0">
+                    {new Date(alert.timestamp).toLocaleTimeString()}
+                  </span>
+                </div>
+              ))
+            ) : stats.faultedConnectors > 0 ? (
               <div className="flex items-center gap-3 rounded-lg bg-red-50 p-3 text-red-700">
                 <XCircle className="h-5 w-5" />
                 <div>

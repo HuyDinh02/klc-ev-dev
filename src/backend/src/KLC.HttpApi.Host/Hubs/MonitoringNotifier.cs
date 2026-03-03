@@ -135,6 +135,9 @@ public class MonitoringNotifier : IMonitoringNotifier
             DateTime.UtcNow
         );
 
+        // Notify all monitoring clients (admin dashboard)
+        await _hubContext.Clients.Group("Monitoring").OnSessionUpdated(update);
+
         // Notify session subscribers (driver app)
         await _hubContext.Clients.Group($"Session:{sessionId}").OnSessionUpdated(update);
 
