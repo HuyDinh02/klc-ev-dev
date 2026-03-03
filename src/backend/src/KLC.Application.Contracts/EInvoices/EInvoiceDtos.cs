@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel.DataAnnotations;
 using KLC.Enums;
 
 namespace KLC.EInvoices;
@@ -65,12 +66,16 @@ public class GetEInvoiceListDto
     public DateTime? ToDate { get; set; }
     public string? Search { get; set; }
     public Guid? Cursor { get; set; }
+
+    [Range(1, 100)]
     public int MaxResultCount { get; set; } = 20;
 }
 
 public class CreateEInvoiceDto
 {
+    [Required]
     public Guid InvoiceId { get; set; }
+
     public EInvoiceProvider Provider { get; set; }
 }
 

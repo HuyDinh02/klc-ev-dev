@@ -1,5 +1,6 @@
 using System;
 using KLC.Enums;
+using Volo.Abp;
 using Volo.Abp.Domain.Entities.Auditing;
 
 namespace KLC.Stations;
@@ -74,7 +75,7 @@ public class Connector : FullAuditedEntity<Guid>
     public void SetMaxPower(decimal maxPowerKw)
     {
         if (maxPowerKw <= 0)
-            throw new ArgumentException("Max power must be greater than 0", nameof(maxPowerKw));
+            throw new BusinessException(KLCDomainErrorCodes.Connector.MaxPowerInvalid);
         MaxPowerKw = maxPowerKw;
     }
 

@@ -53,7 +53,7 @@ public class VehicleAppService : KLCAppService, IVehicleAppService
 
         if (vehicle.UserId != userId)
         {
-            throw new BusinessException("MOD_009_001");
+            throw new BusinessException(KLCDomainErrorCodes.Vehicle.NotOwned);
         }
 
         vehicle.SetMakeAndModel(input.Make, input.Model);
@@ -73,7 +73,7 @@ public class VehicleAppService : KLCAppService, IVehicleAppService
 
         if (vehicle.UserId != userId)
         {
-            throw new BusinessException("MOD_009_001");
+            throw new BusinessException(KLCDomainErrorCodes.Vehicle.NotOwned);
         }
 
         return MapToDto(vehicle);
@@ -98,7 +98,7 @@ public class VehicleAppService : KLCAppService, IVehicleAppService
 
         if (vehicle.UserId != userId)
         {
-            throw new BusinessException("MOD_009_001");
+            throw new BusinessException(KLCDomainErrorCodes.Vehicle.NotOwned);
         }
 
         // TODO: Check for active charging session (MOD_009_002)

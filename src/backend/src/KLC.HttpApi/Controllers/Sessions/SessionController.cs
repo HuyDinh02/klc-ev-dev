@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using KLC.Sessions;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Volo.Abp.Application.Dtos;
 
@@ -34,7 +33,6 @@ public class SessionController : KLCController
     }
 
     [HttpGet("{id:guid}")]
-    [AllowAnonymous]
     public async Task<ActionResult<ChargingSessionDto>> GetAsync(Guid id)
     {
         var result = await _sessionAppService.GetAsync(id);
@@ -42,7 +40,6 @@ public class SessionController : KLCController
     }
 
     [HttpGet("active")]
-    [AllowAnonymous]
     public async Task<ActionResult<ActiveSessionDto>> GetActiveSessionAsync()
     {
         var result = await _sessionAppService.GetActiveSessionAsync();
@@ -54,7 +51,6 @@ public class SessionController : KLCController
     }
 
     [HttpGet("history")]
-    [AllowAnonymous]
     public async Task<ActionResult<PagedResultDto<SessionListDto>>> GetHistoryAsync([FromQuery] GetSessionListDto input)
     {
         var result = await _sessionAppService.GetHistoryAsync(input);
@@ -62,7 +58,6 @@ public class SessionController : KLCController
     }
 
     [HttpGet("{id:guid}/meter-values")]
-    [AllowAnonymous]
     public async Task<ActionResult<List<MeterValueDto>>> GetMeterValuesAsync(Guid id)
     {
         var result = await _sessionAppService.GetMeterValuesAsync(id);
@@ -82,7 +77,6 @@ public class AdminSessionController : KLCController
     }
 
     [HttpGet]
-    [AllowAnonymous]
     public async Task<ActionResult<PagedResultDto<SessionListDto>>> GetAllSessionsAsync([FromQuery] GetSessionListDto input)
     {
         var result = await _sessionAppService.GetAllSessionsAsync(input);

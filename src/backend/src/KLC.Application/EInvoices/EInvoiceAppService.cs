@@ -53,7 +53,7 @@ public class EInvoiceAppService : KLCAppService, IEInvoiceAppService
 
         if (invoice == null)
         {
-            throw new BusinessException("KLC:InvoiceNotFound");
+            throw new BusinessException(KLCDomainErrorCodes.InvoiceNotFound);
         }
 
         var payment = await _paymentRepository.FirstOrDefaultAsync(p => p.Id == invoice.PaymentTransactionId);
@@ -219,14 +219,14 @@ public class EInvoiceAppService : KLCAppService, IEInvoiceAppService
         var invoice = await _invoiceRepository.FirstOrDefaultAsync(i => i.Id == input.InvoiceId);
         if (invoice == null)
         {
-            throw new BusinessException("KLC:InvoiceNotFound");
+            throw new BusinessException(KLCDomainErrorCodes.InvoiceNotFound);
         }
 
         // Check if e-invoice already exists
         var existingEInvoice = await _eInvoiceRepository.FirstOrDefaultAsync(e => e.InvoiceId == input.InvoiceId);
         if (existingEInvoice != null)
         {
-            throw new BusinessException("KLC:EInvoiceAlreadyExists")
+            throw new BusinessException(KLCDomainErrorCodes.EInvoiceAlreadyExists)
                 .WithData("InvoiceId", input.InvoiceId);
         }
 
@@ -285,14 +285,14 @@ public class EInvoiceAppService : KLCAppService, IEInvoiceAppService
 
         if (!eInvoice.CanRetry())
         {
-            throw new BusinessException("KLC:EInvoiceCannotRetry")
+            throw new BusinessException(KLCDomainErrorCodes.EInvoiceCannotRetry)
                 .WithData("RetryCount", eInvoice.RetryCount);
         }
 
         var invoice = await _invoiceRepository.FirstOrDefaultAsync(i => i.Id == eInvoice.InvoiceId);
         if (invoice == null)
         {
-            throw new BusinessException("KLC:InvoiceNotFound");
+            throw new BusinessException(KLCDomainErrorCodes.InvoiceNotFound);
         }
 
         // Reset and retry
@@ -342,7 +342,7 @@ public class EInvoiceAppService : KLCAppService, IEInvoiceAppService
 
         if (eInvoice.Status == EInvoiceStatus.Cancelled)
         {
-            throw new BusinessException("KLC:EInvoiceAlreadyCancelled");
+            throw new BusinessException(KLCDomainErrorCodes.EInvoiceAlreadyCancelled);
         }
 
         if (eInvoice.Status == EInvoiceStatus.Issued)

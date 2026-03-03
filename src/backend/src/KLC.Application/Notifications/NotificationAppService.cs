@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using KLC.Permissions;
 using KLC.Stations;
 using Microsoft.AspNetCore.Authorization;
+using Volo.Abp;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Users;
@@ -73,7 +74,7 @@ public class NotificationAppService : KLCAppService, INotificationAppService
 
         if (notification.UserId != userId)
         {
-            throw new UnauthorizedAccessException();
+            throw new BusinessException(KLCDomainErrorCodes.Notification.NotOwned);
         }
 
         return MapToDto(notification);
@@ -86,7 +87,7 @@ public class NotificationAppService : KLCAppService, INotificationAppService
 
         if (notification.UserId != userId)
         {
-            throw new UnauthorizedAccessException();
+            throw new BusinessException(KLCDomainErrorCodes.Notification.NotOwned);
         }
 
         notification.MarkAsRead();

@@ -4,6 +4,73 @@
     "AppName": "KLC",
     "Menu:Home": "Home",
     "Welcome": "Welcome",
-    "LongWelcomeMessage": "Welcome to the application. This is a startup project based on the ABP framework. For more information, visit abp.io."
+    "LongWelcomeMessage": "Welcome to the application. This is a startup project based on the ABP framework. For more information, visit abp.io.",
+
+    "KLC:Station:DuplicateCode": "Station code '{stationCode}' already exists.",
+    "KLC:Station:NotFound": "Station not found.",
+    "KLC:Station:InvalidLatitude": "Latitude must be between -90 and 90.",
+    "KLC:Station:InvalidLongitude": "Longitude must be between -180 and 180.",
+
+    "KLC:Connector:StationNotFound": "Station not found.",
+    "KLC:Connector:DuplicateNumber": "Connector #{connectorNumber} already exists on this station.",
+    "KLC:Connector:MaxPowerInvalid": "Max power must be greater than 0.",
+
+    "KLC:Fault:InvalidStatusTransition": "Cannot transition fault from '{currentStatus}' to '{newStatus}'.",
+    "KLC:Fault:InvalidPriority": "Priority must be between 1 and 4.",
+
+    "KLC:Tariff:InvalidBaseRate": "Base rate cannot be negative.",
+    "KLC:Tariff:InvalidTaxRate": "Tax rate must be between 0 and 100.",
+    "KLC:Tariff:InvalidEffectivePeriod": "Effective end date must be after start date.",
+
+    "KLC:Payment:SessionNotOwned": "You do not have access to this session.",
+    "KLC:Payment:SessionNotCompleted": "Session is not completed.",
+    "KLC:Payment:NotFound": "Payment not found.",
+    "KLC:Payment:NotOwned": "You do not have access to this payment.",
+    "KLC:Payment:AlreadyCompleted": "Payment has already been completed.",
+    "KLC:Payment:MethodNotOwned": "You do not have access to this payment method.",
+    "KLC:Payment:InvalidRefund": "Only completed payments can be refunded.",
+    "KLC:Payment:CannotCancel": "Completed payments cannot be cancelled.",
+
+    "KLC:Vehicle:NotOwned": "You do not have access to this vehicle.",
+
+    "KLC:Session:ConnectorNotFound": "Connector not found.",
+    "KLC:Session:ConnectorNotAvailable": "Connector #{connectorNumber} is not available (current status: {status}).",
+    "KLC:Session:AlreadyActive": "You already have an active charging session.",
+    "KLC:Session:NoDefaultVehicle": "No default vehicle found. Please add a vehicle first.",
+    "KLC:Session:NotOwned": "You do not have access to this session.",
+    "KLC:Session:InvalidStatus": "Session is not in the required status for this operation.",
+    "KLC:Session:InvalidStateTransition": "Cannot transition session from '{currentStatus}' to '{expectedStatus}'.",
+
+    "KLC:Profile:EmailAlreadyUsed": "This email address is already in use.",
+    "KLC:Profile:PhoneAlreadyUsed": "This phone number is already in use.",
+    "KLC:Profile:PasswordChangeFailed": "Password change failed: {errors}.",
+    "KLC:Profile:HasActiveSession": "Cannot deactivate account while a charging session is active.",
+
+    "KLC:StationGroup:StationAlreadyAssigned": "Station '{stationName}' is already assigned to another group.",
+    "KLC:StationGroup:StationNotInGroup": "Station is not in this group.",
+
+    "KLC:UserNameAlreadyExists": "Username '{UserName}' already exists.",
+    "KLC:EmailAlreadyExists": "Email '{Email}' already exists.",
+    "KLC:UserCreationFailed": "User creation failed: {Errors}.",
+    "KLC:CannotDeleteCurrentUser": "You cannot delete your own account.",
+    "KLC:CannotLockCurrentUser": "You cannot lock your own account.",
+    "KLC:PasswordResetFailed": "Password reset failed: {Errors}.",
+
+    "KLC:RoleNameAlreadyExists": "Role name '{Name}' already exists.",
+    "KLC:CannotUpdateStaticRole": "Static roles cannot be updated.",
+    "KLC:CannotDeleteStaticRole": "Static roles cannot be deleted.",
+    "KLC:CannotDeleteRoleWithUsers": "Cannot delete role with {UserCount} assigned users.",
+
+    "KLC:InvoiceNotFound": "Invoice not found.",
+    "KLC:EInvoiceAlreadyExists": "An e-invoice already exists for this invoice.",
+    "KLC:EInvoiceCannotRetry": "Cannot retry after {RetryCount} failed attempts.",
+    "KLC:EInvoiceAlreadyCancelled": "This e-invoice has already been cancelled.",
+
+    "KLC:Notification:NotOwned": "You do not have access to this notification.",
+
+    "KLC:Alert:InvalidAcknowledge": "Can only acknowledge new alerts.",
+    "KLC:Alert:InvalidPriority": "Priority must be between 1 and 4.",
+
+    "KLC:Wallet:InsufficientBalance": "Insufficient wallet balance."
   }
 }

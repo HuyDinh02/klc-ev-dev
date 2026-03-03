@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using KLC.Enums;
+using KLC.Ocpp;
 using KLC.Permissions;
 using KLC.Stations;
 using KLC.Tariffs;
 using KLC.Vehicles;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Logging;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Domain.Repositories;
@@ -24,6 +26,7 @@ public class SessionAppService : KLCAppService, ISessionAppService
     private readonly IRepository<Vehicle, Guid> _vehicleRepository;
     private readonly IRepository<TariffPlan, Guid> _tariffRepository;
     private readonly IRepository<MeterValue, Guid> _meterValueRepository;
+    private readonly IOcppRemoteCommandService _ocppRemoteCommandService;
 
     public SessionAppService(
         IRepository<ChargingSession, Guid> sessionRepository,
@@ -31,7 +34,8 @@ public class SessionAppService : KLCAppService, ISessionAppService
         IRepository<Connector, Guid> connectorRepository,
         IRepository<Vehicle, Guid> vehicleRepository,
         IRepository<TariffPlan, Guid> tariffRepository,
-        IRepository<MeterValue, Guid> meterValueRepository)
+        IRepository<MeterValue, Guid> meterValueRepository,
+        IOcppRemoteCommandService ocppRemoteCommandService)
     {
         _sessionRepository = sessionRepository;
         _stationRepository = stationRepository;
@@ -39,6 +43,7 @@ public class SessionAppService : KLCAppService, ISessionAppService
         _vehicleRepository = vehicleRepository;
         _tariffRepository = tariffRepository;
         _meterValueRepository = meterValueRepository;
+        _ocppRemoteCommandService = ocppRemoteCommandService;
     }
 
     public async Task<ChargingSessionDto> StartAsync(StartSessionDto input)
@@ -51,7 +56,7 @@ public class SessionAppService : KLCAppService, ISessionAppService
                  (s.Status == SessionStatus.Pending || s.Status == SessionStatus.InProgress));
         if (existingSession != null)
         {
-            throw new BusinessException("MOD_010_002");
+            throw new BusinessException(KLCDomainErrorCodes.Session.AlreadyActive);
         }
 
         // Get station and validate
@@ -61,13 +66,14 @@ public class SessionAppService : KLCAppService, ISessionAppService
 
         if (connector == null)
         {
-            throw new BusinessException("MOD_010_001");
+            throw new BusinessException(KLCDomainErrorCodes.Session.ConnectorNotFound);
         }
 
         if (connector.Status != ConnectorStatus.Available)
         {
-            throw new BusinessException("MOD_010_001")
-                .WithData("status", connector.Status);
+            throw new BusinessException(KLCDomainErrorCodes.Session.ConnectorNotAvailable)
+                .WithData("connectorNumber", input.ConnectorNumber)
+                .WithData("status", connector.Status.ToString());
         }
 
         // Get or validate vehicle
@@ -78,7 +84,7 @@ public class SessionAppService : KLCAppService, ISessionAppService
                 v => v.UserId == userId && v.IsActive && v.IsDefault);
             if (defaultVehicle == null)
             {
-                throw new BusinessException("MOD_010_003");
+                throw new BusinessException(KLCDomainErrorCodes.Session.NoDefaultVehicle);
             }
             vehicleId = defaultVehicle.Id;
         }
@@ -105,7 +111,21 @@ public class SessionAppService : KLCAppService, ISessionAppService
 
         await _sessionRepository.InsertAsync(session);
 
-        // TODO: Send RemoteStartTransaction via OCPP
+        // Send RemoteStartTransaction via OCPP
+        try
+        {
+            var accepted = await _ocppRemoteCommandService.SendRemoteStartTransactionAsync(
+                station.StationCode, input.ConnectorNumber, userId.ToString());
+
+            if (!accepted)
+            {
+                Logger.LogWarning("RemoteStartTransaction not accepted for station {StationCode}", station.StationCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to send RemoteStartTransaction to {StationCode}", station.StationCode);
+        }
 
         return await MapToDtoAsync(session);
     }
@@ -117,18 +137,36 @@ public class SessionAppService : KLCAppService, ISessionAppService
 
         if (session.UserId != userId)
         {
-            throw new BusinessException("MOD_010_005");
+            throw new BusinessException(KLCDomainErrorCodes.Session.NotOwned);
         }
 
         if (session.Status != SessionStatus.InProgress)
         {
-            throw new BusinessException("MOD_010_005");
+            throw new BusinessException(KLCDomainErrorCodes.Session.InvalidStatus);
         }
 
         session.MarkStopping();
         await _sessionRepository.UpdateAsync(session);
 
-        // TODO: Send RemoteStopTransaction via OCPP
+        // Send RemoteStopTransaction via OCPP
+        if (session.OcppTransactionId.HasValue)
+        {
+            try
+            {
+                var station = await _stationRepository.GetAsync(session.StationId);
+                var accepted = await _ocppRemoteCommandService.SendRemoteStopTransactionAsync(
+                    station.StationCode, session.OcppTransactionId.Value);
+
+                if (!accepted)
+                {
+                    Logger.LogWarning("RemoteStopTransaction not accepted for station {StationCode}", station.StationCode);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to send RemoteStopTransaction for session {SessionId}", session.Id);
+            }
+        }
 
         return await MapToDtoAsync(session);
     }

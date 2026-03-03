@@ -1,5 +1,6 @@
 using System;
 using KLC.Enums;
+using Volo.Abp;
 using Volo.Abp.Domain.Entities.Auditing;
 
 namespace KLC.Payments;
@@ -82,7 +83,7 @@ public class PaymentTransaction : FullAuditedEntity<Guid>
 
     private static string GenerateReferenceCode()
     {
-        return $"KC{DateTime.UtcNow:yyyyMMddHHmmss}{Guid.NewGuid().ToString("N")[..6].ToUpper()}";
+        return $"KLC{DateTime.UtcNow:yyyyMMddHHmmss}{Guid.NewGuid().ToString("N")[..6].ToUpper()}";
     }
 
     public void MarkProcessing(string? gatewayTransactionId = null)
@@ -107,21 +108,21 @@ public class PaymentTransaction : FullAuditedEntity<Guid>
     public void MarkRefunded()
     {
         if (Status != PaymentStatus.Completed)
-            throw new InvalidOperationException("Only completed payments can be refunded");
+            throw new BusinessException(KLCDomainErrorCodes.Payment.InvalidRefund);
         Status = PaymentStatus.Refunded;
     }
 
     public void MarkCancelled()
     {
         if (Status == PaymentStatus.Completed)
-            throw new InvalidOperationException("Completed payments cannot be cancelled");
+            throw new BusinessException(KLCDomainErrorCodes.Payment.CannotCancel);
         Status = PaymentStatus.Cancelled;
     }
 
     public void UpdateAmount(decimal amount)
     {
         if (Status != PaymentStatus.Pending)
-            throw new InvalidOperationException("Can only update amount for pending payments");
+            throw new BusinessException(KLCDomainErrorCodes.Payment.CannotCancel);
         Amount = amount;
     }
 }

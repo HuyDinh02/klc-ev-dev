@@ -87,21 +87,21 @@ public class TariffPlan : FullAuditedAggregateRoot<Guid>
     public void SetBaseRate(decimal baseRatePerKwh)
     {
         if (baseRatePerKwh < 0)
-            throw new ArgumentException("Base rate cannot be negative", nameof(baseRatePerKwh));
+            throw new BusinessException(KLCDomainErrorCodes.Tariff.InvalidBaseRate);
         BaseRatePerKwh = baseRatePerKwh;
     }
 
     public void SetTaxRate(decimal taxRatePercent)
     {
         if (taxRatePercent < 0 || taxRatePercent > 100)
-            throw new ArgumentException("Tax rate must be between 0 and 100", nameof(taxRatePercent));
+            throw new BusinessException(KLCDomainErrorCodes.Tariff.InvalidTaxRate);
         TaxRatePercent = taxRatePercent;
     }
 
     public void SetEffectivePeriod(DateTime effectiveFrom, DateTime? effectiveTo)
     {
         if (effectiveTo.HasValue && effectiveTo < effectiveFrom)
-            throw new ArgumentException("EffectiveTo must be after EffectiveFrom");
+            throw new BusinessException(KLCDomainErrorCodes.Tariff.InvalidEffectivePeriod);
         EffectiveFrom = effectiveFrom;
         EffectiveTo = effectiveTo;
     }

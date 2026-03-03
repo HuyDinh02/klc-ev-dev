@@ -1,5 +1,6 @@
 using System;
 using KLC.Enums;
+using Volo.Abp;
 using Volo.Abp.Domain.Entities.Auditing;
 
 namespace KLC.Payments;
@@ -127,7 +128,8 @@ public class EInvoice : FullAuditedEntity<Guid>
     public void ResetForRetry()
     {
         if (!CanRetry())
-            throw new InvalidOperationException("Cannot retry after 3 failed attempts");
+            throw new BusinessException(KLCDomainErrorCodes.EInvoiceCannotRetry)
+                .WithData("RetryCount", RetryCount);
         Status = EInvoiceStatus.Pending;
         ErrorMessage = null;
     }

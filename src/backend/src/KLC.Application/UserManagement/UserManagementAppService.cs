@@ -106,7 +106,7 @@ public class UserManagementAppService : KLCAppService, IUserManagementAppService
             _userManager.NormalizeName(input.UserName));
         if (existingByUsername != null)
         {
-            throw new BusinessException("KLC:UserNameAlreadyExists")
+            throw new BusinessException(KLCDomainErrorCodes.UserNameAlreadyExists)
                 .WithData("UserName", input.UserName);
         }
 
@@ -115,7 +115,7 @@ public class UserManagementAppService : KLCAppService, IUserManagementAppService
             _userManager.NormalizeEmail(input.Email));
         if (existingByEmail != null)
         {
-            throw new BusinessException("KLC:EmailAlreadyExists")
+            throw new BusinessException(KLCDomainErrorCodes.EmailAlreadyExists)
                 .WithData("Email", input.Email);
         }
 
@@ -141,7 +141,7 @@ public class UserManagementAppService : KLCAppService, IUserManagementAppService
         var result = await _userManager.CreateAsync(user, input.Password);
         if (!result.Succeeded)
         {
-            throw new BusinessException("KLC:UserCreationFailed")
+            throw new BusinessException(KLCDomainErrorCodes.UserCreationFailed)
                 .WithData("Errors", string.Join(", ", result.Errors.Select(e => e.Description)));
         }
 
@@ -166,7 +166,7 @@ public class UserManagementAppService : KLCAppService, IUserManagementAppService
                 _userManager.NormalizeName(input.UserName));
             if (existingByUsername != null && existingByUsername.Id != id)
             {
-                throw new BusinessException("KLC:UserNameAlreadyExists")
+                throw new BusinessException(KLCDomainErrorCodes.UserNameAlreadyExists)
                     .WithData("UserName", input.UserName);
             }
         }
@@ -178,7 +178,7 @@ public class UserManagementAppService : KLCAppService, IUserManagementAppService
                 _userManager.NormalizeEmail(input.Email));
             if (existingByEmail != null && existingByEmail.Id != id)
             {
-                throw new BusinessException("KLC:EmailAlreadyExists")
+                throw new BusinessException(KLCDomainErrorCodes.EmailAlreadyExists)
                     .WithData("Email", input.Email);
             }
         }
@@ -209,7 +209,7 @@ public class UserManagementAppService : KLCAppService, IUserManagementAppService
         // Prevent deleting the current user
         if (CurrentUser.Id == id)
         {
-            throw new BusinessException("KLC:CannotDeleteCurrentUser");
+            throw new BusinessException(KLCDomainErrorCodes.CannotDeleteCurrentUser);
         }
 
         await _userManager.DeleteAsync(user);
@@ -290,8 +290,11 @@ public class UserManagementAppService : KLCAppService, IUserManagementAppService
 
         if (CurrentUser.Id == userId)
         {
-            throw new BusinessException("KLC:CannotLockCurrentUser");
+            throw new BusinessException(KLCDomainErrorCodes.CannotLockCurrentUser);
         }
+
+        // Ensure lockout is enabled before setting end date
+        await _userManager.SetLockoutEnabledAsync(user, true);
 
         var lockoutEnd = input.LockDurationSeconds == 0
             ? DateTimeOffset.MaxValue
@@ -318,7 +321,7 @@ public class UserManagementAppService : KLCAppService, IUserManagementAppService
 
         if (!result.Succeeded)
         {
-            throw new BusinessException("KLC:PasswordResetFailed")
+            throw new BusinessException(KLCDomainErrorCodes.PasswordResetFailed)
                 .WithData("Errors", string.Join(", ", result.Errors.Select(e => e.Description)));
         }
     }

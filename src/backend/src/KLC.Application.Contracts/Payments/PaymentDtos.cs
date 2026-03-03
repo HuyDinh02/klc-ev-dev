@@ -61,6 +61,8 @@ public class GetPaymentListDto
     public DateTime? FromDate { get; set; }
     public DateTime? ToDate { get; set; }
     public Guid? Cursor { get; set; }
+
+    [Range(1, 100)]
     public int MaxResultCount { get; set; } = 20;
 }
 
@@ -112,8 +114,13 @@ public class InvoiceDto
 public class PaymentCallbackDto
 {
     public string? TransactionId { get; set; }
-    public string? ReferenceCode { get; set; }
-    public string? Status { get; set; }
+
+    [Required]
+    public string ReferenceCode { get; set; } = string.Empty;
+
+    [Required]
+    public string Status { get; set; } = string.Empty;
+
     public string? ErrorCode { get; set; }
     public string? Signature { get; set; }
     public string? RawData { get; set; }

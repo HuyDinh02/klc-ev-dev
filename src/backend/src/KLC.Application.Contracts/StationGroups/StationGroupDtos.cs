@@ -76,5 +76,7 @@ public class GetStationGroupListDto
     public string? Region { get; set; }
     public bool? IsActive { get; set; }
     public Guid? Cursor { get; set; }
+
+    [Range(1, 100)]
     public int MaxResultCount { get; set; } = 20;
 }

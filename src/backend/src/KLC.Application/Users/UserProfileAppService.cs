@@ -92,7 +92,7 @@ public class UserProfileAppService : KLCAppService, IUserProfileAppService
             u => u.PhoneNumber == input.PhoneNumber && u.IdentityUserId != userId);
         if (existing != null)
         {
-            throw new BusinessException("MOD_011_002");
+            throw new BusinessException(KLCDomainErrorCodes.Profile.PhoneAlreadyUsed);
         }
 
         var appUser = await GetOrCreateAppUserAsync(userId);
@@ -122,7 +122,7 @@ public class UserProfileAppService : KLCAppService, IUserProfileAppService
             u => u.Email == input.Email && u.IdentityUserId != userId);
         if (existing != null)
         {
-            throw new BusinessException("MOD_011_001");
+            throw new BusinessException(KLCDomainErrorCodes.Profile.EmailAlreadyUsed);
         }
 
         var appUser = await GetOrCreateAppUserAsync(userId);
@@ -156,7 +156,7 @@ public class UserProfileAppService : KLCAppService, IUserProfileAppService
         if (!result.Succeeded)
         {
             var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-            throw new BusinessException("MOD_011_004")
+            throw new BusinessException(KLCDomainErrorCodes.Profile.PasswordChangeFailed)
                 .WithData("errors", errors);
         }
     }
@@ -176,8 +176,7 @@ public class UserProfileAppService : KLCAppService, IUserProfileAppService
             s => s.UserId == userId && s.Status == SessionStatus.InProgress);
         if (activeSession != null)
         {
-            throw new BusinessException("MOD_011_005")
-                .WithData("reason", "Active charging session exists");
+            throw new BusinessException(KLCDomainErrorCodes.Profile.HasActiveSession);
         }
 
         var appUser = await GetOrCreateAppUserAsync(userId);

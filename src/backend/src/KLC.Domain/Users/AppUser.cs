@@ -1,4 +1,5 @@
 using System;
+using Volo.Abp;
 using Volo.Abp.Domain.Entities.Auditing;
 
 namespace KLC.Users;
@@ -177,7 +178,7 @@ public class AppUser : FullAuditedEntity<Guid>
         if (amount <= 0)
             throw new ArgumentException("Amount must be positive", nameof(amount));
         if (amount > WalletBalance)
-            throw new InvalidOperationException("Insufficient wallet balance");
+            throw new BusinessException(KLCDomainErrorCodes.Wallet.InsufficientBalance);
         WalletBalance -= amount;
     }
 }

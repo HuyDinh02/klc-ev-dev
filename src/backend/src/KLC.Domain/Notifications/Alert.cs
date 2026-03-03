@@ -1,5 +1,6 @@
 using System;
 using KLC.Enums;
+using Volo.Abp;
 using Volo.Abp.Domain.Entities.Auditing;
 
 namespace KLC.Notifications;
@@ -111,7 +112,7 @@ public class Alert : CreationAuditedEntity<Guid>
     public void Acknowledge(Guid userId)
     {
         if (Status != AlertStatus.New)
-            throw new InvalidOperationException("Can only acknowledge new alerts");
+            throw new BusinessException(KLCDomainErrorCodes.Alert.InvalidAcknowledge);
         Status = AlertStatus.Acknowledged;
         AcknowledgedAt = DateTime.UtcNow;
         AcknowledgedByUserId = userId;
@@ -134,7 +135,7 @@ public class Alert : CreationAuditedEntity<Guid>
     public void SetPriority(int priority)
     {
         if (priority < 1 || priority > 4)
-            throw new ArgumentException("Priority must be between 1 and 4", nameof(priority));
+            throw new BusinessException(KLCDomainErrorCodes.Alert.InvalidPriority);
         Priority = priority;
     }
 }

@@ -1,5 +1,6 @@
 using System;
 using KLC.Enums;
+using Volo.Abp;
 using Volo.Abp.Domain.Entities.Auditing;
 
 namespace KLC.Faults;
@@ -115,7 +116,9 @@ public class Fault : FullAuditedEntity<Guid>
     public void StartInvestigation()
     {
         if (Status != FaultStatus.Open)
-            throw new InvalidOperationException("Can only investigate open faults");
+            throw new BusinessException(KLCDomainErrorCodes.Fault.InvalidStatusTransition)
+                .WithData("currentStatus", Status.ToString())
+                .WithData("newStatus", nameof(FaultStatus.Investigating));
         Status = FaultStatus.Investigating;
     }
 
@@ -137,7 +140,9 @@ public class Fault : FullAuditedEntity<Guid>
     public void Reopen()
     {
         if (Status != FaultStatus.Resolved && Status != FaultStatus.Closed)
-            throw new InvalidOperationException("Can only reopen resolved or closed faults");
+            throw new BusinessException(KLCDomainErrorCodes.Fault.InvalidStatusTransition)
+                .WithData("currentStatus", Status.ToString())
+                .WithData("newStatus", nameof(FaultStatus.Open));
         Status = FaultStatus.Open;
         ResolvedAt = null;
         ResolvedByUserId = null;
@@ -147,7 +152,7 @@ public class Fault : FullAuditedEntity<Guid>
     public void SetPriority(int priority)
     {
         if (priority < 1 || priority > 4)
-            throw new ArgumentException("Priority must be between 1 and 4", nameof(priority));
+            throw new BusinessException(KLCDomainErrorCodes.Fault.InvalidPriority);
         Priority = priority;
     }
 

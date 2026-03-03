@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using KLC.Enums;
+using Volo.Abp;
 using Volo.Abp.Domain.Entities.Auditing;
 
 namespace KLC.Sessions;
@@ -127,7 +128,9 @@ public class ChargingSession : FullAuditedAggregateRoot<Guid>
     public void MarkStarting()
     {
         if (Status != SessionStatus.Pending)
-            throw new InvalidOperationException("Session must be in Pending status to start");
+            throw new BusinessException(KLCDomainErrorCodes.Session.InvalidStateTransition)
+                .WithData("currentStatus", Status.ToString())
+                .WithData("expectedStatus", nameof(SessionStatus.Pending));
         Status = SessionStatus.Starting;
     }
 
@@ -142,21 +145,27 @@ public class ChargingSession : FullAuditedAggregateRoot<Guid>
     public void Suspend()
     {
         if (Status != SessionStatus.InProgress)
-            throw new InvalidOperationException("Session must be in progress to suspend");
+            throw new BusinessException(KLCDomainErrorCodes.Session.InvalidStateTransition)
+                .WithData("currentStatus", Status.ToString())
+                .WithData("expectedStatus", nameof(SessionStatus.InProgress));
         Status = SessionStatus.Suspended;
     }
 
     public void Resume()
     {
         if (Status != SessionStatus.Suspended)
-            throw new InvalidOperationException("Session must be suspended to resume");
+            throw new BusinessException(KLCDomainErrorCodes.Session.InvalidStateTransition)
+                .WithData("currentStatus", Status.ToString())
+                .WithData("expectedStatus", nameof(SessionStatus.Suspended));
         Status = SessionStatus.InProgress;
     }
 
     public void MarkStopping()
     {
         if (Status != SessionStatus.InProgress && Status != SessionStatus.Suspended)
-            throw new InvalidOperationException("Session must be in progress or suspended to stop");
+            throw new BusinessException(KLCDomainErrorCodes.Session.InvalidStateTransition)
+                .WithData("currentStatus", Status.ToString())
+                .WithData("expectedStatus", $"{nameof(SessionStatus.InProgress)}/{nameof(SessionStatus.Suspended)}");
         Status = SessionStatus.Stopping;
     }
 

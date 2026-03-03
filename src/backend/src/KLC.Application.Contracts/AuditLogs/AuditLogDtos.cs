@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace KLC.AuditLogs;
 
@@ -63,6 +64,8 @@ public class GetAuditLogListDto
     public bool? HasException { get; set; }
     public int? HttpStatusCode { get; set; }
     public Guid? Cursor { get; set; }
+
+    [Range(1, 100)]
     public int MaxResultCount { get; set; } = 50;
 }
 

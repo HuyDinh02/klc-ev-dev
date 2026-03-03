@@ -51,9 +51,9 @@ public class FaultAppService : KLCAppService, IFaultAppService
         // Validate status transition
         if (fault.Status == FaultStatus.Resolved && input.Status != FaultStatus.Resolved)
         {
-            throw new BusinessException("MOD_005_002")
-                .WithData("currentStatus", fault.Status)
-                .WithData("newStatus", input.Status);
+            throw new BusinessException(KLCDomainErrorCodes.Fault.InvalidStatusTransition)
+                .WithData("currentStatus", fault.Status.ToString())
+                .WithData("newStatus", input.Status.ToString());
         }
 
         fault.UpdateStatus(input.Status, input.ResolutionNotes);

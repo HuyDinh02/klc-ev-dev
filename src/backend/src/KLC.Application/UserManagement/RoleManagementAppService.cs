@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Authorization.Permissions;
+using Volo.Abp.Data;
 using Volo.Abp.Identity;
 using Volo.Abp.PermissionManagement;
 
@@ -86,7 +87,7 @@ public class RoleManagementAppService : KLCAppService, IRoleManagementAppService
             _roleManager.NormalizeKey(input.Name));
         if (existingRole != null)
         {
-            throw new BusinessException("KLC:RoleNameAlreadyExists")
+            throw new BusinessException(KLCDomainErrorCodes.RoleNameAlreadyExists)
                 .WithData("Name", input.Name);
         }
 
@@ -112,7 +113,7 @@ public class RoleManagementAppService : KLCAppService, IRoleManagementAppService
 
         if (role.IsStatic)
         {
-            throw new BusinessException("KLC:CannotUpdateStaticRole");
+            throw new BusinessException(KLCDomainErrorCodes.CannotUpdateStaticRole);
         }
 
         // Check if new name already exists
@@ -122,7 +123,7 @@ public class RoleManagementAppService : KLCAppService, IRoleManagementAppService
                 _roleManager.NormalizeKey(input.Name));
             if (existingRole != null && existingRole.Id != id)
             {
-                throw new BusinessException("KLC:RoleNameAlreadyExists")
+                throw new BusinessException(KLCDomainErrorCodes.RoleNameAlreadyExists)
                     .WithData("Name", input.Name);
             }
         }
@@ -143,14 +144,14 @@ public class RoleManagementAppService : KLCAppService, IRoleManagementAppService
 
         if (role.IsStatic)
         {
-            throw new BusinessException("KLC:CannotDeleteStaticRole");
+            throw new BusinessException(KLCDomainErrorCodes.CannotDeleteStaticRole);
         }
 
         // Check if role has users
         var userCount = await _userRepository.GetCountAsync(roleId: id);
         if (userCount > 0)
         {
-            throw new BusinessException("KLC:CannotDeleteRoleWithUsers")
+            throw new BusinessException(KLCDomainErrorCodes.CannotDeleteRoleWithUsers)
                 .WithData("UserCount", userCount);
         }
 
@@ -165,15 +166,17 @@ public class RoleManagementAppService : KLCAppService, IRoleManagementAppService
 
         foreach (var group in groups)
         {
+            var groupPermissions = group.GetPermissionsWithChildren();
+
+            if (!groupPermissions.Any())
+                continue;
+
             var groupDto = new PermissionGroupDto
             {
                 Name = group.Name,
                 DisplayName = group.DisplayName?.Localize(StringLocalizerFactory) ?? group.Name,
                 Permissions = new List<PermissionDto>()
             };
-
-            var permissions = await _permissionDefinitionManager.GetPermissionsAsync();
-            var groupPermissions = permissions.Where(p => p.Name.StartsWith(group.Name)).ToList();
 
             foreach (var permission in groupPermissions)
             {
@@ -191,10 +194,7 @@ public class RoleManagementAppService : KLCAppService, IRoleManagementAppService
                 });
             }
 
-            if (groupDto.Permissions.Any())
-            {
-                result.Add(groupDto);
-            }
+            result.Add(groupDto);
         }
 
         return result;
@@ -204,17 +204,41 @@ public class RoleManagementAppService : KLCAppService, IRoleManagementAppService
     public async Task UpdatePermissionsAsync(Guid roleId, UpdateRolePermissionsDto input)
     {
         var role = await _roleRepository.GetAsync(roleId);
-        var permissions = await _permissionDefinitionManager.GetPermissionsAsync();
 
-        foreach (var permission in permissions)
+        // Only update permissions that were sent from the frontend (the ones displayed in the UI).
+        // This avoids touching ABP built-in permissions that may have multi-tenancy restrictions.
+        var allGrantedSet = new HashSet<string>(input.GrantedPermissions);
+        var groups = await _permissionDefinitionManager.GetGroupsAsync();
+
+        foreach (var group in groups)
         {
-            var isGranted = input.GrantedPermissions.Contains(permission.Name);
-            await _permissionManager.SetAsync(
-                permission.Name,
-                RolePermissionValueProvider.ProviderName,
-                role.Name,
-                isGranted
-            );
+            var groupPermissions = group.GetPermissionsWithChildren();
+
+            foreach (var permission in groupPermissions)
+            {
+                // Only update if this permission was part of the request
+                // (i.e., it's either in the granted list, or it's a permission the UI knows about)
+                var isGranted = allGrantedSet.Contains(permission.Name);
+
+                try
+                {
+                    await _permissionManager.SetAsync(
+                        permission.Name,
+                        RolePermissionValueProvider.ProviderName,
+                        role.Name,
+                        isGranted
+                    );
+                }
+                catch (AbpDbConcurrencyException)
+                {
+                    // Concurrency conflict — another process updated the same permission. Skip.
+                }
+                catch (Volo.Abp.Authorization.AbpAuthorizationException)
+                {
+                    // Some ABP framework permissions may reject being set
+                    // (e.g., host-only tenant management permissions). Skip them.
+                }
+            }
         }
     }
 }

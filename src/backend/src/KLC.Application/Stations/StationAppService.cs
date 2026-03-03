@@ -30,7 +30,7 @@ public class StationAppService : KLCAppService, IStationAppService
         var existingStation = await _stationRepository.FirstOrDefaultAsync(s => s.StationCode == input.StationCode);
         if (existingStation != null)
         {
-            throw new BusinessException("MOD_001_001")
+            throw new BusinessException(KLCDomainErrorCodes.Station.DuplicateCode)
                 .WithData("stationCode", input.StationCode);
         }
 
@@ -73,8 +73,7 @@ public class StationAppService : KLCAppService, IStationAppService
 
         if (station == null)
         {
-            throw new BusinessException("MOD_001_002")
-                .WithData("id", id);
+            throw new BusinessException(KLCDomainErrorCodes.Station.NotFound);
         }
 
         return _mapper.ToDto(station);
@@ -150,8 +149,7 @@ public class StationAppService : KLCAppService, IStationAppService
 
         if (station == null)
         {
-            throw new BusinessException("MOD_001_002")
-                .WithData("id", id);
+            throw new BusinessException(KLCDomainErrorCodes.Station.NotFound);
         }
 
         // Check for active sessions would go here (MOD_001_003)

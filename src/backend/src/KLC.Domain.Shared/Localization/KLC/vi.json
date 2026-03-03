@@ -4,6 +4,73 @@
     "AppName": "KLC",
     "Menu:Home": "Trang chủ",
     "Welcome": "Chào mừng bạn",
-    "LongWelcomeMessage": "Chào mừng bạn đến ứng dụng. Đây là một dự án khởi nghiệp dựa trên khung ABP. Để biết thêm thông tin, hãy truy cập abp.io."
+    "LongWelcomeMessage": "Chào mừng bạn đến ứng dụng. Đây là một dự án khởi nghiệp dựa trên khung ABP. Để biết thêm thông tin, hãy truy cập abp.io.",
+
+    "KLC:Station:DuplicateCode": "Mã trạm sạc '{stationCode}' đã tồn tại.",
+    "KLC:Station:NotFound": "Không tìm thấy trạm sạc.",
+    "KLC:Station:InvalidLatitude": "Vĩ độ phải nằm trong khoảng -90 đến 90.",
+    "KLC:Station:InvalidLongitude": "Kinh độ phải nằm trong khoảng -180 đến 180.",
+
+    "KLC:Connector:StationNotFound": "Không tìm thấy trạm sạc.",
+    "KLC:Connector:DuplicateNumber": "Đầu sạc #{connectorNumber} đã tồn tại trên trạm này.",
+    "KLC:Connector:MaxPowerInvalid": "Công suất tối đa phải lớn hơn 0.",
+
+    "KLC:Fault:InvalidStatusTransition": "Không thể chuyển trạng thái lỗi từ '{currentStatus}' sang '{newStatus}'.",
+    "KLC:Fault:InvalidPriority": "Mức ưu tiên phải nằm trong khoảng 1 đến 4.",
+
+    "KLC:Tariff:InvalidBaseRate": "Giá cơ bản không được âm.",
+    "KLC:Tariff:InvalidTaxRate": "Thuế suất phải nằm trong khoảng 0 đến 100.",
+    "KLC:Tariff:InvalidEffectivePeriod": "Ngày kết thúc hiệu lực phải sau ngày bắt đầu.",
+
+    "KLC:Payment:SessionNotOwned": "Bạn không có quyền truy cập phiên sạc này.",
+    "KLC:Payment:SessionNotCompleted": "Phiên sạc chưa hoàn thành.",
+    "KLC:Payment:NotFound": "Không tìm thấy giao dịch thanh toán.",
+    "KLC:Payment:NotOwned": "Bạn không có quyền truy cập giao dịch thanh toán này.",
+    "KLC:Payment:AlreadyCompleted": "Giao dịch thanh toán đã hoàn thành.",
+    "KLC:Payment:MethodNotOwned": "Bạn không có quyền truy cập phương thức thanh toán này.",
+    "KLC:Payment:InvalidRefund": "Chỉ có thể hoàn tiền cho giao dịch đã hoàn thành.",
+    "KLC:Payment:CannotCancel": "Không thể hủy giao dịch đã hoàn thành.",
+
+    "KLC:Vehicle:NotOwned": "Bạn không có quyền truy cập xe này.",
+
+    "KLC:Session:ConnectorNotFound": "Không tìm thấy đầu sạc.",
+    "KLC:Session:ConnectorNotAvailable": "Đầu sạc #{connectorNumber} không khả dụng (trạng thái: {status}).",
+    "KLC:Session:AlreadyActive": "Bạn đã có một phiên sạc đang hoạt động.",
+    "KLC:Session:NoDefaultVehicle": "Không tìm thấy xe mặc định. Vui lòng thêm xe trước.",
+    "KLC:Session:NotOwned": "Bạn không có quyền truy cập phiên sạc này.",
+    "KLC:Session:InvalidStatus": "Phiên sạc không ở trạng thái phù hợp cho thao tác này.",
+    "KLC:Session:InvalidStateTransition": "Không thể chuyển phiên sạc từ trạng thái '{currentStatus}' sang '{expectedStatus}'.",
+
+    "KLC:Profile:EmailAlreadyUsed": "Địa chỉ email này đã được sử dụng.",
+    "KLC:Profile:PhoneAlreadyUsed": "Số điện thoại này đã được sử dụng.",
+    "KLC:Profile:PasswordChangeFailed": "Đổi mật khẩu thất bại: {errors}.",
+    "KLC:Profile:HasActiveSession": "Không thể vô hiệu hóa tài khoản khi đang có phiên sạc hoạt động.",
+
+    "KLC:StationGroup:StationAlreadyAssigned": "Trạm sạc '{stationName}' đã được gán cho nhóm khác.",
+    "KLC:StationGroup:StationNotInGroup": "Trạm sạc không thuộc nhóm này.",
+
+    "KLC:UserNameAlreadyExists": "Tên đăng nhập '{UserName}' đã tồn tại.",
+    "KLC:EmailAlreadyExists": "Email '{Email}' đã tồn tại.",
+    "KLC:UserCreationFailed": "Tạo người dùng thất bại: {Errors}.",
+    "KLC:CannotDeleteCurrentUser": "Bạn không thể xóa tài khoản của chính mình.",
+    "KLC:CannotLockCurrentUser": "Bạn không thể khóa tài khoản của chính mình.",
+    "KLC:PasswordResetFailed": "Đặt lại mật khẩu thất bại: {Errors}.",
+
+    "KLC:RoleNameAlreadyExists": "Tên vai trò '{Name}' đã tồn tại.",
+    "KLC:CannotUpdateStaticRole": "Không thể cập nhật vai trò tĩnh.",
+    "KLC:CannotDeleteStaticRole": "Không thể xóa vai trò tĩnh.",
+    "KLC:CannotDeleteRoleWithUsers": "Không thể xóa vai trò đang có {UserCount} người dùng.",
+
+    "KLC:InvoiceNotFound": "Không tìm thấy hóa đơn.",
+    "KLC:EInvoiceAlreadyExists": "Hóa đơn điện tử đã tồn tại cho hóa đơn này.",
+    "KLC:EInvoiceCannotRetry": "Không thể thử lại sau {RetryCount} lần thất bại.",
+    "KLC:EInvoiceAlreadyCancelled": "Hóa đơn điện tử này đã bị hủy.",
+
+    "KLC:Notification:NotOwned": "Bạn không có quyền truy cập thông báo này.",
+
+    "KLC:Alert:InvalidAcknowledge": "Chỉ có thể xác nhận cảnh báo mới.",
+    "KLC:Alert:InvalidPriority": "Mức ưu tiên phải nằm trong khoảng 1 đến 4.",
+
+    "KLC:Wallet:InsufficientBalance": "Số dư ví không đủ."
   }
 }

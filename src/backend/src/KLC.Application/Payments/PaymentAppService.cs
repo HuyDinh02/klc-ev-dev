@@ -45,14 +45,13 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
         // Validate session belongs to user
         if (session.UserId != userId)
         {
-            throw new BusinessException("MOD_008_001");
+            throw new BusinessException(KLCDomainErrorCodes.Payment.SessionNotOwned);
         }
 
         // Check session is completed
         if (session.Status != SessionStatus.Completed)
         {
-            throw new BusinessException("MOD_008_001")
-                .WithData("reason", "Session not completed");
+            throw new BusinessException(KLCDomainErrorCodes.Payment.SessionNotCompleted);
         }
 
         // Check for existing payment
@@ -64,7 +63,7 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
         {
             if (existingPayment.Status == PaymentStatus.Completed)
             {
-                throw new BusinessException("MOD_008_005");
+                throw new BusinessException(KLCDomainErrorCodes.Payment.AlreadyCompleted);
             }
             return new PaymentResultDto
             {
@@ -112,7 +111,7 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
         // Check ownership (unless admin)
         if (payment.UserId != userId && !await AuthorizationService.IsGrantedAsync(KLCPermissions.Payments.ViewAll))
         {
-            throw new BusinessException("MOD_008_001");
+            throw new BusinessException(KLCDomainErrorCodes.Payment.NotOwned);
         }
 
         var session = await _sessionRepository.GetAsync(payment.SessionId);
@@ -244,7 +243,7 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
 
         if (method.UserId != userId)
         {
-            throw new BusinessException("MOD_008_004");
+            throw new BusinessException(KLCDomainErrorCodes.Payment.MethodNotOwned);
         }
 
         method.Deactivate();
@@ -258,7 +257,7 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
 
         if (method.UserId != userId)
         {
-            throw new BusinessException("MOD_008_004");
+            throw new BusinessException(KLCDomainErrorCodes.Payment.MethodNotOwned);
         }
 
         // Remove default from other methods
@@ -308,7 +307,7 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
 
         if (payment == null)
         {
-            throw new BusinessException("MOD_008_001")
+            throw new BusinessException(KLCDomainErrorCodes.Payment.NotFound)
                 .WithData("referenceCode", callback.ReferenceCode);
         }
 

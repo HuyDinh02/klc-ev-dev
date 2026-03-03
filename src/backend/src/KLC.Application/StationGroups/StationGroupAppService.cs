@@ -155,9 +155,8 @@ public class StationGroupAppService : KLCAppService, IStationGroupAppService
         // Check if station is already in a group
         if (station.StationGroupId.HasValue && station.StationGroupId.Value != groupId)
         {
-            throw new BusinessException("MOD_013_001")
-                .WithData("stationName", station.Name)
-                .WithData("currentGroup", station.StationGroupId);
+            throw new BusinessException(KLCDomainErrorCodes.StationGroup.StationAlreadyAssigned)
+                .WithData("stationName", station.Name);
         }
 
         station.SetStationGroup(groupId);
@@ -171,9 +170,7 @@ public class StationGroupAppService : KLCAppService, IStationGroupAppService
 
         if (station.StationGroupId != groupId)
         {
-            throw new BusinessException("MOD_013_002")
-                .WithData("stationId", stationId)
-                .WithData("groupId", groupId);
+            throw new BusinessException(KLCDomainErrorCodes.StationGroup.StationNotInGroup);
         }
 
         station.SetStationGroup(null);

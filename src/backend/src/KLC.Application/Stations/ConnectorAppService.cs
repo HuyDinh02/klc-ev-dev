@@ -33,14 +33,13 @@ public class ConnectorAppService : KLCAppService, IConnectorAppService
 
         if (station == null)
         {
-            throw new BusinessException("MOD_002_001")
-                .WithData("stationId", stationId);
+            throw new BusinessException(KLCDomainErrorCodes.Connector.StationNotFound);
         }
 
         // Check for duplicate connector number
         if (station.Connectors.Any(c => c.ConnectorNumber == input.ConnectorNumber))
         {
-            throw new BusinessException("MOD_002_002")
+            throw new BusinessException(KLCDomainErrorCodes.Connector.DuplicateNumber)
                 .WithData("connectorNumber", input.ConnectorNumber);
         }
 
@@ -82,8 +81,7 @@ public class ConnectorAppService : KLCAppService, IConnectorAppService
 
         if (station == null)
         {
-            throw new BusinessException("MOD_002_001")
-                .WithData("stationId", stationId);
+            throw new BusinessException(KLCDomainErrorCodes.Connector.StationNotFound);
         }
 
         return station.Connectors

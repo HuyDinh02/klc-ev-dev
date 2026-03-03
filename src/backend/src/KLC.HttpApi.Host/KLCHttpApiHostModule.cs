@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Extensions.DependencyInjection;
@@ -12,6 +13,7 @@ using KLC.EntityFrameworkCore;
 using KLC.Hubs;
 using KLC.MultiTenancy;
 using KLC.Ocpp;
+using Volo.Abp.AspNetCore.ExceptionHandling;
 using Volo.Abp.AspNetCore.Mvc.UI.Theme.LeptonXLite;
 using Volo.Abp.AspNetCore.Mvc.UI.Theme.LeptonXLite.Bundling;
 using Microsoft.OpenApi;
@@ -88,6 +90,75 @@ public class KLCHttpApiHostModule : AbpModule
         ConfigureSwaggerServices(context, configuration);
         ConfigureOcppServices(context);
         ConfigureSignalR(context);
+        ConfigureExceptionHttpStatusCodes();
+    }
+
+    private void ConfigureExceptionHttpStatusCodes()
+    {
+        Configure<AbpExceptionHttpStatusCodeOptions>(options =>
+        {
+            // 404 Not Found
+            options.Map(KLCDomainErrorCodes.Station.NotFound, HttpStatusCode.NotFound);
+            options.Map(KLCDomainErrorCodes.Connector.StationNotFound, HttpStatusCode.NotFound);
+            options.Map(KLCDomainErrorCodes.Session.ConnectorNotFound, HttpStatusCode.NotFound);
+            options.Map(KLCDomainErrorCodes.Payment.NotFound, HttpStatusCode.NotFound);
+            options.Map(KLCDomainErrorCodes.InvoiceNotFound, HttpStatusCode.NotFound);
+            options.Map(KLCDomainErrorCodes.Notification.NotOwned, HttpStatusCode.NotFound);
+
+            // 409 Conflict (duplicate / already exists)
+            options.Map(KLCDomainErrorCodes.Station.DuplicateCode, HttpStatusCode.Conflict);
+            options.Map(KLCDomainErrorCodes.Connector.DuplicateNumber, HttpStatusCode.Conflict);
+            options.Map(KLCDomainErrorCodes.Session.AlreadyActive, HttpStatusCode.Conflict);
+            options.Map(KLCDomainErrorCodes.Payment.AlreadyCompleted, HttpStatusCode.Conflict);
+            options.Map(KLCDomainErrorCodes.EInvoiceAlreadyExists, HttpStatusCode.Conflict);
+            options.Map(KLCDomainErrorCodes.EInvoiceAlreadyCancelled, HttpStatusCode.Conflict);
+            options.Map(KLCDomainErrorCodes.UserNameAlreadyExists, HttpStatusCode.Conflict);
+            options.Map(KLCDomainErrorCodes.EmailAlreadyExists, HttpStatusCode.Conflict);
+            options.Map(KLCDomainErrorCodes.RoleNameAlreadyExists, HttpStatusCode.Conflict);
+            options.Map(KLCDomainErrorCodes.CannotDeleteRoleWithUsers, HttpStatusCode.Conflict);
+            options.Map(KLCDomainErrorCodes.Profile.EmailAlreadyUsed, HttpStatusCode.Conflict);
+            options.Map(KLCDomainErrorCodes.Profile.PhoneAlreadyUsed, HttpStatusCode.Conflict);
+            options.Map(KLCDomainErrorCodes.Profile.HasActiveSession, HttpStatusCode.Conflict);
+            options.Map(KLCDomainErrorCodes.StationGroup.StationAlreadyAssigned, HttpStatusCode.Conflict);
+
+            // 422 Unprocessable Entity (invalid state transition / business rule)
+            options.Map(KLCDomainErrorCodes.Fault.InvalidStatusTransition, HttpStatusCode.UnprocessableEntity);
+            options.Map(KLCDomainErrorCodes.Session.ConnectorNotAvailable, HttpStatusCode.UnprocessableEntity);
+            options.Map(KLCDomainErrorCodes.Session.InvalidStatus, HttpStatusCode.UnprocessableEntity);
+            options.Map(KLCDomainErrorCodes.Session.InvalidStateTransition, HttpStatusCode.UnprocessableEntity);
+            options.Map(KLCDomainErrorCodes.Session.NoDefaultVehicle, HttpStatusCode.UnprocessableEntity);
+            options.Map(KLCDomainErrorCodes.EInvoiceCannotRetry, HttpStatusCode.UnprocessableEntity);
+            options.Map(KLCDomainErrorCodes.Payment.InvalidRefund, HttpStatusCode.UnprocessableEntity);
+            options.Map(KLCDomainErrorCodes.Payment.CannotCancel, HttpStatusCode.UnprocessableEntity);
+            options.Map(KLCDomainErrorCodes.Payment.SessionNotCompleted, HttpStatusCode.UnprocessableEntity);
+            options.Map(KLCDomainErrorCodes.Wallet.InsufficientBalance, HttpStatusCode.UnprocessableEntity);
+
+            // 400 Bad Request (input/validation)
+            options.Map(KLCDomainErrorCodes.Station.InvalidLatitude, HttpStatusCode.BadRequest);
+            options.Map(KLCDomainErrorCodes.Station.InvalidLongitude, HttpStatusCode.BadRequest);
+            options.Map(KLCDomainErrorCodes.Connector.MaxPowerInvalid, HttpStatusCode.BadRequest);
+            options.Map(KLCDomainErrorCodes.Tariff.InvalidBaseRate, HttpStatusCode.BadRequest);
+            options.Map(KLCDomainErrorCodes.Tariff.InvalidTaxRate, HttpStatusCode.BadRequest);
+            options.Map(KLCDomainErrorCodes.Tariff.InvalidEffectivePeriod, HttpStatusCode.BadRequest);
+            options.Map(KLCDomainErrorCodes.Fault.InvalidPriority, HttpStatusCode.BadRequest);
+            options.Map(KLCDomainErrorCodes.Alert.InvalidPriority, HttpStatusCode.BadRequest);
+            options.Map(KLCDomainErrorCodes.UserCreationFailed, HttpStatusCode.BadRequest);
+            options.Map(KLCDomainErrorCodes.PasswordResetFailed, HttpStatusCode.BadRequest);
+            options.Map(KLCDomainErrorCodes.Profile.PasswordChangeFailed, HttpStatusCode.BadRequest);
+            options.Map(KLCDomainErrorCodes.CannotUpdateStaticRole, HttpStatusCode.BadRequest);
+            options.Map(KLCDomainErrorCodes.CannotDeleteStaticRole, HttpStatusCode.BadRequest);
+            options.Map(KLCDomainErrorCodes.CannotDeleteCurrentUser, HttpStatusCode.BadRequest);
+            options.Map(KLCDomainErrorCodes.CannotLockCurrentUser, HttpStatusCode.BadRequest);
+            options.Map(KLCDomainErrorCodes.StationGroup.StationNotInGroup, HttpStatusCode.BadRequest);
+            options.Map(KLCDomainErrorCodes.Alert.InvalidAcknowledge, HttpStatusCode.BadRequest);
+
+            // 403 Forbidden (ownership)
+            options.Map(KLCDomainErrorCodes.Payment.SessionNotOwned, HttpStatusCode.Forbidden);
+            options.Map(KLCDomainErrorCodes.Payment.NotOwned, HttpStatusCode.Forbidden);
+            options.Map(KLCDomainErrorCodes.Payment.MethodNotOwned, HttpStatusCode.Forbidden);
+            options.Map(KLCDomainErrorCodes.Vehicle.NotOwned, HttpStatusCode.Forbidden);
+            options.Map(KLCDomainErrorCodes.Session.NotOwned, HttpStatusCode.Forbidden);
+        });
     }
 
     private void ConfigureOcppServices(ServiceConfigurationContext context)
@@ -96,6 +167,7 @@ public class KLCHttpApiHostModule : AbpModule
         context.Services.AddSingleton<OcppConnectionManager>();
         context.Services.AddScoped<OcppMessageHandler>();
         context.Services.AddHostedService<HeartbeatMonitorService>();
+        context.Services.AddScoped<IOcppRemoteCommandService, OcppRemoteCommandService>();
     }
 
     private void ConfigureSignalR(ServiceConfigurationContext context)
