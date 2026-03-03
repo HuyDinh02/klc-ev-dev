@@ -20,6 +20,7 @@
 - **Alert**: StationId, AlertType, Message, Status (New/Acknowledged/Resolved)
 - **StatusChangeLog**: StationId, ConnectorId, PreviousStatus, NewStatus, Timestamp, Source
 - **AppUser**: extends ABP IdentityUser + PhoneNumber, FullName, IsVerified
+- **UserIdTag**: UserId, IdTag (unique), TagType (Rfid/Mobile/Virtual), FriendlyName, IsActive, ExpiryDate
 
 ## Key Relationships
 ```
@@ -30,6 +31,7 @@ Session 1──N MeterValue
 Session 1──1 PaymentTransaction
 Payment 1──1 Invoice 1──1 EInvoice
 User 1──N Vehicle
+User 1──N UserIdTag
 Fault N──1 Station
 ```
 

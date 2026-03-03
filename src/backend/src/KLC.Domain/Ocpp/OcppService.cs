@@ -4,6 +4,8 @@ using System.Threading.Tasks;
 using KLC.Enums;
 using KLC.Sessions;
 using KLC.Stations;
+using KLC.Tariffs;
+using KLC.Users;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
@@ -20,6 +22,8 @@ public class OcppService : DomainService, IOcppService
     private readonly IRepository<Connector, Guid> _connectorRepository;
     private readonly IRepository<ChargingSession, Guid> _sessionRepository;
     private readonly IRepository<MeterValue, Guid> _meterValueRepository;
+    private readonly IRepository<TariffPlan, Guid> _tariffPlanRepository;
+    private readonly IRepository<UserIdTag, Guid> _userIdTagRepository;
     private readonly ILogger<OcppService> _logger;
 
     public OcppService(
@@ -27,12 +31,16 @@ public class OcppService : DomainService, IOcppService
         IRepository<Connector, Guid> connectorRepository,
         IRepository<ChargingSession, Guid> sessionRepository,
         IRepository<MeterValue, Guid> meterValueRepository,
+        IRepository<TariffPlan, Guid> tariffPlanRepository,
+        IRepository<UserIdTag, Guid> userIdTagRepository,
         ILogger<OcppService> logger)
     {
         _stationRepository = stationRepository;
         _connectorRepository = connectorRepository;
         _sessionRepository = sessionRepository;
         _meterValueRepository = meterValueRepository;
+        _tariffPlanRepository = tariffPlanRepository;
+        _userIdTagRepository = userIdTagRepository;
         _logger = logger;
     }
 
@@ -62,7 +70,7 @@ public class OcppService : DomainService, IOcppService
         return station.Id;
     }
 
-    public async Task HandleStatusNotificationAsync(
+    public async Task<StatusNotificationResult?> HandleStatusNotificationAsync(
         string chargePointId,
         int connectorId,
         ConnectorStatus status,
@@ -74,8 +82,10 @@ public class OcppService : DomainService, IOcppService
         if (station == null)
         {
             _logger.LogWarning("StatusNotification from unknown station: {ChargePointId}", chargePointId);
-            return;
+            return null;
         }
+
+        ConnectorStatus previousStatus = ConnectorStatus.Available;
 
         // ConnectorId 0 means the station itself
         if (connectorId == 0)
@@ -96,6 +106,7 @@ public class OcppService : DomainService, IOcppService
             var connector = station.Connectors.FirstOrDefault(c => c.ConnectorNumber == connectorId);
             if (connector != null)
             {
+                previousStatus = connector.Status;
                 connector.UpdateStatus(status);
                 await _connectorRepository.UpdateAsync(connector);
             }
@@ -103,11 +114,14 @@ public class OcppService : DomainService, IOcppService
             {
                 _logger.LogWarning("StatusNotification for unknown connector {ConnectorId} on station {ChargePointId}",
                     connectorId, chargePointId);
+                return null;
             }
         }
 
-        _logger.LogInformation("Status updated for {ChargePointId} connector {ConnectorId}: {Status}",
-            chargePointId, connectorId, status);
+        _logger.LogInformation("Status updated for {ChargePointId} connector {ConnectorId}: {PreviousStatus} -> {Status}",
+            chargePointId, connectorId, previousStatus, status);
+
+        return new StatusNotificationResult(previousStatus, status, station.Id);
     }
 
     public async Task HandleHeartbeatAsync(string chargePointId)
@@ -149,21 +163,46 @@ public class OcppService : DomainService, IOcppService
             return existingSession.Id;
         }
 
-        // Get tariff plan from station if available
-        var tariffPlanId = station.TariffPlanId;
+        // Resolve userId from idTag
+        var userId = Guid.Empty;
+        if (Guid.TryParse(idTag, out var parsedUserId))
+        {
+            // Mobile app sends userId as idTag
+            userId = parsedUserId;
+        }
+        else
+        {
+            // Look up RFID/physical tag in UserIdTag registry
+            var userIdTag = await _userIdTagRepository.FirstOrDefaultAsync(
+                t => t.IdTag == idTag && t.IsActive);
+            if (userIdTag != null && userIdTag.IsValid())
+            {
+                userId = userIdTag.UserId;
+                _logger.LogInformation("Resolved idTag {IdTag} to user {UserId}", idTag, userId);
+            }
+        }
 
-        // Create new session
-        // Note: We use a system user ID for OCPP-initiated sessions
-        // In production, this would be linked to the idTag owner
+        // Resolve tariff rate from station's tariff plan
+        var tariffPlanId = station.TariffPlanId;
+        decimal ratePerKwh = 0;
+        if (tariffPlanId.HasValue)
+        {
+            var tariffPlan = await _tariffPlanRepository.FirstOrDefaultAsync(t => t.Id == tariffPlanId.Value);
+            if (tariffPlan != null && tariffPlan.IsCurrentlyEffective())
+            {
+                ratePerKwh = tariffPlan.GetTotalRatePerKwh();
+            }
+        }
+
         var sessionId = GuidGenerator.Create();
         var session = new ChargingSession(
             sessionId,
-            Guid.Empty, // System user - should be resolved from idTag
+            userId,
             station.Id,
             connectorId,
             null, // Vehicle ID - could be resolved from idTag
             tariffPlanId,
-            0, // Rate per kWh - should come from tariff
+            ratePerKwh,
             idTag
         );
 
@@ -177,7 +216,7 @@ public class OcppService : DomainService, IOcppService
         return sessionId;
     }
 
-    public async Task HandleStopTransactionAsync(
+    public async Task<StopTransactionResult?> HandleStopTransactionAsync(
         int ocppTransactionId,
         int meterStop,
         string? stopReason)
@@ -188,14 +227,14 @@ public class OcppService : DomainService, IOcppService
         if (session == null)
         {
             _logger.LogWarning("StopTransaction for unknown transaction: {TransactionId}", ocppTransactionId);
-            return;
+            return null;
         }
 
         if (session.Status == SessionStatus.Completed)
         {
             _logger.LogInformation("Duplicate StopTransaction {TransactionId}, session already completed",
                 ocppTransactionId);
-            return;
+            return null;
         }
 
         session.RecordStop(meterStop, stopReason);
@@ -204,13 +243,21 @@ public class OcppService : DomainService, IOcppService
 
         _logger.LogInformation("Session {SessionId} completed: Energy={EnergyKwh}kWh, Cost={Cost}",
             session.Id, session.TotalEnergyKwh, session.TotalCost);
+
+        return new StopTransactionResult(
+            session.Id,
+            session.StationId,
+            session.ConnectorNumber,
+            session.TotalEnergyKwh,
+            session.TotalCost);
     }
 
-    public async Task HandleMeterValuesAsync(
+    public async Task<MeterValuesResult?> HandleMeterValuesAsync(
         string chargePointId,
         int connectorId,
         int? transactionId,
         decimal energyWh,
+        string? timestamp,
         decimal? currentAmps,
         decimal? voltage,
         decimal? power,
@@ -220,41 +267,109 @@ public class OcppService : DomainService, IOcppService
 
         if (transactionId.HasValue)
         {
-            session = await _sessionRepository.FirstOrDefaultAsync(
-                s => s.OcppTransactionId == transactionId.Value);
+            // Use WithDetailsAsync to load MeterValues navigation property
+            var query = await _sessionRepository.WithDetailsAsync(s => s.MeterValues);
+            session = (await AsyncExecuter.ToListAsync(
+                query.Where(s => s.OcppTransactionId == transactionId.Value))).FirstOrDefault();
         }
 
         var station = await _stationRepository.FirstOrDefaultAsync(s => s.StationCode == chargePointId);
         if (station == null)
         {
             _logger.LogWarning("MeterValues from unknown station: {ChargePointId}", chargePointId);
-            return;
+            return null;
         }
 
         // Convert Wh to kWh
         var energyKwh = Math.Round(energyWh / 1000m, 3);
 
+        // Parse OCPP timestamp, fall back to UTC now
+        var meterTimestamp = DateTime.UtcNow;
+        if (!string.IsNullOrEmpty(timestamp) && DateTime.TryParse(timestamp, null,
+                System.Globalization.DateTimeStyles.RoundtripKind, out var parsed))
+        {
+            meterTimestamp = parsed.ToUniversalTime();
+        }
+
         if (session != null)
         {
-            // Add meter value to session
+            // Monotonic validation: reject backward readings
+            if (session.MeterStart.HasValue && energyWh < session.MeterStart.Value)
+            {
+                _logger.LogWarning(
+                    "Rejected MeterValue for session {SessionId}: energyWh {EnergyWh} < MeterStart {MeterStart}",
+                    session.Id, energyWh, session.MeterStart.Value);
+                return null;
+            }
+
+            // Monotonic validation: reject non-monotonic readings
+            var lastReading = session.MeterValues
+                .OrderByDescending(mv => mv.Timestamp)
+                .FirstOrDefault();
+            if (lastReading != null && energyKwh < lastReading.EnergyKwh)
+            {
+                _logger.LogWarning(
+                    "Rejected non-monotonic MeterValue for session {SessionId}: {EnergyKwh}kWh < last {LastKwh}kWh",
+                    session.Id, energyKwh, lastReading.EnergyKwh);
+                return null;
+            }
+
+            // Reject unreasonable jumps (> 500 kWh delta from last reading)
+            if (lastReading != null && (energyKwh - lastReading.EnergyKwh) > 500m)
+            {
+                _logger.LogWarning(
+                    "Rejected unreasonable MeterValue jump for session {SessionId}: {EnergyKwh}kWh, last={LastKwh}kWh",
+                    session.Id, energyKwh, lastReading.EnergyKwh);
+                return null;
+            }
+
+            // Add meter value to session (returns null if duplicate)
+            var powerKw = power != null ? power / 1000m : null; // Convert W to kW
             var meterValue = session.AddMeterValue(
                 GuidGenerator.Create(),
                 energyKwh,
+                meterTimestamp,
                 currentAmps,
                 voltage,
-                power != null ? power / 1000m : null, // Convert W to kW
+                powerKw,
                 soc
             );
 
+            if (meterValue == null)
+            {
+                _logger.LogDebug("Duplicate MeterValue skipped for session {SessionId}", session.Id);
+                return null;
+            }
+
+            // Update running energy total during charging
+            if (session.MeterStart.HasValue && energyWh > 0)
+            {
+                var totalEnergyKwh = Math.Round((energyWh - session.MeterStart.Value) / 1000m, 3);
+                if (totalEnergyKwh > 0)
+                {
+                    session.UpdateTotalEnergy(totalEnergyKwh);
+                }
+            }
+
             await _sessionRepository.UpdateAsync(session);
 
-            _logger.LogDebug("MeterValue recorded for session {SessionId}: {EnergyKwh}kWh",
-                session.Id, energyKwh);
+            _logger.LogInformation("MeterValue recorded for session {SessionId}: {EnergyKwh}kWh, Total={TotalKwh}kWh",
+                session.Id, energyKwh, session.TotalEnergyKwh);
+
+            return new MeterValuesResult(
+                session.Id,
+                session.StationId,
+                session.ConnectorNumber,
+                session.TotalEnergyKwh,
+                session.TotalCost,
+                powerKw,
+                soc);
         }
         else
         {
             // Store standalone meter value (no active session)
             _logger.LogDebug("MeterValue received without active session for {ChargePointId}", chargePointId);
+            return null;
         }
     }
 
@@ -271,19 +386,57 @@ public class OcppService : DomainService, IOcppService
         // Check if idTag is a valid user GUID (mobile app sessions use userId as idTag)
         if (Guid.TryParse(idTag, out var userId) && userId != Guid.Empty)
         {
-            // Check if there's a session with this user that is pending/in-progress
-            var session = await _sessionRepository.FirstOrDefaultAsync(
-                s => s.UserId == userId &&
-                     (s.Status == SessionStatus.Pending || s.Status == SessionStatus.InProgress));
-            if (session != null)
-                return true;
+            return true;
         }
 
-        // Accept known test/demo idTags
+        // Look up RFID/physical tag in UserIdTag registry
+        var userIdTag = await _userIdTagRepository.FirstOrDefaultAsync(
+            t => t.IdTag == idTag && t.IsActive);
+        if (userIdTag != null && userIdTag.IsValid())
+        {
+            return true;
+        }
+
+        // Accept known test/demo idTags (dev/staging only)
         if (idTag.StartsWith("TEST") || idTag.StartsWith("DEMO"))
             return true;
 
         _logger.LogWarning("IdTag validation failed for: {IdTag}", idTag);
         return false;
+    }
+
+    public async Task HandleStationDisconnectAsync(string chargePointId)
+    {
+        var station = await _stationRepository.FirstOrDefaultAsync(s => s.StationCode == chargePointId);
+        if (station == null)
+        {
+            return;
+        }
+
+        // Find all active sessions for this station
+        var activeSessions = await AsyncExecuter.ToListAsync(
+            (await _sessionRepository.GetQueryableAsync())
+                .Where(s => s.StationId == station.Id &&
+                            (s.Status == SessionStatus.Pending ||
+                             s.Status == SessionStatus.InProgress ||
+                             s.Status == SessionStatus.Starting ||
+                             s.Status == SessionStatus.Suspended)));
+
+        foreach (var session in activeSessions)
+        {
+            session.MarkFailed("Station disconnected");
+            await _sessionRepository.UpdateAsync(session);
+
+            _logger.LogWarning(
+                "Orphaned session {SessionId} marked Failed due to station {ChargePointId} disconnect",
+                session.Id, chargePointId);
+        }
+
+        if (activeSessions.Count > 0)
+        {
+            _logger.LogInformation(
+                "Marked {Count} orphaned sessions as Failed for station {ChargePointId}",
+                activeSessions.Count, chargePointId);
+        }
     }
 }

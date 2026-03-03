@@ -35,6 +35,9 @@ Core integration module implementing OCPP 1.6J (JSON over WebSocket) for bidirec
 | BR-006-04 | Transaction data persisted immediately upon StartTransaction/StopTransaction |
 | BR-006-05 | MeterValues persisted immediately for billing accuracy |
 | BR-006-06 | Heartbeat timeout → mark station Offline |
+| BR-006-07 | IdTag must resolve to a registered user for billing (RFID lookup via UserIdTag table) |
+| BR-006-08 | MeterValues are validated for monotonic readings and duplicate detection |
+| BR-006-09 | Sessions are marked Failed on station disconnect (orphaned session cleanup) |
 
 ## 5. Data Model
 ### OcppConnection (Runtime - Redis)
@@ -45,6 +48,27 @@ Core integration module implementing OCPP 1.6J (JSON over WebSocket) for bidirec
 | ConnectedAt | DateTime | Connection time |
 | LastHeartbeat | DateTime | Last heartbeat received |
 | Status | string | Connected, Disconnected |
+
+### UserIdTag (Entity - maps RFID/tokens to users)
+| Field | Type | Description |
+|-------|------|-------------|
+| Id | Guid | Auto-generated |
+| UserId | Guid | FK to AppUser |
+| IdTag | string(50) | RFID UID or token (unique index) |
+| TagType | IdTagType | Rfid, Mobile, Virtual |
+| FriendlyName | string(100)? | User label ("My Blue Card") |
+| IsActive | bool | Can be deactivated without delete |
+| ExpiryDate | DateTime? | Optional expiration |
+
+### Authorization Flow
+```
+1. Authorize(idTag) received
+2. If idTag is a GUID → mobile app flow (userId = idTag)
+3. Else → query UserIdTag table (WHERE IdTag = idTag AND IsActive = true)
+4. If found and not expired → Accepted (userId resolved for billing)
+5. If not found → check TEST/DEMO prefixes (dev only)
+6. Otherwise → Rejected
+```
 
 ### OcppMessageLog (Entity - for debugging)
 | Field | Type | Description |
@@ -69,6 +93,12 @@ Core integration module implementing OCPP 1.6J (JSON over WebSocket) for bidirec
 9. CP → StatusNotification (Available) → CSMS acknowledges
 ```
 
+### Implemented Safeguards
+- **MeterValue idempotency**: Duplicate timestamp + energy readings are rejected
+- **Monotonic validation**: Backward or unreasonable energy jumps (>500 kWh delta) are rejected
+- **Orphaned session cleanup**: Station disconnect marks all active sessions as Failed
+- **StopTransaction**: Returns session data (energy, cost) for SignalR notifications
+
 ## 7. Error Handling
 | Code | Message | HTTP Status |
 |------|---------|-------------|
@@ -87,3 +117,7 @@ Core integration module implementing OCPP 1.6J (JSON over WebSocket) for bidirec
 | TC-006-05 | Duplicate StartTransaction message | Handled idempotently |
 | TC-006-06 | No heartbeat for timeout period | Station marked Offline |
 | TC-006-07 | RemoteStart to offline charger | Queued, sent on reconnect |
+| TC-006-08 | RFID tag authorization resolves correct user | Authorize returns Accepted, session created with correct UserId |
+| TC-006-09 | Duplicate MeterValues are rejected | Same timestamp+energy reading is idempotently skipped |
+| TC-006-10 | Non-monotonic meter readings are rejected | Backward energy reading is rejected with warning |
+| TC-006-11 | Station disconnect marks active sessions as Failed | All pending/in-progress sessions get Failed status |

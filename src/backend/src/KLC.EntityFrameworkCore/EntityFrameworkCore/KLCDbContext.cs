@@ -80,6 +80,7 @@ public class KLCDbContext :
 
     // Users
     public DbSet<AppUser> AppUsers { get; set; }
+    public DbSet<UserIdTag> UserIdTags { get; set; }
 
     #endregion
 
@@ -383,6 +384,20 @@ public static class KLCDbContextModelCreatingExtensions
             b.HasIndex(x => x.IdentityUserId).IsUnique();
             b.HasIndex(x => x.PhoneNumber);
             b.HasIndex(x => x.Email);
+            b.HasIndex(x => x.IsActive);
+        });
+
+        // UserIdTag
+        builder.Entity<UserIdTag>(b =>
+        {
+            b.ToTable(KLCConsts.DbTablePrefix + "UserIdTags", KLCConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.IdTag).IsRequired().HasMaxLength(50);
+            b.Property(x => x.FriendlyName).HasMaxLength(100);
+
+            b.HasIndex(x => x.IdTag).IsUnique();
+            b.HasIndex(x => x.UserId);
             b.HasIndex(x => x.IsActive);
         });
 

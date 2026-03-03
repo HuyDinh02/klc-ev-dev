@@ -33,6 +33,9 @@ Manages the complete lifecycle of a charging event: initiation via QR scan, real
 | BR-010-04 | Session data persisted immediately for billing accuracy |
 | BR-010-05 | If charger stops unexpectedly, session finalized with last known meter values |
 | BR-010-06 | Cost = energy consumed × tariff rate (with discount and tax per MOD-007) |
+| BR-010-07 | Tariff rate is resolved and snapshotted at session start (RatePerKwh field) |
+| BR-010-08 | Cost = TotalEnergyKwh × RatePerKwh (calculated on stop and updated during charging) |
+| BR-010-09 | RFID-initiated sessions resolve user via UserIdTag table (MOD-006) |
 
 ## 5. Data Model
 ### ChargingSession (Aggregate Root)
@@ -52,10 +55,12 @@ Manages the complete lifecycle of a charging event: initiation via QR scan, real
 | TotalEnergyKwh | decimal? | No | Calculated total |
 | TotalCost | decimal? | No | Calculated cost (VNĐ) |
 | TariffPlanId | Guid | Yes | Tariff used for billing |
+| IdTag | string(50)? | No | OCPP idTag used to start session |
+| RatePerKwh | decimal | Yes | Tariff rate snapshot at session start (VNĐ/kWh) |
 | StopReason | string? | No | Why session stopped |
 
 ### SessionStatus Enum
-`Initiated = 0, Charging = 1, Completed = 2, Failed = 3`
+`Pending = 0, Starting = 1, InProgress = 2, Suspended = 3, Stopping = 4, Completed = 5, Failed = 6`
 
 ## 6. API Endpoints (Driver BFF)
 | Method | Path | Description | Auth |
@@ -79,6 +84,18 @@ Manages the complete lifecycle of a charging event: initiation via QR scan, real
 8. CP sends StopTransaction → session finalized (Completed)
 9. Cost calculated (MOD-007) → Payment triggered (MOD-008)
 10. Invoice generated → Push notification sent
+```
+
+### RFID-Initiated Session (Alternative Flow)
+```
+1. Driver taps RFID card on charger
+2. CP → Authorize(idTag: "CARD-12345") → CSMS
+3. CSMS looks up UserIdTag table → finds user → Accepted
+4. CP → StartTransaction(connectorId, idTag, meterStart) → CSMS
+5. CSMS resolves userId from UserIdTag → creates session with UserId + billing
+6. CP → MeterValues (periodic) → CSMS stores, updates cost
+7. Driver taps card again / CP auto-stops → StopTransaction
+8. Session finalized, payment triggered
 ```
 
 ## 8. Real-time Updates
