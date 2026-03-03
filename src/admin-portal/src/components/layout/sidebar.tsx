@@ -19,6 +19,7 @@ import {
   Settings,
   LogOut,
   Users,
+  Car,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -37,6 +38,7 @@ const menuItems = [
   { href: "/groups", label: "Station Groups", icon: FolderTree },
   { href: "/audit-logs", label: "Audit Logs", icon: FileText },
   { href: "/e-invoices", label: "E-Invoices", icon: Receipt },
+  { href: "/vehicles", label: "Vehicles", icon: Car },
   { href: "/user-management", label: "User Management", icon: Users },
 ];
 

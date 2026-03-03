@@ -206,6 +206,13 @@ export const rolesApi = {
     api.put(`/roles/${roleId}/permissions`, { grantedPermissions }),
 };
 
+export const vehiclesApi = {
+  getAll: (params?: { skipCount?: number; maxResultCount?: number }) =>
+    api.get("/vehicles", { params }),
+  getById: (id: string) => api.get(`/vehicles/${id}`),
+  delete: (id: string) => api.delete(`/vehicles/${id}`),
+};
+
 // Types
 export interface CreateUserDto {
   userName: string;
