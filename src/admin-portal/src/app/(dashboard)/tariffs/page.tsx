@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import {
   Plus,
@@ -16,6 +17,7 @@ import {
   Clock,
   Zap,
   Star,
+  AlertCircle,
 } from "lucide-react";
 
 interface Tariff {
@@ -44,6 +46,7 @@ export default function TariffsPage() {
   const queryClient = useQueryClient();
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [formError, setFormError] = useState("");
   const [formData, setFormData] = useState<TariffFormData>({
     name: "",
     description: "",
@@ -73,7 +76,11 @@ export default function TariffsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tariffs"] });
       setIsCreating(false);
+      setFormError("");
       resetForm();
+    },
+    onError: (err: unknown) => {
+      handleMutationError(err);
     },
   });
 
@@ -89,9 +96,31 @@ export default function TariffsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tariffs"] });
       setEditingId(null);
+      setFormError("");
       resetForm();
     },
+    onError: (err: unknown) => {
+      handleMutationError(err);
+    },
   });
+
+  const handleMutationError = (err: unknown) => {
+    if (err && typeof err === "object" && "response" in err) {
+      const axiosError = err as { response?: { data?: { error?: { message?: string; details?: string; validationErrors?: Array<{ message: string }> } } } };
+      const apiError = axiosError.response?.data?.error;
+      if (apiError?.validationErrors?.length) {
+        setFormError(apiError.validationErrors.map((e) => e.message).join(". "));
+      } else if (apiError?.details) {
+        setFormError(apiError.details);
+      } else if (apiError?.message) {
+        setFormError(apiError.message);
+      } else {
+        setFormError("Failed to save tariff. Please check your input.");
+      }
+    } else {
+      setFormError("Unable to connect to server. Please try again.");
+    }
+  };
 
   // Activate/Deactivate tariff
   const toggleActiveMutation = useMutation({
@@ -125,6 +154,7 @@ export default function TariffsPage() {
   });
 
   const resetForm = () => {
+    setFormError("");
     setFormData({
       name: "",
       description: "",
@@ -135,6 +165,7 @@ export default function TariffsPage() {
   };
 
   const handleEdit = (tariff: Tariff) => {
+    setFormError("");
     setEditingId(tariff.id);
     setFormData({
       name: tariff.name,
@@ -182,80 +213,75 @@ export default function TariffsPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {formError && (
+                <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  <span>{formError}</span>
+                </div>
+              )}
               <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="text-sm font-medium">Name</label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    className="mt-1 w-full rounded-md border px-3 py-2"
-                    placeholder="e.g., Standard Rate"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Description</label>
-                  <input
-                    type="text"
-                    value={formData.description}
-                    onChange={(e) =>
-                      setFormData({ ...formData, description: e.target.value })
-                    }
-                    className="mt-1 w-full rounded-md border px-3 py-2"
-                    placeholder="e.g., Default pricing for all stations"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Effective From</label>
-                <input
-                  type="date"
-                  value={formData.effectiveFrom}
+                <Input
+                  label="Name"
+                  type="text"
+                  value={formData.name}
                   onChange={(e) =>
-                    setFormData({ ...formData, effectiveFrom: e.target.value })
+                    setFormData({ ...formData, name: e.target.value })
                   }
-                  className="mt-1 w-full rounded-md border px-3 py-2"
+                  placeholder="e.g., Standard Rate"
                   required
                 />
+                <Input
+                  label="Description"
+                  type="text"
+                  value={formData.description}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
+                  placeholder="e.g., Default pricing for all stations"
+                />
               </div>
+              <Input
+                label="Effective From"
+                type="date"
+                value={formData.effectiveFrom}
+                onChange={(e) =>
+                  setFormData({ ...formData, effectiveFrom: e.target.value })
+                }
+                required
+              />
               <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="text-sm font-medium">Base Rate per kWh (VNĐ)</label>
-                  <input
-                    type="number"
-                    value={formData.baseRatePerKwh}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        baseRatePerKwh: parseFloat(e.target.value) || 0,
-                      })
-                    }
-                    className="mt-1 w-full rounded-md border px-3 py-2"
-                    min="0"
-                    step="any"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Tax Rate (%)</label>
-                  <input
-                    type="number"
-                    value={formData.taxRatePercent}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        taxRatePercent: parseFloat(e.target.value) || 0,
-                      })
-                    }
-                    className="mt-1 w-full rounded-md border px-3 py-2"
-                    min="0"
-                    max="100"
-                    step="1"
-                  />
-                </div>
+                <Input
+                  label="Base Rate per kWh"
+                  type="number"
+                  value={formData.baseRatePerKwh}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      baseRatePerKwh: parseFloat(e.target.value) || 0,
+                    })
+                  }
+                  min={0}
+                  max={1000000}
+                  step={100}
+                  suffix="đ/kWh"
+                  hint="Max 1,000,000"
+                  required
+                />
+                <Input
+                  label="Tax Rate"
+                  type="number"
+                  value={formData.taxRatePercent}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      taxRatePercent: parseFloat(e.target.value) || 0,
+                    })
+                  }
+                  min={0}
+                  max={100}
+                  step={1}
+                  suffix="%"
+                />
               </div>
               <div className="flex gap-2">
                 <Button

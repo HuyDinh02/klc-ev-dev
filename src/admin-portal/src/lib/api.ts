@@ -65,7 +65,7 @@ api.interceptors.response.use(
       if (typeof window !== "undefined") {
         localStorage.removeItem("access_token");
         localStorage.removeItem("auth-storage");
-        window.location.href = "/login";
+        window.location.href = `/login?returnUrl=${encodeURIComponent(window.location.pathname)}`;
       }
     }
     return Promise.reject(error);

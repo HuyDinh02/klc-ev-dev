@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { useSidebarStore, useAuthStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -12,16 +12,22 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { isCollapsed } = useSidebarStore();
   const { isAuthenticated } = useAuthStore();
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/login");
-    }
-  }, [isAuthenticated, router]);
+    setHydrated(true);
+  }, []);
 
-  if (!isAuthenticated) {
+  useEffect(() => {
+    if (hydrated && !isAuthenticated) {
+      router.push(`/login?returnUrl=${encodeURIComponent(pathname)}`);
+    }
+  }, [hydrated, isAuthenticated, router, pathname]);
+
+  if (!hydrated || !isAuthenticated) {
     return null;
   }
 

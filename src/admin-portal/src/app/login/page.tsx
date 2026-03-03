@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Zap, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,20 +9,47 @@ import { useAuthStore } from "@/lib/store";
 import { authApi } from "@/lib/api";
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnUrl = searchParams.get("returnUrl") || "/";
   const { login, isAuthenticated } = useAuthStore();
+  const [hydrated, setHydrated] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Redirect if already authenticated
   useEffect(() => {
-    if (isAuthenticated) {
-      router.push("/");
+    setHydrated(true);
+  }, []);
+
+  // Redirect if already authenticated (only after hydration)
+  useEffect(() => {
+    if (hydrated && isAuthenticated) {
+      router.push(returnUrl);
     }
-  }, [isAuthenticated, router]);
+  }, [hydrated, isAuthenticated, router, returnUrl]);
+
+  // Show loading while checking auth state
+  if (!hydrated || isAuthenticated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/10 to-background">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,7 +74,7 @@ export default function LoginPage() {
           };
 
           login(user, tokenResponse.access_token);
-          router.push("/");
+          router.push(returnUrl);
         } else {
           setError("Failed to parse authentication token");
         }
