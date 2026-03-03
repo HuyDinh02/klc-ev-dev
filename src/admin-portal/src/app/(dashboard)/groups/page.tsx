@@ -28,11 +28,15 @@ interface StationGroup {
 }
 
 interface GroupStation {
-  id: string;
+  stationId: string;
   name: string;
   address: string;
-  status: string;
+  status: number;
 }
+
+const StationStatusLabels: Record<number, string> = {
+  0: "Offline", 1: "Available", 2: "Occupied", 3: "Unavailable", 4: "Faulted", 5: "Decommissioned",
+};
 
 interface Station {
   id: string;
@@ -92,7 +96,7 @@ export default function StationGroupsPage() {
       id: string;
       data: { name: string; description: string };
     }) => {
-      const res = await api.put(`/api/v1/station-groups/${id}`, data);
+      const res = await api.put(`/station-groups/${id}`, data);
       return res.data;
     },
     onSuccess: () => {
@@ -105,7 +109,7 @@ export default function StationGroupsPage() {
   // Delete group
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      await api.delete(`/api/v1/station-groups/${id}`);
+      await api.delete(`/station-groups/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["station-groups"] });
@@ -121,7 +125,7 @@ export default function StationGroupsPage() {
       groupId: string;
       stationId: string;
     }) => {
-      await api.post(`/api/v1/station-groups/${groupId}/assign`, { stationId });
+      await api.post(`/station-groups/${groupId}/assign`, { stationId });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["station-groups"] });
@@ -139,7 +143,7 @@ export default function StationGroupsPage() {
       stationId: string;
     }) => {
       await api.delete(
-        `/api/v1/station-groups/${groupId}/stations/${stationId}`
+        `/station-groups/${groupId}/stations/${stationId}`
       );
     },
     onSuccess: () => {
@@ -362,9 +366,11 @@ export default function StationGroupsPage() {
                 <CardContent className="pt-0">
                   {group.stations && group.stations.length > 0 ? (
                     <div className="space-y-2">
-                      {group.stations.map((station) => (
+                      {group.stations.map((station) => {
+                        const statusLabel = StationStatusLabels[station.status] || "Unknown";
+                        return (
                         <div
-                          key={station.id}
+                          key={station.stationId}
                           className="flex items-center justify-between rounded-lg border p-3"
                         >
                           <div className="flex items-center gap-3">
@@ -379,12 +385,16 @@ export default function StationGroupsPage() {
                           <div className="flex items-center gap-2">
                             <Badge
                               variant={
-                                station.status === "Online"
+                                station.status === 1
                                   ? "success"
+                                  : station.status === 4
+                                  ? "warning"
+                                  : station.status === 0
+                                  ? "destructive"
                                   : "secondary"
                               }
                             >
-                              {station.status}
+                              {statusLabel}
                             </Badge>
                             <Button
                               variant="ghost"
@@ -392,7 +402,7 @@ export default function StationGroupsPage() {
                               onClick={() =>
                                 unassignMutation.mutate({
                                   groupId: group.id,
-                                  stationId: station.id,
+                                  stationId: station.stationId,
                                 })
                               }
                             >
@@ -400,7 +410,8 @@ export default function StationGroupsPage() {
                             </Button>
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground py-2">

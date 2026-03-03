@@ -32,7 +32,7 @@ export const authApi = {
   },
 
   // Parse JWT token to extract user info
-  parseToken: (token: string): { sub: string; preferred_username: string; email: string; role: string; given_name: string; family_name: string } | null => {
+  parseToken: (token: string): { sub: string; preferred_username: string; email: string; role: string | string[]; given_name: string; family_name: string } | null => {
     try {
       const base64Payload = token.split(".")[1];
       const payload = JSON.parse(atob(base64Payload));
@@ -64,6 +64,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       if (typeof window !== "undefined") {
         localStorage.removeItem("access_token");
+        localStorage.removeItem("auth-storage");
         window.location.href = "/login";
       }
     }
@@ -73,7 +74,7 @@ api.interceptors.response.use(
 
 // API functions
 export const stationsApi = {
-  getAll: (params?: { skip?: number; maxResultCount?: number; status?: string }) =>
+  getAll: (params?: { skipCount?: number; maxResultCount?: number; status?: number; search?: string }) =>
     api.get("/stations", { params }),
   getById: (id: string) => api.get(`/stations/${id}`),
   create: (data: CreateStationDto) => api.post("/stations", data),
@@ -95,14 +96,14 @@ export const connectorsApi = {
 };
 
 export const sessionsApi = {
-  getAll: (params?: { skip?: number; maxResultCount?: number; stationId?: string }) =>
+  getAll: (params?: { skipCount?: number; maxResultCount?: number; stationId?: string; status?: number }) =>
     api.get("/admin/sessions", { params }),
   getById: (id: string) => api.get(`/sessions/${id}`),
   getMeterValues: (id: string) => api.get(`/sessions/${id}/meter-values`),
 };
 
 export const tariffsApi = {
-  getAll: (params?: { skip?: number; maxResultCount?: number }) =>
+  getAll: (params?: { skipCount?: number; maxResultCount?: number }) =>
     api.get("/tariffs", { params }),
   getById: (id: string) => api.get(`/tariffs/${id}`),
   create: (data: CreateTariffDto) => api.post("/tariffs", data),
@@ -113,15 +114,16 @@ export const tariffsApi = {
 };
 
 export const faultsApi = {
-  getAll: (params?: { skip?: number; maxResultCount?: number; status?: string }) =>
+  getAll: (params?: { skipCount?: number; maxResultCount?: number; status?: number }) =>
     api.get("/faults", { params }),
   getById: (id: string) => api.get(`/faults/${id}`),
-  updateStatus: (id: string, status: string) => api.put(`/faults/${id}/status`, { status }),
+  updateStatus: (id: string, status: number, resolutionNotes?: string) =>
+    api.put(`/faults/${id}/status`, { status, resolutionNotes }),
   getByStation: (stationId: string) => api.get(`/stations/${stationId}/faults`),
 };
 
 export const stationGroupsApi = {
-  getAll: (params?: { skip?: number; maxResultCount?: number }) =>
+  getAll: (params?: { skipCount?: number; maxResultCount?: number }) =>
     api.get("/station-groups", { params }),
   getById: (id: string) => api.get(`/station-groups/${id}`),
   create: (data: CreateStationGroupDto) => api.post("/station-groups", data),
@@ -134,22 +136,22 @@ export const stationGroupsApi = {
 };
 
 export const paymentsApi = {
-  getHistory: (params?: { skip?: number; maxResultCount?: number }) =>
+  getHistory: (params?: { skipCount?: number; maxResultCount?: number; status?: number }) =>
     api.get("/payments/history", { params }),
   getById: (id: string) => api.get(`/payments/${id}`),
 };
 
 export const alertsApi = {
-  getAll: (params?: { skip?: number; maxResultCount?: number }) =>
+  getAll: (params?: { skipCount?: number; maxResultCount?: number }) =>
     api.get("/alerts", { params }),
   acknowledge: (id: string) => api.post(`/alerts/${id}/acknowledge`),
 };
 
 export const auditLogsApi = {
-  getAll: (params?: { skip?: number; maxResultCount?: number; entityType?: string }) =>
+  getAll: (params?: { skipCount?: number; maxResultCount?: number; entityType?: string }) =>
     api.get("/audit-logs", { params }),
   getById: (id: string) => api.get(`/audit-logs/${id}`),
-  getEntityChanges: (params?: { skip?: number; maxResultCount?: number }) =>
+  getEntityChanges: (params?: { skipCount?: number; maxResultCount?: number }) =>
     api.get("/audit-logs/entity-changes", { params }),
   export: (params?: { startDate?: string; endDate?: string }) =>
     api.get("/audit-logs/export", { params, responseType: "blob" }),
@@ -164,7 +166,7 @@ export const monitoringApi = {
 };
 
 export const eInvoicesApi = {
-  getAll: (params?: { skip?: number; maxResultCount?: number; status?: string }) =>
+  getAll: (params?: { skipCount?: number; maxResultCount?: number; status?: number }) =>
     api.get("/e-invoices", { params }),
   getById: (id: string) => api.get(`/e-invoices/${id}`),
   generate: (invoiceId: string) => api.post("/e-invoices", { invoiceId }),
@@ -173,25 +175,82 @@ export const eInvoicesApi = {
   getPdfUrl: (id: string) => api.get(`/e-invoices/${id}/pdf-url`),
 };
 
+export const usersApi = {
+  getAll: (params?: { skipCount?: number; maxResultCount?: number; filter?: string }) =>
+    api.get("/users", { params }),
+  getById: (id: string) => api.get(`/users/${id}`),
+  create: (data: CreateUserDto) => api.post("/users", data),
+  update: (id: string, data: UpdateUserDto) => api.put(`/users/${id}`, data),
+  delete: (id: string) => api.delete(`/users/${id}`),
+  getRoles: (id: string) => api.get(`/users/${id}/roles`),
+  updateRoles: (id: string, roleNames: string[]) =>
+    api.put(`/users/${id}/roles`, { roleNames }),
+  lock: (id: string) => api.post(`/users/${id}/lock`, { lockDurationSeconds: 0 }),
+  unlock: (id: string) => api.post(`/users/${id}/unlock`),
+  resetPassword: (id: string, newPassword: string) =>
+    api.post(`/users/${id}/reset-password`, { newPassword }),
+};
+
+export const rolesApi = {
+  getAll: (params?: { skipCount?: number; maxResultCount?: number }) =>
+    api.get("/roles", { params }),
+  getById: (id: string) => api.get(`/roles/${id}`),
+  create: (data: { name: string; isDefault?: boolean; isPublic?: boolean }) =>
+    api.post("/roles", data),
+  update: (id: string, data: { name: string; isDefault?: boolean; isPublic?: boolean; concurrencyStamp?: string }) =>
+    api.put(`/roles/${id}`, data),
+  delete: (id: string) => api.delete(`/roles/${id}`),
+  getPermissions: (roleId: string) =>
+    api.get(`/roles/${roleId}/permissions`),
+  updatePermissions: (roleId: string, grantedPermissions: string[]) =>
+    api.put(`/roles/${roleId}/permissions`, { grantedPermissions }),
+};
+
 // Types
+export interface CreateUserDto {
+  userName: string;
+  email: string;
+  password: string;
+  name?: string;
+  surname?: string;
+  phoneNumber?: string;
+  isActive?: boolean;
+  lockoutEnabled?: boolean;
+  roleNames?: string[];
+}
+
+export interface UpdateUserDto {
+  userName: string;
+  email: string;
+  name?: string;
+  surname?: string;
+  phoneNumber?: string;
+  isActive?: boolean;
+  lockoutEnabled?: boolean;
+}
+
 export interface CreateStationDto {
+  stationCode: string;
   name: string;
   address: string;
   latitude: number;
   longitude: number;
-  groupId?: string;
+  stationGroupId?: string;
+  tariffPlanId?: string;
 }
 
 export interface UpdateStationDto {
-  name?: string;
-  address?: string;
-  latitude?: number;
-  longitude?: number;
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  stationGroupId?: string;
+  tariffPlanId?: string;
 }
 
 export interface CreateConnectorDto {
   connectorNumber: number;
-  connectorType: string;
+  connectorType: number;
   maxPowerKw: number;
 }
 
@@ -202,17 +261,19 @@ export interface UpdateConnectorDto {
 export interface CreateTariffDto {
   name: string;
   description?: string;
-  pricePerKwh: number;
-  connectionFee?: number;
-  idleFeePerMinute?: number;
+  baseRatePerKwh: number;
+  taxRatePercent: number;
+  effectiveFrom: string;
+  effectiveTo?: string;
 }
 
 export interface UpdateTariffDto {
   name?: string;
   description?: string;
-  pricePerKwh?: number;
-  connectionFee?: number;
-  idleFeePerMinute?: number;
+  baseRatePerKwh?: number;
+  taxRatePercent?: number;
+  effectiveFrom?: string;
+  effectiveTo?: string;
 }
 
 export interface CreateStationGroupDto {

@@ -16,12 +16,14 @@ export default function DashboardLayout({
   const { isAuthenticated } = useAuthStore();
 
   useEffect(() => {
-    // For development, skip auth check
-    // In production, uncomment this:
-    // if (!isAuthenticated) {
-    //   router.push("/login");
-    // }
+    if (!isAuthenticated) {
+      router.push("/login");
+    }
   }, [isAuthenticated, router]);
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background">

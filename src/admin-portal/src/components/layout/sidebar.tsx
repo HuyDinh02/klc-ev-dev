@@ -18,7 +18,9 @@ import {
   ChevronRight,
   Settings,
   LogOut,
+  Users,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useSidebarStore, useAuthStore, useAlertsStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
@@ -35,10 +37,12 @@ const menuItems = [
   { href: "/groups", label: "Station Groups", icon: FolderTree },
   { href: "/audit-logs", label: "Audit Logs", icon: FileText },
   { href: "/e-invoices", label: "E-Invoices", icon: Receipt },
+  { href: "/user-management", label: "User Management", icon: Users },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { isCollapsed, toggle } = useSidebarStore();
   const { logout, user } = useAuthStore();
   const { unreadCount } = useAlertsStore();
@@ -67,7 +71,9 @@ export function Sidebar() {
         {/* Navigation */}
         <nav className="flex-1 space-y-1 overflow-y-auto p-2">
           {menuItems.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const isActive = item.href === "/"
+              ? pathname === "/"
+              : pathname === item.href || pathname.startsWith(`${item.href}/`);
             const Icon = item.icon;
             return (
               <Link
@@ -126,7 +132,7 @@ export function Sidebar() {
             {!isCollapsed && <span>Settings</span>}
           </Link>
           <button
-            onClick={() => logout()}
+            onClick={() => { logout(); router.push("/login"); }}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
           >
             <LogOut className="h-5 w-5 flex-shrink-0" />

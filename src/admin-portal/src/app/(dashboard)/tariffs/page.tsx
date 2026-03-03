@@ -21,32 +21,23 @@ import {
 interface Tariff {
   id: string;
   name: string;
-  description: string;
-  pricePerKwh: number;
-  pricePerMinute: number;
-  connectionFee: number;
-  currency: string;
+  description?: string;
+  baseRatePerKwh: number;
+  taxRatePercent: number;
+  totalRatePerKwh: number;
   isActive: boolean;
   isDefault: boolean;
-  validFrom: string;
-  validTo?: string;
-  timeSlots?: TimeSlot[];
-  createdAt: string;
-}
-
-interface TimeSlot {
-  startHour: number;
-  endHour: number;
-  pricePerKwh: number;
-  pricePerMinute: number;
+  effectiveFrom: string;
+  effectiveTo?: string;
+  creationTime: string;
 }
 
 interface TariffFormData {
   name: string;
   description: string;
-  pricePerKwh: number;
-  pricePerMinute: number;
-  connectionFee: number;
+  baseRatePerKwh: number;
+  taxRatePercent: number;
+  effectiveFrom: string;
 }
 
 export default function TariffsPage() {
@@ -56,9 +47,9 @@ export default function TariffsPage() {
   const [formData, setFormData] = useState<TariffFormData>({
     name: "",
     description: "",
-    pricePerKwh: 0,
-    pricePerMinute: 0,
-    connectionFee: 0,
+    baseRatePerKwh: 0,
+    taxRatePercent: 10,
+    effectiveFrom: new Date().toISOString().slice(0, 10),
   });
 
   // Fetch tariffs
@@ -73,7 +64,10 @@ export default function TariffsPage() {
   // Create tariff
   const createMutation = useMutation({
     mutationFn: async (data: TariffFormData) => {
-      const res = await api.post("/tariffs", data);
+      const res = await api.post("/tariffs", {
+        ...data,
+        effectiveFrom: new Date(data.effectiveFrom).toISOString(),
+      });
       return res.data;
     },
     onSuccess: () => {
@@ -86,7 +80,10 @@ export default function TariffsPage() {
   // Update tariff
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: TariffFormData }) => {
-      const res = await api.put(`/api/v1/tariffs/${id}`, data);
+      const res = await api.put(`/tariffs/${id}`, {
+        ...data,
+        effectiveFrom: new Date(data.effectiveFrom).toISOString(),
+      });
       return res.data;
     },
     onSuccess: () => {
@@ -100,7 +97,7 @@ export default function TariffsPage() {
   const toggleActiveMutation = useMutation({
     mutationFn: async ({ id, activate }: { id: string; activate: boolean }) => {
       const endpoint = activate ? "activate" : "deactivate";
-      await api.post(`/api/v1/tariffs/${id}/${endpoint}`);
+      await api.post(`/tariffs/${id}/${endpoint}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tariffs"] });
@@ -110,7 +107,7 @@ export default function TariffsPage() {
   // Set default tariff
   const setDefaultMutation = useMutation({
     mutationFn: async (id: string) => {
-      await api.post(`/api/v1/tariffs/${id}/set-default`);
+      await api.post(`/tariffs/${id}/set-default`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tariffs"] });
@@ -120,7 +117,7 @@ export default function TariffsPage() {
   // Delete tariff
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      await api.delete(`/api/v1/tariffs/${id}`);
+      await api.delete(`/tariffs/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tariffs"] });
@@ -131,9 +128,9 @@ export default function TariffsPage() {
     setFormData({
       name: "",
       description: "",
-      pricePerKwh: 0,
-      pricePerMinute: 0,
-      connectionFee: 0,
+      baseRatePerKwh: 0,
+      taxRatePercent: 10,
+      effectiveFrom: new Date().toISOString().slice(0, 10),
     });
   };
 
@@ -141,10 +138,10 @@ export default function TariffsPage() {
     setEditingId(tariff.id);
     setFormData({
       name: tariff.name,
-      description: tariff.description,
-      pricePerKwh: tariff.pricePerKwh,
-      pricePerMinute: tariff.pricePerMinute,
-      connectionFee: tariff.connectionFee,
+      description: tariff.description || "",
+      baseRatePerKwh: tariff.baseRatePerKwh,
+      taxRatePercent: tariff.taxRatePercent,
+      effectiveFrom: tariff.effectiveFrom ? tariff.effectiveFrom.slice(0, 10) : new Date().toISOString().slice(0, 10),
     });
   };
 
@@ -157,8 +154,8 @@ export default function TariffsPage() {
     }
   };
 
-  const formatCurrency = (value: number) => {
-    return value.toLocaleString("vi-VN") + "đ";
+  const formatCurrency = (value?: number | null) => {
+    return (value ?? 0).toLocaleString("vi-VN") + "đ";
   };
 
   return (
@@ -212,56 +209,51 @@ export default function TariffsPage() {
                   />
                 </div>
               </div>
-              <div className="grid gap-4 md:grid-cols-3">
+              <div>
+                <label className="text-sm font-medium">Effective From</label>
+                <input
+                  type="date"
+                  value={formData.effectiveFrom}
+                  onChange={(e) =>
+                    setFormData({ ...formData, effectiveFrom: e.target.value })
+                  }
+                  className="mt-1 w-full rounded-md border px-3 py-2"
+                  required
+                />
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="text-sm font-medium">Price per kWh (VNĐ)</label>
+                  <label className="text-sm font-medium">Base Rate per kWh (VNĐ)</label>
                   <input
                     type="number"
-                    value={formData.pricePerKwh}
+                    value={formData.baseRatePerKwh}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        pricePerKwh: parseFloat(e.target.value) || 0,
+                        baseRatePerKwh: parseFloat(e.target.value) || 0,
                       })
                     }
                     className="mt-1 w-full rounded-md border px-3 py-2"
                     min="0"
-                    step="100"
+                    step="any"
                     required
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">
-                    Price per Minute (VNĐ)
-                  </label>
+                  <label className="text-sm font-medium">Tax Rate (%)</label>
                   <input
                     type="number"
-                    value={formData.pricePerMinute}
+                    value={formData.taxRatePercent}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        pricePerMinute: parseFloat(e.target.value) || 0,
+                        taxRatePercent: parseFloat(e.target.value) || 0,
                       })
                     }
                     className="mt-1 w-full rounded-md border px-3 py-2"
                     min="0"
-                    step="10"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Connection Fee (VNĐ)</label>
-                  <input
-                    type="number"
-                    value={formData.connectionFee}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        connectionFee: parseFloat(e.target.value) || 0,
-                      })
-                    }
-                    className="mt-1 w-full rounded-md border px-3 py-2"
-                    min="0"
-                    step="1000"
+                    max="100"
+                    step="1"
                   />
                 </div>
               </div>
@@ -325,28 +317,28 @@ export default function TariffsPage() {
                   <div className="flex items-center justify-between">
                     <span className="flex items-center gap-2 text-sm">
                       <Zap className="h-4 w-4 text-yellow-500" />
-                      Per kWh
+                      Base Rate/kWh
                     </span>
                     <span className="font-semibold">
-                      {formatCurrency(tariff.pricePerKwh)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-sm">
-                      <Clock className="h-4 w-4 text-blue-500" />
-                      Per Minute
-                    </span>
-                    <span className="font-semibold">
-                      {formatCurrency(tariff.pricePerMinute)}
+                      {formatCurrency(tariff.baseRatePerKwh)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="flex items-center gap-2 text-sm">
                       <DollarSign className="h-4 w-4 text-green-500" />
-                      Connection Fee
+                      Total Rate/kWh
                     </span>
                     <span className="font-semibold">
-                      {formatCurrency(tariff.connectionFee)}
+                      {formatCurrency(tariff.totalRatePerKwh)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-sm">
+                      <Clock className="h-4 w-4 text-blue-500" />
+                      Tax Rate
+                    </span>
+                    <span className="font-semibold">
+                      {tariff.taxRatePercent}%
                     </span>
                   </div>
                 </div>

@@ -16,24 +16,28 @@ import {
   ChevronLeft,
   ChevronRight,
   FileText,
-  User,
+  MapPin,
   Zap,
 } from "lucide-react";
 
 interface Payment {
   id: string;
-  userId: string;
-  userName: string;
   sessionId: string;
   amount: number;
-  currency: string;
-  status: "Pending" | "Completed" | "Failed" | "Refunded";
-  paymentMethod: string;
-  gateway: string;
-  transactionId?: string;
-  createdAt: string;
-  completedAt?: string;
+  status: number;
+  gateway: number;
+  referenceCode?: string;
+  stationName?: string;
+  creationTime?: string;
 }
+
+const PaymentStatusLabels: Record<number, string> = {
+  0: "Pending", 1: "Processing", 2: "Completed", 3: "Failed", 4: "Refunded", 5: "Cancelled",
+};
+
+const PaymentGatewayLabels: Record<number, string> = {
+  0: "ZaloPay", 1: "MoMo", 2: "OnePay", 3: "Wallet",
+};
 
 interface PaymentStats {
   todayTotal: number;
@@ -70,46 +74,38 @@ export default function PaymentsPage() {
     },
   });
 
-  // Fetch stats
-  const { data: stats } = useQuery<PaymentStats>({
-    queryKey: ["payment-stats"],
-    queryFn: async () => {
-      // Mock stats - in real implementation, would come from API
-      return {
-        todayTotal: 15750000,
-        todayCount: 45,
-        monthTotal: 425000000,
-        monthCount: 1250,
-        pendingCount: 3,
-        failedCount: 2,
-      };
-    },
-  });
-
   const payments: Payment[] = paymentsData?.items || [];
   const totalCount = paymentsData?.totalCount || 0;
   const totalPages = Math.ceil(totalCount / pageSize);
 
-  const getStatusColor = (status: string) => {
+  // Compute stats from fetched data
+  const stats: PaymentStats = {
+    todayTotal: payments.reduce((sum, p) => sum + (p.amount || 0), 0),
+    todayCount: payments.length,
+    monthTotal: payments.reduce((sum, p) => sum + (p.amount || 0), 0),
+    monthCount: totalCount,
+    pendingCount: payments.filter((p) => p.status === 0).length,
+    failedCount: payments.filter((p) => p.status === 3).length,
+  };
+
+  const getStatusColor = (status: number): "success" | "warning" | "destructive" | "secondary" | "default" => {
     switch (status) {
-      case "Completed":
-        return "success";
-      case "Pending":
-        return "warning";
-      case "Failed":
-        return "destructive";
-      case "Refunded":
-        return "secondary";
-      default:
-        return "secondary";
+      case 2: return "success";    // Completed
+      case 0: return "warning";    // Pending
+      case 1: return "default";    // Processing
+      case 3: return "destructive"; // Failed
+      case 4: return "secondary";  // Refunded
+      case 5: return "secondary";  // Cancelled
+      default: return "secondary";
     }
   };
 
-  const formatCurrency = (value: number) => {
-    return value.toLocaleString("vi-VN") + "đ";
+  const formatCurrency = (value?: number | null) => {
+    return (value ?? 0).toLocaleString("vi-VN") + "đ";
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString?: string | null) => {
+    if (!dateString) return "—";
     return new Date(dateString).toLocaleString("vi-VN");
   };
 
@@ -210,10 +206,12 @@ export default function PaymentsPage() {
               className="rounded-md border px-3 py-2"
             >
               <option value="all">All Status</option>
-              <option value="Completed">Completed</option>
-              <option value="Pending">Pending</option>
-              <option value="Failed">Failed</option>
-              <option value="Refunded">Refunded</option>
+              <option value="0">Pending</option>
+              <option value="1">Processing</option>
+              <option value="2">Completed</option>
+              <option value="3">Failed</option>
+              <option value="4">Refunded</option>
+              <option value="5">Cancelled</option>
             </select>
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -245,7 +243,7 @@ export default function PaymentsPage() {
                   <th className="px-4 py-3 text-left text-sm font-medium">
                     Transaction
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">User</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">Station</th>
                   <th className="px-4 py-3 text-left text-sm font-medium">
                     Session
                   </th>
@@ -276,20 +274,20 @@ export default function PaymentsPage() {
                     <tr key={payment.id} className="border-b hover:bg-muted/50">
                       <td className="px-4 py-3">
                         <div className="font-mono text-sm">
-                          {payment.transactionId || payment.id.slice(0, 8)}
+                          {payment.referenceCode || payment.id.slice(0, 8)}
                         </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-muted-foreground" />
-                          <span>{payment.userName}</span>
+                          <MapPin className="h-4 w-4 text-muted-foreground" />
+                          <span>{payment.stationName || "—"}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <Zap className="h-4 w-4 text-yellow-500" />
                           <span className="font-mono text-sm">
-                            {payment.sessionId.slice(0, 8)}
+                            {payment.sessionId?.slice(0, 8) || "—"}
                           </span>
                         </div>
                       </td>
@@ -299,16 +297,16 @@ export default function PaymentsPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <CreditCard className="h-4 w-4 text-muted-foreground" />
-                          <span>{payment.paymentMethod}</span>
+                          <span>{PaymentGatewayLabels[payment.gateway] ?? "—"}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3">
                         <Badge variant={getStatusColor(payment.status)}>
-                          {payment.status}
+                          {PaymentStatusLabels[payment.status] || "Unknown"}
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">
-                        {formatDate(payment.createdAt)}
+                        {formatDate(payment.creationTime)}
                       </td>
                       <td className="px-4 py-3">
                         <Button variant="ghost" size="sm">

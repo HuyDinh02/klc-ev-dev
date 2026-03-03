@@ -15,9 +15,6 @@ import {
   XCircle,
   ChevronLeft,
   ChevronRight,
-  ExternalLink,
-  FileText,
-  User,
   DollarSign,
   CheckCircle2,
   Clock,
@@ -27,19 +24,24 @@ import {
 interface EInvoice {
   id: string;
   invoiceId: string;
-  userId: string;
-  userName: string;
   invoiceNumber: string;
-  serialNumber: string;
-  provider: "MISA" | "Viettel" | "VNPT";
-  status: "Pending" | "Issued" | "Failed" | "Cancelled";
+  eInvoiceNumber?: string;
+  provider: number;
+  status: number;
   totalAmount: number;
-  taxAmount: number;
   issuedAt?: string;
-  pdfUrl?: string;
-  errorMessage?: string;
-  createdAt: string;
+  retryCount?: number;
+  creationTime?: string;
+  stationName?: string;
 }
+
+const EInvoiceStatusLabels: Record<number, string> = {
+  0: "Pending", 1: "Processing", 2: "Issued", 3: "Failed", 4: "Cancelled",
+};
+
+const EInvoiceProviderLabels: Record<number, string> = {
+  0: "MISA", 1: "Viettel", 2: "VNPT",
+};
 
 interface EInvoiceStats {
   totalIssued: number;
@@ -86,25 +88,10 @@ export default function EInvoicesPage() {
     },
   });
 
-  // Fetch stats
-  const { data: stats } = useQuery<EInvoiceStats>({
-    queryKey: ["e-invoice-stats"],
-    queryFn: async () => {
-      // Mock stats - in real implementation, would come from API
-      return {
-        totalIssued: 1250,
-        totalPending: 5,
-        totalFailed: 3,
-        totalCancelled: 12,
-        totalAmount: 425000000,
-      };
-    },
-  });
-
   // Retry failed invoice
   const retryMutation = useMutation({
     mutationFn: async (id: string) => {
-      await api.post(`/api/v1/e-invoices/${id}/retry`);
+      await api.post(`/e-invoices/${id}/retry`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["e-invoices"] });
@@ -114,7 +101,7 @@ export default function EInvoicesPage() {
   // Cancel invoice
   const cancelMutation = useMutation({
     mutationFn: async (id: string) => {
-      await api.post(`/api/v1/e-invoices/${id}/cancel`);
+      await api.post(`/e-invoices/${id}/cancel`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["e-invoices"] });
@@ -125,49 +112,52 @@ export default function EInvoicesPage() {
   const totalCount = invoicesData?.totalCount || 0;
   const totalPages = Math.ceil(totalCount / pageSize);
 
-  const getStatusIcon = (status: string) => {
+  // Compute stats from fetched data
+  const stats: EInvoiceStats = {
+    totalIssued: invoices.filter((i) => i.status === 2).length,
+    totalPending: invoices.filter((i) => i.status === 0 || i.status === 1).length,
+    totalFailed: invoices.filter((i) => i.status === 3).length,
+    totalCancelled: invoices.filter((i) => i.status === 4).length,
+    totalAmount: invoices.reduce((sum, i) => sum + (i.totalAmount || 0), 0),
+  };
+
+  const getStatusIcon = (status: number) => {
     switch (status) {
-      case "Issued":
-        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-      case "Pending":
-        return <Clock className="h-4 w-4 text-yellow-500" />;
-      case "Failed":
-        return <AlertTriangle className="h-4 w-4 text-red-500" />;
-      case "Cancelled":
-        return <XCircle className="h-4 w-4 text-gray-500" />;
-      default:
-        return null;
+      case 2: return <CheckCircle2 className="h-4 w-4 text-green-500" />;    // Issued
+      case 0: return <Clock className="h-4 w-4 text-yellow-500" />;          // Pending
+      case 1: return <Clock className="h-4 w-4 text-blue-500" />;            // Processing
+      case 3: return <AlertTriangle className="h-4 w-4 text-red-500" />;     // Failed
+      case 4: return <XCircle className="h-4 w-4 text-gray-500" />;          // Cancelled
+      default: return null;
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: number): "success" | "warning" | "destructive" | "secondary" | "default" => {
     switch (status) {
-      case "Issued":
-        return "success";
-      case "Pending":
-        return "warning";
-      case "Failed":
-        return "destructive";
-      case "Cancelled":
-        return "secondary";
-      default:
-        return "secondary";
+      case 2: return "success";     // Issued
+      case 0: return "warning";     // Pending
+      case 1: return "default";     // Processing
+      case 3: return "destructive"; // Failed
+      case 4: return "secondary";   // Cancelled
+      default: return "secondary";
     }
   };
 
-  const formatCurrency = (value: number) => {
-    return value.toLocaleString("vi-VN") + "đ";
+  const formatCurrency = (value?: number | null) => {
+    return (value ?? 0).toLocaleString("vi-VN") + "đ";
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString?: string | null) => {
+    if (!dateString) return "—";
     return new Date(dateString).toLocaleString("vi-VN");
   };
 
   const handleDownloadPdf = async (invoiceId: string) => {
     try {
-      const res = await api.get(`/api/v1/e-invoices/${invoiceId}/pdf-url`);
-      if (res.data.pdfUrl) {
-        window.open(res.data.pdfUrl, "_blank");
+      const res = await api.get(`/e-invoices/${invoiceId}/pdf-url`);
+      const url = res.data.pdfUrl || res.data.url;
+      if (url) {
+        window.open(url, "_blank");
       }
     } catch (error) {
       console.error("Failed to get PDF URL:", error);
@@ -271,10 +261,11 @@ export default function EInvoicesPage() {
               className="rounded-md border px-3 py-2"
             >
               <option value="all">All Status</option>
-              <option value="Issued">Issued</option>
-              <option value="Pending">Pending</option>
-              <option value="Failed">Failed</option>
-              <option value="Cancelled">Cancelled</option>
+              <option value="0">Pending</option>
+              <option value="1">Processing</option>
+              <option value="2">Issued</option>
+              <option value="3">Failed</option>
+              <option value="4">Cancelled</option>
             </select>
             <select
               value={providerFilter}
@@ -282,9 +273,9 @@ export default function EInvoicesPage() {
               className="rounded-md border px-3 py-2"
             >
               <option value="all">All Providers</option>
-              <option value="MISA">MISA</option>
-              <option value="Viettel">Viettel</option>
-              <option value="VNPT">VNPT</option>
+              <option value="0">MISA</option>
+              <option value="1">Viettel</option>
+              <option value="2">VNPT</option>
             </select>
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -317,7 +308,7 @@ export default function EInvoicesPage() {
                     Invoice #
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-medium">
-                    Customer
+                    Station
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-medium">
                     Provider
@@ -326,7 +317,7 @@ export default function EInvoicesPage() {
                     Amount
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-medium">
-                    Tax
+                    Retries
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-medium">
                     Status
@@ -356,46 +347,40 @@ export default function EInvoicesPage() {
                             <p className="font-mono font-medium">
                               {invoice.invoiceNumber}
                             </p>
-                            <p className="text-xs text-muted-foreground">
-                              {invoice.serialNumber}
-                            </p>
+                            {invoice.eInvoiceNumber && (
+                              <p className="text-xs text-muted-foreground">
+                                {invoice.eInvoiceNumber}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-muted-foreground" />
-                          <span>{invoice.userName}</span>
-                        </div>
+                        <span>{invoice.stationName || "—"}</span>
                       </td>
                       <td className="px-4 py-3">
-                        <Badge variant="outline">{invoice.provider}</Badge>
+                        <Badge variant="outline">{EInvoiceProviderLabels[invoice.provider] ?? invoice.provider}</Badge>
                       </td>
                       <td className="px-4 py-3 font-semibold">
                         {formatCurrency(invoice.totalAmount)}
                       </td>
                       <td className="px-4 py-3 text-sm">
-                        {formatCurrency(invoice.taxAmount)}
+                        {invoice.retryCount ?? 0}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           {getStatusIcon(invoice.status)}
                           <Badge variant={getStatusColor(invoice.status)}>
-                            {invoice.status}
+                            {EInvoiceStatusLabels[invoice.status] || "Unknown"}
                           </Badge>
                         </div>
-                        {invoice.errorMessage && (
-                          <p className="text-xs text-red-500 mt-1">
-                            {invoice.errorMessage}
-                          </p>
-                        )}
                       </td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">
-                        {formatDate(invoice.createdAt)}
+                        {formatDate(invoice.issuedAt || invoice.creationTime)}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
-                          {invoice.status === "Issued" && (
+                          {invoice.status === 2 && (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -405,7 +390,7 @@ export default function EInvoicesPage() {
                               <Download className="h-4 w-4" />
                             </Button>
                           )}
-                          {invoice.status === "Failed" && (
+                          {invoice.status === 3 && (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -415,7 +400,7 @@ export default function EInvoicesPage() {
                               <RefreshCw className="h-4 w-4" />
                             </Button>
                           )}
-                          {invoice.status === "Issued" && (
+                          {invoice.status === 2 && (
                             <Button
                               variant="ghost"
                               size="sm"

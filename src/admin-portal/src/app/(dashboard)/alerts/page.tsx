@@ -23,17 +23,31 @@ import {
 
 interface Alert {
   id: string;
-  type: "Critical" | "Warning" | "Info";
+  type: number;
   title: string;
   message: string;
   stationId?: string;
   stationName?: string;
-  connectorId?: number;
-  isAcknowledged: boolean;
+  status: number; // 0=New, 1=Acknowledged, 2=Resolved
   acknowledgedBy?: string;
   acknowledgedAt?: string;
   createdAt: string;
 }
+
+// AlertType: 0=StationOffline, 1=ConnectorFault, 2=LowUtilization, 3=HighUtilization,
+// 4=FirmwareUpdate, 5=PaymentFailure, 6=EInvoiceFailure, 7=HeartbeatTimeout
+const AlertTypeLabels: Record<number, string> = {
+  0: "Station Offline", 1: "Connector Fault", 2: "Low Utilization", 3: "High Utilization",
+  4: "Firmware Update", 5: "Payment Failure", 6: "E-Invoice Failure", 7: "Heartbeat Timeout",
+};
+
+const AlertStatusLabels: Record<number, string> = {
+  0: "New", 1: "Acknowledged", 2: "Resolved",
+};
+
+// Critical types: StationOffline, ConnectorFault, PaymentFailure, HeartbeatTimeout
+const CRITICAL_TYPES = new Set([0, 1, 5, 7]);
+const WARNING_TYPES = new Set([2, 3, 6]);
 
 interface AlertStats {
   criticalCount: number;
@@ -58,9 +72,9 @@ export default function AlertsPage() {
         skipCount: (currentPage - 1) * pageSize,
         maxResultCount: pageSize,
       };
-      if (typeFilter !== "all") params.type = typeFilter;
+      // typeFilter is severity-based (critical/warning/info) — client-side filtering only
       if (acknowledgedFilter !== "all") {
-        params.isAcknowledged = acknowledgedFilter === "acknowledged";
+        params.status = acknowledgedFilter;
       }
 
       const res = await api.get("/alerts", { params });
@@ -68,39 +82,13 @@ export default function AlertsPage() {
     },
   });
 
-  // Fetch stats
-  const { data: stats } = useQuery<AlertStats>({
-    queryKey: ["alert-stats"],
-    queryFn: async () => {
-      // Mock stats - would come from API in real implementation
-      return {
-        criticalCount: 2,
-        warningCount: 5,
-        infoCount: 12,
-        unacknowledgedCount: 7,
-      };
-    },
-  });
-
   // Acknowledge alert
   const acknowledgeMutation = useMutation({
     mutationFn: async (id: string) => {
-      await api.post(`/api/v1/alerts/${id}/acknowledge`);
+      await api.post(`/alerts/${id}/acknowledge`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["alerts"] });
-      queryClient.invalidateQueries({ queryKey: ["alert-stats"] });
-    },
-  });
-
-  // Acknowledge all alerts
-  const acknowledgeAllMutation = useMutation({
-    mutationFn: async () => {
-      await api.post("/alerts/acknowledge-all");
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["alerts"] });
-      queryClient.invalidateQueries({ queryKey: ["alert-stats"] });
     },
   });
 
@@ -108,29 +96,37 @@ export default function AlertsPage() {
   const totalCount = alertsData?.totalCount || 0;
   const totalPages = Math.ceil(totalCount / pageSize);
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case "Critical":
-        return <AlertCircle className="h-5 w-5 text-red-500" />;
-      case "Warning":
-        return <AlertTriangle className="h-5 w-5 text-yellow-500" />;
-      case "Info":
-        return <Info className="h-5 w-5 text-blue-500" />;
-      default:
-        return <Bell className="h-5 w-5" />;
+  // Compute stats from fetched data
+  const stats: AlertStats = {
+    criticalCount: alerts.filter((a) => CRITICAL_TYPES.has(a.type)).length,
+    warningCount: alerts.filter((a) => WARNING_TYPES.has(a.type)).length,
+    infoCount: alerts.filter((a) => !CRITICAL_TYPES.has(a.type) && !WARNING_TYPES.has(a.type)).length,
+    unacknowledgedCount: alerts.filter((a) => a.status === 0).length,
+  };
+
+  const getSeverity = (type: number): "critical" | "warning" | "info" => {
+    if (CRITICAL_TYPES.has(type)) return "critical";
+    if (WARNING_TYPES.has(type)) return "warning";
+    return "info";
+  };
+
+  const getTypeIcon = (type: number) => {
+    const severity = getSeverity(type);
+    switch (severity) {
+      case "critical": return <AlertCircle className="h-5 w-5 text-red-500" />;
+      case "warning": return <AlertTriangle className="h-5 w-5 text-yellow-500" />;
+      case "info": return <Info className="h-5 w-5 text-blue-500" />;
+      default: return <Bell className="h-5 w-5" />;
     }
   };
 
-  const getTypeColor = (type: string): "destructive" | "warning" | "default" | "secondary" => {
-    switch (type) {
-      case "Critical":
-        return "destructive";
-      case "Warning":
-        return "warning";
-      case "Info":
-        return "default";
-      default:
-        return "secondary";
+  const getTypeColor = (type: number): "destructive" | "warning" | "default" | "secondary" => {
+    const severity = getSeverity(type);
+    switch (severity) {
+      case "critical": return "destructive";
+      case "warning": return "warning";
+      case "info": return "default";
+      default: return "secondary";
     }
   };
 
@@ -162,26 +158,19 @@ export default function AlertsPage() {
             System alerts and notifications
           </p>
         </div>
-        <Button
-          onClick={() => acknowledgeAllMutation.mutate()}
-          disabled={
-            acknowledgeAllMutation.isPending ||
-            (stats?.unacknowledgedCount || 0) === 0
-          }
-        >
-          <CheckCircle2 className="mr-2 h-4 w-4" />
-          Acknowledge All
-        </Button>
+        <Badge variant="secondary" className="text-sm">
+          {stats?.unacknowledgedCount || 0} unacknowledged
+        </Badge>
       </div>
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card
           className={`cursor-pointer ${
-            typeFilter === "Critical" ? "ring-2 ring-red-500" : ""
+            typeFilter === "critical" ? "ring-2 ring-red-500" : ""
           }`}
           onClick={() =>
-            setTypeFilter(typeFilter === "Critical" ? "all" : "Critical")
+            setTypeFilter(typeFilter === "critical" ? "all" : "critical")
           }
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -197,10 +186,10 @@ export default function AlertsPage() {
 
         <Card
           className={`cursor-pointer ${
-            typeFilter === "Warning" ? "ring-2 ring-yellow-500" : ""
+            typeFilter === "warning" ? "ring-2 ring-yellow-500" : ""
           }`}
           onClick={() =>
-            setTypeFilter(typeFilter === "Warning" ? "all" : "Warning")
+            setTypeFilter(typeFilter === "warning" ? "all" : "warning")
           }
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -216,9 +205,9 @@ export default function AlertsPage() {
 
         <Card
           className={`cursor-pointer ${
-            typeFilter === "Info" ? "ring-2 ring-blue-500" : ""
+            typeFilter === "info" ? "ring-2 ring-blue-500" : ""
           }`}
-          onClick={() => setTypeFilter(typeFilter === "Info" ? "all" : "Info")}
+          onClick={() => setTypeFilter(typeFilter === "info" ? "all" : "info")}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Info</CardTitle>
@@ -264,10 +253,10 @@ export default function AlertsPage() {
               onChange={(e) => setTypeFilter(e.target.value)}
               className="rounded-md border px-3 py-2"
             >
-              <option value="all">All Types</option>
-              <option value="Critical">Critical</option>
-              <option value="Warning">Warning</option>
-              <option value="Info">Info</option>
+              <option value="all">All Severity</option>
+              <option value="critical">Critical</option>
+              <option value="warning">Warning</option>
+              <option value="info">Info</option>
             </select>
             <select
               value={acknowledgedFilter}
@@ -275,8 +264,9 @@ export default function AlertsPage() {
               className="rounded-md border px-3 py-2"
             >
               <option value="all">All Status</option>
-              <option value="unacknowledged">Unacknowledged</option>
-              <option value="acknowledged">Acknowledged</option>
+              <option value="0">New</option>
+              <option value="1">Acknowledged</option>
+              <option value="2">Resolved</option>
             </select>
           </div>
         </CardContent>
@@ -287,84 +277,88 @@ export default function AlertsPage() {
         {isLoading ? (
           <div className="text-center py-8">Loading...</div>
         ) : alerts.length > 0 ? (
-          alerts.map((alert) => (
-            <Card
-              key={alert.id}
-              className={`${
-                !alert.isAcknowledged
-                  ? alert.type === "Critical"
-                    ? "border-l-4 border-l-red-500"
-                    : alert.type === "Warning"
-                    ? "border-l-4 border-l-yellow-500"
-                    : "border-l-4 border-l-blue-500"
-                  : ""
-              } ${!alert.isAcknowledged ? "bg-muted/30" : ""}`}
-            >
-              <CardContent className="py-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-start gap-4">
-                    {getTypeIcon(alert.type)}
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold">{alert.title}</h3>
-                        <Badge variant={getTypeColor(alert.type)}>
-                          {alert.type}
-                        </Badge>
-                        {alert.isAcknowledged && (
-                          <Badge variant="secondary">Acknowledged</Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {alert.message}
-                      </p>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {getTimeAgo(alert.createdAt)}
-                        </span>
-                        {alert.stationName && (
-                          <span className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />
-                            {alert.stationName}
-                          </span>
-                        )}
-                        {alert.connectorId && (
-                          <span className="flex items-center gap-1">
-                            <Zap className="h-3 w-3" />
-                            Connector #{alert.connectorId}
-                          </span>
-                        )}
-                      </div>
-                      {alert.isAcknowledged && alert.acknowledgedBy && (
-                        <p className="text-xs text-muted-foreground">
-                          Acknowledged by {alert.acknowledgedBy} at{" "}
-                          {formatDate(alert.acknowledgedAt!)}
+          alerts
+            .filter((alert) => {
+              if (typeFilter === "all") return true;
+              return getSeverity(alert.type) === typeFilter;
+            })
+            .map((alert) => {
+              const severity = getSeverity(alert.type);
+              const isNew = alert.status === 0;
+              return (
+              <Card
+                key={alert.id}
+                className={`${
+                  isNew
+                    ? severity === "critical"
+                      ? "border-l-4 border-l-red-500"
+                      : severity === "warning"
+                      ? "border-l-4 border-l-yellow-500"
+                      : "border-l-4 border-l-blue-500"
+                    : ""
+                } ${isNew ? "bg-muted/30" : ""}`}
+              >
+                <CardContent className="py-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-4">
+                      {getTypeIcon(alert.type)}
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold">{alert.title}</h3>
+                          <Badge variant={getTypeColor(alert.type)}>
+                            {AlertTypeLabels[alert.type] || "Alert"}
+                          </Badge>
+                          {alert.status > 0 && (
+                            <Badge variant="secondary">
+                              {AlertStatusLabels[alert.status]}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {alert.message}
                         </p>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {getTimeAgo(alert.createdAt)}
+                          </span>
+                          {alert.stationName && (
+                            <span className="flex items-center gap-1">
+                              <MapPin className="h-3 w-3" />
+                              {alert.stationName}
+                            </span>
+                          )}
+                        </div>
+                        {alert.status >= 1 && alert.acknowledgedBy && (
+                          <p className="text-xs text-muted-foreground">
+                            Acknowledged by {alert.acknowledgedBy}{alert.acknowledgedAt ? ` at ${formatDate(alert.acknowledgedAt)}` : ""}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedAlert(alert)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      {alert.status === 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => acknowledgeMutation.mutate(alert.id)}
+                        >
+                          <CheckCircle2 className="h-4 w-4" />
+                        </Button>
                       )}
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedAlert(alert)}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    {!alert.isAcknowledged && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => acknowledgeMutation.mutate(alert.id)}
-                      >
-                        <CheckCircle2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
+                </CardContent>
+              </Card>
+              );
+            })
         ) : (
           <Card>
             <CardContent className="py-8 text-center text-muted-foreground">
@@ -433,19 +427,17 @@ export default function AlertsPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">Type</p>
                   <Badge variant={getTypeColor(selectedAlert.type)}>
-                    {selectedAlert.type}
+                    {AlertTypeLabels[selectedAlert.type] || "Alert"}
                   </Badge>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Status</p>
                   <Badge
                     variant={
-                      selectedAlert.isAcknowledged ? "secondary" : "default"
+                      selectedAlert.status > 0 ? "secondary" : "default"
                     }
                   >
-                    {selectedAlert.isAcknowledged
-                      ? "Acknowledged"
-                      : "Pending"}
+                    {AlertStatusLabels[selectedAlert.status] || "New"}
                   </Badge>
                 </div>
               </div>
@@ -462,17 +454,16 @@ export default function AlertsPage() {
                 <p className="text-sm text-muted-foreground">Created</p>
                 <p>{formatDate(selectedAlert.createdAt)}</p>
               </div>
-              {selectedAlert.isAcknowledged && (
+              {selectedAlert.status >= 1 && selectedAlert.acknowledgedBy && (
                 <div>
                   <p className="text-sm text-muted-foreground">Acknowledged</p>
                   <p>
-                    {selectedAlert.acknowledgedBy} at{" "}
-                    {formatDate(selectedAlert.acknowledgedAt!)}
+                    {selectedAlert.acknowledgedBy}{selectedAlert.acknowledgedAt ? ` at ${formatDate(selectedAlert.acknowledgedAt)}` : ""}
                   </p>
                 </div>
               )}
 
-              {!selectedAlert.isAcknowledged && (
+              {selectedAlert.status === 0 && (
                 <Button
                   className="w-full"
                   onClick={() => {

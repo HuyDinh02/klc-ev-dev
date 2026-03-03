@@ -2,111 +2,86 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Filter, Zap, Clock, Battery, DollarSign } from "lucide-react";
+import { Search, Zap, Clock, Battery, DollarSign } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { sessionsApi } from "@/lib/api";
 import { formatCurrency, formatDateTime, formatEnergy, formatDuration } from "@/lib/utils";
 
-// Mock data for development
-const mockSessions = [
-  {
-    id: "1",
-    stationName: "Station HCM-001",
-    connectorNumber: 1,
-    userName: "Nguyen Van A",
-    vehiclePlate: "51A-12345",
-    status: "Charging",
-    startTime: "2024-01-15T10:30:00",
-    endTime: null,
-    durationMinutes: 45,
-    energyDelivered: 25.5,
-    cost: 127500,
-    soc: 65,
-  },
-  {
-    id: "2",
-    stationName: "Station HCM-002",
-    connectorNumber: 2,
-    userName: "Tran Thi B",
-    vehiclePlate: "51A-67890",
-    status: "Completed",
-    startTime: "2024-01-15T09:00:00",
-    endTime: "2024-01-15T10:15:00",
-    durationMinutes: 75,
-    energyDelivered: 42.3,
-    cost: 211500,
-    soc: 100,
-  },
-  {
-    id: "3",
-    stationName: "Station HN-001",
-    connectorNumber: 1,
-    userName: "Le Van C",
-    vehiclePlate: "30A-11111",
-    status: "Charging",
-    startTime: "2024-01-15T10:45:00",
-    endTime: null,
-    durationMinutes: 30,
-    energyDelivered: 18.2,
-    cost: 91000,
-    soc: 45,
-  },
-  {
-    id: "4",
-    stationName: "Station DN-001",
-    connectorNumber: 1,
-    userName: "Pham Van D",
-    vehiclePlate: "43A-22222",
-    status: "Completed",
-    startTime: "2024-01-15T08:00:00",
-    endTime: "2024-01-15T09:30:00",
-    durationMinutes: 90,
-    energyDelivered: 55.0,
-    cost: 275000,
-    soc: 100,
-  },
-];
+const SessionStatusLabels: Record<number, string> = {
+  0: "Pending",
+  1: "Starting",
+  2: "InProgress",
+  3: "Suspended",
+  4: "Stopping",
+  5: "Completed",
+  6: "Failed",
+};
 
-function getStatusBadge(status: string) {
-  switch (status) {
-    case "Charging":
+function getStatusBadge(status: number | string) {
+  const label = typeof status === "number" ? (SessionStatusLabels[status] || "Unknown") : status;
+  switch (label) {
+    case "InProgress":
       return <Badge variant="default">Charging</Badge>;
+    case "Starting":
+      return <Badge variant="default">Starting</Badge>;
     case "Completed":
       return <Badge variant="success">Completed</Badge>;
     case "Failed":
       return <Badge variant="destructive">Failed</Badge>;
+    case "Pending":
+      return <Badge variant="secondary">Pending</Badge>;
+    case "Suspended":
+      return <Badge variant="warning">Suspended</Badge>;
+    case "Stopping":
+      return <Badge variant="secondary">Stopping</Badge>;
     default:
-      return <Badge variant="secondary">{status}</Badge>;
+      return <Badge variant="secondary">{label}</Badge>;
   }
 }
 
 export default function SessionsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 20;
 
-  const { data: sessions, isLoading } = useQuery({
-    queryKey: ["sessions", statusFilter],
+  const { data: sessionsData, isLoading } = useQuery({
+    queryKey: ["sessions", statusFilter, currentPage],
     queryFn: async () => {
-      // In production: const { data } = await sessionsApi.getAll({ status: statusFilter });
-      // return data.items;
-      return mockSessions;
+      const params: Record<string, unknown> = {
+        skipCount: (currentPage - 1) * pageSize,
+        maxResultCount: pageSize,
+      };
+      if (statusFilter !== "all") params.status = statusFilter;
+      const { data } = await sessionsApi.getAll(params as { skip?: number; maxResultCount?: number; stationId?: string });
+      return data;
     },
   });
 
-  const filteredSessions = sessions?.filter((session) => {
-    const matchesSearch =
-      session.stationName.toLowerCase().includes(search.toLowerCase()) ||
-      session.userName.toLowerCase().includes(search.toLowerCase()) ||
-      session.vehiclePlate.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === "all" || session.status === statusFilter;
-    return matchesSearch && matchesStatus;
+  const sessions = sessionsData?.items || [];
+
+  const filteredSessions = sessions.filter((session: { stationName?: string; userName?: string }) => {
+    if (!search) return true;
+    const s = search.toLowerCase();
+    return (
+      (session.stationName || "").toLowerCase().includes(s) ||
+      (session.userName || "").toLowerCase().includes(s)
+    );
   });
 
-  const activeSessions = sessions?.filter((s) => s.status === "Charging").length || 0;
-  const totalEnergy = sessions?.reduce((acc, s) => acc + s.energyDelivered, 0) || 0;
-  const totalRevenue = sessions?.reduce((acc, s) => acc + s.cost, 0) || 0;
+  const computeDuration = (startTime?: string | null, endTime?: string | null) => {
+    if (!startTime) return 0;
+    const start = new Date(startTime).getTime();
+    const end = endTime ? new Date(endTime).getTime() : Date.now();
+    return Math.floor((end - start) / 60000);
+  };
+
+  const activeSessions = sessions.filter((s: { status: number | string }) => s.status === 1 || s.status === 2 || s.status === "InProgress" || s.status === "Starting").length;
+  const totalEnergy = sessions.reduce((acc: number, s: { totalEnergyKwh?: number; energyDeliveredKwh?: number }) => acc + (s.totalEnergyKwh || s.energyDeliveredKwh || 0), 0);
+  const totalRevenue = sessions.reduce((acc: number, s: { totalCost?: number; cost?: number }) => acc + (s.totalCost || s.cost || 0), 0);
 
   return (
     <div className="flex flex-col">
@@ -165,7 +140,7 @@ export default function SessionsPage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Total Sessions</p>
-                  <p className="text-2xl font-bold">{sessions?.length || 0}</p>
+                  <p className="text-2xl font-bold">{sessionsData?.totalCount || sessions.length}</p>
                 </div>
               </div>
             </CardContent>
@@ -193,16 +168,16 @@ export default function SessionsPage() {
               All
             </Button>
             <Button
-              variant={statusFilter === "Charging" ? "default" : "outline"}
+              variant={statusFilter === "2" ? "default" : "outline"}
               size="sm"
-              onClick={() => setStatusFilter("Charging")}
+              onClick={() => setStatusFilter("2")}
             >
               Active
             </Button>
             <Button
-              variant={statusFilter === "Completed" ? "default" : "outline"}
+              variant={statusFilter === "5" ? "default" : "outline"}
               size="sm"
-              onClick={() => setStatusFilter("Completed")}
+              onClick={() => setStatusFilter("5")}
             >
               Completed
             </Button>
@@ -218,7 +193,6 @@ export default function SessionsPage() {
                   <tr className="border-b bg-muted/50">
                     <th className="px-4 py-3 text-left text-sm font-medium">Station</th>
                     <th className="px-4 py-3 text-left text-sm font-medium">User</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Vehicle</th>
                     <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
                     <th className="px-4 py-3 text-left text-sm font-medium">Start Time</th>
                     <th className="px-4 py-3 text-left text-sm font-medium">Duration</th>
@@ -227,29 +201,46 @@ export default function SessionsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredSessions?.map((session) => (
-                    <tr key={session.id} className="border-b hover:bg-muted/50">
-                      <td className="px-4 py-3">
-                        <div>
-                          <p className="font-medium">{session.stationName}</p>
-                          <p className="text-xs text-muted-foreground">
-                            Connector #{session.connectorNumber}
-                          </p>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">{session.userName}</td>
-                      <td className="px-4 py-3">{session.vehiclePlate}</td>
-                      <td className="px-4 py-3">{getStatusBadge(session.status)}</td>
-                      <td className="px-4 py-3 text-sm">
-                        {formatDateTime(session.startTime)}
-                      </td>
-                      <td className="px-4 py-3">{formatDuration(session.durationMinutes)}</td>
-                      <td className="px-4 py-3">{formatEnergy(session.energyDelivered)}</td>
-                      <td className="px-4 py-3 font-medium">
-                        {formatCurrency(session.cost)}
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-8 text-center">Loading...</td>
+                    </tr>
+                  ) : filteredSessions.length > 0 ? (
+                    filteredSessions.map((session: { id: string; stationName?: string; connectorNumber?: number; userName?: string; status: number | string; startTime: string; endTime?: string | null; totalEnergyKwh?: number; energyDeliveredKwh?: number; totalCost?: number; cost?: number }) => (
+                      <tr key={session.id} className="border-b hover:bg-muted/50">
+                        <td className="px-4 py-3">
+                          <div>
+                            <p className="font-medium">{session.stationName || "—"}</p>
+                            {session.connectorNumber && (
+                              <p className="text-xs text-muted-foreground">
+                                Connector #{session.connectorNumber}
+                              </p>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">{session.userName || "—"}</td>
+                        <td className="px-4 py-3">{getStatusBadge(session.status)}</td>
+                        <td className="px-4 py-3 text-sm">
+                          {formatDateTime(session.startTime)}
+                        </td>
+                        <td className="px-4 py-3">
+                          {formatDuration(computeDuration(session.startTime, session.endTime))}
+                        </td>
+                        <td className="px-4 py-3">
+                          {formatEnergy(session.totalEnergyKwh || session.energyDeliveredKwh || 0)}
+                        </td>
+                        <td className="px-4 py-3 font-medium">
+                          {formatCurrency(session.totalCost || session.cost || 0)}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                        No sessions found
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
