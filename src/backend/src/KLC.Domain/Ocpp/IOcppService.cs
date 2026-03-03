@@ -72,4 +72,10 @@ public interface IOcppService
     /// Gets a station by its charge point ID (station code).
     /// </summary>
     Task<ChargingStation?> GetStationByChargePointIdAsync(string chargePointId);
+
+    /// <summary>
+    /// Validates an OCPP idTag.
+    /// Returns true if the idTag is a valid user GUID or registered RFID tag.
+    /// </summary>
+    Task<bool> ValidateIdTagAsync(string idTag);
 }

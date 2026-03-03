@@ -2,8 +2,15 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using KLC.Enums;
+using KLC.Notifications;
+using KLC.Stations;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Volo.Abp.Domain.Repositories;
+using Volo.Abp.Guids;
+using Volo.Abp.Uow;
 
 namespace KLC.Ocpp;
 
@@ -13,15 +20,18 @@ namespace KLC.Ocpp;
 public class HeartbeatMonitorService : BackgroundService
 {
     private readonly OcppConnectionManager _connectionManager;
+    private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<HeartbeatMonitorService> _logger;
     private readonly TimeSpan _checkInterval = TimeSpan.FromSeconds(30);
     private readonly TimeSpan _heartbeatTimeout = TimeSpan.FromMinutes(6); // 5 min interval + 1 min grace
 
     public HeartbeatMonitorService(
         OcppConnectionManager connectionManager,
+        IServiceProvider serviceProvider,
         ILogger<HeartbeatMonitorService> logger)
     {
         _connectionManager = connectionManager;
+        _serviceProvider = serviceProvider;
         _logger = logger;
     }
 
@@ -34,7 +44,7 @@ public class HeartbeatMonitorService : BackgroundService
             try
             {
                 await Task.Delay(_checkInterval, stoppingToken);
-                CheckStaleConnections();
+                await CheckStaleConnectionsAsync();
             }
             catch (OperationCanceledException)
             {
@@ -49,9 +59,26 @@ public class HeartbeatMonitorService : BackgroundService
         _logger.LogInformation("HeartbeatMonitorService stopped");
     }
 
-    private void CheckStaleConnections()
+    private async Task CheckStaleConnectionsAsync()
     {
         var staleConnections = _connectionManager.GetStaleConnections(_heartbeatTimeout).ToList();
+
+        if (staleConnections.Count == 0)
+        {
+            if (_connectionManager.ConnectionCount > 0)
+            {
+                _logger.LogDebug("Active OCPP connections: {Count}", _connectionManager.ConnectionCount);
+            }
+            return;
+        }
+
+        using var scope = _serviceProvider.CreateScope();
+        var stationRepository = scope.ServiceProvider.GetRequiredService<IRepository<ChargingStation, Guid>>();
+        var alertRepository = scope.ServiceProvider.GetRequiredService<IRepository<Alert, Guid>>();
+        var guidGenerator = scope.ServiceProvider.GetRequiredService<IGuidGenerator>();
+        var unitOfWorkManager = scope.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
+
+        using var uow = unitOfWorkManager.Begin();
 
         foreach (var connection in staleConnections)
         {
@@ -60,11 +87,43 @@ public class HeartbeatMonitorService : BackgroundService
                 connection.ChargePointId,
                 connection.LastHeartbeat);
 
-            // TODO: Mark station as Offline in database
-            // TODO: Create HeartbeatTimeout alert
+            try
+            {
+                var station = await stationRepository.FirstOrDefaultAsync(
+                    s => s.StationCode == connection.ChargePointId);
 
-            // The connection will be removed when WebSocket closes or on next check
+                if (station == null)
+                {
+                    _logger.LogWarning("Station not found for ChargePoint {ChargePointId}", connection.ChargePointId);
+                    continue;
+                }
+
+                // Mark station as offline
+                station.UpdateStatus(StationStatus.Unavailable);
+                await stationRepository.UpdateAsync(station);
+
+                // Create HeartbeatTimeout alert
+                var alert = new Alert(
+                    guidGenerator.Create(),
+                    AlertType.HeartbeatTimeout,
+                    $"Station {station.Name} ({station.StationCode}) heartbeat timeout. Last heartbeat: {connection.LastHeartbeat:u}",
+                    station.Id);
+
+                await alertRepository.InsertAsync(alert);
+
+                _logger.LogInformation(
+                    "Station {StationCode} marked offline and alert created due to heartbeat timeout",
+                    connection.ChargePointId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Failed to process stale connection for {ChargePointId}",
+                    connection.ChargePointId);
+            }
         }
+
+        await uow.CompleteAsync();
 
         if (_connectionManager.ConnectionCount > 0)
         {

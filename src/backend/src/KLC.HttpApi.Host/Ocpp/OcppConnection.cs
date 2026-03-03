@@ -1,7 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Net.WebSockets;
+using System.Text;
+using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
+using KLC.Ocpp.Messages;
 
 namespace KLC.Ocpp;
 
@@ -107,6 +111,45 @@ public class OcppConnection
                 tcs.TrySetCanceled();
             }
             _pendingRequests.Clear();
+        }
+    }
+
+    /// <summary>
+    /// Send an OCPP Call message and wait for a response with timeout.
+    /// </summary>
+    public async Task<string?> SendCallAsync(string action, object payload, TimeSpan timeout)
+    {
+        if (WebSocket.State != WebSocketState.Open)
+            return null;
+
+        var uniqueId = Guid.NewGuid().ToString("N")[..8];
+        var message = JsonSerializer.Serialize(new object[]
+        {
+            OcppMessageType.Call,
+            uniqueId,
+            action,
+            payload
+        });
+
+        var tcs = RegisterPendingRequest(uniqueId);
+
+        var bytes = Encoding.UTF8.GetBytes(message);
+        await WebSocket.SendAsync(
+            new ArraySegment<byte>(bytes),
+            WebSocketMessageType.Text,
+            true,
+            CancellationToken.None);
+
+        using var cts = new CancellationTokenSource(timeout);
+        cts.Token.Register(() => tcs.TrySetCanceled());
+
+        try
+        {
+            return await tcs.Task;
+        }
+        catch (OperationCanceledException)
+        {
+            return null;
         }
     }
 }

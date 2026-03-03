@@ -82,7 +82,7 @@ public class OcppMessageHandler
             "StartTransaction" => await HandleStartTransactionAsync(connection, uniqueId, payload),
             "StopTransaction" => await HandleStopTransactionAsync(connection, uniqueId, payload),
             "MeterValues" => await HandleMeterValuesAsync(connection, uniqueId, payload),
-            "Authorize" => HandleAuthorize(uniqueId, payload),
+            "Authorize" => await HandleAuthorizeAsync(uniqueId, payload),
             _ => CreateErrorResponse(uniqueId, OcppErrorCode.NotImplemented, $"Action {action} not implemented")
         };
     }
@@ -278,14 +278,23 @@ public class OcppMessageHandler
         return CreateCallResult(uniqueId, new MeterValuesResponse());
     }
 
-    private string HandleAuthorize(string uniqueId, JsonElement payload)
+    private async Task<string> HandleAuthorizeAsync(string uniqueId, JsonElement payload)
     {
-        // TODO: Implement authorization logic
+        var idTag = string.Empty;
+        if (payload.ValueKind == JsonValueKind.Object && payload.TryGetProperty("idTag", out var idTagElement))
+        {
+            idTag = idTagElement.GetString() ?? string.Empty;
+        }
+
+        var isValid = await _ocppService.ValidateIdTagAsync(idTag);
+
+        _logger.LogInformation("Authorize request for idTag {IdTag}: {Status}", idTag, isValid ? "Accepted" : "Invalid");
+
         var response = new
         {
             idTagInfo = new IdTagInfo
             {
-                Status = AuthorizationStatus.Accepted
+                Status = isValid ? AuthorizationStatus.Accepted : AuthorizationStatus.Invalid
             }
         };
 

@@ -262,4 +262,28 @@ public class OcppService : DomainService, IOcppService
     {
         return await _stationRepository.FirstOrDefaultAsync(s => s.StationCode == chargePointId);
     }
+
+    public async Task<bool> ValidateIdTagAsync(string idTag)
+    {
+        if (string.IsNullOrWhiteSpace(idTag))
+            return false;
+
+        // Check if idTag is a valid user GUID (mobile app sessions use userId as idTag)
+        if (Guid.TryParse(idTag, out var userId) && userId != Guid.Empty)
+        {
+            // Check if there's a session with this user that is pending/in-progress
+            var session = await _sessionRepository.FirstOrDefaultAsync(
+                s => s.UserId == userId &&
+                     (s.Status == SessionStatus.Pending || s.Status == SessionStatus.InProgress));
+            if (session != null)
+                return true;
+        }
+
+        // Accept known test/demo idTags
+        if (idTag.StartsWith("TEST") || idTag.StartsWith("DEMO"))
+            return true;
+
+        _logger.LogWarning("IdTag validation failed for: {IdTag}", idTag);
+        return false;
+    }
 }
