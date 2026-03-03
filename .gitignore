@@ -58,5 +58,9 @@ dist/
 build/
 publish/
 
+# Test artifacts
+test-results/
+playwright-report/
+
 # Claude Code
 .claude/
