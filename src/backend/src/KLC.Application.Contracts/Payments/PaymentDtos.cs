@@ -110,6 +110,21 @@ public class InvoiceDto
     public DateTime? SessionEndTime { get; set; }
 }
 
+// Refund DTOs
+public class RefundInput
+{
+    public string? Reason { get; set; }
+}
+
+public class RefundResultDto
+{
+    public Guid PaymentId { get; set; }
+    public Guid WalletTransactionId { get; set; }
+    public decimal RefundAmount { get; set; }
+    public decimal NewWalletBalance { get; set; }
+    public PaymentStatus NewStatus { get; set; }
+}
+
 // Callback DTOs
 public class PaymentCallbackDto
 {

@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using KLC.Enums;
+using KLC.Faults;
 using KLC.Sessions;
 using KLC.Stations;
 using KLC.Tariffs;
@@ -24,6 +25,7 @@ public class OcppService : DomainService, IOcppService
     private readonly IRepository<MeterValue, Guid> _meterValueRepository;
     private readonly IRepository<TariffPlan, Guid> _tariffPlanRepository;
     private readonly IRepository<UserIdTag, Guid> _userIdTagRepository;
+    private readonly IRepository<Fault, Guid> _faultRepository;
     private readonly ILogger<OcppService> _logger;
 
     public OcppService(
@@ -33,6 +35,7 @@ public class OcppService : DomainService, IOcppService
         IRepository<MeterValue, Guid> meterValueRepository,
         IRepository<TariffPlan, Guid> tariffPlanRepository,
         IRepository<UserIdTag, Guid> userIdTagRepository,
+        IRepository<Fault, Guid> faultRepository,
         ILogger<OcppService> logger)
     {
         _stationRepository = stationRepository;
@@ -41,6 +44,7 @@ public class OcppService : DomainService, IOcppService
         _meterValueRepository = meterValueRepository;
         _tariffPlanRepository = tariffPlanRepository;
         _userIdTagRepository = userIdTagRepository;
+        _faultRepository = faultRepository;
         _logger = logger;
     }
 
@@ -74,7 +78,9 @@ public class OcppService : DomainService, IOcppService
         string chargePointId,
         int connectorId,
         ConnectorStatus status,
-        string? errorCode)
+        string? errorCode,
+        string? errorInfo = null,
+        string? vendorErrorCode = null)
     {
         var query = await _stationRepository.WithDetailsAsync(s => s.Connectors);
         var station = (await AsyncExecuter.ToListAsync(query.Where(s => s.StationCode == chargePointId))).FirstOrDefault();
@@ -115,6 +121,55 @@ public class OcppService : DomainService, IOcppService
                 _logger.LogWarning("StatusNotification for unknown connector {ConnectorId} on station {ChargePointId}",
                     connectorId, chargePointId);
                 return null;
+            }
+        }
+
+        // Escalate error codes to Fault entities
+        if (!string.IsNullOrEmpty(errorCode) &&
+            !string.Equals(errorCode, "NoError", StringComparison.OrdinalIgnoreCase))
+        {
+            // Deduplicate: only create if no Open/Investigating fault for same station+connector+errorCode
+            int? connNum = connectorId > 0 ? connectorId : null;
+            var existingFault = await _faultRepository.FirstOrDefaultAsync(
+                f => f.StationId == station.Id
+                    && f.ConnectorNumber == connNum
+                    && f.ErrorCode == errorCode
+                    && (f.Status == FaultStatus.Open || f.Status == FaultStatus.Investigating));
+
+            if (existingFault == null)
+            {
+                var fault = new Fault(
+                    GuidGenerator.Create(),
+                    station.Id,
+                    connNum,
+                    errorCode,
+                    errorInfo,
+                    vendorErrorCode);
+
+                await _faultRepository.InsertAsync(fault);
+
+                _logger.LogWarning(
+                    "Fault created for {ChargePointId} connector {ConnectorId}: {ErrorCode} (Priority={Priority})",
+                    chargePointId, connectorId, errorCode, fault.Priority);
+            }
+        }
+        // Auto-resolve faults when error clears
+        else if (string.Equals(errorCode, "NoError", StringComparison.OrdinalIgnoreCase))
+        {
+            int? connNum = connectorId > 0 ? connectorId : null;
+            var openFaults = await AsyncExecuter.ToListAsync(
+                (await _faultRepository.GetQueryableAsync())
+                    .Where(f => f.StationId == station.Id
+                        && f.ConnectorNumber == connNum
+                        && (f.Status == FaultStatus.Open || f.Status == FaultStatus.Investigating)));
+
+            foreach (var fault in openFaults)
+            {
+                fault.Close("Auto-resolved: charger reported NoError");
+                await _faultRepository.UpdateAsync(fault);
+
+                _logger.LogInformation("Fault {FaultId} auto-resolved for {ChargePointId} connector {ConnectorId}",
+                    fault.Id, chargePointId, connectorId);
             }
         }
 
@@ -221,8 +276,10 @@ public class OcppService : DomainService, IOcppService
         int meterStop,
         string? stopReason)
     {
-        var session = await _sessionRepository.FirstOrDefaultAsync(
-            s => s.OcppTransactionId == ocppTransactionId);
+        // Load session with MeterValues for TOU calculation
+        var query = await _sessionRepository.WithDetailsAsync(s => s.MeterValues);
+        var session = (await AsyncExecuter.ToListAsync(
+            query.Where(s => s.OcppTransactionId == ocppTransactionId))).FirstOrDefault();
 
         if (session == null)
         {
@@ -237,12 +294,21 @@ public class OcppService : DomainService, IOcppService
             return null;
         }
 
-        session.RecordStop(meterStop, stopReason);
+        // Resolve tariff plan for TOU calculation
+        Tariffs.TariffPlan? tariffPlan = null;
+        if (session.TariffPlanId.HasValue)
+        {
+            tariffPlan = await _tariffPlanRepository.FirstOrDefaultAsync(
+                t => t.Id == session.TariffPlanId.Value);
+        }
+
+        session.RecordStop(meterStop, stopReason, tariffPlan);
 
         await _sessionRepository.UpdateAsync(session);
 
-        _logger.LogInformation("Session {SessionId} completed: Energy={EnergyKwh}kWh, Cost={Cost}",
-            session.Id, session.TotalEnergyKwh, session.TotalCost);
+        _logger.LogInformation("Session {SessionId} completed: Energy={EnergyKwh}kWh, Cost={Cost}, TariffType={TariffType}",
+            session.Id, session.TotalEnergyKwh, session.TotalCost,
+            tariffPlan?.TariffType.ToString() ?? "None");
 
         return new StopTransactionResult(
             session.Id,

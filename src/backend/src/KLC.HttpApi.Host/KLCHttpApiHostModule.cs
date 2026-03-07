@@ -13,6 +13,7 @@ using KLC.EntityFrameworkCore;
 using KLC.Hubs;
 using KLC.MultiTenancy;
 using KLC.Ocpp;
+using KLC.Ocpp.Vendors;
 using Volo.Abp.AspNetCore.ExceptionHandling;
 using Volo.Abp.AspNetCore.Mvc.UI.Theme.LeptonXLite;
 using Volo.Abp.AspNetCore.Mvc.UI.Theme.LeptonXLite.Bundling;
@@ -91,6 +92,7 @@ public class KLCHttpApiHostModule : AbpModule
         ConfigureOcppServices(context);
         ConfigureSignalR(context);
         ConfigureExceptionHttpStatusCodes();
+        ConfigureHealthChecks(context, configuration);
     }
 
     private void ConfigureExceptionHttpStatusCodes()
@@ -168,6 +170,12 @@ public class KLCHttpApiHostModule : AbpModule
         context.Services.AddScoped<OcppMessageHandler>();
         context.Services.AddHostedService<HeartbeatMonitorService>();
         context.Services.AddScoped<IOcppRemoteCommandService, OcppRemoteCommandService>();
+
+        // Vendor profiles
+        context.Services.AddSingleton<IVendorProfile, GenericProfile>();
+        context.Services.AddSingleton<IVendorProfile, ChargecoreGlobalProfile>();
+        context.Services.AddSingleton<IVendorProfile, JuhangProfile>();
+        context.Services.AddSingleton<VendorProfileFactory>();
     }
 
     private void ConfigureSignalR(ServiceConfigurationContext context)
@@ -280,6 +288,12 @@ public class KLCHttpApiHostModule : AbpModule
         });
     }
 
+    private void ConfigureHealthChecks(ServiceConfigurationContext context, IConfiguration configuration)
+    {
+        context.Services.AddHealthChecks()
+            .AddNpgSql(configuration.GetConnectionString("Default")!);
+    }
+
     public override void OnApplicationInitialization(ApplicationInitializationContext context)
     {
         var app = context.GetApplicationBuilder();
@@ -338,6 +352,7 @@ public class KLCHttpApiHostModule : AbpModule
         {
             // Map SignalR hub for real-time monitoring
             endpoints.MapHub<MonitoringHub>("/hubs/monitoring");
+            endpoints.MapHealthChecks("/health");
         });
     }
 }

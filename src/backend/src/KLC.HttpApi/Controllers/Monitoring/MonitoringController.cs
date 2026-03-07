@@ -1,6 +1,8 @@
 using System;
 using System.Threading.Tasks;
 using KLC.Monitoring;
+using KLC.Permissions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Volo.Abp.Application.Dtos;
 
@@ -8,6 +10,7 @@ namespace KLC.Controllers.Monitoring;
 
 [ApiController]
 [Route("api/v1/monitoring")]
+[Authorize(KLCPermissions.Monitoring.Default)]
 public class MonitoringController : KLCController
 {
     private readonly IMonitoringAppService _monitoringAppService;
@@ -48,6 +51,14 @@ public class MonitoringController : KLCController
         [FromQuery] GetEnergySummaryDto input)
     {
         var result = await _monitoringAppService.GetConnectorEnergySummaryAsync(connectorId, input);
+        return Ok(result);
+    }
+
+    [HttpGet("analytics")]
+    public async Task<ActionResult<AnalyticsDto>> GetAnalyticsAsync(
+        [FromQuery] GetAnalyticsDto input)
+    {
+        var result = await _monitoringAppService.GetAnalyticsAsync(input);
         return Ok(result);
     }
 }

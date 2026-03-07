@@ -168,9 +168,10 @@ public class ChargingSessionTests
         var session = CreateInProgressSession();
         var mvId = Guid.NewGuid();
 
-        var mv = session.AddMeterValue(mvId, 5.5m, 32m, 400m, 12.8m, 45m);
+        var mv = session.AddMeterValue(mvId, 5.5m, DateTime.UtcNow, 32m, 400m, 12.8m, 45m);
 
         session.MeterValues.Count.ShouldBe(1);
+        mv.ShouldNotBeNull();
         mv.EnergyKwh.ShouldBe(5.5m);
     }
 

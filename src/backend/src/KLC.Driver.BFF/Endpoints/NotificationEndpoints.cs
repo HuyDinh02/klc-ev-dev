@@ -15,9 +15,9 @@ public static class NotificationEndpoints
         // GET /api/v1/notifications
         group.MapGet("/", async (
             [FromQuery] Guid? cursor,
-            [FromQuery] int pageSize,
-            ClaimsPrincipal user,
-            INotificationBffService notificationService) =>
+            [FromQuery] int pageSize = 20,
+            ClaimsPrincipal user = null!,
+            INotificationBffService notificationService = null!) =>
         {
             var userId = GetUserId(user);
             if (pageSize <= 0 || pageSize > 50) pageSize = 20;
@@ -96,6 +96,52 @@ public static class NotificationEndpoints
         .WithName("RegisterDevice")
         .WithSummary("Register device for push notifications")
         .Produces(204);
+
+        // DELETE /api/v1/devices/{token}
+        deviceGroup.MapDelete("/{token}", async (
+            string token,
+            ClaimsPrincipal user,
+            INotificationBffService notificationService) =>
+        {
+            var userId = GetUserId(user);
+            await notificationService.UnregisterDeviceAsync(userId, token);
+            return Results.NoContent();
+        })
+        .WithName("UnregisterDevice")
+        .WithSummary("Unregister device from push notifications")
+        .Produces(204);
+
+        // Preferences group
+        var prefsGroup = app.MapGroup("/api/v1/notifications/preferences")
+            .WithTags("Notifications")
+            .RequireAuthorization();
+
+        // GET /api/v1/notifications/preferences
+        prefsGroup.MapGet("/", async (
+            ClaimsPrincipal user,
+            INotificationBffService notificationService) =>
+        {
+            var userId = GetUserId(user);
+            var prefs = await notificationService.GetPreferencesAsync(userId);
+            return Results.Ok(prefs);
+        })
+        .WithName("GetNotificationPreferences")
+        .WithSummary("Get notification preferences")
+        .Produces<NotificationPreferenceDto>(200);
+
+        // PUT /api/v1/notifications/preferences
+        prefsGroup.MapPut("/", async (
+            [FromBody] UpdateNotificationPreferenceRequest request,
+            ClaimsPrincipal user,
+            INotificationBffService notificationService) =>
+        {
+            var userId = GetUserId(user);
+            var prefs = await notificationService.UpdatePreferencesAsync(userId, request);
+            return Results.Ok(prefs);
+        })
+        .WithName("UpdateNotificationPreferences")
+        .WithSummary("Update notification preferences")
+        .Produces<NotificationPreferenceDto>(200);
     }
 
     private static Guid GetUserId(ClaimsPrincipal user)
@@ -109,4 +155,21 @@ public static class NotificationEndpoints
 public record RegisterDeviceRequest
 {
     public string FcmToken { get; init; } = string.Empty;
+    public string? Platform { get; init; } // iOS or Android
+}
+
+public record NotificationPreferenceDto
+{
+    public bool ChargingComplete { get; init; }
+    public bool PaymentAlerts { get; init; }
+    public bool FaultAlerts { get; init; }
+    public bool Promotions { get; init; }
+}
+
+public record UpdateNotificationPreferenceRequest
+{
+    public bool ChargingComplete { get; init; }
+    public bool PaymentAlerts { get; init; }
+    public bool FaultAlerts { get; init; }
+    public bool Promotions { get; init; }
 }

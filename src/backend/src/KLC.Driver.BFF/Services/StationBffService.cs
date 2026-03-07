@@ -1,6 +1,7 @@
 using KLC.EntityFrameworkCore;
 using KLC.Enums;
 using Microsoft.EntityFrameworkCore;
+using NetTopologySuite.Geometries;
 
 namespace KLC.Driver.Services;
 
@@ -30,17 +31,15 @@ public class StationBffService : IStationBffService
     public async Task<List<NearbyStationDto>> GetNearbyStationsAsync(
         double latitude, double longitude, double radiusKm, int limit)
     {
-        // For simplicity, using bounding box approximation
-        // In production, use PostGIS for accurate distance calculations
-        var latDelta = radiusKm / 111.0; // ~111km per degree latitude
-        var lonDelta = radiusKm / (111.0 * Math.Cos(latitude * Math.PI / 180));
+        var userLocation = new Point(longitude, latitude) { SRID = 4326 };
+        var radiusMeters = radiusKm * 1000;
 
         var stations = await _dbContext.ChargingStations
             .AsNoTracking()
-            .Where(s => s.IsEnabled && !s.IsDeleted)
-            .Where(s => s.Latitude >= latitude - latDelta && s.Latitude <= latitude + latDelta)
-            .Where(s => s.Longitude >= longitude - lonDelta && s.Longitude <= longitude + lonDelta)
+            .Where(s => s.IsEnabled && !s.IsDeleted && s.Location != null)
+            .Where(s => s.Location!.IsWithinDistance(userLocation, radiusMeters))
             .Include(s => s.Connectors.Where(c => c.IsEnabled && !c.IsDeleted))
+            .OrderBy(s => s.Location!.Distance(userLocation))
             .Take(limit)
             .Select(s => new NearbyStationDto
             {
@@ -52,11 +51,11 @@ public class StationBffService : IStationBffService
                 Status = s.Status,
                 AvailableConnectors = s.Connectors.Count(c => c.Status == ConnectorStatus.Available),
                 TotalConnectors = s.Connectors.Count(),
-                Distance = CalculateDistance(latitude, longitude, s.Latitude, s.Longitude)
+                Distance = Math.Round(s.Location!.Distance(userLocation) / 1000, 2)
             })
             .ToListAsync();
 
-        return stations.OrderBy(s => s.Distance).ToList();
+        return stations;
     }
 
     public async Task<StationDetailDto?> GetStationDetailAsync(Guid stationId)
@@ -129,18 +128,6 @@ public class StationBffService : IStationBffService
         }, TimeSpan.FromSeconds(30));
     }
 
-    private static double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
-    {
-        // Haversine formula
-        const double R = 6371; // Earth radius in km
-        var dLat = (lat2 - lat1) * Math.PI / 180;
-        var dLon = (lon2 - lon1) * Math.PI / 180;
-        var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
-                Math.Cos(lat1 * Math.PI / 180) * Math.Cos(lat2 * Math.PI / 180) *
-                Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
-        var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
-        return Math.Round(R * c, 2);
-    }
 }
 
 // DTOs

@@ -34,20 +34,27 @@ Dual-API modular monolith (Phase 1), designed for microservices evolution:
 src/backend/src/
 ├── KLC.Domain.Shared/        # Enums, constants, localization resources (vi.json, en.json)
 ├── KLC.Domain/               # Entities, domain services, repo interfaces
-│   ├── Stations/                 # ChargingStation, Connector, StationGroup, StatusChangeLog
+│   ├── Stations/                 # ChargingStation, Connector, StationGroup, StatusChangeLog, FavoriteStation, StationAmenity, StationPhoto
 │   ├── Sessions/                 # ChargingSession, MeterValue
-│   ├── Payments/                 # PaymentTransaction, Invoice, EInvoice, UserPaymentMethod
+│   ├── Payments/                 # PaymentTransaction, Invoice, EInvoice, UserPaymentMethod, WalletTransaction, WalletDomainService, IPaymentGatewayService
+│   ├── Marketing/                # Voucher, UserVoucher, Promotion
+│   ├── Support/                  # UserFeedback
+│   ├── Files/                       # IFileUploadService
 │   ├── Ocpp/                     # IOcppService, OcppService, Messages/
-│   ├── Faults/, Notifications/, Tariffs/, Users/, Vehicles/
+│   ├── Faults/, Notifications/ (Notification, NotificationPreference, IPushNotificationService), Tariffs/, Users/ (AppUser, DeviceToken), Vehicles/
 │   └── Settings/
 ├── KLC.Application.Contracts/# DTOs, interfaces, permissions
 ├── KLC.Application/          # App services, MediatR handlers, AutoMapper profiles
+│   ├── Notifications/            # FirebasePushNotificationService (FCM)
+│   ├── Files/                    # GcsFileUploadService (Google Cloud Storage)
+│   └── Payments/                 # StubMoMoPaymentService, StubVnPayPaymentService
 ├── KLC.EntityFrameworkCore/  # KLCDbContext, repos, migrations
 ├── KLC.HttpApi/              # API controllers
 ├── KLC.HttpApi.Host/         # Admin API host (OCPP WS, SignalR, OpenIddict)
 │   ├── Ocpp/                     # OcppWebSocketMiddleware, ConnectionManager, MessageHandler
 │   └── Hubs/                     # MonitoringHub, MonitoringNotifier
 ├── KLC.Driver.BFF/           # Driver BFF (Minimal API endpoints, BFF services, DriverHub)
+│   ├── Hubs/                     # DriverHub, DriverHubNotifier (IDriverHubNotifier)
 └── KLC.DbMigrator/           # Migration runner
 
 src/backend/test/
@@ -84,9 +91,21 @@ src/admin-portal/src/
 
 | Service    | Image            | Port       | Notes                                    |
 | ---------- | ---------------- | ---------- | ---------------------------------------- |
-| postgres   | postgres:16      | 5433:5432  | DB: KLC, user: postgres/postgres     |
+| postgres   | postgis/postgis:16-3.4 | 5433:5432 | DB: KLC, PostGIS enabled, user: postgres/postgres |
 | redis      | redis:7-alpine   | 6379:6379  | appendonly persistence                   |
 | pgadmin    | dpage/pgadmin4   | 8080:80    | `--profile tools` to enable              |
+
+### Cloud Services (GCP project: klc-ev-charging)
+
+| Service | Purpose | Config Key |
+|---------|---------|------------|
+| Firebase Cloud Messaging | Push notifications to mobile devices | `Firebase:CredentialPath` |
+| Google Cloud Storage | File uploads (avatars, station photos) | `GoogleCloud:StorageBucket` |
+| PostGIS | Spatial queries (nearby stations, clustering) | Enabled via `UseNetTopologySuite()` |
+
+Service account: `klc-backend@klc-ev-charging.iam.gserviceaccount.com`
+GCS bucket: `gs://klc-ev-charging-uploads` (asia-southeast1)
+Credential file: `firebase-service-account.json` (gitignored)
 
 ## Commands
 
@@ -144,7 +163,37 @@ PGPASSWORD=postgres psql -h localhost -p 5433 -U postgres -d KLC -f scripts/seed
 
 ## ABP Permissions
 
-Groups: `Stations`, `Connectors`, `Tariffs`, `Sessions`, `Faults`, `Alerts`, `Monitoring`, `StationGroups`, `Payments`, `AuditLogs`, `EInvoices`, `UserManagement`, `RoleManagement`. Each has `Default`, `Create`, `Update`, `Delete` + action-specific permissions. Defined in `KLCPermissions.cs`.
+Groups: `Stations`, `Connectors`, `Tariffs`, `Sessions`, `Faults`, `Alerts`, `Monitoring`, `StationGroups`, `Payments`, `AuditLogs`, `EInvoices`, `UserManagement`, `RoleManagement`, `MobileUsers`, `Vouchers`, `Promotions`, `Feedback`, `Notifications`. Each has `Default`, `Create`, `Update`, `Delete` + action-specific permissions. Defined in `KLCPermissions.cs`.
+
+## Domain Entities (by bounded context)
+
+- **Stations**: ChargingStation, Connector, StationGroup, StatusChangeLog, FavoriteStation, StationAmenity, StationPhoto
+- **Sessions**: ChargingSession, MeterValue
+- **Payments**: PaymentTransaction, Invoice, EInvoice, UserPaymentMethod, WalletTransaction, WalletDomainService
+- **Marketing**: Voucher, UserVoucher, Promotion
+- **Support**: UserFeedback
+- **Notifications**: Notification, NotificationPreference
+- **Users**: AppUser, DeviceToken
+- **Vehicles**: Vehicle
+- **Tariffs**: TariffPlan
+- **Faults**: Fault
+
+## Enums (KLC.Domain.Shared/Enums/)
+
+StationStatus, ConnectorStatus, ConnectorType, SessionStatus, PaymentGateway (ZaloPay/MoMo/OnePay/Wallet/VnPay/QrPayment/Voucher/Urbox), PaymentStatus, NotificationType, FaultStatus, MembershipTier, DevicePlatform, WalletTransactionType, TransactionStatus, AmenityType, VoucherType, PromotionType, FeedbackType, FeedbackStatus
+
+## Driver BFF Endpoints (KLC.Driver.BFF)
+
+- Auth: `/api/v1/auth/*` — register, verify-phone, login, refresh-token, logout, etc.
+- Profile: `/api/v1/profile/*` — get/update, avatar, change-phone
+- Stations: `/api/v1/stations/*` — nearby, search, detail
+- Sessions: `/api/v1/sessions/*` — start, stop, active, history
+- Wallet: `/api/v1/wallet/*` — balance, topup, transactions, voucher
+- Favorites: `/api/v1/favorites/*` — list, add, remove
+- Vehicles: `/api/v1/vehicles/*` — CRUD
+- Notifications: `/api/v1/notifications/*` — list, read, preferences, devices
+- Feedback: `/api/v1/feedback/*` — submit, list, FAQ
+- Vouchers/Promotions: `/api/v1/vouchers/*`, `/api/v1/promotions/*`
 
 ## OCPP Integration
 

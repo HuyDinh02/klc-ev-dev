@@ -73,16 +73,16 @@ export function useMonitoringHub(callbacks: MonitoringCallbacks) {
     const token = localStorage.getItem("access_token");
     if (!token) return;
 
+    let cancelled = false;
+
     const connection = new HubConnectionBuilder()
       .withUrl(HUB_URL, {
         accessTokenFactory: () =>
           localStorage.getItem("access_token") || "",
       })
       .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
-      .configureLogging(LogLevel.Warning)
+      .configureLogging(LogLevel.None)
       .build();
-
-    connectionRef.current = connection;
 
     connection.on("OnStationStatusChanged", (update: StationStatusUpdate) => {
       callbacksRef.current.onStationStatusChanged?.(update);
@@ -107,18 +107,40 @@ export function useMonitoringHub(callbacks: MonitoringCallbacks) {
       callbacksRef.current.onMeterValueReceived?.(update);
     });
 
-    connection.onreconnecting(() => setStatus("connecting"));
-    connection.onreconnected(() => setStatus("connected"));
-    connection.onclose(() => setStatus("disconnected"));
+    connection.onreconnecting(() => {
+      if (!cancelled) setStatus("connecting");
+    });
+    connection.onreconnected(() => {
+      if (!cancelled) setStatus("connected");
+    });
+    connection.onclose(() => {
+      if (!cancelled) setStatus("disconnected");
+    });
 
-    setStatus("connecting");
-    connection
-      .start()
-      .then(() => setStatus("connected"))
-      .catch(() => setStatus("disconnected"));
+    // Delay start to survive React 18 strict mode double-mount and HMR.
+    // On the first (discarded) mount, cleanup fires immediately and clears
+    // the timeout before the connection starts. The second mount then
+    // starts cleanly without the "stopped during negotiation" error.
+    const startTimer = setTimeout(() => {
+      if (cancelled) return;
+      connectionRef.current = connection;
+      setStatus("connecting");
+      connection
+        .start()
+        .then(() => {
+          if (!cancelled) setStatus("connected");
+        })
+        .catch(() => {
+          if (!cancelled) setStatus("disconnected");
+        });
+    }, 200);
 
     return () => {
-      connection.stop();
+      cancelled = true;
+      clearTimeout(startTimer);
+      if (connection.state !== HubConnectionState.Disconnected) {
+        connection.stop();
+      }
       connectionRef.current = null;
     };
   }, []);

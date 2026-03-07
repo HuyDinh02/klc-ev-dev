@@ -1,6 +1,8 @@
 using System;
 using System.Threading.Tasks;
+using KLC.Permissions;
 using KLC.StationGroups;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Volo.Abp.Application.Dtos;
 
@@ -8,6 +10,7 @@ namespace KLC.Controllers.StationGroups;
 
 [ApiController]
 [Route("api/v1/station-groups")]
+[Authorize(KLCPermissions.StationGroups.Default)]
 public class StationGroupController : KLCController
 {
     private readonly IStationGroupAppService _stationGroupAppService;

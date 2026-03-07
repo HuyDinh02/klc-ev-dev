@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using KLC.Payments;
+using KLC.Permissions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Volo.Abp.Application.Dtos;
@@ -10,6 +11,7 @@ namespace KLC.Controllers.Payments;
 
 [ApiController]
 [Route("api/v1/payments")]
+[Authorize(KLCPermissions.Payments.Default)]
 public class PaymentController : KLCController
 {
     private readonly IPaymentAppService _paymentAppService;
@@ -46,6 +48,13 @@ public class PaymentController : KLCController
     {
         await _paymentAppService.HandleCallbackAsync(gateway, callback);
         return Ok();
+    }
+
+    [HttpPost("{id:guid}/refund")]
+    public async Task<ActionResult<RefundResultDto>> RefundAsync(Guid id, [FromBody] RefundInput input)
+    {
+        var result = await _paymentAppService.RefundAsync(id, input);
+        return Ok(result);
     }
 }
 

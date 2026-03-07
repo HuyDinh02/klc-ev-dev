@@ -32,6 +32,7 @@
     "KLC:Payment:CannotCancel": "Không thể hủy giao dịch đã hoàn thành.",
 
     "KLC:Vehicle:NotOwned": "Bạn không có quyền truy cập xe này.",
+    "KLC:Vehicle:HasActiveSession": "Không thể xóa xe đang có phiên sạc hoạt động.",
 
     "KLC:Session:ConnectorNotFound": "Không tìm thấy đầu sạc.",
     "KLC:Session:ConnectorNotAvailable": "Đầu sạc #{connectorNumber} không khả dụng (trạng thái: {status}).",
@@ -71,6 +72,65 @@
     "KLC:Alert:InvalidAcknowledge": "Chỉ có thể xác nhận cảnh báo mới.",
     "KLC:Alert:InvalidPriority": "Mức ưu tiên phải nằm trong khoảng 1 đến 4.",
 
-    "KLC:Wallet:InsufficientBalance": "Số dư ví không đủ."
+    "KLC:Wallet:InsufficientBalance": "Số dư ví không đủ.",
+    "KLC:Wallet:TransactionAlreadyCompleted": "Giao dịch đã hoàn thành.",
+    "KLC:Wallet:TopUpFailed": "Nạp ví thất bại.",
+    "KLC:Wallet:InvalidAmount": "Số tiền không hợp lệ.",
+
+    "KLC:Auth:InvalidOtp": "Mã OTP không hợp lệ.",
+    "KLC:Auth:OtpExpired": "Mã OTP đã hết hạn.",
+    "KLC:Auth:PhoneAlreadyRegistered": "Số điện thoại này đã được đăng ký.",
+    "KLC:Auth:InvalidCredentials": "Thông tin đăng nhập không hợp lệ.",
+    "KLC:Auth:AccountSuspended": "Tài khoản của bạn đã bị tạm ngưng.",
+    "KLC:Auth:InvalidRefreshToken": "Token làm mới không hợp lệ hoặc đã hết hạn.",
+    "KLC:Auth:SocialLoginFailed": "Đăng nhập mạng xã hội thất bại.",
+
+    "KLC:Voucher:NotFound": "Không tìm thấy voucher.",
+    "KLC:Voucher:NotValid": "Voucher không hợp lệ.",
+    "KLC:Voucher:AlreadyUsed": "Voucher đã được sử dụng.",
+    "KLC:Voucher:Expired": "Voucher đã hết hạn.",
+    "KLC:Voucher:DuplicateCode": "Mã voucher đã tồn tại.",
+
+    "KLC:Feedback:NotFound": "Không tìm thấy phản hồi.",
+    "KLC:Feedback:NotOwned": "Bạn không có quyền truy cập phản hồi này.",
+    "KLC:Feedback:AlreadyResolved": "Phản hồi đã được xử lý.",
+
+    "KLC:Favorite:AlreadyFavorited": "Trạm sạc đã có trong danh sách yêu thích.",
+    "KLC:Favorite:NotFavorited": "Trạm sạc không có trong danh sách yêu thích.",
+
+    "KLC:Station:HasActiveSessions": "Không thể ngừng hoạt động trạm sạc đang có phiên sạc.",
+
+    "KLC:Wallet:MonthlyTopUpLimitExceeded": "Vượt quá hạn mức nạp ví hàng tháng theo quy định SBV.",
+
+    "KLC:Maintenance:NotFound": "Không tìm thấy tác vụ bảo trì.",
+    "KLC:Maintenance:InvalidStateTransition": "Chuyển trạng thái tác vụ bảo trì không hợp lệ.",
+
+    "KLC:EntityNotFound": "Không tìm thấy tài nguyên yêu cầu.",
+
+    "Permission:MobileUsers": "Quản lý người dùng di động",
+    "Permission:MobileUsers.ViewAll": "Xem tất cả người dùng di động",
+    "Permission:MobileUsers.Suspend": "Tạm ngưng/Mở khóa người dùng",
+    "Permission:MobileUsers.WalletAdjust": "Điều chỉnh số dư ví",
+
+    "Permission:Vouchers": "Quản lý voucher",
+    "Permission:Vouchers.Create": "Tạo voucher",
+    "Permission:Vouchers.Update": "Cập nhật voucher",
+    "Permission:Vouchers.Delete": "Xóa voucher",
+
+    "Permission:Promotions": "Quản lý khuyến mãi",
+    "Permission:Promotions.Create": "Tạo khuyến mãi",
+    "Permission:Promotions.Update": "Cập nhật khuyến mãi",
+    "Permission:Promotions.Delete": "Xóa khuyến mãi",
+
+    "Permission:Feedback": "Quản lý phản hồi",
+    "Permission:Feedback.Respond": "Phản hồi ý kiến",
+
+    "Permission:Notifications": "Quản lý thông báo",
+    "Permission:Notifications.Broadcast": "Gửi thông báo hàng loạt",
+
+    "Permission:Maintenance": "Quản lý bảo trì",
+    "Permission:Maintenance.Create": "Tạo tác vụ bảo trì",
+    "Permission:Maintenance.Update": "Cập nhật tác vụ bảo trì",
+    "Permission:Maintenance.Delete": "Xóa tác vụ bảo trì"
   }
 }

@@ -1,6 +1,8 @@
 using System;
 using System.Threading.Tasks;
+using KLC.Permissions;
 using KLC.Tariffs;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Volo.Abp.Application.Dtos;
 
@@ -8,6 +10,7 @@ namespace KLC.Controllers.Tariffs;
 
 [ApiController]
 [Route("api/v1/tariffs")]
+[Authorize(KLCPermissions.Tariffs.Default)]
 public class TariffController : KLCController
 {
     private readonly ITariffAppService _tariffAppService;

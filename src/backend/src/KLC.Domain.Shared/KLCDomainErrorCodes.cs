@@ -2,12 +2,15 @@ namespace KLC;
 
 public static class KLCDomainErrorCodes
 {
+    public const string EntityNotFound = "KLC:EntityNotFound";
+
     public static class Station
     {
         public const string DuplicateCode = "KLC:Station:DuplicateCode";
         public const string NotFound = "KLC:Station:NotFound";
         public const string InvalidLatitude = "KLC:Station:InvalidLatitude";
         public const string InvalidLongitude = "KLC:Station:InvalidLongitude";
+        public const string HasActiveSessions = "KLC:Station:HasActiveSessions";
     }
 
     public static class Connector
@@ -45,6 +48,7 @@ public static class KLCDomainErrorCodes
     public static class Vehicle
     {
         public const string NotOwned = "KLC:Vehicle:NotOwned";
+        public const string HasActiveSession = "KLC:Vehicle:HasActiveSession";
     }
 
     public static class Session
@@ -106,5 +110,48 @@ public static class KLCDomainErrorCodes
     public static class Wallet
     {
         public const string InsufficientBalance = "KLC:Wallet:InsufficientBalance";
+        public const string TransactionAlreadyCompleted = "KLC:Wallet:TransactionAlreadyCompleted";
+        public const string TopUpFailed = "KLC:Wallet:TopUpFailed";
+        public const string InvalidAmount = "KLC:Wallet:InvalidAmount";
+        public const string MonthlyTopUpLimitExceeded = "KLC:Wallet:MonthlyTopUpLimitExceeded";
+    }
+
+    public static class Auth
+    {
+        public const string InvalidOtp = "KLC:Auth:InvalidOtp";
+        public const string OtpExpired = "KLC:Auth:OtpExpired";
+        public const string PhoneAlreadyRegistered = "KLC:Auth:PhoneAlreadyRegistered";
+        public const string InvalidCredentials = "KLC:Auth:InvalidCredentials";
+        public const string AccountSuspended = "KLC:Auth:AccountSuspended";
+        public const string InvalidRefreshToken = "KLC:Auth:InvalidRefreshToken";
+        public const string SocialLoginFailed = "KLC:Auth:SocialLoginFailed";
+    }
+
+    public static class Voucher
+    {
+        public const string NotFound = "KLC:Voucher:NotFound";
+        public const string NotValid = "KLC:Voucher:NotValid";
+        public const string AlreadyUsed = "KLC:Voucher:AlreadyUsed";
+        public const string Expired = "KLC:Voucher:Expired";
+        public const string DuplicateCode = "KLC:Voucher:DuplicateCode";
+    }
+
+    public static class Feedback
+    {
+        public const string NotFound = "KLC:Feedback:NotFound";
+        public const string NotOwned = "KLC:Feedback:NotOwned";
+        public const string AlreadyResolved = "KLC:Feedback:AlreadyResolved";
+    }
+
+    public static class Favorite
+    {
+        public const string AlreadyFavorited = "KLC:Favorite:AlreadyFavorited";
+        public const string NotFavorited = "KLC:Favorite:NotFavorited";
+    }
+
+    public static class Maintenance
+    {
+        public const string NotFound = "KLC:Maintenance:NotFound";
+        public const string InvalidStateTransition = "KLC:Maintenance:InvalidStateTransition";
     }
 }

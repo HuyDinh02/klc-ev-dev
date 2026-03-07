@@ -1,8 +1,10 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using KLC.Enums;
 using KLC.Permissions;
 using KLC.Stations;
+using KLC.Users;
 using Microsoft.AspNetCore.Authorization;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
@@ -17,15 +19,18 @@ public class NotificationAppService : KLCAppService, INotificationAppService
     private readonly IRepository<Notification, Guid> _notificationRepository;
     private readonly IRepository<Alert, Guid> _alertRepository;
     private readonly IRepository<ChargingStation, Guid> _stationRepository;
+    private readonly IRepository<DeviceToken, Guid> _deviceTokenRepository;
 
     public NotificationAppService(
         IRepository<Notification, Guid> notificationRepository,
         IRepository<Alert, Guid> alertRepository,
-        IRepository<ChargingStation, Guid> stationRepository)
+        IRepository<ChargingStation, Guid> stationRepository,
+        IRepository<DeviceToken, Guid> deviceTokenRepository)
     {
         _notificationRepository = notificationRepository;
         _alertRepository = alertRepository;
         _stationRepository = stationRepository;
+        _deviceTokenRepository = deviceTokenRepository;
     }
 
     public async Task<PagedResultDto<NotificationListDto>> GetMyNotificationsAsync(GetNotificationListDto input)
@@ -117,10 +122,29 @@ public class NotificationAppService : KLCAppService, INotificationAppService
 
     public async Task RegisterDeviceAsync(RegisterDeviceDto input)
     {
-        // TODO: Store FCM token for push notifications
-        // This would typically involve storing the token in a UserDevice table
-        // For now, just acknowledge the request
-        await Task.CompletedTask;
+        var userId = CurrentUser.GetId();
+        var platform = input.DeviceType?.ToLowerInvariant() == "ios"
+            ? DevicePlatform.iOS
+            : DevicePlatform.Android;
+
+        var query = await _deviceTokenRepository.GetQueryableAsync();
+        var existing = await AsyncExecuter.FirstOrDefaultAsync(
+            query.Where(d => d.Token == input.FcmToken));
+
+        if (existing != null)
+        {
+            existing.UpdateToken(input.FcmToken);
+            await _deviceTokenRepository.UpdateAsync(existing);
+        }
+        else
+        {
+            var deviceToken = new DeviceToken(
+                GuidGenerator.Create(),
+                userId,
+                input.FcmToken,
+                platform);
+            await _deviceTokenRepository.InsertAsync(deviceToken);
+        }
     }
 
     [Authorize(KLCPermissions.Alerts.Default)]

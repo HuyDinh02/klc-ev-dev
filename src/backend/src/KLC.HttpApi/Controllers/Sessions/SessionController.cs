@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using KLC.Permissions;
 using KLC.Sessions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Volo.Abp.Application.Dtos;
 
@@ -9,6 +11,7 @@ namespace KLC.Controllers.Sessions;
 
 [ApiController]
 [Route("api/v1/sessions")]
+[Authorize(KLCPermissions.Sessions.Default)]
 public class SessionController : KLCController
 {
     private readonly ISessionAppService _sessionAppService;

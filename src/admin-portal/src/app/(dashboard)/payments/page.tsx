@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,8 @@ import {
   FileText,
   MapPin,
   Zap,
+  RotateCcw,
+  X,
 } from "lucide-react";
 
 interface Payment {
@@ -36,7 +38,7 @@ const PaymentStatusLabels: Record<number, string> = {
 };
 
 const PaymentGatewayLabels: Record<number, string> = {
-  0: "ZaloPay", 1: "MoMo", 2: "OnePay", 3: "Wallet",
+  0: "ZaloPay", 1: "MoMo", 2: "OnePay", 3: "Wallet", 4: "VnPay", 5: "QR Payment", 6: "Voucher", 7: "Urbox",
 };
 
 interface PaymentStats {
@@ -54,7 +56,10 @@ export default function PaymentsPage() {
   const [dateTo, setDateTo] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [refundTarget, setRefundTarget] = useState<Payment | null>(null);
+  const [refundReason, setRefundReason] = useState("");
   const pageSize = 20;
+  const queryClient = useQueryClient();
 
   // Fetch payments
   const { data: paymentsData, isLoading } = useQuery({
@@ -87,6 +92,18 @@ export default function PaymentsPage() {
     pendingCount: payments.filter((p) => p.status === 0).length,
     failedCount: payments.filter((p) => p.status === 3).length,
   };
+
+  const refundMutation = useMutation({
+    mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
+      const res = await api.post(`/payments/${id}/refund`, { reason });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payments"] });
+      setRefundTarget(null);
+      setRefundReason("");
+    },
+  });
 
   const getStatusColor = (status: number): "success" | "warning" | "destructive" | "secondary" | "default" => {
     switch (status) {
@@ -309,9 +326,21 @@ export default function PaymentsPage() {
                         {formatDate(payment.creationTime)}
                       </td>
                       <td className="px-4 py-3">
-                        <Button variant="ghost" size="sm">
-                          <FileText className="h-4 w-4" />
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="sm" title="View details">
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                          {payment.status === 2 && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              title="Refund"
+                              onClick={() => setRefundTarget(payment)}
+                            >
+                              <RotateCcw className="h-4 w-4 text-orange-500" />
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -358,6 +387,61 @@ export default function PaymentsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Refund Confirmation Dialog */}
+      {refundTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Confirm Refund</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setRefundTarget(null); setRefundReason(""); }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground mb-2">
+              Refund <span className="font-semibold">{formatCurrency(refundTarget.amount)}</span> for
+              transaction <span className="font-mono">{refundTarget.referenceCode || refundTarget.id.slice(0, 8)}</span>?
+            </p>
+            <p className="text-sm text-muted-foreground mb-4">
+              This will credit the amount back to the user&apos;s wallet.
+            </p>
+            <div className="mb-4">
+              <label className="text-sm font-medium mb-1 block">Reason (optional)</label>
+              <input
+                type="text"
+                value={refundReason}
+                onChange={(e) => setRefundReason(e.target.value)}
+                placeholder="e.g. Customer request, billing error..."
+                className="w-full rounded-md border px-3 py-2 text-sm"
+              />
+            </div>
+            {refundMutation.isError && (
+              <p className="text-sm text-red-600 mb-3">
+                {(refundMutation.error as Error)?.message || "Refund failed. Please try again."}
+              </p>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => { setRefundTarget(null); setRefundReason(""); }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={refundMutation.isPending}
+                onClick={() => refundMutation.mutate({ id: refundTarget.id, reason: refundReason })}
+              >
+                {refundMutation.isPending ? "Processing..." : "Refund"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

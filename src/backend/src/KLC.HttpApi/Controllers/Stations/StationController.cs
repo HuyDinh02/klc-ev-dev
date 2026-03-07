@@ -1,6 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
+using KLC.Permissions;
 using KLC.Stations;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Volo.Abp.Application.Dtos;
 
@@ -8,6 +11,7 @@ namespace KLC.Controllers.Stations;
 
 [ApiController]
 [Route("api/v1/stations")]
+[Authorize(KLCPermissions.Stations.Default)]
 public class StationController : KLCController
 {
     private readonly IStationAppService _stationAppService;
@@ -84,6 +88,59 @@ public class StationController : KLCController
     public async Task<ActionResult> DisableAsync(Guid id)
     {
         await _stationAppService.DisableAsync(id);
+        return NoContent();
+    }
+
+    // --- Amenities ---
+
+    [HttpGet("{stationId:guid}/amenities")]
+    public async Task<ActionResult<List<StationAmenityDto>>> GetAmenitiesAsync(Guid stationId)
+    {
+        var result = await _stationAppService.GetAmenitiesAsync(stationId);
+        return Ok(result);
+    }
+
+    [HttpPost("{stationId:guid}/amenities")]
+    public async Task<ActionResult<StationAmenityDto>> AddAmenityAsync(Guid stationId, [FromBody] AddStationAmenityDto input)
+    {
+        var result = await _stationAppService.AddAmenityAsync(stationId, input);
+        return Created($"/api/v1/stations/{stationId}/amenities/{result.Id}", result);
+    }
+
+    [HttpDelete("{stationId:guid}/amenities/{amenityId:guid}")]
+    public async Task<ActionResult> RemoveAmenityAsync(Guid stationId, Guid amenityId)
+    {
+        await _stationAppService.RemoveAmenityAsync(stationId, amenityId);
+        return NoContent();
+    }
+
+    // --- Photos ---
+
+    [HttpGet("{stationId:guid}/photos")]
+    public async Task<ActionResult<List<StationPhotoDto>>> GetPhotosAsync(Guid stationId)
+    {
+        var result = await _stationAppService.GetPhotosAsync(stationId);
+        return Ok(result);
+    }
+
+    [HttpPost("{stationId:guid}/photos")]
+    public async Task<ActionResult<StationPhotoDto>> AddPhotoAsync(Guid stationId, [FromBody] AddStationPhotoDto input)
+    {
+        var result = await _stationAppService.AddPhotoAsync(stationId, input);
+        return Created($"/api/v1/stations/{stationId}/photos/{result.Id}", result);
+    }
+
+    [HttpDelete("{stationId:guid}/photos/{photoId:guid}")]
+    public async Task<ActionResult> RemovePhotoAsync(Guid stationId, Guid photoId)
+    {
+        await _stationAppService.RemovePhotoAsync(stationId, photoId);
+        return NoContent();
+    }
+
+    [HttpPost("{stationId:guid}/photos/{photoId:guid}/set-primary")]
+    public async Task<ActionResult> SetPrimaryPhotoAsync(Guid stationId, Guid photoId)
+    {
+        await _stationAppService.SetPrimaryPhotoAsync(stationId, photoId);
         return NoContent();
     }
 }

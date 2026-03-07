@@ -1,10 +1,15 @@
 using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using KLC.Enums;
+using KLC.Hubs;
 using KLC.Ocpp.Messages;
+using KLC.Ocpp.Vendors;
 using Microsoft.Extensions.Logging;
+using Volo.Abp.Domain.Repositories;
+using Volo.Abp.Guids;
 
 namespace KLC.Ocpp;
 
@@ -16,15 +21,27 @@ public class OcppMessageHandler
     private readonly ILogger<OcppMessageHandler> _logger;
     private readonly OcppConnectionManager _connectionManager;
     private readonly IOcppService _ocppService;
+    private readonly IMonitoringNotifier _notifier;
+    private readonly VendorProfileFactory _vendorProfileFactory;
+    private readonly IRepository<OcppRawEvent, Guid> _rawEventRepository;
+    private readonly IGuidGenerator _guidGenerator;
 
     public OcppMessageHandler(
         ILogger<OcppMessageHandler> logger,
         OcppConnectionManager connectionManager,
-        IOcppService ocppService)
+        IOcppService ocppService,
+        IMonitoringNotifier notifier,
+        VendorProfileFactory vendorProfileFactory,
+        IRepository<OcppRawEvent, Guid> rawEventRepository,
+        IGuidGenerator guidGenerator)
     {
         _logger = logger;
         _connectionManager = connectionManager;
         _ocppService = ocppService;
+        _notifier = notifier;
+        _vendorProfileFactory = vendorProfileFactory;
+        _rawEventRepository = rawEventRepository;
+        _guidGenerator = guidGenerator;
     }
 
     /// <summary>
@@ -71,10 +88,12 @@ public class OcppMessageHandler
     {
         var action = jsonArray[2].GetString() ?? string.Empty;
         var payload = jsonArray.Length > 3 ? jsonArray[3] : default;
+        var sw = Stopwatch.StartNew();
 
-        _logger.LogInformation("Handling {Action} from {ChargePointId}", action, connection.ChargePointId);
+        _logger.LogInformation("Handling {Action} from {ChargePointId} [uid={UniqueId}]",
+            action, connection.ChargePointId, uniqueId);
 
-        return action switch
+        var result = action switch
         {
             "BootNotification" => await HandleBootNotificationAsync(connection, uniqueId, payload),
             "Heartbeat" => await HandleHeartbeatAsync(connection, uniqueId),
@@ -83,8 +102,52 @@ public class OcppMessageHandler
             "StopTransaction" => await HandleStopTransactionAsync(connection, uniqueId, payload),
             "MeterValues" => await HandleMeterValuesAsync(connection, uniqueId, payload),
             "Authorize" => await HandleAuthorizeAsync(uniqueId, payload),
+            "DataTransfer" => HandleDataTransfer(uniqueId, payload),
+            "DiagnosticsStatusNotification" => HandleDiagnosticsStatusNotification(connection, uniqueId, payload),
+            "FirmwareStatusNotification" => HandleFirmwareStatusNotification(connection, uniqueId, payload),
             _ => CreateErrorResponse(uniqueId, OcppErrorCode.NotImplemented, $"Action {action} not implemented")
         };
+
+        sw.Stop();
+
+        _logger.LogInformation(
+            "Completed {Action} from {ChargePointId} [uid={UniqueId}] in {LatencyMs}ms",
+            action, connection.ChargePointId, uniqueId, sw.ElapsedMilliseconds);
+
+        // Persist raw event for auditable actions (fire-and-forget style, inside same UoW)
+        await PersistRawEventAsync(connection, action, uniqueId, payload, sw.ElapsedMilliseconds);
+
+        return result;
+    }
+
+    private async Task PersistRawEventAsync(
+        OcppConnection connection, string action, string uniqueId,
+        JsonElement payload, long latencyMs)
+    {
+        try
+        {
+            var vendorProfile = connection.VendorProfileType;
+            var rawPayload = payload.ValueKind != JsonValueKind.Undefined
+                ? payload.GetRawText()
+                : "{}";
+
+            var rawEvent = new OcppRawEvent(
+                _guidGenerator.Create(),
+                connection.ChargePointId,
+                action,
+                uniqueId,
+                OcppMessageType.Call,
+                rawPayload,
+                vendorProfile,
+                latencyMs);
+
+            await _rawEventRepository.InsertAsync(rawEvent, autoSave: false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to persist raw OCPP event for {ChargePointId}/{Action}",
+                connection.ChargePointId, action);
+        }
     }
 
     private async Task<string> HandleBootNotificationAsync(OcppConnection connection, string uniqueId, JsonElement payload)
@@ -96,7 +159,14 @@ public class OcppMessageHandler
         _logger.LogInformation("BootNotification from {ChargePointId}: Vendor={Vendor}, Model={Model}, FW={FirmwareVersion}",
             connection.ChargePointId, request.ChargePointVendor, request.ChargePointModel, request.FirmwareVersion);
 
-        // Persist to database
+        // Detect vendor profile from BootNotification vendor/model strings
+        var vendorProfile = _vendorProfileFactory.Detect(request.ChargePointVendor, request.ChargePointModel);
+        connection.SetVendorProfile(vendorProfile.ProfileType);
+
+        _logger.LogInformation("Vendor profile for {ChargePointId}: {VendorProfile}",
+            connection.ChargePointId, vendorProfile.ProfileType);
+
+        // Persist to database (including vendor profile)
         var stationId = await _ocppService.HandleBootNotificationAsync(
             connection.ChargePointId,
             request.ChargePointVendor ?? string.Empty,
@@ -104,7 +174,23 @@ public class OcppMessageHandler
             request.ChargePointSerialNumber,
             request.FirmwareVersion);
 
+        // Persist vendor profile on station entity
+        if (stationId.HasValue)
+        {
+            var station = await _ocppService.GetStationByChargePointIdAsync(connection.ChargePointId);
+            if (station != null && station.VendorProfile != vendorProfile.ProfileType)
+            {
+                station.SetVendorProfile(vendorProfile.ProfileType);
+            }
+        }
+
         connection.RecordHeartbeat();
+
+        // Register the station ID on the connection for SignalR notifications
+        if (stationId.HasValue)
+        {
+            connection.SetRegistered(stationId.Value);
+        }
 
         // Reject unknown stations (BR-006-02)
         var status = stationId.HasValue ? RegistrationStatus.Accepted : RegistrationStatus.Rejected;
@@ -113,7 +199,7 @@ public class OcppMessageHandler
         {
             Status = status,
             CurrentTime = DateTime.UtcNow.ToString("o"),
-            Interval = 300 // 5 minutes heartbeat interval
+            Interval = vendorProfile.HeartbeatIntervalSeconds
         };
 
         return CreateCallResult(uniqueId, response);
@@ -147,12 +233,24 @@ public class OcppMessageHandler
         // Map OCPP status to domain status
         var connectorStatus = MapOcppStatusToConnectorStatus(request.Status);
 
-        // Persist to database
-        await _ocppService.HandleStatusNotificationAsync(
+        // Persist to database + escalate errors to Fault entities
+        var statusResult = await _ocppService.HandleStatusNotificationAsync(
             connection.ChargePointId,
             request.ConnectorId,
             connectorStatus,
-            request.ErrorCode);
+            request.ErrorCode,
+            request.Info,
+            request.VendorErrorCode);
+
+        // Push real-time update via SignalR
+        if (statusResult != null)
+        {
+            await _notifier.NotifyConnectorStatusChangedAsync(
+                statusResult.StationId,
+                request.ConnectorId,
+                statusResult.PreviousStatus,
+                statusResult.NewStatus);
+        }
 
         return CreateCallResult(uniqueId, new StatusNotificationResponse());
     }
@@ -177,6 +275,17 @@ public class OcppMessageHandler
             request.MeterStart,
             transactionId);
 
+        // Push real-time update via SignalR
+        if (sessionId.HasValue && connection.StationId.HasValue)
+        {
+            await _notifier.NotifySessionUpdatedAsync(
+                sessionId.Value,
+                connection.StationId.Value,
+                request.ConnectorId,
+                SessionStatus.InProgress,
+                0, 0);
+        }
+
         var response = new StartTransactionResponse
         {
             TransactionId = transactionId,
@@ -195,14 +304,50 @@ public class OcppMessageHandler
         if (request == null)
             return CreateErrorResponse(uniqueId, OcppErrorCode.FormationViolation, "Invalid StopTransaction payload");
 
-        _logger.LogInformation("StopTransaction from {ChargePointId}: TransactionId={TransactionId}, MeterStop={MeterStop}, Reason={Reason}",
-            connection.ChargePointId, request.TransactionId, request.MeterStop, request.Reason);
+        _logger.LogInformation("StopTransaction from {ChargePointId}: TransactionId={TransactionId}, MeterStop={MeterStop}, Reason={Reason}, TransactionData={DataCount}",
+            connection.ChargePointId, request.TransactionId, request.MeterStop, request.Reason,
+            request.TransactionData?.Length ?? 0);
+
+        // Process TransactionData meter values before stopping (BR-006-04b)
+        if (request.TransactionData is { Length: > 0 })
+        {
+            var vendorProfile = _vendorProfileFactory.Resolve(connection.VendorProfileType);
+            foreach (var mv in request.TransactionData)
+            {
+                var (energyWh, currentAmps, voltage, power, soc) = ExtractSampledValues(mv, vendorProfile);
+                var parsedTimestamp = vendorProfile.ParseTimestamp(mv.Timestamp);
+                var timestampStr = parsedTimestamp?.ToString("o") ?? mv.Timestamp;
+
+                await _ocppService.HandleMeterValuesAsync(
+                    connection.ChargePointId,
+                    0, // connectorId not available in StopTransaction
+                    request.TransactionId,
+                    energyWh,
+                    timestampStr,
+                    currentAmps,
+                    voltage,
+                    power,
+                    soc);
+            }
+        }
 
         // Persist to database (BR-006-04)
-        await _ocppService.HandleStopTransactionAsync(
+        var stopResult = await _ocppService.HandleStopTransactionAsync(
             request.TransactionId,
             request.MeterStop,
             request.Reason);
+
+        // Push real-time update via SignalR
+        if (stopResult != null)
+        {
+            await _notifier.NotifySessionUpdatedAsync(
+                stopResult.SessionId,
+                stopResult.StationId,
+                stopResult.ConnectorNumber,
+                SessionStatus.Completed,
+                stopResult.TotalEnergyKwh,
+                stopResult.TotalCost);
+        }
 
         var response = new StopTransactionResponse
         {
@@ -221,57 +366,51 @@ public class OcppMessageHandler
         if (request == null)
             return CreateErrorResponse(uniqueId, OcppErrorCode.FormationViolation, "Invalid MeterValues payload");
 
-        _logger.LogDebug("MeterValues from {ChargePointId}: Connector={ConnectorId}, TransactionId={TransactionId}, Values={Count}",
-            connection.ChargePointId, request.ConnectorId, request.TransactionId, request.MeterValue?.Length ?? 0);
+        // Resolve vendor profile for this connection
+        var vendorProfile = _vendorProfileFactory.Resolve(connection.VendorProfileType);
+
+        _logger.LogDebug("MeterValues from {ChargePointId}: Connector={ConnectorId}, TransactionId={TransactionId}, " +
+            "Values={Count}, VendorProfile={VendorProfile}",
+            connection.ChargePointId, request.ConnectorId, request.TransactionId,
+            request.MeterValue?.Length ?? 0, vendorProfile.ProfileType);
 
         // Process meter values (BR-006-05)
         if (request.MeterValue != null)
         {
             foreach (var mv in request.MeterValue)
             {
-                decimal energyWh = 0;
-                decimal? currentAmps = null;
-                decimal? voltage = null;
-                decimal? power = null;
-                decimal? soc = null;
+                var (energyWh, currentAmps, voltage, power, soc) = ExtractSampledValues(mv, vendorProfile);
+                var parsedTimestamp = vendorProfile.ParseTimestamp(mv.Timestamp);
+                var timestampStr = parsedTimestamp?.ToString("o") ?? mv.Timestamp;
 
-                if (mv.SampledValue != null)
-                {
-                    foreach (var sv in mv.SampledValue)
-                    {
-                        if (decimal.TryParse(sv.Value, out var value))
-                        {
-                            switch (sv.Measurand)
-                            {
-                                case "Energy.Active.Import.Register":
-                                    energyWh = value;
-                                    break;
-                                case "Current.Import":
-                                    currentAmps = value;
-                                    break;
-                                case "Voltage":
-                                    voltage = value;
-                                    break;
-                                case "Power.Active.Import":
-                                    power = value;
-                                    break;
-                                case "SoC":
-                                    soc = value;
-                                    break;
-                            }
-                        }
-                    }
-                }
-
-                await _ocppService.HandleMeterValuesAsync(
+                var meterResult = await _ocppService.HandleMeterValuesAsync(
                     connection.ChargePointId,
                     request.ConnectorId,
                     request.TransactionId,
                     energyWh,
+                    timestampStr,
                     currentAmps,
                     voltage,
                     power,
                     soc);
+
+                // Push real-time meter update via SignalR
+                if (meterResult != null)
+                {
+                    await _notifier.NotifySessionUpdatedAsync(
+                        meterResult.SessionId,
+                        meterResult.StationId,
+                        meterResult.ConnectorNumber,
+                        SessionStatus.InProgress,
+                        meterResult.TotalEnergyKwh,
+                        meterResult.TotalCost);
+
+                    await _notifier.NotifyMeterValueReceivedAsync(
+                        meterResult.SessionId,
+                        meterResult.TotalEnergyKwh,
+                        meterResult.PowerKw,
+                        meterResult.SocPercent);
+                }
             }
         }
 
@@ -299,6 +438,37 @@ public class OcppMessageHandler
         };
 
         return CreateCallResult(uniqueId, response);
+    }
+
+    private string HandleDataTransfer(string uniqueId, JsonElement payload)
+    {
+        _logger.LogDebug("DataTransfer received: {Payload}", payload.GetRawText());
+
+        var response = new
+        {
+            status = "Accepted",
+            data = (string?)null
+        };
+
+        return CreateCallResult(uniqueId, response);
+    }
+
+    private string HandleDiagnosticsStatusNotification(OcppConnection connection, string uniqueId, JsonElement payload)
+    {
+        var status = payload.TryGetProperty("status", out var statusProp) ? statusProp.GetString() : "Unknown";
+        _logger.LogInformation("DiagnosticsStatusNotification from {ChargePointId}: Status={Status}",
+            connection.ChargePointId, status);
+
+        return CreateCallResult(uniqueId, new { });
+    }
+
+    private string HandleFirmwareStatusNotification(OcppConnection connection, string uniqueId, JsonElement payload)
+    {
+        var status = payload.TryGetProperty("status", out var statusProp) ? statusProp.GetString() : "Unknown";
+        _logger.LogInformation("FirmwareStatusNotification from {ChargePointId}: Status={Status}",
+            connection.ChargePointId, status);
+
+        return CreateCallResult(uniqueId, new { });
     }
 
     private string? HandleCallResult(OcppConnection connection, string uniqueId, JsonElement[] jsonArray)
@@ -330,6 +500,49 @@ public class OcppMessageHandler
         connection.TryCompletePendingRequest(uniqueId, $"ERROR:{errorCode}:{errorDescription}");
 
         return null; // No response needed for CallError
+    }
+
+    private static (decimal energyWh, decimal? currentAmps, decimal? voltage, decimal? power, decimal? soc)
+        ExtractSampledValues(Messages.MeterValue mv, Vendors.IVendorProfile vendorProfile)
+    {
+        decimal energyWh = 0;
+        decimal? currentAmps = null;
+        decimal? voltage = null;
+        decimal? power = null;
+        decimal? soc = null;
+
+        if (mv.SampledValue != null)
+        {
+            foreach (var sv in mv.SampledValue)
+            {
+                switch (sv.Measurand)
+                {
+                    case "Energy.Active.Import.Register":
+                        energyWh = vendorProfile.NormalizeEnergyToWh(sv.Value ?? "0", sv.Unit, sv.Measurand);
+                        break;
+                    case "Current.Import":
+                        if (decimal.TryParse(sv.Value, System.Globalization.NumberStyles.Any,
+                            System.Globalization.CultureInfo.InvariantCulture, out var amps))
+                            currentAmps = amps;
+                        break;
+                    case "Voltage":
+                        if (decimal.TryParse(sv.Value, System.Globalization.NumberStyles.Any,
+                            System.Globalization.CultureInfo.InvariantCulture, out var volts))
+                            voltage = volts;
+                        break;
+                    case "Power.Active.Import":
+                        power = vendorProfile.NormalizePowerToW(sv.Value ?? "0", sv.Unit);
+                        break;
+                    case "SoC":
+                        if (decimal.TryParse(sv.Value, System.Globalization.NumberStyles.Any,
+                            System.Globalization.CultureInfo.InvariantCulture, out var socVal))
+                            soc = socVal;
+                        break;
+                }
+            }
+        }
+
+        return (energyWh, currentAmps, voltage, power, soc);
     }
 
     private static ConnectorStatus MapOcppStatusToConnectorStatus(string? ocppStatus)

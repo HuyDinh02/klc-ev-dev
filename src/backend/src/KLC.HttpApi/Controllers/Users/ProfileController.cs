@@ -1,11 +1,13 @@
 using System.Threading.Tasks;
 using KLC.Users;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace KLC.Controllers.Users;
 
 [ApiController]
 [Route("api/v1/profile")]
+[Authorize]
 public class ProfileController : KLCController
 {
     private readonly IUserProfileAppService _userProfileAppService;

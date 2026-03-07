@@ -73,3 +73,39 @@ public class GetEnergySummaryDto
     public DateTime? FromDate { get; set; }
     public DateTime? ToDate { get; set; }
 }
+
+// Analytics DTOs
+public class GetAnalyticsDto
+{
+    public DateTime? FromDate { get; set; }
+    public DateTime? ToDate { get; set; }
+}
+
+public class AnalyticsDto
+{
+    public List<DailyStatsDto> DailyStats { get; set; } = new();
+    public List<StationUtilizationDto> StationUtilization { get; set; } = new();
+    public decimal TotalRevenue { get; set; }
+    public decimal TotalEnergyKwh { get; set; }
+    public int TotalSessions { get; set; }
+    public decimal AverageSessionDurationMinutes { get; set; }
+    public decimal UptimePercent { get; set; }
+}
+
+public class DailyStatsDto
+{
+    public string Date { get; set; } = string.Empty;
+    public int Sessions { get; set; }
+    public decimal EnergyKwh { get; set; }
+    public decimal Revenue { get; set; }
+}
+
+public class StationUtilizationDto
+{
+    public Guid StationId { get; set; }
+    public string StationName { get; set; } = string.Empty;
+    public int TotalSessions { get; set; }
+    public decimal TotalEnergyKwh { get; set; }
+    public decimal TotalRevenue { get; set; }
+    public decimal UtilizationPercent { get; set; }
+}

@@ -61,37 +61,45 @@ public class SessionBffService : ISessionBffService
             return new SessionResponseDto { Success = false, Error = "You already have an active session" };
         }
 
-        // Get tariff
-        var tariff = connector.Station?.TariffPlanId.HasValue == true
-            ? await _dbContext.TariffPlans.FirstOrDefaultAsync(t => t.Id == connector.Station.TariffPlanId)
-            : await _dbContext.TariffPlans.FirstOrDefaultAsync(t => t.IsDefault && t.IsActive);
-
-        // Create session
-        var session = new ChargingSession(
-            Guid.NewGuid(),
-            userId,
-            request.StationId,
-            request.ConnectorNumber,
-            request.VehicleId,
-            tariff?.Id,
-            tariff?.BaseRatePerKwh ?? 0);
-
-        await _dbContext.ChargingSessions.AddAsync(session);
-
-        // Update connector status
-        connector.UpdateStatus(ConnectorStatus.Preparing);
-        await _dbContext.SaveChangesAsync();
-
-        // Invalidate cache
-        await _cache.RemoveAsync($"station:{request.StationId}:connectors");
-        await _cache.RemoveAsync($"user:{userId}:active-session");
-
-        return new SessionResponseDto
+        try
         {
-            Success = true,
-            SessionId = session.Id,
-            Status = session.Status
-        };
+            // Get tariff
+            var tariff = connector.Station?.TariffPlanId.HasValue == true
+                ? await _dbContext.TariffPlans.FirstOrDefaultAsync(t => t.Id == connector.Station.TariffPlanId)
+                : await _dbContext.TariffPlans.FirstOrDefaultAsync(t => t.IsDefault && t.IsActive);
+
+            // Create session
+            var session = new ChargingSession(
+                Guid.NewGuid(),
+                userId,
+                request.StationId,
+                request.ConnectorNumber,
+                request.VehicleId,
+                tariff?.Id,
+                tariff?.BaseRatePerKwh ?? 0);
+
+            await _dbContext.ChargingSessions.AddAsync(session);
+
+            // Update connector status
+            connector.UpdateStatus(ConnectorStatus.Preparing);
+            await _dbContext.SaveChangesAsync();
+
+            // Invalidate cache
+            await _cache.RemoveAsync($"station:{request.StationId}:connectors");
+            await _cache.RemoveAsync($"user:{userId}:active-session");
+
+            return new SessionResponseDto
+            {
+                Success = true,
+                SessionId = session.Id,
+                Status = session.Status
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to start session for user {UserId} at station {StationId}", userId, request.StationId);
+            return new SessionResponseDto { Success = false, Error = "Failed to start charging session" };
+        }
     }
 
     public async Task<SessionResponseDto> StopSessionAsync(Guid userId, Guid sessionId)
@@ -109,19 +117,27 @@ public class SessionBffService : ISessionBffService
             return new SessionResponseDto { Success = false, Error = "Session is not in progress" };
         }
 
-        session.MarkStopping();
-        await _dbContext.SaveChangesAsync();
-
-        // Invalidate cache
-        await _cache.RemoveAsync($"user:{userId}:active-session");
-        await _cache.RemoveAsync($"session:{sessionId}:detail");
-
-        return new SessionResponseDto
+        try
         {
-            Success = true,
-            SessionId = session.Id,
-            Status = session.Status
-        };
+            session.MarkStopping();
+            await _dbContext.SaveChangesAsync();
+
+            // Invalidate cache
+            await _cache.RemoveAsync($"user:{userId}:active-session");
+            await _cache.RemoveAsync($"session:{sessionId}:detail");
+
+            return new SessionResponseDto
+            {
+                Success = true,
+                SessionId = session.Id,
+                Status = session.Status
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to stop session {SessionId} for user {UserId}", sessionId, userId);
+            return new SessionResponseDto { Success = false, Error = "Failed to stop charging session" };
+        }
     }
 
     public async Task<ActiveSessionDto?> GetActiveSessionAsync(Guid userId)

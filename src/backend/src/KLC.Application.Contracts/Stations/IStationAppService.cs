@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
@@ -44,4 +45,15 @@ public interface IStationAppService : IApplicationService
     /// Disables a station.
     /// </summary>
     Task DisableAsync(Guid id);
+
+    // Amenities
+    Task<List<StationAmenityDto>> GetAmenitiesAsync(Guid stationId);
+    Task<StationAmenityDto> AddAmenityAsync(Guid stationId, AddStationAmenityDto input);
+    Task RemoveAmenityAsync(Guid stationId, Guid amenityId);
+
+    // Photos
+    Task<List<StationPhotoDto>> GetPhotosAsync(Guid stationId);
+    Task<StationPhotoDto> AddPhotoAsync(Guid stationId, AddStationPhotoDto input);
+    Task RemovePhotoAsync(Guid stationId, Guid photoId);
+    Task SetPrimaryPhotoAsync(Guid stationId, Guid photoId);
 }

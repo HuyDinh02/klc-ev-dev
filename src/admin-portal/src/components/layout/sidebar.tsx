@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   MapPin,
+  Map,
+  BarChart3,
   Activity,
   Zap,
   DollarSign,
@@ -20,6 +22,11 @@ import {
   LogOut,
   Users,
   Car,
+  Ticket,
+  Megaphone,
+  MessageSquare,
+  Smartphone,
+  Plug,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -29,7 +36,9 @@ import { Button } from "@/components/ui/button";
 const menuItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/stations", label: "Stations", icon: MapPin },
+  { href: "/map", label: "Station Map", icon: Map },
   { href: "/monitoring", label: "Monitoring", icon: Activity },
+  { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/sessions", label: "Sessions", icon: Zap },
   { href: "/tariffs", label: "Tariffs", icon: DollarSign },
   { href: "/payments", label: "Payments", icon: Receipt },
@@ -39,6 +48,11 @@ const menuItems = [
   { href: "/audit-logs", label: "Audit Logs", icon: FileText },
   { href: "/e-invoices", label: "E-Invoices", icon: Receipt },
   { href: "/vehicles", label: "Vehicles", icon: Car },
+  { href: "/vouchers", label: "Vouchers", icon: Ticket },
+  { href: "/promotions", label: "Promotions", icon: Megaphone },
+  { href: "/feedback", label: "Feedback", icon: MessageSquare },
+  { href: "/mobile-users", label: "Mobile Users", icon: Smartphone },
+  { href: "/ocpp", label: "OCPP Management", icon: Plug },
   { href: "/user-management", label: "User Management", icon: Users },
 ];
 

@@ -1,6 +1,8 @@
 using System;
 using System.Threading.Tasks;
 using KLC.Notifications;
+using KLC.Permissions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Volo.Abp.Application.Dtos;
 
@@ -8,6 +10,7 @@ namespace KLC.Controllers.Notifications;
 
 [ApiController]
 [Route("api/v1/notifications")]
+[Authorize(KLCPermissions.Notifications.Default)]
 public class NotificationController : KLCController
 {
     private readonly INotificationAppService _notificationAppService;

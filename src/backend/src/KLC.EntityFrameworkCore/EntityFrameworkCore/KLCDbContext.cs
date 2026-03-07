@@ -1,8 +1,12 @@
 using KLC.Faults;
+using KLC.Maintenance;
+using KLC.Marketing;
 using KLC.Notifications;
+using KLC.Ocpp;
 using KLC.Payments;
 using KLC.Sessions;
 using KLC.Stations;
+using KLC.Support;
 using KLC.Tariffs;
 using KLC.Users;
 using KLC.Vehicles;
@@ -81,6 +85,32 @@ public class KLCDbContext :
     // Users
     public DbSet<AppUser> AppUsers { get; set; }
     public DbSet<UserIdTag> UserIdTags { get; set; }
+    public DbSet<DeviceToken> DeviceTokens { get; set; }
+
+    // Stations (extended)
+    public DbSet<FavoriteStation> FavoriteStations { get; set; }
+    public DbSet<StationAmenity> StationAmenities { get; set; }
+    public DbSet<StationPhoto> StationPhotos { get; set; }
+
+    // Wallet
+    public DbSet<WalletTransaction> WalletTransactions { get; set; }
+
+    // Notifications (extended)
+    public DbSet<NotificationPreference> NotificationPreferences { get; set; }
+
+    // Marketing
+    public DbSet<Voucher> Vouchers { get; set; }
+    public DbSet<UserVoucher> UserVouchers { get; set; }
+    public DbSet<Promotion> Promotions { get; set; }
+
+    // Support
+    public DbSet<UserFeedback> UserFeedbacks { get; set; }
+
+    // OCPP
+    public DbSet<OcppRawEvent> OcppRawEvents { get; set; }
+
+    // Maintenance
+    public DbSet<MaintenanceTask> MaintenanceTasks { get; set; }
 
     #endregion
 
@@ -105,6 +135,20 @@ public class KLCDbContext :
 
         // Configure KLC entities
         builder.ConfigureKLCEntities();
+
+        // PostGIS Point column — only supported on PostgreSQL; ignore on SQLite (tests)
+        if (Database.IsNpgsql())
+        {
+            builder.Entity<ChargingStation>(b =>
+            {
+                b.Property(x => x.Location).HasColumnType("geography (point, 4326)");
+                b.HasIndex(x => x.Location).HasMethod("gist");
+            });
+        }
+        else
+        {
+            builder.Entity<ChargingStation>().Ignore(x => x.Location);
+        }
     }
 }
 
@@ -133,6 +177,16 @@ public static class KLCDbContextModelCreatingExtensions
 
             b.HasMany(x => x.Connectors)
                 .WithOne(x => x.Station)
+                .HasForeignKey(x => x.StationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            b.HasMany(x => x.Amenities)
+                .WithOne()
+                .HasForeignKey(x => x.StationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            b.HasMany(x => x.Photos)
+                .WithOne()
                 .HasForeignKey(x => x.StationId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
@@ -380,6 +434,7 @@ public static class KLCDbContextModelCreatingExtensions
             b.Property(x => x.PreferredLanguage).HasMaxLength(10);
             b.Property(x => x.FcmToken).HasMaxLength(500);
             b.Property(x => x.WalletBalance).HasPrecision(18, 0);
+            b.Property(x => x.Gender).HasMaxLength(1);
 
             b.HasIndex(x => x.IdentityUserId).IsUnique();
             b.HasIndex(x => x.PhoneNumber);
@@ -414,6 +469,174 @@ public static class KLCDbContextModelCreatingExtensions
             b.HasIndex(x => x.UserId);
             b.HasIndex(x => x.IsActive);
             b.HasIndex(x => new { x.UserId, x.IsDefault }).HasFilter("\"IsDefault\" = true");
+        });
+
+        // DeviceToken
+        builder.Entity<DeviceToken>(b =>
+        {
+            b.ToTable(KLCConsts.DbTablePrefix + "DeviceTokens", KLCConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.Token).IsRequired().HasMaxLength(500);
+
+            b.HasIndex(x => x.UserId);
+            b.HasIndex(x => x.Token).IsUnique();
+            b.HasIndex(x => x.IsActive);
+        });
+
+        // NotificationPreference
+        builder.Entity<NotificationPreference>(b =>
+        {
+            b.ToTable(KLCConsts.DbTablePrefix + "NotificationPreferences", KLCConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.HasIndex(x => x.UserId).IsUnique();
+        });
+
+        // WalletTransaction
+        builder.Entity<WalletTransaction>(b =>
+        {
+            b.ToTable(KLCConsts.DbTablePrefix + "WalletTransactions", KLCConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.Amount).HasPrecision(18, 0);
+            b.Property(x => x.BalanceAfter).HasPrecision(18, 0);
+            b.Property(x => x.GatewayTransactionId).HasMaxLength(100);
+            b.Property(x => x.ReferenceCode).IsRequired().HasMaxLength(50);
+            b.Property(x => x.Description).HasMaxLength(500);
+
+            b.HasIndex(x => x.UserId);
+            b.HasIndex(x => x.Type);
+            b.HasIndex(x => x.Status);
+            b.HasIndex(x => x.ReferenceCode);
+            b.HasIndex(x => x.CreationTime);
+            b.HasIndex(x => x.RelatedSessionId);
+        });
+
+        // FavoriteStation
+        builder.Entity<FavoriteStation>(b =>
+        {
+            b.ToTable(KLCConsts.DbTablePrefix + "FavoriteStations", KLCConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.HasIndex(x => new { x.UserId, x.StationId }).IsUnique();
+            b.HasIndex(x => x.UserId);
+        });
+
+        // StationAmenity
+        builder.Entity<StationAmenity>(b =>
+        {
+            b.ToTable(KLCConsts.DbTablePrefix + "StationAmenities", KLCConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.HasIndex(x => x.StationId);
+            b.HasIndex(x => new { x.StationId, x.AmenityType }).IsUnique();
+        });
+
+        // StationPhoto
+        builder.Entity<StationPhoto>(b =>
+        {
+            b.ToTable(KLCConsts.DbTablePrefix + "StationPhotos", KLCConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.Url).IsRequired().HasMaxLength(500);
+            b.Property(x => x.ThumbnailUrl).HasMaxLength(500);
+
+            b.HasIndex(x => x.StationId);
+            b.HasIndex(x => new { x.StationId, x.IsPrimary }).HasFilter("\"IsPrimary\" = true");
+        });
+
+        // Voucher
+        builder.Entity<Voucher>(b =>
+        {
+            b.ToTable(KLCConsts.DbTablePrefix + "Vouchers", KLCConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.Code).IsRequired().HasMaxLength(50);
+            b.Property(x => x.Value).HasPrecision(18, 2);
+            b.Property(x => x.MinOrderAmount).HasPrecision(18, 0);
+            b.Property(x => x.MaxDiscountAmount).HasPrecision(18, 0);
+            b.Property(x => x.Description).HasMaxLength(500);
+
+            b.HasIndex(x => x.Code).IsUnique();
+            b.HasIndex(x => x.IsActive);
+            b.HasIndex(x => x.ExpiryDate);
+        });
+
+        // UserVoucher
+        builder.Entity<UserVoucher>(b =>
+        {
+            b.ToTable(KLCConsts.DbTablePrefix + "UserVouchers", KLCConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.HasIndex(x => new { x.UserId, x.VoucherId }).IsUnique();
+            b.HasIndex(x => x.UserId);
+            b.HasIndex(x => x.VoucherId);
+        });
+
+        // Promotion
+        builder.Entity<Promotion>(b =>
+        {
+            b.ToTable(KLCConsts.DbTablePrefix + "Promotions", KLCConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.Title).IsRequired().HasMaxLength(200);
+            b.Property(x => x.Description).HasMaxLength(2000);
+            b.Property(x => x.ImageUrl).HasMaxLength(500);
+
+            b.HasIndex(x => x.IsActive);
+            b.HasIndex(x => x.StartDate);
+            b.HasIndex(x => x.EndDate);
+            b.HasIndex(x => x.Type);
+        });
+
+        // UserFeedback
+        builder.Entity<UserFeedback>(b =>
+        {
+            b.ToTable(KLCConsts.DbTablePrefix + "UserFeedbacks", KLCConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.Subject).IsRequired().HasMaxLength(200);
+            b.Property(x => x.Message).IsRequired().HasMaxLength(2000);
+            b.Property(x => x.AdminResponse).HasMaxLength(2000);
+
+            b.HasIndex(x => x.UserId);
+            b.HasIndex(x => x.Status);
+            b.HasIndex(x => x.Type);
+            b.HasIndex(x => x.CreationTime);
+        });
+
+        // OcppRawEvent
+        builder.Entity<OcppRawEvent>(b =>
+        {
+            b.ToTable(KLCConsts.DbTablePrefix + "OcppRawEvents", KLCConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.ChargePointId).IsRequired().HasMaxLength(64);
+            b.Property(x => x.Action).IsRequired().HasMaxLength(50);
+            b.Property(x => x.UniqueId).IsRequired().HasMaxLength(50);
+            b.Property(x => x.Payload).IsRequired().HasColumnType("jsonb");
+
+            b.HasIndex(x => x.ChargePointId);
+            b.HasIndex(x => x.Action);
+            b.HasIndex(x => x.ReceivedAt);
+            b.HasIndex(x => new { x.ChargePointId, x.ReceivedAt });
+        });
+
+        // MaintenanceTask
+        builder.Entity<MaintenanceTask>(b =>
+        {
+            b.ToTable(KLCConsts.DbTablePrefix + "MaintenanceTasks", KLCConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.Title).IsRequired().HasMaxLength(200);
+            b.Property(x => x.Description).HasMaxLength(2000);
+            b.Property(x => x.AssignedTo).IsRequired().HasMaxLength(200);
+            b.Property(x => x.Notes).HasMaxLength(2000);
+
+            b.HasIndex(x => x.StationId);
+            b.HasIndex(x => x.Status);
+            b.HasIndex(x => x.ScheduledDate);
         });
     }
 }

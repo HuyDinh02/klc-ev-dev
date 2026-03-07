@@ -163,6 +163,8 @@ export const monitoringApi = {
     api.get(`/monitoring/stations/${stationId}/status-history`),
   getEnergySummary: (stationId: string) =>
     api.get(`/monitoring/stations/${stationId}/energy-summary`),
+  getAnalytics: (params?: { fromDate?: string; toDate?: string }) =>
+    api.get("/monitoring/analytics", { params }),
 };
 
 export const eInvoicesApi = {
@@ -212,6 +214,55 @@ export const vehiclesApi = {
   getById: (id: string) => api.get(`/vehicles/${id}`),
   delete: (id: string) => api.delete(`/vehicles/${id}`),
 };
+
+export const maintenanceApi = {
+  getAll: (params?: { skipCount?: number; maxResultCount?: number; status?: number; type?: number; stationId?: string }) =>
+    api.get("/maintenance", { params }),
+  getById: (id: string) => api.get(`/maintenance/${id}`),
+  getStats: () => api.get("/maintenance/stats"),
+  create: (data: CreateMaintenanceTaskDto) => api.post("/maintenance", data),
+  update: (id: string, data: { title?: string; description?: string; assignedTo?: string; scheduledDate?: string }) =>
+    api.put(`/maintenance/${id}`, data),
+  delete: (id: string) => api.delete(`/maintenance/${id}`),
+  start: (id: string) => api.post(`/maintenance/${id}/start`),
+  complete: (id: string, notes?: string) => api.post(`/maintenance/${id}/complete`, { notes }),
+  cancel: (id: string, notes?: string) => api.post(`/maintenance/${id}/cancel`, { notes }),
+};
+
+export interface CreateMaintenanceTaskDto {
+  stationId: string;
+  connectorNumber?: number;
+  type: number;
+  title: string;
+  description?: string;
+  assignedTo: string;
+  scheduledDate: string;
+}
+
+export const settingsApi = {
+  get: () => api.get<SystemSettings>("/settings"),
+  update: (data: SystemSettings) => api.put("/settings", data),
+};
+
+export interface SystemSettings {
+  siteName: string;
+  timezone: string;
+  currency: string;
+  language: string;
+  emailNotifications: boolean;
+  smsNotifications: boolean;
+  pushNotifications: boolean;
+  alertEmail: string;
+  ocppWebSocketPort: number;
+  ocppHeartbeatInterval: number;
+  ocppMeterValueInterval: number;
+  defaultPaymentGateway: string;
+  autoInvoiceGeneration: boolean;
+  eInvoiceProvider: string;
+  sessionTimeout: number;
+  requireMfa: boolean;
+  passwordMinLength: number;
+}
 
 // Types
 export interface CreateUserDto {

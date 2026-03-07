@@ -1,6 +1,8 @@
 using System;
 using System.Threading.Tasks;
 using KLC.Faults;
+using KLC.Permissions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Volo.Abp.Application.Dtos;
 
@@ -8,6 +10,7 @@ namespace KLC.Controllers.Faults;
 
 [ApiController]
 [Route("api/v1/faults")]
+[Authorize(KLCPermissions.Faults.Default)]
 public class FaultController : KLCController
 {
     private readonly IFaultAppService _faultAppService;

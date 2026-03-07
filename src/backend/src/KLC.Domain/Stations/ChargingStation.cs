@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using KLC.Enums;
+using NetTopologySuite.Geometries;
 using Volo.Abp;
 using Volo.Abp.Domain.Entities.Auditing;
 
@@ -36,6 +37,11 @@ public class ChargingStation : FullAuditedAggregateRoot<Guid>
     /// Longitude coordinate.
     /// </summary>
     public double Longitude { get; private set; }
+
+    /// <summary>
+    /// PostGIS geography point for spatial queries (SRID 4326 = WGS84).
+    /// </summary>
+    public Point? Location { get; private set; }
 
     /// <summary>
     /// Current operational status.
@@ -83,9 +89,30 @@ public class ChargingStation : FullAuditedAggregateRoot<Guid>
     public bool IsEnabled { get; private set; }
 
     /// <summary>
+    /// Vendor profile type detected from BootNotification or set by admin.
+    /// </summary>
+    public VendorProfileType VendorProfile { get; private set; } = VendorProfileType.Generic;
+
+    /// <summary>
+    /// OCPP WebSocket authentication password. Null = no auth required.
+    /// Used in HTTP Basic Auth where username = StationCode, password = this value.
+    /// </summary>
+    public string? OcppPassword { get; private set; }
+
+    /// <summary>
     /// Collection of connectors belonging to this station.
     /// </summary>
     public ICollection<Connector> Connectors { get; private set; } = new List<Connector>();
+
+    /// <summary>
+    /// Collection of amenities at this station.
+    /// </summary>
+    public ICollection<StationAmenity> Amenities { get; private set; } = new List<StationAmenity>();
+
+    /// <summary>
+    /// Collection of photos for this station.
+    /// </summary>
+    public ICollection<StationPhoto> Photos { get; private set; } = new List<StationPhoto>();
 
     protected ChargingStation()
     {
@@ -137,6 +164,7 @@ public class ChargingStation : FullAuditedAggregateRoot<Guid>
 
         Latitude = latitude;
         Longitude = longitude;
+        Location = new Point(longitude, latitude) { SRID = 4326 };
     }
 
     public void SetStationInfo(string? vendor, string? model, string? serialNumber, string? firmwareVersion)
@@ -145,6 +173,16 @@ public class ChargingStation : FullAuditedAggregateRoot<Guid>
         Model = model;
         SerialNumber = serialNumber;
         FirmwareVersion = firmwareVersion;
+    }
+
+    public void SetVendorProfile(VendorProfileType vendorProfile)
+    {
+        VendorProfile = vendorProfile;
+    }
+
+    public void SetOcppPassword(string? password)
+    {
+        OcppPassword = password;
     }
 
     public void SetTariffPlan(Guid? tariffPlanId)
@@ -196,5 +234,19 @@ public class ChargingStation : FullAuditedAggregateRoot<Guid>
         var connector = new Connector(connectorId, Id, connectorNumber, connectorType, maxPowerKw);
         Connectors.Add(connector);
         return connector;
+    }
+
+    public StationAmenity AddAmenity(Guid amenityId, AmenityType amenityType)
+    {
+        var amenity = new StationAmenity(amenityId, Id, amenityType);
+        Amenities.Add(amenity);
+        return amenity;
+    }
+
+    public StationPhoto AddPhoto(Guid photoId, string url, string? thumbnailUrl = null, bool isPrimary = false, int sortOrder = 0)
+    {
+        var photo = new StationPhoto(photoId, Id, url, thumbnailUrl, isPrimary, sortOrder);
+        Photos.Add(photo);
+        return photo;
     }
 }

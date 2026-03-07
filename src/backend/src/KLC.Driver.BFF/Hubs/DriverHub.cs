@@ -113,6 +113,26 @@ public interface IDriverHubClient
     /// Payment status update.
     /// </summary>
     Task OnPaymentStatusChanged(PaymentStatusMessage status);
+
+    /// <summary>
+    /// Session completed with summary.
+    /// </summary>
+    Task OnSessionCompleted(SessionCompletedMessage completed);
+
+    /// <summary>
+    /// Charging error occurred.
+    /// </summary>
+    Task OnChargingError(ChargingErrorMessage error);
+
+    /// <summary>
+    /// Station status changed (available/unavailable/offline).
+    /// </summary>
+    Task OnStationStatusChanged(StationStatusChangedMessage status);
+
+    /// <summary>
+    /// Wallet balance changed (top-up, deduction, refund).
+    /// </summary>
+    Task OnWalletBalanceChanged(WalletBalanceChangedMessage balance);
 }
 
 // SignalR message types
@@ -159,5 +179,40 @@ public record PaymentStatusMessage
     public Guid SessionId { get; init; }
     public string Status { get; init; } = string.Empty;
     public string? Error { get; init; }
+    public DateTime Timestamp { get; init; }
+}
+
+public record SessionCompletedMessage
+{
+    public Guid SessionId { get; init; }
+    public decimal TotalEnergyKwh { get; init; }
+    public decimal TotalCost { get; init; }
+    public int DurationMinutes { get; init; }
+    public DateTime CompletedAt { get; init; }
+}
+
+public record ChargingErrorMessage
+{
+    public Guid SessionId { get; init; }
+    public string ErrorCode { get; init; } = string.Empty;
+    public string Message { get; init; } = string.Empty;
+    public DateTime Timestamp { get; init; }
+}
+
+public record StationStatusChangedMessage
+{
+    public Guid StationId { get; init; }
+    public string StationName { get; init; } = string.Empty;
+    public string PreviousStatus { get; init; } = string.Empty;
+    public string NewStatus { get; init; } = string.Empty;
+    public DateTime Timestamp { get; init; }
+}
+
+public record WalletBalanceChangedMessage
+{
+    public Guid UserId { get; init; }
+    public decimal NewBalance { get; init; }
+    public decimal ChangeAmount { get; init; }
+    public string Reason { get; init; } = string.Empty;
     public DateTime Timestamp { get; init; }
 }

@@ -14,4 +14,6 @@ public interface IMonitoringAppService : IApplicationService
     Task<EnergySummaryDto> GetStationEnergySummaryAsync(Guid stationId, GetEnergySummaryDto input);
 
     Task<EnergySummaryDto> GetConnectorEnergySummaryAsync(Guid connectorId, GetEnergySummaryDto input);
+
+    Task<AnalyticsDto> GetAnalyticsAsync(GetAnalyticsDto input);
 }

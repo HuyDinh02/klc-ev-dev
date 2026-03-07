@@ -48,6 +48,10 @@ appsettings.*.json
 # Docker
 docker-compose.override.yml
 
+# Service account keys
+*-service-account.json
+firebase-adminsdk-*.json
+
 # Project specific
 docs/**/originals/*.docx
 docs/**/originals/*.xlsx
@@ -64,3 +68,5 @@ playwright-report/
 
 # Claude Code
 .claude/
+bin\\Debug/
+bin\Debug/

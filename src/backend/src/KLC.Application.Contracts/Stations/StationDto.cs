@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using KLC.Enums;
 using Volo.Abp.Application.Dtos;
 
@@ -41,4 +42,43 @@ public class StationListDto : EntityDto<Guid>
     public bool IsEnabled { get; set; }
     public int ConnectorCount { get; set; }
     public DateTime? LastHeartbeat { get; set; }
+}
+
+// Station Amenity DTOs
+public class StationAmenityDto
+{
+    public Guid Id { get; set; }
+    public Guid StationId { get; set; }
+    public AmenityType AmenityType { get; set; }
+}
+
+public class AddStationAmenityDto
+{
+    [Required]
+    public AmenityType AmenityType { get; set; }
+}
+
+// Station Photo DTOs
+public class StationPhotoDto
+{
+    public Guid Id { get; set; }
+    public Guid StationId { get; set; }
+    public string Url { get; set; } = string.Empty;
+    public string? ThumbnailUrl { get; set; }
+    public bool IsPrimary { get; set; }
+    public int SortOrder { get; set; }
+    public DateTime CreationTime { get; set; }
+}
+
+public class AddStationPhotoDto
+{
+    [Required]
+    [StringLength(500)]
+    public string Url { get; set; } = string.Empty;
+
+    [StringLength(500)]
+    public string? ThumbnailUrl { get; set; }
+
+    public bool IsPrimary { get; set; }
+    public int SortOrder { get; set; }
 }

@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { api } from "@/lib/api";
+import { api, maintenanceApi } from "@/lib/api";
 import {
   Wrench,
   Plus,
@@ -16,7 +16,6 @@ import {
   CheckCircle2,
   AlertTriangle,
   Play,
-  Pause,
   X,
   ChevronLeft,
   ChevronRight,
@@ -26,9 +25,9 @@ interface MaintenanceTask {
   id: string;
   stationId: string;
   stationName: string;
-  connectorId?: number;
-  type: "Scheduled" | "Emergency" | "Inspection";
-  status: "Planned" | "InProgress" | "Completed" | "Cancelled";
+  connectorNumber?: number;
+  type: number;
+  status: number;
   title: string;
   description: string;
   assignedTo: string;
@@ -36,7 +35,7 @@ interface MaintenanceTask {
   startedAt?: string;
   completedAt?: string;
   notes?: string;
-  createdAt: string;
+  creationTime: string;
 }
 
 interface MaintenanceStats {
@@ -45,6 +44,19 @@ interface MaintenanceStats {
   completedCount: number;
   overdueCount: number;
 }
+
+const StatusLabels: Record<number, string> = {
+  0: "Planned",
+  1: "InProgress",
+  2: "Completed",
+  3: "Cancelled",
+};
+
+const TypeLabels: Record<number, string> = {
+  0: "Scheduled",
+  1: "Inspection",
+  2: "Emergency",
+};
 
 export default function MaintenancePage() {
   const queryClient = useQueryClient();
@@ -55,7 +67,7 @@ export default function MaintenancePage() {
   const [formData, setFormData] = useState({
     stationId: "",
     connectorId: "",
-    type: "Scheduled",
+    type: "0",
     title: "",
     description: "",
     assignedTo: "",
@@ -74,11 +86,8 @@ export default function MaintenancePage() {
       if (statusFilter !== "all") params.status = statusFilter;
       if (typeFilter !== "all") params.type = typeFilter;
 
-      // Mock data since maintenance API may not exist
-      return {
-        items: [],
-        totalCount: 0,
-      };
+      const res = await maintenanceApi.getAll(params as Parameters<typeof maintenanceApi.getAll>[0]);
+      return res.data;
     },
   });
 
@@ -98,42 +107,69 @@ export default function MaintenancePage() {
   const { data: stats } = useQuery<MaintenanceStats>({
     queryKey: ["maintenance-stats"],
     queryFn: async () => {
-      return {
-        plannedCount: 5,
-        inProgressCount: 2,
-        completedCount: 48,
-        overdueCount: 1,
-      };
+      const res = await maintenanceApi.getStats();
+      return res.data;
+    },
+  });
+
+  // Create task
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      await maintenanceApi.create({
+        stationId: formData.stationId,
+        type: parseInt(formData.type),
+        title: formData.title,
+        description: formData.description || undefined,
+        assignedTo: formData.assignedTo,
+        scheduledDate: new Date(formData.scheduledDate).toISOString(),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["maintenance-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["maintenance-stats"] });
+      setIsCreating(false);
+      setFormData({
+        stationId: "",
+        connectorId: "",
+        type: "0",
+        title: "",
+        description: "",
+        assignedTo: "",
+        scheduledDate: "",
+      });
     },
   });
 
   // Start task
   const startMutation = useMutation({
     mutationFn: async (id: string) => {
-      // Would call actual API
+      await maintenanceApi.start(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["maintenance-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["maintenance-stats"] });
     },
   });
 
   // Complete task
   const completeMutation = useMutation({
     mutationFn: async (id: string) => {
-      // Would call actual API
+      await maintenanceApi.complete(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["maintenance-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["maintenance-stats"] });
     },
   });
 
   // Cancel task
   const cancelMutation = useMutation({
     mutationFn: async (id: string) => {
-      // Would call actual API
+      await maintenanceApi.cancel(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["maintenance-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["maintenance-stats"] });
     },
   });
 
@@ -141,31 +177,22 @@ export default function MaintenancePage() {
   const totalCount = tasksData?.totalCount || 0;
   const totalPages = Math.ceil(totalCount / pageSize);
 
-  const getStatusColor = (status: string): "secondary" | "default" | "success" | "destructive" => {
+  const getStatusColor = (status: number): "secondary" | "default" | "success" | "destructive" => {
     switch (status) {
-      case "Planned":
-        return "secondary";
-      case "InProgress":
-        return "default";
-      case "Completed":
-        return "success";
-      case "Cancelled":
-        return "destructive";
-      default:
-        return "secondary";
+      case 0: return "secondary";
+      case 1: return "default";
+      case 2: return "success";
+      case 3: return "destructive";
+      default: return "secondary";
     }
   };
 
-  const getTypeColor = (type: string): "destructive" | "warning" | "default" | "secondary" => {
+  const getTypeColor = (type: number): "destructive" | "warning" | "default" | "secondary" => {
     switch (type) {
-      case "Emergency":
-        return "destructive";
-      case "Inspection":
-        return "warning";
-      case "Scheduled":
-        return "default";
-      default:
-        return "secondary";
+      case 2: return "destructive";
+      case 1: return "warning";
+      case 0: return "default";
+      default: return "secondary";
     }
   };
 
@@ -175,17 +202,7 @@ export default function MaintenancePage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Would call create API
-    setIsCreating(false);
-    setFormData({
-      stationId: "",
-      connectorId: "",
-      type: "Scheduled",
-      title: "",
-      description: "",
-      assignedTo: "",
-      scheduledDate: "",
-    });
+    createMutation.mutate();
   };
 
   return (
@@ -207,12 +224,8 @@ export default function MaintenancePage() {
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card
-          className={`cursor-pointer ${
-            statusFilter === "Planned" ? "ring-2 ring-primary" : ""
-          }`}
-          onClick={() =>
-            setStatusFilter(statusFilter === "Planned" ? "all" : "Planned")
-          }
+          className={`cursor-pointer ${statusFilter === "0" ? "ring-2 ring-primary" : ""}`}
+          onClick={() => setStatusFilter(statusFilter === "0" ? "all" : "0")}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Planned</CardTitle>
@@ -224,12 +237,8 @@ export default function MaintenancePage() {
         </Card>
 
         <Card
-          className={`cursor-pointer ${
-            statusFilter === "InProgress" ? "ring-2 ring-blue-500" : ""
-          }`}
-          onClick={() =>
-            setStatusFilter(statusFilter === "InProgress" ? "all" : "InProgress")
-          }
+          className={`cursor-pointer ${statusFilter === "1" ? "ring-2 ring-blue-500" : ""}`}
+          onClick={() => setStatusFilter(statusFilter === "1" ? "all" : "1")}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">In Progress</CardTitle>
@@ -243,12 +252,8 @@ export default function MaintenancePage() {
         </Card>
 
         <Card
-          className={`cursor-pointer ${
-            statusFilter === "Completed" ? "ring-2 ring-green-500" : ""
-          }`}
-          onClick={() =>
-            setStatusFilter(statusFilter === "Completed" ? "all" : "Completed")
-          }
+          className={`cursor-pointer ${statusFilter === "2" ? "ring-2 ring-green-500" : ""}`}
+          onClick={() => setStatusFilter(statusFilter === "2" ? "all" : "2")}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Completed</CardTitle>
@@ -310,9 +315,9 @@ export default function MaintenancePage() {
                     }
                     className="mt-1 w-full rounded-md border px-3 py-2"
                   >
-                    <option value="Scheduled">Scheduled</option>
-                    <option value="Inspection">Inspection</option>
-                    <option value="Emergency">Emergency</option>
+                    <option value="0">Scheduled</option>
+                    <option value="1">Inspection</option>
+                    <option value="2">Emergency</option>
                   </select>
                 </div>
               </div>
@@ -369,7 +374,9 @@ export default function MaintenancePage() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button type="submit">Create Task</Button>
+                <Button type="submit" disabled={createMutation.isPending}>
+                  {createMutation.isPending ? "Creating..." : "Create Task"}
+                </Button>
                 <Button
                   type="button"
                   variant="outline"
@@ -389,24 +396,24 @@ export default function MaintenancePage() {
           <div className="flex gap-4">
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
               className="rounded-md border px-3 py-2"
             >
               <option value="all">All Status</option>
-              <option value="Planned">Planned</option>
-              <option value="InProgress">In Progress</option>
-              <option value="Completed">Completed</option>
-              <option value="Cancelled">Cancelled</option>
+              <option value="0">Planned</option>
+              <option value="1">In Progress</option>
+              <option value="2">Completed</option>
+              <option value="3">Cancelled</option>
             </select>
             <select
               value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
+              onChange={(e) => { setTypeFilter(e.target.value); setCurrentPage(1); }}
               className="rounded-md border px-3 py-2"
             >
               <option value="all">All Types</option>
-              <option value="Scheduled">Scheduled</option>
-              <option value="Inspection">Inspection</option>
-              <option value="Emergency">Emergency</option>
+              <option value="0">Scheduled</option>
+              <option value="1">Inspection</option>
+              <option value="2">Emergency</option>
             </select>
           </div>
         </CardContent>
@@ -427,15 +434,17 @@ export default function MaintenancePage() {
                       <div className="flex items-center gap-2">
                         <h3 className="font-semibold">{task.title}</h3>
                         <Badge variant={getTypeColor(task.type)}>
-                          {task.type}
+                          {TypeLabels[task.type] || "Unknown"}
                         </Badge>
                         <Badge variant={getStatusColor(task.status)}>
-                          {task.status}
+                          {StatusLabels[task.status] || "Unknown"}
                         </Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        {task.description}
-                      </p>
+                      {task.description && (
+                        <p className="text-sm text-muted-foreground">
+                          {task.description}
+                        </p>
+                      )}
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <MapPin className="h-3 w-3" />
@@ -449,30 +458,44 @@ export default function MaintenancePage() {
                           <User className="h-3 w-3" />
                           {task.assignedTo}
                         </span>
+                        {task.completedAt && (
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            Done: {formatDate(task.completedAt)}
+                          </span>
+                        )}
                       </div>
+                      {task.notes && (
+                        <p className="text-xs text-muted-foreground italic">
+                          Notes: {task.notes}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    {task.status === "Planned" && (
+                    {task.status === 0 && (
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => startMutation.mutate(task.id)}
+                        disabled={startMutation.isPending}
+                        title="Start"
                       >
                         <Play className="h-4 w-4" />
                       </Button>
                     )}
-                    {task.status === "InProgress" && (
+                    {task.status === 1 && (
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => completeMutation.mutate(task.id)}
+                        disabled={completeMutation.isPending}
+                        title="Complete"
                       >
                         <CheckCircle2 className="h-4 w-4" />
                       </Button>
                     )}
-                    {(task.status === "Planned" ||
-                      task.status === "InProgress") && (
+                    {(task.status === 0 || task.status === 1) && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -481,6 +504,8 @@ export default function MaintenancePage() {
                             cancelMutation.mutate(task.id);
                           }
                         }}
+                        disabled={cancelMutation.isPending}
+                        title="Cancel"
                       >
                         <X className="h-4 w-4 text-red-500" />
                       </Button>

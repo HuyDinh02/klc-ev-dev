@@ -15,11 +15,11 @@ public static class StationEndpoints
         group.MapGet("/nearby", async (
             [FromQuery] double lat,
             [FromQuery] double lon,
-            [FromQuery] double radius,
-            [FromQuery] int limit,
-            IStationBffService stationService) =>
+            [FromQuery] double radius = 10,
+            [FromQuery] int limit = 20,
+            IStationBffService stationService = null!) =>
         {
-            if (radius <= 0) radius = 10; // Default 10km
+            if (radius <= 0) radius = 10;
             if (limit <= 0 || limit > 100) limit = 20;
 
             var stations = await stationService.GetNearbyStationsAsync(lat, lon, radius, limit);
@@ -30,6 +30,7 @@ public static class StationEndpoints
         .Produces<object>(200);
 
         // GET /api/v1/stations/{id}
+        // Public endpoint - no auth required (station discovery)
         group.MapGet("/{id:guid}", async (
             Guid id,
             IStationBffService stationService) =>
@@ -45,6 +46,7 @@ public static class StationEndpoints
         .Produces(404);
 
         // GET /api/v1/stations/{id}/connectors
+        // Public endpoint - no auth required (station discovery)
         group.MapGet("/{id:guid}/connectors", async (
             Guid id,
             IStationBffService stationService) =>

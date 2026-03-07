@@ -86,9 +86,9 @@ public static class SessionEndpoints
         // GET /api/v1/sessions/history
         group.MapGet("/history", async (
             [FromQuery] Guid? cursor,
-            [FromQuery] int pageSize,
-            ClaimsPrincipal user,
-            ISessionBffService sessionService) =>
+            [FromQuery] int pageSize = 20,
+            ClaimsPrincipal user = null!,
+            ISessionBffService sessionService = null!) =>
         {
             var userId = GetUserId(user);
             if (pageSize <= 0 || pageSize > 50) pageSize = 20;

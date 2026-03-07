@@ -286,6 +286,40 @@ curl -sk -X POST https://localhost:44305/api/v1/ocpp/connections/KC-HN-001/remot
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"transactionId": 1}'
+
+# Reset charger (Soft or Hard)
+curl -sk -X POST https://localhost:44305/api/v1/ocpp/connections/KC-HN-001/reset \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"type": "Soft"}'
+
+# Unlock connector
+curl -sk -X POST https://localhost:44305/api/v1/ocpp/connections/KC-HN-001/unlock \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"connectorId": 1}'
+
+# Change availability (Operative/Inoperative)
+curl -sk -X POST https://localhost:44305/api/v1/ocpp/connections/KC-HN-001/availability \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"connectorId": 0, "type": "Operative"}'
+
+# Get charger configuration
+curl -sk https://localhost:44305/api/v1/ocpp/connections/KC-HN-001/configuration \
+  -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
+
+# Change charger configuration
+curl -sk -X POST https://localhost:44305/api/v1/ocpp/connections/KC-HN-001/configuration \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"key": "MeterValueSampleInterval", "value": "30"}'
+
+# Trigger message (StatusNotification, MeterValues, Heartbeat, etc.)
+curl -sk -X POST https://localhost:44305/api/v1/ocpp/connections/KC-HN-001/trigger \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"requestedMessage": "StatusNotification", "connectorId": 1}'
 ```
 
 ## 7. Run Tests

@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using KLC.Permissions;
 using KLC.UserManagement;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Volo.Abp.Application.Dtos;
 
@@ -9,6 +11,7 @@ namespace KLC.Controllers.UserManagement;
 
 [ApiController]
 [Route("api/v1/users")]
+[Authorize(KLCPermissions.UserManagement.Default)]
 public class UserManagementController : KLCController
 {
     private readonly IUserManagementAppService _userManagementAppService;

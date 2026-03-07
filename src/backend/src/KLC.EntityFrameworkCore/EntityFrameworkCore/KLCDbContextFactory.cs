@@ -20,7 +20,8 @@ public class KLCDbContextFactory : IDesignTimeDbContextFactory<KLCDbContext>
         var configuration = BuildConfiguration();
 
         var builder = new DbContextOptionsBuilder<KLCDbContext>()
-            .UseNpgsql(configuration.GetConnectionString("Default"));
+            .UseNpgsql(configuration.GetConnectionString("Default"),
+                npgsql => npgsql.UseNetTopologySuite());
 
         return new KLCDbContext(builder.Options);
     }

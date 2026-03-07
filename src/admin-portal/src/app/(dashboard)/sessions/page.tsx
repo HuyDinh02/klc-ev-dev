@@ -59,6 +59,7 @@ export default function SessionsPage() {
       const { data } = await sessionsApi.getAll(params as { skip?: number; maxResultCount?: number; stationId?: string });
       return data;
     },
+    refetchInterval: 10000, // Auto-refresh every 10 seconds
   });
 
   const sessions = sessionsData?.items || [];
@@ -244,6 +245,36 @@ export default function SessionsPage() {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination */}
+            {(sessionsData?.totalCount ?? 0) > pageSize && (
+              <div className="flex items-center justify-between border-t px-4 py-3">
+                <p className="text-sm text-muted-foreground">
+                  Showing {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, sessionsData?.totalCount ?? 0)} of {sessionsData?.totalCount ?? 0}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    Page {currentPage} of {Math.ceil((sessionsData?.totalCount ?? 0) / pageSize)}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => p + 1)}
+                    disabled={currentPage * pageSize >= (sessionsData?.totalCount ?? 0)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

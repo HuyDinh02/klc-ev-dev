@@ -1,5 +1,6 @@
 using KLC.EntityFrameworkCore;
 using KLC.Enums;
+using KLC.Marketing;
 using KLC.Payments;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,15 +22,24 @@ public class PaymentBffService : IPaymentBffService
     private readonly KLCDbContext _dbContext;
     private readonly ICacheService _cache;
     private readonly ILogger<PaymentBffService> _logger;
+    private readonly IEnumerable<IPaymentGatewayService> _paymentGateways;
+    private readonly WalletDomainService _walletDomainService;
+    private readonly IDriverHubNotifier _driverNotifier;
 
     public PaymentBffService(
         KLCDbContext dbContext,
         ICacheService cache,
-        ILogger<PaymentBffService> logger)
+        ILogger<PaymentBffService> logger,
+        IEnumerable<IPaymentGatewayService> paymentGateways,
+        WalletDomainService walletDomainService,
+        IDriverHubNotifier driverNotifier)
     {
         _dbContext = dbContext;
         _cache = cache;
         _logger = logger;
+        _paymentGateways = paymentGateways;
+        _walletDomainService = walletDomainService;
+        _driverNotifier = driverNotifier;
     }
 
     public async Task<PaymentResultDto> ProcessPaymentAsync(Guid userId, ProcessPaymentRequest request)
@@ -57,39 +67,181 @@ public class PaymentBffService : IPaymentBffService
             return new PaymentResultDto { Success = false, Error = "Payment already processed" };
         }
 
-        // Create payment transaction
-        var payment = new PaymentTransaction(
+        var sessionCost = session.TotalCost;
+        decimal voucherDiscount = 0;
+        Voucher? voucher = null;
+
+        // Apply voucher discount if provided
+        if (!string.IsNullOrWhiteSpace(request.VoucherCode))
+        {
+            voucher = await _dbContext.Vouchers
+                .FirstOrDefaultAsync(v => v.Code == request.VoucherCode && !v.IsDeleted);
+
+            if (voucher == null)
+            {
+                return new PaymentResultDto { Success = false, Error = "Voucher not found" };
+            }
+
+            if (!voucher.IsValid())
+            {
+                return new PaymentResultDto { Success = false, Error = "Voucher is not valid or has expired" };
+            }
+
+            // Check user hasn't already used this voucher
+            var alreadyUsed = await _dbContext.UserVouchers
+                .AnyAsync(uv => uv.UserId == userId && uv.VoucherId == voucher.Id && uv.IsUsed);
+
+            if (alreadyUsed)
+            {
+                return new PaymentResultDto { Success = false, Error = "You have already used this voucher" };
+            }
+
+            // Check minimum order amount
+            if (voucher.MinOrderAmount.HasValue && sessionCost < voucher.MinOrderAmount.Value)
+            {
+                return new PaymentResultDto
+                {
+                    Success = false,
+                    Error = $"Minimum order amount is {voucher.MinOrderAmount.Value:N0}đ for this voucher"
+                };
+            }
+
+            // Calculate discount
+            voucherDiscount = voucher.Type switch
+            {
+                VoucherType.FixedAmount => Math.Min(voucher.Value, sessionCost),
+                VoucherType.Percentage => Math.Min(
+                    sessionCost * voucher.Value / 100m,
+                    voucher.MaxDiscountAmount ?? sessionCost),
+                VoucherType.FreeCharging => sessionCost,
+                _ => 0
+            };
+        }
+
+        var finalAmount = sessionCost - voucherDiscount;
+
+        // Record voucher usage if applied
+        if (voucher != null && voucherDiscount > 0)
+        {
+            var user = await _dbContext.AppUsers
+                .FirstOrDefaultAsync(u => u.IdentityUserId == userId);
+
+            if (user == null)
+            {
+                return new PaymentResultDto { Success = false, Error = "User not found" };
+            }
+
+            // Create voucher credit transaction
+            var (_, voucherTransaction) = _walletDomainService.ApplyVoucher(
+                user, voucherDiscount, $"Voucher {voucher.Code} discount for session");
+
+            // Deduct immediately for the session (net effect: discount applied)
+            user.DeductFromWallet(voucherDiscount);
+
+            var userVoucher = new UserVoucher(Guid.NewGuid(), userId, voucher.Id);
+            userVoucher.MarkUsed();
+            voucher.IncrementUsage();
+
+            await _dbContext.WalletTransactions.AddAsync(voucherTransaction);
+            await _dbContext.UserVouchers.AddAsync(userVoucher);
+
+            // Invalidate caches
+            await _cache.RemoveAsync($"user:{userId}:wallet-balance");
+            await _cache.RemoveAsync($"user:{userId}:available-vouchers");
+            await _cache.RemoveAsync($"user:{userId}:wallet-summary");
+        }
+
+        // If fully covered by voucher or zero-cost session
+        if (finalAmount <= 0)
+        {
+            var paymentGateway = voucher != null ? PaymentGateway.Voucher : request.Gateway;
+            var payment = new PaymentTransaction(
+                Guid.NewGuid(),
+                request.SessionId,
+                userId,
+                paymentGateway,
+                sessionCost);
+
+            payment.MarkProcessing();
+            var reference = voucher != null ? $"voucher:{voucher.Code}" : "zero-cost-session";
+            payment.MarkCompleted(reference);
+
+            await _dbContext.PaymentTransactions.AddAsync(payment);
+            await _dbContext.SaveChangesAsync();
+
+            _logger.LogInformation(
+                "Payment completed (no gateway needed): SessionId={SessionId}, VoucherCode={VoucherCode}, Amount={Amount}",
+                request.SessionId, voucher?.Code, sessionCost);
+
+            return new PaymentResultDto
+            {
+                Success = true,
+                PaymentId = payment.Id,
+                Status = payment.Status,
+                VoucherDiscount = voucherDiscount
+            };
+        }
+
+        // Process remaining amount via gateway
+        var gatewayPayment = new PaymentTransaction(
             Guid.NewGuid(),
             request.SessionId,
             userId,
             request.Gateway,
-            session.TotalCost);
+            finalAmount);
 
-        payment.MarkProcessing();
+        gatewayPayment.MarkProcessing();
 
-        // Simulate payment processing (in production, call payment gateway)
-        var gatewayResult = await SimulatePaymentGateway(payment, request.Gateway);
-
-        if (gatewayResult.Success)
+        var gateway = _paymentGateways.FirstOrDefault(g => g.Gateway == request.Gateway);
+        if (gateway == null)
         {
-            payment.MarkCompleted(gatewayResult.TransactionId!);
-        }
-        else
-        {
-            payment.MarkFailed(gatewayResult.Error ?? "Payment failed");
+            gatewayPayment.MarkFailed($"Gateway {request.Gateway} not supported");
+            await _dbContext.PaymentTransactions.AddAsync(gatewayPayment);
+            await _dbContext.SaveChangesAsync();
+            return new PaymentResultDto { Success = false, PaymentId = gatewayPayment.Id, Error = $"Gateway {request.Gateway} not supported" };
         }
 
-        await _dbContext.PaymentTransactions.AddAsync(payment);
-        await _dbContext.SaveChangesAsync();
-
-        return new PaymentResultDto
+        try
         {
-            Success = gatewayResult.Success,
-            PaymentId = payment.Id,
-            Status = payment.Status,
-            RedirectUrl = gatewayResult.RedirectUrl,
-            Error = gatewayResult.Error
-        };
+            var gatewayResult = await gateway.CreateTopUpAsync(new CreateTopUpRequest
+            {
+                ReferenceCode = gatewayPayment.ReferenceCode,
+                Amount = finalAmount,
+                Description = $"Session payment #{gatewayPayment.ReferenceCode}",
+                ReturnUrl = "klc://payment/callback",
+                NotifyUrl = "/api/v1/payments/callback"
+            });
+
+            if (gatewayResult.Success)
+            {
+                gatewayPayment.MarkCompleted(gatewayResult.GatewayTransactionId ?? "");
+            }
+            else
+            {
+                gatewayPayment.MarkFailed(gatewayResult.ErrorMessage ?? "Payment failed");
+            }
+
+            await _dbContext.PaymentTransactions.AddAsync(gatewayPayment);
+            await _dbContext.SaveChangesAsync();
+
+            return new PaymentResultDto
+            {
+                Success = gatewayResult.Success,
+                PaymentId = gatewayPayment.Id,
+                Status = gatewayPayment.Status,
+                RedirectUrl = gatewayResult.RedirectUrl,
+                VoucherDiscount = voucherDiscount > 0 ? voucherDiscount : null,
+                Error = gatewayResult.ErrorMessage
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Payment gateway error for session {SessionId}, gateway {Gateway}", request.SessionId, request.Gateway);
+            gatewayPayment.MarkFailed("Payment processing error");
+            await _dbContext.PaymentTransactions.AddAsync(gatewayPayment);
+            await _dbContext.SaveChangesAsync();
+            return new PaymentResultDto { Success = false, PaymentId = gatewayPayment.Id, Error = "Payment processing failed" };
+        }
     }
 
     public async Task<PagedResult<PaymentHistoryDto>> GetPaymentHistoryAsync(Guid userId, Guid? cursor, int pageSize)
@@ -258,33 +410,6 @@ public class PaymentBffService : IPaymentBffService
         await _cache.RemoveAsync($"user:{userId}:payment-methods");
     }
 
-    private Task<GatewayResult> SimulatePaymentGateway(PaymentTransaction payment, PaymentGateway gateway)
-    {
-        // Simulate payment gateway response
-        var result = new GatewayResult
-        {
-            Success = true,
-            TransactionId = $"{gateway}-{Guid.NewGuid():N}".ToUpper()[..20],
-            ReferenceCode = $"REF-{DateTime.UtcNow:yyyyMMddHHmmss}",
-            RedirectUrl = gateway switch
-            {
-                PaymentGateway.ZaloPay => "https://zalopay.vn/payment/...",
-                PaymentGateway.MoMo => "https://momo.vn/payment/...",
-                _ => null
-            }
-        };
-
-        return Task.FromResult(result);
-    }
-
-    private record GatewayResult
-    {
-        public bool Success { get; init; }
-        public string? TransactionId { get; init; }
-        public string? ReferenceCode { get; init; }
-        public string? RedirectUrl { get; init; }
-        public string? Error { get; init; }
-    }
 }
 
 // DTOs
@@ -293,6 +418,7 @@ public record ProcessPaymentRequest
     public Guid SessionId { get; init; }
     public PaymentGateway Gateway { get; init; }
     public Guid? PaymentMethodId { get; init; }
+    public string? VoucherCode { get; init; }
 }
 
 public record PaymentResultDto
@@ -301,6 +427,7 @@ public record PaymentResultDto
     public Guid? PaymentId { get; init; }
     public PaymentStatus? Status { get; init; }
     public string? RedirectUrl { get; init; }
+    public decimal? VoucherDiscount { get; init; }
     public string? Error { get; init; }
 }
 

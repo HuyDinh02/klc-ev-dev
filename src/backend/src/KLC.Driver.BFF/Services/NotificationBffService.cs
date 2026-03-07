@@ -11,6 +11,9 @@ public interface INotificationBffService
     Task MarkAsReadAsync(Guid userId, Guid notificationId);
     Task MarkAllAsReadAsync(Guid userId);
     Task RegisterDeviceAsync(Guid userId, string fcmToken);
+    Task UnregisterDeviceAsync(Guid userId, string token);
+    Task<NotificationPreferenceResultDto> GetPreferencesAsync(Guid userId);
+    Task<NotificationPreferenceResultDto> UpdatePreferencesAsync(Guid userId, Endpoints.UpdateNotificationPreferenceRequest request);
 }
 
 public class NotificationBffService : INotificationBffService
@@ -119,14 +122,100 @@ public class NotificationBffService : INotificationBffService
 
     public async Task RegisterDeviceAsync(Guid userId, string fcmToken)
     {
-        var user = await _dbContext.AppUsers
-            .FirstOrDefaultAsync(u => u.IdentityUserId == userId);
-
-        if (user != null)
+        try
         {
-            user.UpdateFcmToken(fcmToken);
+            // Store in DeviceToken table for multi-device support
+            var existing = await _dbContext.DeviceTokens
+                .FirstOrDefaultAsync(d => d.Token == fcmToken);
+
+            if (existing != null)
+            {
+                existing.UpdateToken(fcmToken);
+            }
+            else
+            {
+                var deviceToken = new Users.DeviceToken(
+                    Guid.NewGuid(), userId, fcmToken, Enums.DevicePlatform.Android);
+                await _dbContext.DeviceTokens.AddAsync(deviceToken);
+            }
+
+            // Also update legacy FcmToken on AppUser
+            var user = await _dbContext.AppUsers
+                .FirstOrDefaultAsync(u => u.IdentityUserId == userId);
+            if (user != null)
+            {
+                user.UpdateFcmToken(fcmToken);
+            }
+
             await _dbContext.SaveChangesAsync();
         }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to register device for user {UserId}", userId);
+        }
+    }
+
+    public async Task UnregisterDeviceAsync(Guid userId, string token)
+    {
+        var deviceToken = await _dbContext.DeviceTokens
+            .FirstOrDefaultAsync(d => d.Token == token && d.UserId == userId);
+
+        if (deviceToken != null)
+        {
+            deviceToken.Deactivate();
+            await _dbContext.SaveChangesAsync();
+        }
+    }
+
+    public async Task<NotificationPreferenceResultDto> GetPreferencesAsync(Guid userId)
+    {
+        var prefs = await _dbContext.NotificationPreferences
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.UserId == userId);
+
+        if (prefs == null)
+        {
+            // Return defaults
+            return new NotificationPreferenceResultDto
+            {
+                ChargingComplete = true,
+                PaymentAlerts = true,
+                FaultAlerts = true,
+                Promotions = true
+            };
+        }
+
+        return new NotificationPreferenceResultDto
+        {
+            ChargingComplete = prefs.ChargingComplete,
+            PaymentAlerts = prefs.PaymentAlerts,
+            FaultAlerts = prefs.FaultAlerts,
+            Promotions = prefs.Promotions
+        };
+    }
+
+    public async Task<NotificationPreferenceResultDto> UpdatePreferencesAsync(
+        Guid userId, Endpoints.UpdateNotificationPreferenceRequest request)
+    {
+        var prefs = await _dbContext.NotificationPreferences
+            .FirstOrDefaultAsync(p => p.UserId == userId);
+
+        if (prefs == null)
+        {
+            prefs = new Notifications.NotificationPreference(Guid.NewGuid(), userId);
+            await _dbContext.NotificationPreferences.AddAsync(prefs);
+        }
+
+        prefs.Update(request.ChargingComplete, request.PaymentAlerts, request.FaultAlerts, request.Promotions);
+        await _dbContext.SaveChangesAsync();
+
+        return new NotificationPreferenceResultDto
+        {
+            ChargingComplete = prefs.ChargingComplete,
+            PaymentAlerts = prefs.PaymentAlerts,
+            FaultAlerts = prefs.FaultAlerts,
+            Promotions = prefs.Promotions
+        };
     }
 }
 
@@ -141,4 +230,12 @@ public record NotificationDto
     public string? ActionUrl { get; init; }
     public bool IsRead { get; init; }
     public DateTime CreatedAt { get; init; }
+}
+
+public record NotificationPreferenceResultDto
+{
+    public bool ChargingComplete { get; init; }
+    public bool PaymentAlerts { get; init; }
+    public bool FaultAlerts { get; init; }
+    public bool Promotions { get; init; }
 }

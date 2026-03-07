@@ -1,13 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using KLC.Permissions;
 using KLC.Stations;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace KLC.Controllers.Stations;
 
 [ApiController]
 [Route("api/v1")]
+[Authorize(KLCPermissions.Connectors.Default)]
 public class ConnectorController : KLCController
 {
     private readonly IConnectorAppService _connectorAppService;

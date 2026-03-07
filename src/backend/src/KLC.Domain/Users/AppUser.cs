@@ -1,4 +1,5 @@
 using System;
+using KLC.Enums;
 using Volo.Abp;
 using Volo.Abp.Domain.Entities.Auditing;
 
@@ -67,6 +68,26 @@ public class AppUser : FullAuditedEntity<Guid>
     public decimal WalletBalance { get; private set; }
 
     /// <summary>
+    /// User's membership tier.
+    /// </summary>
+    public MembershipTier MembershipTier { get; private set; }
+
+    /// <summary>
+    /// Last time the user topped up their wallet.
+    /// </summary>
+    public DateTime? LastTopUpAt { get; private set; }
+
+    /// <summary>
+    /// User's date of birth.
+    /// </summary>
+    public DateTime? DateOfBirth { get; private set; }
+
+    /// <summary>
+    /// User's gender (M, F, or null).
+    /// </summary>
+    public string? Gender { get; private set; }
+
+    /// <summary>
     /// Whether the user account is active.
     /// </summary>
     public bool IsActive { get; private set; }
@@ -99,6 +120,7 @@ public class AppUser : FullAuditedEntity<Guid>
         IsActive = true;
         WalletBalance = 0;
         PreferredLanguage = "vi";
+        MembershipTier = MembershipTier.Standard;
     }
 
     public void UpdateProfile(string fullName, string? avatarUrl = null)
@@ -180,5 +202,32 @@ public class AppUser : FullAuditedEntity<Guid>
         if (amount > WalletBalance)
             throw new BusinessException(KLCDomainErrorCodes.Wallet.InsufficientBalance);
         WalletBalance -= amount;
+    }
+
+    public void SetMembershipTier(MembershipTier tier)
+    {
+        MembershipTier = tier;
+    }
+
+    public void RecordTopUp()
+    {
+        LastTopUpAt = DateTime.UtcNow;
+    }
+
+    public void SetDateOfBirth(DateTime? dateOfBirth)
+    {
+        DateOfBirth = dateOfBirth;
+    }
+
+    public void SetGender(string? gender)
+    {
+        if (gender != null && gender != "M" && gender != "F")
+            throw new ArgumentException("Gender must be 'M', 'F', or null", nameof(gender));
+        Gender = gender;
+    }
+
+    public void SetAvatarUrl(string? avatarUrl)
+    {
+        AvatarUrl = avatarUrl;
     }
 }

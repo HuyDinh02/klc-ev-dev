@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using KLC.Enums;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Logging;
 
 namespace KLC.Hubs;
 
@@ -47,10 +48,14 @@ public interface IMonitoringNotifier
 public class MonitoringNotifier : IMonitoringNotifier
 {
     private readonly IHubContext<MonitoringHub, IMonitoringHubClient> _hubContext;
+    private readonly ILogger<MonitoringNotifier> _logger;
 
-    public MonitoringNotifier(IHubContext<MonitoringHub, IMonitoringHubClient> hubContext)
+    public MonitoringNotifier(
+        IHubContext<MonitoringHub, IMonitoringHubClient> hubContext,
+        ILogger<MonitoringNotifier> logger)
     {
         _hubContext = hubContext;
+        _logger = logger;
     }
 
     public async Task NotifyStationStatusChangedAsync(
@@ -134,6 +139,9 @@ public class MonitoringNotifier : IMonitoringNotifier
             currentCost,
             DateTime.UtcNow
         );
+
+        _logger.LogInformation("Sending SessionUpdate via SignalR: Session={SessionId}, Status={Status}, Energy={Energy}kWh",
+            sessionId, status, currentEnergyKwh);
 
         // Notify all monitoring clients (admin dashboard)
         await _hubContext.Clients.Group("Monitoring").OnSessionUpdated(update);

@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using KLC.Enums;
 using Shouldly;
 using Volo.Abp;
 using Xunit;
@@ -143,6 +145,128 @@ public class TariffPlanTests
         tariff.Deactivate();
 
         tariff.IsCurrentlyEffective().ShouldBeFalse();
+    }
+
+    [Fact]
+    public void SetTouRates_Should_Set_TimeOfUse_Type()
+    {
+        var tariff = CreateTariff();
+
+        tariff.SetTouRates(2500, 3500, 4500);
+
+        tariff.TariffType.ShouldBe(TariffType.TimeOfUse);
+        tariff.OffPeakRatePerKwh.ShouldBe(2500m);
+        tariff.NormalRatePerKwh.ShouldBe(3500m);
+        tariff.PeakRatePerKwh.ShouldBe(4500m);
+    }
+
+    [Fact]
+    public void SetFlatRate_Should_Clear_Tou_Fields()
+    {
+        var tariff = CreateTariff();
+        tariff.SetTouRates(2500, 3500, 4500);
+
+        tariff.SetFlatRate();
+
+        tariff.TariffType.ShouldBe(TariffType.Flat);
+        tariff.OffPeakRatePerKwh.ShouldBeNull();
+        tariff.NormalRatePerKwh.ShouldBeNull();
+        tariff.PeakRatePerKwh.ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData(16, 0, "OffPeak")]    // 23:00 VN = 16:00 UTC
+    [InlineData(0, 0, "Normal")]      // 07:00 VN = 00:00 UTC
+    [InlineData(10, 0, "Peak")]       // 17:00 VN = 10:00 UTC
+    [InlineData(14, 0, "Normal")]     // 21:00 VN = 14:00 UTC
+    [InlineData(22, 30, "OffPeak")]   // 05:30 VN = 22:30 UTC (previous day)
+    public void GetTierName_Should_Map_Utc_To_Vietnam_Tiers(int utcHour, int utcMinute, string expectedTier)
+    {
+        var time = new DateTime(2026, 6, 15, utcHour, utcMinute, 0, DateTimeKind.Utc);
+
+        var tier = TariffPlan.GetTierName(time);
+
+        tier.ShouldBe(expectedTier);
+    }
+
+    [Fact]
+    public void GetRateForTime_Flat_Should_Return_Flat_Rate()
+    {
+        var tariff = CreateTariff(baseRate: 3500, taxRate: 10);
+
+        // Should return flat rate regardless of time
+        var peakTime = new DateTime(2026, 6, 15, 10, 0, 0, DateTimeKind.Utc); // 17:00 VN = peak
+        var offPeakTime = new DateTime(2026, 6, 15, 16, 0, 0, DateTimeKind.Utc); // 23:00 VN = off-peak
+
+        tariff.GetRateForTime(peakTime).ShouldBe(3850m);
+        tariff.GetRateForTime(offPeakTime).ShouldBe(3850m);
+    }
+
+    [Fact]
+    public void GetRateForTime_Tou_Should_Return_Tier_Rate()
+    {
+        var tariff = CreateTariff(baseRate: 3500, taxRate: 10);
+        tariff.SetTouRates(2500, 3500, 4500);
+
+        var offPeakTime = new DateTime(2026, 6, 15, 16, 0, 0, DateTimeKind.Utc); // 23:00 VN
+        var normalTime = new DateTime(2026, 6, 15, 0, 0, 0, DateTimeKind.Utc);   // 07:00 VN
+        var peakTime = new DateTime(2026, 6, 15, 10, 0, 0, DateTimeKind.Utc);    // 17:00 VN
+
+        tariff.GetRateForTime(offPeakTime).ShouldBe(2750m); // 2500 * 1.10
+        tariff.GetRateForTime(normalTime).ShouldBe(3850m);  // 3500 * 1.10
+        tariff.GetRateForTime(peakTime).ShouldBe(4950m);    // 4500 * 1.10
+    }
+
+    [Fact]
+    public void CalculateTouCost_Should_Apportion_Energy_By_Tier()
+    {
+        var tariff = CreateTariff(baseRate: 3500, taxRate: 0);
+        tariff.SetTouRates(2500, 3500, 4500);
+
+        // Simulate charging from 16:00 UTC (23:00 VN off-peak) to 17:00 UTC (00:00 VN off-peak)
+        // All energy in off-peak tier
+        var meterValues = new List<(DateTime, decimal)>
+        {
+            (new DateTime(2026, 6, 15, 16, 0, 0, DateTimeKind.Utc), 0m),    // 23:00 VN
+            (new DateTime(2026, 6, 15, 16, 30, 0, DateTimeKind.Utc), 5m),   // 23:30 VN
+            (new DateTime(2026, 6, 15, 17, 0, 0, DateTimeKind.Utc), 10m),   // 00:00 VN
+        };
+
+        var breakdown = tariff.CalculateTouCost(meterValues, 0, 10000, null, null);
+
+        breakdown.OffPeakKwh.ShouldBe(10m);
+        breakdown.NormalKwh.ShouldBe(0m);
+        breakdown.PeakKwh.ShouldBe(0m);
+        breakdown.TotalCost.ShouldBe(25000m); // 10kWh * 2500đ
+    }
+
+    [Fact]
+    public void CalculateTouCost_Mixed_Tiers_Should_Split_Correctly()
+    {
+        var tariff = CreateTariff(baseRate: 3500, taxRate: 0);
+        tariff.SetTouRates(2500, 3500, 4500);
+
+        // Simulate charging across peak and normal hours
+        // 10:00 UTC = 17:00 VN (peak), 14:00 UTC = 21:00 VN (normal)
+        var meterValues = new List<(DateTime, decimal)>
+        {
+            (new DateTime(2026, 6, 15, 10, 0, 0, DateTimeKind.Utc), 0m),    // 17:00 VN peak
+            (new DateTime(2026, 6, 15, 12, 0, 0, DateTimeKind.Utc), 10m),   // 19:00 VN peak
+            (new DateTime(2026, 6, 15, 14, 0, 0, DateTimeKind.Utc), 20m),   // 21:00 VN normal
+            (new DateTime(2026, 6, 15, 15, 0, 0, DateTimeKind.Utc), 25m),   // 22:00 VN normal
+        };
+
+        var breakdown = tariff.CalculateTouCost(meterValues, 0, 25000, null, null);
+
+        // First interval (10-12 UTC): midpoint 11:00 UTC = 18:00 VN = peak, 10 kWh
+        // Second interval (12-14 UTC): midpoint 13:00 UTC = 20:00 VN = peak, 10 kWh
+        // Third interval (14-15 UTC): midpoint 14:30 UTC = 21:30 VN = normal, 5 kWh
+        breakdown.PeakKwh.ShouldBe(20m);
+        breakdown.NormalKwh.ShouldBe(5m);
+        breakdown.OffPeakKwh.ShouldBe(0m);
+        breakdown.PeakCost.ShouldBe(90000m);   // 20 * 4500
+        breakdown.NormalCost.ShouldBe(17500m);  // 5 * 3500
+        breakdown.TotalCost.ShouldBe(107500m);
     }
 
     private static TariffPlan CreateTariff(decimal baseRate = 3500, decimal taxRate = 10)

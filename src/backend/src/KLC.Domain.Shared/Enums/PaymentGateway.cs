@@ -23,5 +23,25 @@ public enum PaymentGateway
     /// <summary>
     /// Wallet balance (prepaid).
     /// </summary>
-    Wallet = 3
+    Wallet = 3,
+
+    /// <summary>
+    /// VnPay payment gateway.
+    /// </summary>
+    VnPay = 4,
+
+    /// <summary>
+    /// QR code payment.
+    /// </summary>
+    QrPayment = 5,
+
+    /// <summary>
+    /// Voucher/coupon code payment.
+    /// </summary>
+    Voucher = 6,
+
+    /// <summary>
+    /// Urbox gift card payment.
+    /// </summary>
+    Urbox = 7
 }

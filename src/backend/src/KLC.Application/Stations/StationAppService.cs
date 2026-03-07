@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using KLC.Enums;
 using KLC.Permissions;
+using KLC.Sessions;
 using Microsoft.AspNetCore.Authorization;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
@@ -15,11 +16,21 @@ namespace KLC.Stations;
 public class StationAppService : KLCAppService, IStationAppService
 {
     private readonly IRepository<ChargingStation, Guid> _stationRepository;
+    private readonly IRepository<ChargingSession, Guid> _sessionRepository;
+    private readonly IRepository<StationAmenity, Guid> _amenityRepository;
+    private readonly IRepository<StationPhoto, Guid> _photoRepository;
     private readonly StationMapper _mapper;
 
-    public StationAppService(IRepository<ChargingStation, Guid> stationRepository)
+    public StationAppService(
+        IRepository<ChargingStation, Guid> stationRepository,
+        IRepository<ChargingSession, Guid> sessionRepository,
+        IRepository<StationAmenity, Guid> amenityRepository,
+        IRepository<StationPhoto, Guid> photoRepository)
     {
         _stationRepository = stationRepository;
+        _sessionRepository = sessionRepository;
+        _amenityRepository = amenityRepository;
+        _photoRepository = photoRepository;
         _mapper = new StationMapper();
     }
 
@@ -152,8 +163,21 @@ public class StationAppService : KLCAppService, IStationAppService
             throw new BusinessException(KLCDomainErrorCodes.Station.NotFound);
         }
 
-        // Check for active sessions would go here (MOD_001_003)
-        // For now, just update status
+        // MOD-001-003: Cannot decommission station with active sessions
+        var hasActiveSessions = await _sessionRepository.AnyAsync(s =>
+            s.StationId == id &&
+            (s.Status == SessionStatus.Pending ||
+             s.Status == SessionStatus.Starting ||
+             s.Status == SessionStatus.InProgress ||
+             s.Status == SessionStatus.Suspended ||
+             s.Status == SessionStatus.Stopping));
+
+        if (hasActiveSessions)
+        {
+            throw new BusinessException(KLCDomainErrorCodes.Station.HasActiveSessions)
+                .WithData("stationId", id);
+        }
+
         station.UpdateStatus(StationStatus.Decommissioned);
         station.Disable();
 
@@ -172,5 +196,136 @@ public class StationAppService : KLCAppService, IStationAppService
         var station = await _stationRepository.GetAsync(id);
         station.Disable();
         await _stationRepository.UpdateAsync(station);
+    }
+
+    // --- Amenities ---
+
+    public async Task<List<StationAmenityDto>> GetAmenitiesAsync(Guid stationId)
+    {
+        var amenities = await _amenityRepository.GetListAsync(a => a.StationId == stationId);
+        return amenities.Select(a => new StationAmenityDto
+        {
+            Id = a.Id,
+            StationId = a.StationId,
+            AmenityType = a.AmenityType
+        }).ToList();
+    }
+
+    [Authorize(KLCPermissions.Stations.Update)]
+    public async Task<StationAmenityDto> AddAmenityAsync(Guid stationId, AddStationAmenityDto input)
+    {
+        // Verify station exists
+        await _stationRepository.GetAsync(stationId);
+
+        // Check for duplicate
+        var existing = await _amenityRepository.FirstOrDefaultAsync(
+            a => a.StationId == stationId && a.AmenityType == input.AmenityType);
+        if (existing != null)
+        {
+            return new StationAmenityDto
+            {
+                Id = existing.Id,
+                StationId = existing.StationId,
+                AmenityType = existing.AmenityType
+            };
+        }
+
+        var amenity = new StationAmenity(GuidGenerator.Create(), stationId, input.AmenityType);
+        await _amenityRepository.InsertAsync(amenity);
+
+        return new StationAmenityDto
+        {
+            Id = amenity.Id,
+            StationId = amenity.StationId,
+            AmenityType = amenity.AmenityType
+        };
+    }
+
+    [Authorize(KLCPermissions.Stations.Update)]
+    public async Task RemoveAmenityAsync(Guid stationId, Guid amenityId)
+    {
+        var amenity = await _amenityRepository.GetAsync(amenityId);
+        if (amenity.StationId != stationId)
+        {
+            throw new BusinessException(KLCDomainErrorCodes.EntityNotFound);
+        }
+        await _amenityRepository.DeleteAsync(amenity);
+    }
+
+    // --- Photos ---
+
+    public async Task<List<StationPhotoDto>> GetPhotosAsync(Guid stationId)
+    {
+        var photos = await _photoRepository.GetListAsync(p => p.StationId == stationId);
+        return photos.OrderBy(p => p.SortOrder).Select(p => new StationPhotoDto
+        {
+            Id = p.Id,
+            StationId = p.StationId,
+            Url = p.Url,
+            ThumbnailUrl = p.ThumbnailUrl,
+            IsPrimary = p.IsPrimary,
+            SortOrder = p.SortOrder,
+            CreationTime = p.CreationTime
+        }).ToList();
+    }
+
+    [Authorize(KLCPermissions.Stations.Update)]
+    public async Task<StationPhotoDto> AddPhotoAsync(Guid stationId, AddStationPhotoDto input)
+    {
+        await _stationRepository.GetAsync(stationId);
+
+        var photo = new StationPhoto(
+            GuidGenerator.Create(),
+            stationId,
+            input.Url,
+            input.ThumbnailUrl,
+            input.IsPrimary,
+            input.SortOrder);
+
+        // If setting as primary, unset other primaries
+        if (input.IsPrimary)
+        {
+            var existing = await _photoRepository.GetListAsync(p => p.StationId == stationId && p.IsPrimary);
+            foreach (var p in existing) p.UnsetPrimary();
+            if (existing.Any()) await _photoRepository.UpdateManyAsync(existing);
+        }
+
+        await _photoRepository.InsertAsync(photo);
+
+        return new StationPhotoDto
+        {
+            Id = photo.Id,
+            StationId = photo.StationId,
+            Url = photo.Url,
+            ThumbnailUrl = photo.ThumbnailUrl,
+            IsPrimary = photo.IsPrimary,
+            SortOrder = photo.SortOrder,
+            CreationTime = photo.CreationTime
+        };
+    }
+
+    [Authorize(KLCPermissions.Stations.Update)]
+    public async Task RemovePhotoAsync(Guid stationId, Guid photoId)
+    {
+        var photo = await _photoRepository.GetAsync(photoId);
+        if (photo.StationId != stationId)
+        {
+            throw new BusinessException(KLCDomainErrorCodes.EntityNotFound);
+        }
+        await _photoRepository.DeleteAsync(photo);
+    }
+
+    [Authorize(KLCPermissions.Stations.Update)]
+    public async Task SetPrimaryPhotoAsync(Guid stationId, Guid photoId)
+    {
+        var photos = await _photoRepository.GetListAsync(p => p.StationId == stationId);
+        foreach (var photo in photos)
+        {
+            if (photo.Id == photoId)
+                photo.SetAsPrimary();
+            else if (photo.IsPrimary)
+                photo.UnsetPrimary();
+        }
+        await _photoRepository.UpdateManyAsync(photos);
     }
 }

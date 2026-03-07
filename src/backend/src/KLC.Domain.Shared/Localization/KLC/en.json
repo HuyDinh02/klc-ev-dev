@@ -32,6 +32,7 @@
     "KLC:Payment:CannotCancel": "Completed payments cannot be cancelled.",
 
     "KLC:Vehicle:NotOwned": "You do not have access to this vehicle.",
+    "KLC:Vehicle:HasActiveSession": "Cannot delete a vehicle with an active charging session.",
 
     "KLC:Session:ConnectorNotFound": "Connector not found.",
     "KLC:Session:ConnectorNotAvailable": "Connector #{connectorNumber} is not available (current status: {status}).",
@@ -71,6 +72,65 @@
     "KLC:Alert:InvalidAcknowledge": "Can only acknowledge new alerts.",
     "KLC:Alert:InvalidPriority": "Priority must be between 1 and 4.",
 
-    "KLC:Wallet:InsufficientBalance": "Insufficient wallet balance."
+    "KLC:Wallet:InsufficientBalance": "Insufficient wallet balance.",
+    "KLC:Wallet:TransactionAlreadyCompleted": "Transaction has already been completed.",
+    "KLC:Wallet:TopUpFailed": "Wallet top-up failed.",
+    "KLC:Wallet:InvalidAmount": "Invalid amount.",
+
+    "KLC:Auth:InvalidOtp": "Invalid OTP code.",
+    "KLC:Auth:OtpExpired": "OTP code has expired.",
+    "KLC:Auth:PhoneAlreadyRegistered": "This phone number is already registered.",
+    "KLC:Auth:InvalidCredentials": "Invalid login credentials.",
+    "KLC:Auth:AccountSuspended": "Your account has been suspended.",
+    "KLC:Auth:InvalidRefreshToken": "Invalid or expired refresh token.",
+    "KLC:Auth:SocialLoginFailed": "Social login failed.",
+
+    "KLC:Voucher:NotFound": "Voucher not found.",
+    "KLC:Voucher:NotValid": "Voucher is not valid.",
+    "KLC:Voucher:AlreadyUsed": "Voucher has already been used.",
+    "KLC:Voucher:Expired": "Voucher has expired.",
+    "KLC:Voucher:DuplicateCode": "Voucher code already exists.",
+
+    "KLC:Feedback:NotFound": "Feedback not found.",
+    "KLC:Feedback:NotOwned": "You do not have access to this feedback.",
+    "KLC:Feedback:AlreadyResolved": "Feedback has already been resolved.",
+
+    "KLC:Favorite:AlreadyFavorited": "Station is already in favorites.",
+    "KLC:Favorite:NotFavorited": "Station is not in favorites.",
+
+    "KLC:Station:HasActiveSessions": "Cannot decommission station with active charging sessions.",
+
+    "KLC:Wallet:MonthlyTopUpLimitExceeded": "Monthly top-up limit exceeded per SBV regulations.",
+
+    "KLC:Maintenance:NotFound": "Maintenance task not found.",
+    "KLC:Maintenance:InvalidStateTransition": "Invalid maintenance task state transition.",
+
+    "KLC:EntityNotFound": "The requested resource was not found.",
+
+    "Permission:MobileUsers": "Mobile User Management",
+    "Permission:MobileUsers.ViewAll": "View All Mobile Users",
+    "Permission:MobileUsers.Suspend": "Suspend/Unsuspend Mobile Users",
+    "Permission:MobileUsers.WalletAdjust": "Adjust Wallet Balance",
+
+    "Permission:Vouchers": "Voucher Management",
+    "Permission:Vouchers.Create": "Create Vouchers",
+    "Permission:Vouchers.Update": "Update Vouchers",
+    "Permission:Vouchers.Delete": "Delete Vouchers",
+
+    "Permission:Promotions": "Promotion Management",
+    "Permission:Promotions.Create": "Create Promotions",
+    "Permission:Promotions.Update": "Update Promotions",
+    "Permission:Promotions.Delete": "Delete Promotions",
+
+    "Permission:Feedback": "Feedback Management",
+    "Permission:Feedback.Respond": "Respond to Feedback",
+
+    "Permission:Notifications": "Notification Management",
+    "Permission:Notifications.Broadcast": "Broadcast Notifications",
+
+    "Permission:Maintenance": "Maintenance Management",
+    "Permission:Maintenance.Create": "Create Maintenance Tasks",
+    "Permission:Maintenance.Update": "Update Maintenance Tasks",
+    "Permission:Maintenance.Delete": "Delete Maintenance Tasks"
   }
 }

@@ -1,81 +1,55 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Settings,
   Bell,
   Lock,
-  Globe,
-  Mail,
-  CreditCard,
-  FileText,
   Zap,
+  CreditCard,
   Save,
   RefreshCw,
+  AlertCircle,
 } from "lucide-react";
-
-interface SystemSettings {
-  // General
-  siteName: string;
-  timezone: string;
-  currency: string;
-  language: string;
-
-  // Notifications
-  emailNotifications: boolean;
-  smsNotifications: boolean;
-  pushNotifications: boolean;
-  alertEmail: string;
-
-  // OCPP
-  ocppWebSocketPort: number;
-  ocppHeartbeatInterval: number;
-  ocppMeterValueInterval: number;
-
-  // Payments
-  defaultPaymentGateway: string;
-  autoInvoiceGeneration: boolean;
-  eInvoiceProvider: string;
-
-  // Security
-  sessionTimeout: number;
-  requireMfa: boolean;
-  passwordMinLength: number;
-}
+import { settingsApi, type SystemSettings } from "@/lib/api";
 
 export default function SettingsPage() {
-  const [settings, setSettings] = useState<SystemSettings>({
-    siteName: "KLC CSMS",
-    timezone: "Asia/Ho_Chi_Minh",
-    currency: "VND",
-    language: "vi",
-    emailNotifications: true,
-    smsNotifications: false,
-    pushNotifications: true,
-    alertEmail: "admin@klc.vn",
-    ocppWebSocketPort: 5002,
-    ocppHeartbeatInterval: 60,
-    ocppMeterValueInterval: 30,
-    defaultPaymentGateway: "VNPay",
-    autoInvoiceGeneration: true,
-    eInvoiceProvider: "MISA",
-    sessionTimeout: 30,
-    requireMfa: false,
-    passwordMinLength: 8,
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState("general");
+  const [localSettings, setLocalSettings] = useState<SystemSettings | null>(null);
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["settings"],
+    queryFn: async () => {
+      const res = await settingsApi.get();
+      return res.data;
+    },
   });
 
-  const [isSaving, setIsSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState("general");
+  // Initialize local state from fetched data
+  const settings = localSettings ?? data;
 
-  const handleSave = async () => {
-    setIsSaving(true);
-    // Would call API to save settings
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsSaving(false);
+  const updateSettings = (patch: Partial<SystemSettings>) => {
+    if (!settings) return;
+    setLocalSettings({ ...settings, ...patch });
   };
+
+  const saveMutation = useMutation({
+    mutationFn: (data: SystemSettings) => settingsApi.update(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["settings"] });
+      setLocalSettings(null);
+    },
+  });
+
+  const handleSave = () => {
+    if (settings) saveMutation.mutate(settings);
+  };
+
+  const isDirty = localSettings !== null;
 
   const tabs = [
     { id: "general", label: "General", icon: Settings },
@@ -84,6 +58,23 @@ export default function SettingsPage() {
     { id: "payments", label: "Payments", icon: CreditCard },
     { id: "security", label: "Security", icon: Lock },
   ];
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error || !settings) {
+    return (
+      <div className="flex items-center justify-center h-64 text-destructive">
+        <AlertCircle className="mr-2 h-5 w-5" />
+        Failed to load settings
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -95,14 +86,19 @@ export default function SettingsPage() {
             Configure system settings and preferences
           </p>
         </div>
-        <Button onClick={handleSave} disabled={isSaving}>
-          {isSaving ? (
-            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Save className="mr-2 h-4 w-4" />
+        <div className="flex items-center gap-2">
+          {saveMutation.isError && (
+            <span className="text-sm text-destructive">Save failed</span>
           )}
-          Save Changes
-        </Button>
+          <Button onClick={handleSave} disabled={saveMutation.isPending || !isDirty}>
+            {saveMutation.isPending ? (
+              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
+            Save Changes
+          </Button>
+        </div>
       </div>
 
       <div className="flex gap-6">
@@ -146,7 +142,7 @@ export default function SettingsPage() {
                       type="text"
                       value={settings.siteName}
                       onChange={(e) =>
-                        setSettings({ ...settings, siteName: e.target.value })
+                        updateSettings({ siteName: e.target.value })
                       }
                       className="mt-1 w-full rounded-md border px-3 py-2"
                     />
@@ -156,7 +152,7 @@ export default function SettingsPage() {
                     <select
                       value={settings.timezone}
                       onChange={(e) =>
-                        setSettings({ ...settings, timezone: e.target.value })
+                        updateSettings({ timezone: e.target.value })
                       }
                       className="mt-1 w-full rounded-md border px-3 py-2"
                     >
@@ -174,7 +170,7 @@ export default function SettingsPage() {
                     <select
                       value={settings.currency}
                       onChange={(e) =>
-                        setSettings({ ...settings, currency: e.target.value })
+                        updateSettings({ currency: e.target.value })
                       }
                       className="mt-1 w-full rounded-md border px-3 py-2"
                     >
@@ -187,7 +183,7 @@ export default function SettingsPage() {
                     <select
                       value={settings.language}
                       onChange={(e) =>
-                        setSettings({ ...settings, language: e.target.value })
+                        updateSettings({ language: e.target.value })
                       }
                       className="mt-1 w-full rounded-md border px-3 py-2"
                     >
@@ -223,8 +219,7 @@ export default function SettingsPage() {
                         type="checkbox"
                         checked={settings.emailNotifications}
                         onChange={(e) =>
-                          setSettings({
-                            ...settings,
+                          updateSettings({
                             emailNotifications: e.target.checked,
                           })
                         }
@@ -246,8 +241,7 @@ export default function SettingsPage() {
                         type="checkbox"
                         checked={settings.smsNotifications}
                         onChange={(e) =>
-                          setSettings({
-                            ...settings,
+                          updateSettings({
                             smsNotifications: e.target.checked,
                           })
                         }
@@ -269,8 +263,7 @@ export default function SettingsPage() {
                         type="checkbox"
                         checked={settings.pushNotifications}
                         onChange={(e) =>
-                          setSettings({
-                            ...settings,
+                          updateSettings({
                             pushNotifications: e.target.checked,
                           })
                         }
@@ -287,7 +280,7 @@ export default function SettingsPage() {
                     type="email"
                     value={settings.alertEmail}
                     onChange={(e) =>
-                      setSettings({ ...settings, alertEmail: e.target.value })
+                      updateSettings({ alertEmail: e.target.value })
                     }
                     className="mt-1 w-full rounded-md border px-3 py-2"
                     placeholder="admin@example.com"
@@ -314,8 +307,7 @@ export default function SettingsPage() {
                       type="number"
                       value={settings.ocppWebSocketPort}
                       onChange={(e) =>
-                        setSettings({
-                          ...settings,
+                        updateSettings({
                           ocppWebSocketPort: parseInt(e.target.value),
                         })
                       }
@@ -330,8 +322,7 @@ export default function SettingsPage() {
                       type="number"
                       value={settings.ocppHeartbeatInterval}
                       onChange={(e) =>
-                        setSettings({
-                          ...settings,
+                        updateSettings({
                           ocppHeartbeatInterval: parseInt(e.target.value),
                         })
                       }
@@ -346,8 +337,7 @@ export default function SettingsPage() {
                       type="number"
                       value={settings.ocppMeterValueInterval}
                       onChange={(e) =>
-                        setSettings({
-                          ...settings,
+                        updateSettings({
                           ocppMeterValueInterval: parseInt(e.target.value),
                         })
                       }
@@ -383,8 +373,7 @@ export default function SettingsPage() {
                     <select
                       value={settings.defaultPaymentGateway}
                       onChange={(e) =>
-                        setSettings({
-                          ...settings,
+                        updateSettings({
                           defaultPaymentGateway: e.target.value,
                         })
                       }
@@ -402,8 +391,7 @@ export default function SettingsPage() {
                     <select
                       value={settings.eInvoiceProvider}
                       onChange={(e) =>
-                        setSettings({
-                          ...settings,
+                        updateSettings({
                           eInvoiceProvider: e.target.value,
                         })
                       }
@@ -428,8 +416,7 @@ export default function SettingsPage() {
                       type="checkbox"
                       checked={settings.autoInvoiceGeneration}
                       onChange={(e) =>
-                        setSettings({
-                          ...settings,
+                        updateSettings({
                           autoInvoiceGeneration: e.target.checked,
                         })
                       }
@@ -461,8 +448,7 @@ export default function SettingsPage() {
                       type="number"
                       value={settings.sessionTimeout}
                       onChange={(e) =>
-                        setSettings({
-                          ...settings,
+                        updateSettings({
                           sessionTimeout: parseInt(e.target.value),
                         })
                       }
@@ -477,8 +463,7 @@ export default function SettingsPage() {
                       type="number"
                       value={settings.passwordMinLength}
                       onChange={(e) =>
-                        setSettings({
-                          ...settings,
+                        updateSettings({
                           passwordMinLength: parseInt(e.target.value),
                         })
                       }
@@ -501,8 +486,7 @@ export default function SettingsPage() {
                       type="checkbox"
                       checked={settings.requireMfa}
                       onChange={(e) =>
-                        setSettings({
-                          ...settings,
+                        updateSettings({
                           requireMfa: e.target.checked,
                         })
                       }

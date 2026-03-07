@@ -1,4 +1,5 @@
 ﻿using System;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Volo.Abp.Uow;
 using Volo.Abp.AuditLogging.EntityFrameworkCore;
@@ -50,7 +51,10 @@ public class KLCEntityFrameworkCoreModule : AbpModule
         {
                 /* The main point to change your DBMS.
                  * See also KLCMigrationsDbContextFactory for EF Core tooling. */
-            options.UseNpgsql();
+            options.UseNpgsql(npgsql =>
+            {
+                npgsql.UseNetTopologySuite();
+            });
         });
 
     }

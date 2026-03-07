@@ -25,24 +25,43 @@ export function useSignalR() {
       .configureLogging(signalR.LogLevel.Warning)
       .build();
 
-    // Handle meter value updates
-    connection.on('MeterValueUpdate', (data: MeterValue) => {
-      updateMeterValue(data);
+    // Handle real-time session updates (energy, cost, duration) — sent every 10-30s during charging
+    connection.on('OnSessionUpdate', (data: {
+      sessionId: string;
+      energyKwh: number;
+      currentCost: number;
+      durationMinutes: number;
+      powerKw?: number;
+      socPercent?: number;
+      timestamp: string;
+    }) => {
+      updateMeterValue({
+        timestamp: data.timestamp,
+        energyKwh: data.energyKwh,
+        powerKw: data.powerKw ?? 0,
+        soc: data.socPercent,
+      });
     });
 
-    // Handle session status changes
-    connection.on('SessionStatusChanged', (data: { sessionId: string; status: ChargingSession['status'] }) => {
-      updateSessionStatus(data.status);
+    // Handle session status changes (started, stopped, completed, failed)
+    connection.on('OnSessionStatusChanged', (data: { sessionId: string; status: string; message?: string }) => {
+      updateSessionStatus(data.status as ChargingSession['status']);
     });
 
-    // Handle session started
-    connection.on('SessionStarted', (session: ChargingSession) => {
-      setActiveSession(session);
+    // Handle session completed with summary
+    connection.on('OnSessionCompleted', (data: {
+      sessionId: string;
+      totalEnergyKwh: number;
+      totalCost: number;
+      durationMinutes: number;
+      completedAt: string;
+    }) => {
+      updateSessionStatus('Completed');
     });
 
-    // Handle session completed
-    connection.on('SessionCompleted', (session: ChargingSession) => {
-      setActiveSession(session);
+    // Handle charging errors
+    connection.on('OnChargingError', (data: { sessionId: string; errorCode: string; message: string }) => {
+      updateSessionStatus('Failed');
     });
 
     try {

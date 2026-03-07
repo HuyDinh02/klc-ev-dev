@@ -86,6 +86,38 @@ public class KLCPermissionDefinitionProvider : PermissionDefinitionProvider
         roleManagementPermission.AddChild(KLCPermissions.RoleManagement.Update, L("Permission:RoleManagement.Update"));
         roleManagementPermission.AddChild(KLCPermissions.RoleManagement.Delete, L("Permission:RoleManagement.Delete"));
         roleManagementPermission.AddChild(KLCPermissions.RoleManagement.ManagePermissions, L("Permission:RoleManagement.ManagePermissions"));
+
+        // Mobile User Management permissions
+        var mobileUsersPermission = myGroup.AddPermission(KLCPermissions.MobileUsers.Default, L("Permission:MobileUsers"));
+        mobileUsersPermission.AddChild(KLCPermissions.MobileUsers.ViewAll, L("Permission:MobileUsers.ViewAll"));
+        mobileUsersPermission.AddChild(KLCPermissions.MobileUsers.Suspend, L("Permission:MobileUsers.Suspend"));
+        mobileUsersPermission.AddChild(KLCPermissions.MobileUsers.WalletAdjust, L("Permission:MobileUsers.WalletAdjust"));
+
+        // Voucher permissions
+        var vouchersPermission = myGroup.AddPermission(KLCPermissions.Vouchers.Default, L("Permission:Vouchers"));
+        vouchersPermission.AddChild(KLCPermissions.Vouchers.Create, L("Permission:Vouchers.Create"));
+        vouchersPermission.AddChild(KLCPermissions.Vouchers.Update, L("Permission:Vouchers.Update"));
+        vouchersPermission.AddChild(KLCPermissions.Vouchers.Delete, L("Permission:Vouchers.Delete"));
+
+        // Promotion permissions
+        var promotionsPermission = myGroup.AddPermission(KLCPermissions.Promotions.Default, L("Permission:Promotions"));
+        promotionsPermission.AddChild(KLCPermissions.Promotions.Create, L("Permission:Promotions.Create"));
+        promotionsPermission.AddChild(KLCPermissions.Promotions.Update, L("Permission:Promotions.Update"));
+        promotionsPermission.AddChild(KLCPermissions.Promotions.Delete, L("Permission:Promotions.Delete"));
+
+        // Feedback permissions
+        var feedbackPermission = myGroup.AddPermission(KLCPermissions.Feedback.Default, L("Permission:Feedback"));
+        feedbackPermission.AddChild(KLCPermissions.Feedback.Respond, L("Permission:Feedback.Respond"));
+
+        // Notification permissions
+        var notificationsPermission = myGroup.AddPermission(KLCPermissions.Notifications.Default, L("Permission:Notifications"));
+        notificationsPermission.AddChild(KLCPermissions.Notifications.Broadcast, L("Permission:Notifications.Broadcast"));
+
+        // Maintenance permissions
+        var maintenancePermission = myGroup.AddPermission(KLCPermissions.Maintenance.Default, L("Permission:Maintenance"));
+        maintenancePermission.AddChild(KLCPermissions.Maintenance.Create, L("Permission:Maintenance.Create"));
+        maintenancePermission.AddChild(KLCPermissions.Maintenance.Update, L("Permission:Maintenance.Update"));
+        maintenancePermission.AddChild(KLCPermissions.Maintenance.Delete, L("Permission:Maintenance.Delete"));
     }
 
     private static LocalizableString L(string name)

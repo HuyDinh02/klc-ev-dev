@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\KLC.EntityFrameworkCore\KLC.EntityFrameworkCore.csproj" />
+    <ProjectReference Include="..\..\src\KLC.Driver.BFF\KLC.Driver.BFF.csproj" />
     <ProjectReference Include="..\KLC.Application.Tests\KLC.Application.Tests.csproj" />
     <PackageReference Include="Volo.Abp.EntityFrameworkCore.Sqlite" Version="10.1.0" />
   </ItemGroup>

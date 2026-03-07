@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using KLC.Enums;
+using KLC.Tariffs;
 using Volo.Abp;
 using Volo.Abp.Domain.Entities.Auditing;
 
@@ -171,19 +173,46 @@ public class ChargingSession : FullAuditedAggregateRoot<Guid>
 
     public void RecordStop(int meterStop, string? stopReason = null)
     {
+        RecordStop(meterStop, stopReason, tariffPlan: null);
+    }
+
+    public void RecordStop(int meterStop, string? stopReason, TariffPlan? tariffPlan)
+    {
         MeterStop = meterStop;
         EndTime = DateTime.UtcNow;
         StopReason = stopReason;
 
-        // Calculate total energy
+        // Calculate total energy from meter readings
         if (MeterStart.HasValue)
         {
-            var energyWh = meterStop - MeterStart.Value;
-            TotalEnergyKwh = Math.Round(energyWh / 1000m, 3);
+            var energyFromMeterWh = meterStop - MeterStart.Value;
+            var energyFromMeterKwh = Math.Round(energyFromMeterWh / 1000m, 3);
+
+            // Use the higher of: meter-based calculation vs running total from MeterValues.
+            // MeterValues during charging may have tracked a higher total, and some chargers
+            // send an unreliable meterStop value.
+            if (energyFromMeterKwh > TotalEnergyKwh)
+            {
+                TotalEnergyKwh = energyFromMeterKwh;
+            }
         }
 
-        // Calculate total cost
-        TotalCost = Math.Round(TotalEnergyKwh * RatePerKwh, 0);
+        // Calculate total cost — use TOU if tariff supports it and we have meter values
+        if (tariffPlan != null && tariffPlan.TariffType == TariffType.TimeOfUse && MeterValues.Count >= 2)
+        {
+            var meterData = MeterValues
+                .OrderBy(mv => mv.Timestamp)
+                .Select(mv => (mv.Timestamp, mv.EnergyKwh))
+                .ToList();
+
+            var breakdown = tariffPlan.CalculateTouCost(meterData, MeterStart, MeterStop, StartTime, EndTime);
+            TotalCost = breakdown.TotalCost;
+        }
+        else
+        {
+            // Flat rate calculation
+            TotalCost = Math.Round(TotalEnergyKwh * RatePerKwh, 0);
+        }
 
         Status = SessionStatus.Completed;
     }
@@ -195,20 +224,31 @@ public class ChargingSession : FullAuditedAggregateRoot<Guid>
         Status = SessionStatus.Failed;
     }
 
-    public MeterValue AddMeterValue(
+    /// <summary>
+    /// Adds a meter value reading. Returns null if a duplicate (same timestamp + energy) already exists.
+    /// </summary>
+    public MeterValue? AddMeterValue(
         Guid meterValueId,
         decimal energyKwh,
+        DateTime timestamp,
         decimal? currentAmps,
         decimal? voltageVolts,
         decimal? powerKw,
         decimal? socPercent)
     {
+        // Idempotency: reject duplicate readings (charger retries)
+        if (MeterValues.Any(mv => mv.Timestamp == timestamp && mv.EnergyKwh == energyKwh))
+        {
+            return null;
+        }
+
         var meterValue = new MeterValue(
             meterValueId,
             Id,
             StationId,
             ConnectorNumber,
             energyKwh,
+            timestamp,
             currentAmps,
             voltageVolts,
             powerKw,

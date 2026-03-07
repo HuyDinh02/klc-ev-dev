@@ -31,4 +31,7 @@ public interface IPaymentAppService : IApplicationService
 
     // Callback (internal/webhook)
     Task HandleCallbackAsync(string gateway, PaymentCallbackDto callback);
+
+    // Refund
+    Task<RefundResultDto> RefundAsync(Guid transactionId, RefundInput input);
 }

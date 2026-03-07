@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using KLC.AuditLogs;
+using KLC.Permissions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Volo.Abp.Application.Dtos;
 
@@ -9,6 +11,7 @@ namespace KLC.Controllers.AuditLogs;
 
 [ApiController]
 [Route("api/v1/audit-logs")]
+[Authorize(KLCPermissions.AuditLogs.Default)]
 public class AuditLogController : KLCController
 {
     private readonly IAuditLogAppService _auditLogAppService;

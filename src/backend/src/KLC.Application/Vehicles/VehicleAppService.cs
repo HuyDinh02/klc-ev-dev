@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using KLC.Enums;
+using KLC.Sessions;
 using Microsoft.AspNetCore.Authorization;
 using Volo.Abp;
 using Volo.Abp.Domain.Repositories;
@@ -13,10 +15,14 @@ namespace KLC.Vehicles;
 public class VehicleAppService : KLCAppService, IVehicleAppService
 {
     private readonly IRepository<Vehicle, Guid> _vehicleRepository;
+    private readonly IRepository<ChargingSession, Guid> _sessionRepository;
 
-    public VehicleAppService(IRepository<Vehicle, Guid> vehicleRepository)
+    public VehicleAppService(
+        IRepository<Vehicle, Guid> vehicleRepository,
+        IRepository<ChargingSession, Guid> sessionRepository)
     {
         _vehicleRepository = vehicleRepository;
+        _sessionRepository = sessionRepository;
     }
 
     public async Task<VehicleDto> CreateAsync(CreateVehicleDto input)
@@ -101,7 +107,13 @@ public class VehicleAppService : KLCAppService, IVehicleAppService
             throw new BusinessException(KLCDomainErrorCodes.Vehicle.NotOwned);
         }
 
-        // TODO: Check for active charging session (MOD_009_002)
+        var hasActiveSession = await _sessionRepository.AnyAsync(
+            s => s.VehicleId == id &&
+                 (s.Status == SessionStatus.InProgress || s.Status == SessionStatus.Starting));
+        if (hasActiveSession)
+        {
+            throw new BusinessException(KLCDomainErrorCodes.Vehicle.HasActiveSession);
+        }
 
         vehicle.Deactivate();
         await _vehicleRepository.UpdateAsync(vehicle);

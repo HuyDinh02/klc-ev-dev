@@ -151,6 +151,9 @@ export default function TariffsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tariffs"] });
     },
+    onError: (err: unknown) => {
+      handleMutationError(err);
+    },
   });
 
   const resetForm = () => {

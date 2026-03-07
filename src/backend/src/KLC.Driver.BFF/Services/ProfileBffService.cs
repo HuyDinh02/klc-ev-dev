@@ -1,7 +1,9 @@
 using KLC.EntityFrameworkCore;
 using KLC.Enums;
+using KLC.Files;
 using KLC.Users;
 using Microsoft.EntityFrameworkCore;
+using StackExchange.Redis;
 
 namespace KLC.Driver.Services;
 
@@ -10,22 +12,32 @@ public interface IProfileBffService
     Task<ProfileDto?> GetProfileAsync(Guid userId);
     Task<ProfileDto> UpdateProfileAsync(Guid userId, UpdateProfileRequest request);
     Task<UserStatsDto> GetUserStatsAsync(Guid userId);
+    Task<ProfileDto> UpdateAvatarAsync(Guid userId, Stream fileStream, string fileName);
+    Task RequestPhoneChangeAsync(Guid userId, string newPhoneNumber);
+    Task VerifyPhoneChangeAsync(Guid userId, string newPhoneNumber, string otp);
+    Task DeleteAccountAsync(Guid userId);
 }
 
 public class ProfileBffService : IProfileBffService
 {
     private readonly KLCDbContext _dbContext;
     private readonly ICacheService _cache;
+    private readonly IDatabase _redis;
     private readonly ILogger<ProfileBffService> _logger;
+    private readonly IFileUploadService _fileUploadService;
 
     public ProfileBffService(
         KLCDbContext dbContext,
         ICacheService cache,
-        ILogger<ProfileBffService> logger)
+        IConnectionMultiplexer redis,
+        ILogger<ProfileBffService> logger,
+        IFileUploadService fileUploadService)
     {
         _dbContext = dbContext;
         _cache = cache;
+        _redis = redis.GetDatabase();
         _logger = logger;
+        _fileUploadService = fileUploadService;
     }
 
     public async Task<ProfileDto?> GetProfileAsync(Guid userId)
@@ -130,6 +142,96 @@ public class ProfileBffService : IProfileBffService
             };
         }, TimeSpan.FromMinutes(10));
     }
+
+    public async Task<ProfileDto> UpdateAvatarAsync(Guid userId, Stream fileStream, string fileName)
+    {
+        var user = await _dbContext.AppUsers
+            .FirstOrDefaultAsync(u => u.IdentityUserId == userId && !u.IsDeleted);
+
+        if (user == null)
+            throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.Auth.InvalidCredentials);
+
+        // Delete old avatar if exists
+        if (!string.IsNullOrEmpty(user.AvatarUrl))
+        {
+            await _fileUploadService.DeleteAsync(user.AvatarUrl);
+        }
+
+        // Upload new avatar
+        var result = await _fileUploadService.UploadAsync(fileStream, fileName, "avatars");
+
+        user.SetAvatarUrl(result.Url);
+        await _dbContext.SaveChangesAsync();
+        await _cache.RemoveAsync($"user:{userId}:profile");
+
+        return new ProfileDto
+        {
+            UserId = userId,
+            FullName = user.FullName,
+            Email = user.Email,
+            PhoneNumber = user.PhoneNumber,
+            AvatarUrl = user.AvatarUrl,
+            PreferredLanguage = user.PreferredLanguage,
+            WalletBalance = user.WalletBalance,
+            IsEmailVerified = user.IsEmailVerified,
+            IsPhoneVerified = user.IsPhoneVerified
+        };
+    }
+
+    public async Task RequestPhoneChangeAsync(Guid userId, string newPhoneNumber)
+    {
+        // Check if phone already in use
+        var existing = await _dbContext.AppUsers
+            .AsNoTracking()
+            .AnyAsync(u => u.PhoneNumber == newPhoneNumber && u.IdentityUserId != userId && !u.IsDeleted);
+
+        if (existing)
+            throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.Profile.PhoneAlreadyUsed);
+
+        // Generate and store OTP for phone change
+        var otp = System.Security.Cryptography.RandomNumberGenerator.GetInt32(100000, 999999).ToString();
+        await _redis.StringSetAsync($"otp:phone-change:{userId}:{newPhoneNumber}", otp, TimeSpan.FromMinutes(5));
+        _logger.LogInformation("Phone change OTP for user {UserId}: {Otp}", userId, otp);
+    }
+
+    public async Task VerifyPhoneChangeAsync(Guid userId, string newPhoneNumber, string otp)
+    {
+        var storedOtp = await _redis.StringGetAsync($"otp:phone-change:{userId}:{newPhoneNumber}");
+        if (storedOtp.IsNullOrEmpty || storedOtp.ToString() != otp)
+            throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.Auth.InvalidOtp);
+
+        var user = await _dbContext.AppUsers
+            .FirstOrDefaultAsync(u => u.IdentityUserId == userId && !u.IsDeleted);
+
+        if (user == null)
+            throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.Auth.InvalidCredentials);
+
+        user.SetPhoneNumber(newPhoneNumber, isVerified: true);
+        await _dbContext.SaveChangesAsync();
+        await _redis.KeyDeleteAsync($"otp:phone-change:{userId}:{newPhoneNumber}");
+        await _cache.RemoveAsync($"user:{userId}:profile");
+    }
+
+    public async Task DeleteAccountAsync(Guid userId)
+    {
+        // Check for active sessions
+        var hasActive = await _dbContext.ChargingSessions
+            .AnyAsync(s => s.UserId == userId && (s.Status == SessionStatus.InProgress || s.Status == SessionStatus.Starting));
+
+        if (hasActive)
+            throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.Profile.HasActiveSession);
+
+        var user = await _dbContext.AppUsers
+            .FirstOrDefaultAsync(u => u.IdentityUserId == userId && !u.IsDeleted);
+
+        if (user == null) return;
+
+        user.Deactivate();
+        // ABP soft delete will handle IsDeleted flag
+        await _dbContext.SaveChangesAsync();
+        await _cache.RemoveAsync($"user:{userId}:profile");
+        await _cache.RemoveAsync($"user:{userId}:stats");
+    }
 }
 
 // DTOs
@@ -151,6 +253,22 @@ public record UpdateProfileRequest
     public string? FullName { get; init; }
     public string? AvatarUrl { get; init; }
     public string? PreferredLanguage { get; init; }
+}
+
+public record UpdateAvatarRequest
+{
+    public string AvatarUrl { get; init; } = string.Empty;
+}
+
+public record ChangePhoneRequest
+{
+    public string NewPhoneNumber { get; init; } = string.Empty;
+}
+
+public record VerifyPhoneChangeRequest
+{
+    public string NewPhoneNumber { get; init; } = string.Empty;
+    public string Otp { get; init; } = string.Empty;
 }
 
 public record UserStatsDto

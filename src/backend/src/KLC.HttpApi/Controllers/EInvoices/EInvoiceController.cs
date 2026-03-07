@@ -1,6 +1,8 @@
 using System;
 using System.Threading.Tasks;
 using KLC.EInvoices;
+using KLC.Permissions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Volo.Abp.Application.Dtos;
 
@@ -8,6 +10,7 @@ namespace KLC.Controllers.EInvoices;
 
 [ApiController]
 [Route("api/v1/e-invoices")]
+[Authorize(KLCPermissions.EInvoices.Default)]
 public class EInvoiceController : KLCController
 {
     private readonly IEInvoiceAppService _eInvoiceAppService;

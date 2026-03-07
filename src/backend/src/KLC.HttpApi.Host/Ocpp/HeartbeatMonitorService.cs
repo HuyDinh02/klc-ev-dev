@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using KLC.Enums;
 using KLC.Notifications;
+using KLC.Ocpp;
 using KLC.Stations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -101,6 +102,10 @@ public class HeartbeatMonitorService : BackgroundService
                 // Mark station as offline
                 station.UpdateStatus(StationStatus.Unavailable);
                 await stationRepository.UpdateAsync(station);
+
+                // Mark orphaned sessions as failed
+                var ocppService = scope.ServiceProvider.GetRequiredService<IOcppService>();
+                await ocppService.HandleStationDisconnectAsync(connection.ChargePointId);
 
                 // Create HeartbeatTimeout alert
                 var alert = new Alert(

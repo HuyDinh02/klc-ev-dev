@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using KLC.Enums;
+using KLC.Faults;
 using KLC.Permissions;
 using KLC.Sessions;
 using KLC.Stations;
@@ -19,19 +21,22 @@ public class MonitoringAppService : KLCAppService, IMonitoringAppService
     private readonly IRepository<StatusChangeLog, Guid> _statusLogRepository;
     private readonly IRepository<ChargingSession, Guid> _sessionRepository;
     private readonly IRepository<MeterValue, Guid> _meterValueRepository;
+    private readonly IRepository<Fault, Guid> _faultRepository;
 
     public MonitoringAppService(
         IRepository<ChargingStation, Guid> stationRepository,
         IRepository<Connector, Guid> connectorRepository,
         IRepository<StatusChangeLog, Guid> statusLogRepository,
         IRepository<ChargingSession, Guid> sessionRepository,
-        IRepository<MeterValue, Guid> meterValueRepository)
+        IRepository<MeterValue, Guid> meterValueRepository,
+        IRepository<Fault, Guid> faultRepository)
     {
         _stationRepository = stationRepository;
         _connectorRepository = connectorRepository;
         _statusLogRepository = statusLogRepository;
         _sessionRepository = sessionRepository;
         _meterValueRepository = meterValueRepository;
+        _faultRepository = faultRepository;
     }
 
     [Authorize(KLCPermissions.Monitoring.Dashboard)]
@@ -198,6 +203,80 @@ public class MonitoringAppService : KLCAppService, IMonitoringAppService
             TotalRevenue = totalRevenue,
             AverageSessionEnergyKwh = sessions.Count > 0 ? totalEnergy / sessions.Count : 0,
             AverageSessionDurationMinutes = sessions.Count > 0 ? (decimal)(totalDuration / sessions.Count) : 0
+        };
+    }
+
+    [Authorize(KLCPermissions.Monitoring.Dashboard)]
+    public async Task<AnalyticsDto> GetAnalyticsAsync(GetAnalyticsDto input)
+    {
+        var fromDate = input.FromDate ?? DateTime.UtcNow.AddDays(-30);
+        var toDate = input.ToDate ?? DateTime.UtcNow;
+
+        var sessionQuery = await _sessionRepository.GetQueryableAsync();
+        var sessions = await AsyncExecuter.ToListAsync(
+            sessionQuery.Where(s => s.Status == SessionStatus.Completed
+                && s.CreationTime >= fromDate
+                && s.CreationTime <= toDate));
+
+        var stations = await _stationRepository.GetListAsync();
+        var connectors = await _connectorRepository.GetListAsync();
+
+        // Daily stats
+        var dailyStats = sessions
+            .GroupBy(s => s.CreationTime.Date)
+            .OrderBy(g => g.Key)
+            .Select(g => new DailyStatsDto
+            {
+                Date = g.Key.ToString("yyyy-MM-dd"),
+                Sessions = g.Count(),
+                EnergyKwh = Math.Round(g.Sum(s => s.TotalEnergyKwh), 2),
+                Revenue = Math.Round(g.Sum(s => s.TotalCost), 0)
+            })
+            .ToList();
+
+        // Station utilization: sessions per station / total hours in period
+        var totalHours = (toDate - fromDate).TotalHours;
+        var stationUtilization = stations.Select(station =>
+        {
+            var stationSessions = sessions.Where(s => s.StationId == station.Id).ToList();
+            var stationConnectorCount = connectors.Count(c => c.StationId == station.Id);
+            var chargingHours = stationSessions
+                .Where(s => s.StartTime.HasValue && s.EndTime.HasValue)
+                .Sum(s => (s.EndTime!.Value - s.StartTime!.Value).TotalHours);
+            var maxCapacityHours = stationConnectorCount * totalHours;
+            var utilization = maxCapacityHours > 0 ? (decimal)(chargingHours / maxCapacityHours * 100) : 0;
+
+            return new StationUtilizationDto
+            {
+                StationId = station.Id,
+                StationName = station.Name,
+                TotalSessions = stationSessions.Count,
+                TotalEnergyKwh = Math.Round(stationSessions.Sum(s => s.TotalEnergyKwh), 2),
+                TotalRevenue = Math.Round(stationSessions.Sum(s => s.TotalCost), 0),
+                UtilizationPercent = Math.Round(utilization, 1)
+            };
+        })
+        .OrderByDescending(s => s.TotalSessions)
+        .ToList();
+
+        // Uptime: % of stations that are not Faulted/Offline
+        var onlineStations = stations.Count(s => s.Status == StationStatus.Available || s.Status == StationStatus.Occupied);
+        var activeStations = stations.Count(s => s.Status != StationStatus.Decommissioned);
+        var uptimePercent = activeStations > 0 ? Math.Round((decimal)onlineStations / activeStations * 100, 1) : 0;
+
+        var totalDuration = sessions
+            .Where(s => s.StartTime.HasValue && s.EndTime.HasValue)
+            .Sum(s => (s.EndTime!.Value - s.StartTime!.Value).TotalMinutes);
+
+        return new AnalyticsDto
+        {
+            DailyStats = dailyStats,
+            StationUtilization = stationUtilization,
+            TotalRevenue = Math.Round(sessions.Sum(s => s.TotalCost), 0),
+            TotalEnergyKwh = Math.Round(sessions.Sum(s => s.TotalEnergyKwh), 2),
+            TotalSessions = sessions.Count,
+            AverageSessionDurationMinutes = sessions.Count > 0 ? Math.Round((decimal)(totalDuration / sessions.Count), 1) : 0,
+            UptimePercent = uptimePercent
         };
     }
 }

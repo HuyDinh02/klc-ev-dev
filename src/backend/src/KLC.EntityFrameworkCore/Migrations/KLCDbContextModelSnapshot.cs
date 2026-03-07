@@ -4,6 +4,7 @@ using KLC.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using NetTopologySuite.Geometries;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Volo.Abp.EntityFrameworkCore;
 
@@ -22,6 +23,7 @@ namespace KLC.Migrations
                 .HasAnnotation("ProductVersion", "10.0.3")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "postgis");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("KLC.Faults.Fault", b =>
@@ -108,6 +110,326 @@ namespace KLC.Migrations
                     b.HasIndex("Status");
 
                     b.ToTable("AppFaults", (string)null);
+                });
+
+            modelBuilder.Entity("KLC.Maintenance.MaintenanceTask", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AssignedTo")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("ConcurrencyStamp");
+
+                    b.Property<int?>("ConnectorNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<Guid?>("DeleterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("DeleterId");
+
+                    b.Property<DateTime?>("DeletionTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("DeletionTime");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("ExtraProperties")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ExtraProperties");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("IsDeleted");
+
+                    b.Property<DateTime?>("LastModificationTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("LastModificationTime");
+
+                    b.Property<Guid?>("LastModifierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("LastModifierId");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime>("ScheduledDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid>("StationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ScheduledDate");
+
+                    b.HasIndex("StationId");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("AppMaintenanceTasks", (string)null);
+                });
+
+            modelBuilder.Entity("KLC.Marketing.Promotion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("ConcurrencyStamp");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<Guid?>("DeleterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("DeleterId");
+
+                    b.Property<DateTime?>("DeletionTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("DeletionTime");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ExtraProperties")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ExtraProperties");
+
+                    b.Property<string>("ImageUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("IsDeleted");
+
+                    b.Property<DateTime?>("LastModificationTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("LastModificationTime");
+
+                    b.Property<Guid?>("LastModifierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("LastModifierId");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EndDate");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("StartDate");
+
+                    b.HasIndex("Type");
+
+                    b.ToTable("AppPromotions", (string)null);
+                });
+
+            modelBuilder.Entity("KLC.Marketing.UserVoucher", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("IsDeleted");
+
+                    b.Property<bool>("IsUsed")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("VoucherId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("VoucherId");
+
+                    b.HasIndex("UserId", "VoucherId")
+                        .IsUnique();
+
+                    b.ToTable("AppUserVouchers", (string)null);
+                });
+
+            modelBuilder.Entity("KLC.Marketing.Voucher", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("ConcurrencyStamp");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<Guid?>("DeleterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("DeleterId");
+
+                    b.Property<DateTime?>("DeletionTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("DeletionTime");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("ExpiryDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ExtraProperties")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ExtraProperties");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("IsDeleted");
+
+                    b.Property<DateTime?>("LastModificationTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("LastModificationTime");
+
+                    b.Property<Guid?>("LastModifierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("LastModifierId");
+
+                    b.Property<decimal?>("MaxDiscountAmount")
+                        .HasPrecision(18)
+                        .HasColumnType("numeric(18,0)");
+
+                    b.Property<decimal?>("MinOrderAmount")
+                        .HasPrecision(18)
+                        .HasColumnType("numeric(18,0)");
+
+                    b.Property<int>("TotalQuantity")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UsedQuantity")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("Value")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("ExpiryDate");
+
+                    b.HasIndex("IsActive");
+
+                    b.ToTable("AppVouchers", (string)null);
                 });
 
             modelBuilder.Entity("KLC.Notifications.Alert", b =>
@@ -236,6 +558,83 @@ namespace KLC.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("AppNotifications", (string)null);
+                });
+
+            modelBuilder.Entity("KLC.Notifications.NotificationPreference", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("ChargingComplete")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("FaultAlerts")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("PaymentAlerts")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("Promotions")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("AppNotificationPreferences", (string)null);
+                });
+
+            modelBuilder.Entity("KLC.Ocpp.OcppRawEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("ChargePointId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<long?>("LatencyMs")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("MessageType")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime>("ReceivedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("UniqueId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<int>("VendorProfile")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Action");
+
+                    b.HasIndex("ChargePointId");
+
+                    b.HasIndex("ReceivedAt");
+
+                    b.HasIndex("ChargePointId", "ReceivedAt");
+
+                    b.ToTable("AppOcppRawEvents", (string)null);
                 });
 
             modelBuilder.Entity("KLC.Payments.EInvoice", b =>
@@ -561,6 +960,72 @@ namespace KLC.Migrations
                     b.ToTable("AppUserPaymentMethods", (string)null);
                 });
 
+            modelBuilder.Entity("KLC.Payments.WalletTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18)
+                        .HasColumnType("numeric(18,0)");
+
+                    b.Property<decimal>("BalanceAfter")
+                        .HasPrecision(18)
+                        .HasColumnType("numeric(18,0)");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("GatewayTransactionId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int?>("PaymentGateway")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ReferenceCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid?>("RelatedSessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreationTime");
+
+                    b.HasIndex("ReferenceCode");
+
+                    b.HasIndex("RelatedSessionId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("Type");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("AppWalletTransactions", (string)null);
+                });
+
             modelBuilder.Entity("KLC.Sessions.ChargingSession", b =>
                 {
                     b.Property<Guid>("Id")
@@ -789,6 +1254,9 @@ namespace KLC.Migrations
                     b.Property<double>("Latitude")
                         .HasColumnType("double precision");
 
+                    b.Property<Point>("Location")
+                        .HasColumnType("geography (point, 4326)");
+
                     b.Property<double>("Longitude")
                         .HasColumnType("double precision");
 
@@ -800,6 +1268,9 @@ namespace KLC.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<string>("OcppPassword")
+                        .HasColumnType("text");
 
                     b.Property<string>("SerialNumber")
                         .HasMaxLength(100)
@@ -823,9 +1294,16 @@ namespace KLC.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<int>("VendorProfile")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.HasIndex("IsEnabled");
+
+                    b.HasIndex("Location");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Location"), "gist");
 
                     b.HasIndex("StationCode")
                         .IsUnique();
@@ -903,6 +1381,56 @@ namespace KLC.Migrations
                     b.ToTable("AppConnectors", (string)null);
                 });
 
+            modelBuilder.Entity("KLC.Stations.FavoriteStation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<Guid>("StationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("UserId", "StationId")
+                        .IsUnique();
+
+                    b.ToTable("AppFavoriteStations", (string)null);
+                });
+
+            modelBuilder.Entity("KLC.Stations.StationAmenity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AmenityType")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("StationId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StationId");
+
+                    b.HasIndex("StationId", "AmenityType")
+                        .IsUnique();
+
+                    b.ToTable("AppStationAmenities", (string)null);
+                });
+
             modelBuilder.Entity("KLC.Stations.StationGroup", b =>
                 {
                     b.Property<Guid>("Id")
@@ -975,6 +1503,47 @@ namespace KLC.Migrations
                     b.ToTable("AppStationGroups", (string)null);
                 });
 
+            modelBuilder.Entity("KLC.Stations.StationPhoto", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<bool>("IsPrimary")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("StationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ThumbnailUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StationId");
+
+                    b.HasIndex("StationId", "IsPrimary")
+                        .HasFilter("\"IsPrimary\" = true");
+
+                    b.ToTable("AppStationPhotos", (string)null);
+                });
+
             modelBuilder.Entity("KLC.Stations.StatusChangeLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1015,6 +1584,83 @@ namespace KLC.Migrations
                     b.HasIndex("Timestamp");
 
                     b.ToTable("AppStatusChangeLogs", (string)null);
+                });
+
+            modelBuilder.Entity("KLC.Support.UserFeedback", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AdminResponse")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<Guid?>("DeleterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("DeleterId");
+
+                    b.Property<DateTime?>("DeletionTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("DeletionTime");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("IsDeleted");
+
+                    b.Property<DateTime?>("LastModificationTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("LastModificationTime");
+
+                    b.Property<Guid?>("LastModifierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("LastModifierId");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime?>("RespondedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid?>("RespondedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreationTime");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("Type");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("AppUserFeedbacks", (string)null);
                 });
 
             modelBuilder.Entity("KLC.Tariffs.TariffPlan", b =>
@@ -1089,6 +1735,18 @@ namespace KLC.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<decimal?>("NormalRatePerKwh")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal?>("OffPeakRatePerKwh")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal?>("PeakRatePerKwh")
+                        .HasColumnType("numeric");
+
+                    b.Property<int>("TariffType")
+                        .HasColumnType("integer");
+
                     b.Property<decimal>("TaxRatePercent")
                         .HasPrecision(5, 2)
                         .HasColumnType("numeric(5,2)");
@@ -1121,6 +1779,9 @@ namespace KLC.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("CreatorId");
 
+                    b.Property<DateTime?>("DateOfBirth")
+                        .HasColumnType("timestamp without time zone");
+
                     b.Property<Guid?>("DeleterId")
                         .HasColumnType("uuid")
                         .HasColumnName("DeleterId");
@@ -1141,6 +1802,10 @@ namespace KLC.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Gender")
+                        .HasMaxLength(1)
+                        .HasColumnType("character varying(1)");
 
                     b.Property<Guid>("IdentityUserId")
                         .HasColumnType("uuid");
@@ -1174,6 +1839,12 @@ namespace KLC.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("LastModifierId");
 
+                    b.Property<DateTime?>("LastTopUpAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("MembershipTier")
+                        .HasColumnType("integer");
+
                     b.Property<string>("PhoneNumber")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
@@ -1199,6 +1870,48 @@ namespace KLC.Migrations
                     b.HasIndex("PhoneNumber");
 
                     b.ToTable("AppAppUsers", (string)null);
+                });
+
+            modelBuilder.Entity("KLC.Users.DeviceToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Platform")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("RegisteredAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("AppDeviceTokens", (string)null);
                 });
 
             modelBuilder.Entity("KLC.Users.UserIdTag", b =>
@@ -3278,6 +3991,24 @@ namespace KLC.Migrations
                     b.Navigation("Station");
                 });
 
+            modelBuilder.Entity("KLC.Stations.StationAmenity", b =>
+                {
+                    b.HasOne("KLC.Stations.ChargingStation", null)
+                        .WithMany("Amenities")
+                        .HasForeignKey("StationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("KLC.Stations.StationPhoto", b =>
+                {
+                    b.HasOne("KLC.Stations.ChargingStation", null)
+                        .WithMany("Photos")
+                        .HasForeignKey("StationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Volo.Abp.AuditLogging.AuditLogAction", b =>
                 {
                     b.HasOne("Volo.Abp.AuditLogging.AuditLog", null)
@@ -3493,7 +4224,11 @@ namespace KLC.Migrations
 
             modelBuilder.Entity("KLC.Stations.ChargingStation", b =>
                 {
+                    b.Navigation("Amenities");
+
                     b.Navigation("Connectors");
+
+                    b.Navigation("Photos");
                 });
 
             modelBuilder.Entity("KLC.Stations.StationGroup", b =>

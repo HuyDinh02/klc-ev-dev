@@ -159,7 +159,7 @@ public class VehicleBffService : IVehicleBffService
             .FirstOrDefaultAsync(v => v.Id == vehicleId && v.UserId == userId);
 
         if (vehicle == null)
-            throw new InvalidOperationException("Vehicle not found");
+            throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.EntityNotFound);
 
         if (!string.IsNullOrEmpty(request.LicensePlate))
             vehicle.SetLicensePlate(request.LicensePlate);

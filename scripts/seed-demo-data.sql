@@ -96,7 +96,24 @@ VALUES
 (gen_random_uuid(), NULL, 'KLC.RoleManagement.Create', 'R', 'admin'),
 (gen_random_uuid(), NULL, 'KLC.RoleManagement.Update', 'R', 'admin'),
 (gen_random_uuid(), NULL, 'KLC.RoleManagement.Delete', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.RoleManagement.ManagePermissions', 'R', 'admin');
+(gen_random_uuid(), NULL, 'KLC.RoleManagement.ManagePermissions', 'R', 'admin'),
+-- New module permissions for admin
+(gen_random_uuid(), NULL, 'KLC.Vouchers', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Vouchers.Create', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Vouchers.Update', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Vouchers.Delete', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Promotions', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Promotions.Create', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Promotions.Update', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Promotions.Delete', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Feedback', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Feedback.Respond', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.MobileUsers', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.MobileUsers.ViewAll', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.MobileUsers.Suspend', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.MobileUsers.WalletAdjust', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Notifications', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Notifications.Broadcast', 'R', 'admin');
 
 -- Grant Permissions to Operator Role (station management, monitoring, faults)
 INSERT INTO "AbpPermissionGrants" ("Id", "TenantId", "Name", "ProviderName", "ProviderKey")
@@ -120,7 +137,11 @@ VALUES
 (gen_random_uuid(), NULL, 'KLC.Monitoring.EnergySummary', 'R', 'operator'),
 (gen_random_uuid(), NULL, 'KLC.StationGroups', 'R', 'operator'),
 (gen_random_uuid(), NULL, 'KLC.Payments', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KLC.Payments.ViewAll', 'R', 'operator');
+(gen_random_uuid(), NULL, 'KLC.Payments.ViewAll', 'R', 'operator'),
+(gen_random_uuid(), NULL, 'KLC.Feedback', 'R', 'operator'),
+(gen_random_uuid(), NULL, 'KLC.Feedback.Respond', 'R', 'operator'),
+(gen_random_uuid(), NULL, 'KLC.MobileUsers', 'R', 'operator'),
+(gen_random_uuid(), NULL, 'KLC.MobileUsers.ViewAll', 'R', 'operator');
 
 -- Grant Permissions to Viewer Role (read-only)
 INSERT INTO "AbpPermissionGrants" ("Id", "TenantId", "Name", "ProviderName", "ProviderKey")
@@ -137,7 +158,27 @@ VALUES
 (gen_random_uuid(), NULL, 'KLC.Payments', 'R', 'viewer');
 
 -- ============================================================
--- 1. TARIFF PLANS (3 plans)
+-- 1. STATION GROUPS (3 groups)
+-- ============================================================
+-- Must delete connectors -> stations -> groups in FK order
+DELETE FROM "AppConnectors" WHERE "StationId" IN (
+  'b1111111-1111-1111-1111-111111111111', 'b1111111-1111-1111-1111-111111111112',
+  'b1111111-1111-1111-1111-111111111113', 'b1111111-1111-1111-1111-111111111114',
+  'b2222222-2222-2222-2222-222222222221', 'b2222222-2222-2222-2222-222222222222',
+  'b3333333-3333-3333-3333-333333333331', 'b3333333-3333-3333-3333-333333333332'
+);
+DELETE FROM "AppChargingStations" WHERE "StationCode" LIKE 'KC-%';
+DELETE FROM "AppStationGroups" WHERE "Name" LIKE 'Khu vực%';
+
+INSERT INTO "AppStationGroups" ("Id", "Name", "Description", "Region", "IsActive", "ExtraProperties", "ConcurrencyStamp", "CreationTime", "IsDeleted")
+VALUES
+('a0000001-0001-0001-0001-000000000001', 'Khu vực Hà Nội', 'Các trạm sạc tại Hà Nội và phía Bắc', 'Northern Vietnam', true, '{}', 'seed-sg001', NOW() - INTERVAL '90 days', false),
+('a0000001-0001-0001-0001-000000000002', 'Khu vực TP.HCM', 'Các trạm sạc tại TP.HCM và phía Nam', 'Southern Vietnam', true, '{}', 'seed-sg002', NOW() - INTERVAL '90 days', false),
+('a0000001-0001-0001-0001-000000000003', 'Khu vực miền Trung', 'Các trạm sạc tại Đà Nẵng và miền Trung', 'Central Vietnam', true, '{}', 'seed-sg003', NOW() - INTERVAL '90 days', false);
+
+-- ============================================================
+-- 2. TARIFF PLANS (3 plans)
+-- NOTE: Stations reference these via TariffPlanId
 -- ============================================================
 DELETE FROM "AppTariffPlans" WHERE "Name" IN ('Standard', 'Peak Hours', 'Off-Peak');
 
@@ -147,11 +188,57 @@ VALUES
 ('d2222222-2222-2222-2222-222222222222', 'Peak Hours', 'Giá giờ cao điểm (6h-9h, 17h-22h)', 5500.00, 10.00, '2026-01-01', NULL, true, false, '{}', 'seed-t002', NOW(), false),
 ('d3333333-3333-3333-3333-333333333333', 'Off-Peak', 'Giá giờ thấp điểm (22h-6h)', 2800.00, 10.00, '2026-01-01', NULL, true, false, '{}', 'seed-t003', NOW(), false);
 
--- Update stations with tariff plans
-UPDATE "AppChargingStations" SET "TariffPlanId" = 'd1111111-1111-1111-1111-111111111111' WHERE "StationCode" LIKE 'KC-%';
+-- ============================================================
+-- 3. CHARGING STATIONS (8 stations)
+-- ============================================================
+-- (Connectors + stations already deleted in section 1 for FK order)
+
+INSERT INTO "AppChargingStations" ("Id", "StationCode", "Name", "Address", "Latitude", "Longitude", "Status", "FirmwareVersion", "Model", "Vendor", "SerialNumber", "StationGroupId", "TariffPlanId", "LastHeartbeat", "IsEnabled", "ExtraProperties", "ConcurrencyStamp", "CreationTime", "IsDeleted")
+VALUES
+-- Hanoi stations
+('b1111111-1111-1111-1111-111111111111', 'KC-HN-001', 'KLC Times City', '458 Minh Khai, Hai Bà Trưng, Hà Nội', 21.0037, 105.8680, 1, 'v1.5.2', 'Wallbox Quasar 2', 'Wallbox', 'WB-HN-001', 'a0000001-0001-0001-0001-000000000001', 'd1111111-1111-1111-1111-111111111111', NOW() - INTERVAL '5 minutes', true, '{}', 'seed-cs001', NOW() - INTERVAL '60 days', false),
+('b1111111-1111-1111-1111-111111111112', 'KC-HN-002', 'KLC Vincom Long Biên', 'Vincom Mega Mall, Long Biên, Hà Nội', 21.0367, 105.9167, 1, 'v1.5.2', 'ABB Terra AC', 'ABB', 'ABB-HN-002', 'a0000001-0001-0001-0001-000000000001', 'd1111111-1111-1111-1111-111111111111', NOW() - INTERVAL '3 minutes', true, '{}', 'seed-cs002', NOW() - INTERVAL '55 days', false),
+('b1111111-1111-1111-1111-111111111113', 'KC-HN-003', 'KLC Aeon Hà Đông', 'Aeon Mall Hà Đông, Hà Nội', 20.9696, 105.7462, 0, 'v1.4.8', 'Schneider EVlink', 'Schneider', 'SCH-HN-003', 'a0000001-0001-0001-0001-000000000001', 'd1111111-1111-1111-1111-111111111111', NOW() - INTERVAL '35 minutes', true, '{}', 'seed-cs003', NOW() - INTERVAL '50 days', false),
+('b1111111-1111-1111-1111-111111111114', 'KC-HN-004', 'KLC Vincom Bà Triệu', '191 Bà Triệu, Hai Bà Trưng, Hà Nội', 21.0115, 105.8492, 1, 'v1.5.2', 'ABB Terra DC', 'ABB', 'ABB-HN-004', 'a0000001-0001-0001-0001-000000000001', 'd2222222-2222-2222-2222-222222222222', NOW() - INTERVAL '2 minutes', true, '{}', 'seed-cs004', NOW() - INTERVAL '45 days', false),
+-- HCM stations
+('b2222222-2222-2222-2222-222222222221', 'KC-HCM-001', 'KLC Bitexco Tower', 'Tầng hầm B2, Bitexco Financial Tower, Q.1, TP.HCM', 10.7714, 106.7043, 2, 'v1.5.2', 'Delta AC Max', 'Delta', 'DLT-HCM-001', 'a0000001-0001-0001-0001-000000000002', 'd1111111-1111-1111-1111-111111111111', NOW() - INTERVAL '1 minute', true, '{}', 'seed-cs005', NOW() - INTERVAL '40 days', false),
+('b2222222-2222-2222-2222-222222222222', 'KC-HCM-002', 'KLC SC VivoCity', 'SC VivoCity, Q.7, TP.HCM', 10.7234, 106.6973, 1, 'v1.5.1', 'Wallbox Pulsar Plus', 'Wallbox', 'WB-HCM-002', 'a0000001-0001-0001-0001-000000000002', 'd1111111-1111-1111-1111-111111111111', NOW() - INTERVAL '4 minutes', true, '{}', 'seed-cs006', NOW() - INTERVAL '35 days', false),
+-- Da Nang stations
+('b3333333-3333-3333-3333-333333333331', 'KC-DN-001', 'KLC Vincom Đà Nẵng', 'Vincom Plaza, Ngô Quyền, Đà Nẵng', 16.0572, 108.2200, 1, 'v1.5.0', 'ABB Terra AC', 'ABB', 'ABB-DN-001', 'a0000001-0001-0001-0001-000000000003', 'd1111111-1111-1111-1111-111111111111', NOW() - INTERVAL '8 minutes', true, '{}', 'seed-cs007', NOW() - INTERVAL '30 days', false),
+('b3333333-3333-3333-3333-333333333332', 'KC-DN-002', 'KLC Indochina Riverside', 'Indochina Riverside Tower, Đà Nẵng', 16.0656, 108.2248, 3, 'v1.4.5', 'Schneider EVlink', 'Schneider', 'SCH-DN-002', 'a0000001-0001-0001-0001-000000000003', 'd3333333-3333-3333-3333-333333333333', NULL, false, '{}', 'seed-cs008', NOW() - INTERVAL '25 days', false);
 
 -- ============================================================
--- 2. APP USERS (10 users)
+-- 4. CONNECTORS (16 connectors across 8 stations)
+-- ============================================================
+INSERT INTO "AppConnectors" ("Id", "StationId", "ConnectorNumber", "ConnectorType", "MaxPowerKw", "Status", "IsEnabled", "CreationTime", "IsDeleted")
+VALUES
+-- KC-HN-001: CCS2 60kW (Available) + Type2 22kW (Charging)
+('c1000000-0001-0001-0001-000000000001', 'b1111111-1111-1111-1111-111111111111', 1, 1, 60.00, 0, true, NOW() - INTERVAL '60 days', false),
+('c1000000-0001-0001-0001-000000000002', 'b1111111-1111-1111-1111-111111111111', 2, 0, 22.00, 2, true, NOW() - INTERVAL '60 days', false),
+-- KC-HN-002: CCS2 50kW (Available) + Type2 22kW (Available)
+('c1000000-0001-0001-0001-000000000003', 'b1111111-1111-1111-1111-111111111112', 1, 1, 50.00, 0, true, NOW() - INTERVAL '55 days', false),
+('c1000000-0001-0001-0001-000000000004', 'b1111111-1111-1111-1111-111111111112', 2, 0, 22.00, 0, true, NOW() - INTERVAL '55 days', false),
+-- KC-HN-003: CCS2 50kW (Faulted - RFID reader failure)
+('c1000000-0001-0001-0001-000000000005', 'b1111111-1111-1111-1111-111111111113', 1, 1, 50.00, 8, true, NOW() - INTERVAL '50 days', false),
+-- KC-HN-004: 2x CCS2 120kW DC fast chargers (Available)
+('c1000000-0001-0001-0001-000000000006', 'b1111111-1111-1111-1111-111111111114', 1, 1, 120.00, 0, true, NOW() - INTERVAL '45 days', false),
+('c1000000-0001-0001-0001-000000000007', 'b1111111-1111-1111-1111-111111111114', 2, 1, 120.00, 0, true, NOW() - INTERVAL '45 days', false),
+-- KC-HCM-001: CCS2 60kW (Charging) + Type2 22kW (Available)
+('c1000000-0001-0001-0001-000000000008', 'b2222222-2222-2222-2222-222222222221', 1, 1, 60.00, 2, true, NOW() - INTERVAL '40 days', false),
+('c1000000-0001-0001-0001-000000000009', 'b2222222-2222-2222-2222-222222222221', 2, 0, 22.00, 0, true, NOW() - INTERVAL '40 days', false),
+-- KC-HCM-002: CCS2 50kW + Type2 22kW + CHAdeMO 50kW (all Available)
+('c1000000-0001-0001-0001-000000000010', 'b2222222-2222-2222-2222-222222222222', 1, 1, 50.00, 0, true, NOW() - INTERVAL '35 days', false),
+('c1000000-0001-0001-0001-000000000011', 'b2222222-2222-2222-2222-222222222222', 2, 0, 22.00, 0, true, NOW() - INTERVAL '35 days', false),
+('c1000000-0001-0001-0001-000000000012', 'b2222222-2222-2222-2222-222222222222', 3, 2, 50.00, 0, true, NOW() - INTERVAL '35 days', false),
+-- KC-DN-001: CCS2 50kW (Available) + Type2 22kW (Faulted - EV comm error)
+('c1000000-0001-0001-0001-000000000013', 'b3333333-3333-3333-3333-333333333331', 1, 1, 50.00, 0, true, NOW() - INTERVAL '30 days', false),
+('c1000000-0001-0001-0001-000000000014', 'b3333333-3333-3333-3333-333333333331', 2, 0, 22.00, 8, true, NOW() - INTERVAL '30 days', false),
+-- KC-DN-002: CCS2 + Type2 (Unavailable - maintenance)
+('c1000000-0001-0001-0001-000000000015', 'b3333333-3333-3333-3333-333333333332', 1, 1, 50.00, 7, false, NOW() - INTERVAL '25 days', false),
+('c1000000-0001-0001-0001-000000000016', 'b3333333-3333-3333-3333-333333333332', 2, 0, 22.00, 7, false, NOW() - INTERVAL '25 days', false);
+
+-- ============================================================
+-- 5. APP USERS (10 users)
 -- ============================================================
 DELETE FROM "AppAppUsers" WHERE "Email" LIKE '%@demo.klc.vn' OR "Email" LIKE '%@abc-corp.vn' OR "Email" LIKE '%@grab.vn';
 DELETE FROM "AppAppUsers" WHERE "Id" IN (
@@ -200,8 +287,8 @@ VALUES
 -- ============================================================
 -- 4. CHARGING SESSIONS (20 completed sessions)
 -- ============================================================
-DELETE FROM "AppMeterValues" WHERE "SessionId" IN (SELECT "Id" FROM "AppChargingSessions" WHERE "IdTag" LIKE 'KLC-%');
-DELETE FROM "AppChargingSessions" WHERE "IdTag" LIKE 'KLC-%';
+DELETE FROM "AppMeterValues" WHERE "SessionId"::text LIKE '11111111-0001-%';
+DELETE FROM "AppChargingSessions" WHERE "IdTag" LIKE 'KLC-%' OR "Id"::text LIKE '11111111-0001-%';
 
 INSERT INTO "AppChargingSessions" ("Id", "UserId", "VehicleId", "StationId", "ConnectorNumber", "OcppTransactionId", "Status", "StartTime", "EndTime", "MeterStart", "MeterStop", "TotalEnergyKwh", "TotalCost", "TariffPlanId", "RatePerKwh", "StopReason", "IdTag", "ExtraProperties", "ConcurrencyStamp", "CreationTime", "IsDeleted")
 VALUES
@@ -228,7 +315,43 @@ VALUES
 ('11111111-0001-0001-0001-000000000020', 'e1111111-1111-1111-1111-111111111119', 'f1111111-1111-1111-1111-111111111114', 'b2222222-2222-2222-2222-222222222222', 1, 1020, 5, NOW() - INTERVAL '3 days 3 hours', NOW() - INTERVAL '3 days 1 hour', 0, 55000, 55.000, 169400, 'd3333333-3333-3333-3333-333333333333', 3080.00, 'Local', 'KLC-VIP-001', '{}', 'seed-s020', NOW() - INTERVAL '3 days 3 hours', false);
 
 -- ============================================================
--- 5. PAYMENT TRANSACTIONS (20 payments)
+-- 7a. METER VALUES (25 readings for 5 sessions)
+-- ============================================================
+INSERT INTO "AppMeterValues" ("Id", "SessionId", "StationId", "ConnectorNumber", "Timestamp", "EnergyKwh", "CurrentAmps", "VoltageVolts", "PowerKw", "SocPercent")
+VALUES
+-- Session 1: 35.5 kWh over ~1.5h at KC-HN-001 C1 (VF e34)
+('a1000000-0001-0001-0001-000000000001', '11111111-0001-0001-0001-000000000001', 'b1111111-1111-1111-1111-111111111111', 1, NOW() - INTERVAL '2 days 14 hours', 0.000, 95.00, 400.00, 38.000, 15.00),
+('a1000000-0001-0001-0001-000000000002', '11111111-0001-0001-0001-000000000001', 'b1111111-1111-1111-1111-111111111111', 1, NOW() - INTERVAL '2 days 13 hours 40 minutes', 8.500, 92.00, 400.00, 36.800, 35.00),
+('a1000000-0001-0001-0001-000000000003', '11111111-0001-0001-0001-000000000001', 'b1111111-1111-1111-1111-111111111111', 1, NOW() - INTERVAL '2 days 13 hours 20 minutes', 18.200, 85.00, 398.00, 33.830, 55.00),
+('a1000000-0001-0001-0001-000000000004', '11111111-0001-0001-0001-000000000001', 'b1111111-1111-1111-1111-111111111111', 1, NOW() - INTERVAL '2 days 13 hours', 27.000, 70.00, 395.00, 27.650, 75.00),
+('a1000000-0001-0001-0001-000000000005', '11111111-0001-0001-0001-000000000001', 'b1111111-1111-1111-1111-111111111111', 1, NOW() - INTERVAL '2 days 12 hours 30 minutes', 35.500, 10.00, 400.00, 4.000, 95.00),
+-- Session 3: 42 kWh over ~40min at KC-HCM-001 C1 (Tesla Model 3)
+('a1000000-0001-0001-0001-000000000006', '11111111-0001-0001-0001-000000000003', 'b2222222-2222-2222-2222-222222222221', 1, NOW() - INTERVAL '1 day 16 hours', 0.000, 120.00, 400.00, 48.000, 10.00),
+('a1000000-0001-0001-0001-000000000007', '11111111-0001-0001-0001-000000000003', 'b2222222-2222-2222-2222-222222222221', 1, NOW() - INTERVAL '1 day 15 hours 50 minutes', 8.000, 120.00, 400.00, 48.000, 23.00),
+('a1000000-0001-0001-0001-000000000008', '11111111-0001-0001-0001-000000000003', 'b2222222-2222-2222-2222-222222222221', 1, NOW() - INTERVAL '1 day 15 hours 40 minutes', 16.500, 115.00, 398.00, 45.770, 37.00),
+('a1000000-0001-0001-0001-000000000009', '11111111-0001-0001-0001-000000000003', 'b2222222-2222-2222-2222-222222222221', 1, NOW() - INTERVAL '1 day 15 hours 30 minutes', 28.000, 100.00, 395.00, 39.500, 57.00),
+('a1000000-0001-0001-0001-000000000010', '11111111-0001-0001-0001-000000000003', 'b2222222-2222-2222-2222-222222222221', 1, NOW() - INTERVAL '1 day 15 hours 20 minutes', 42.000, 15.00, 400.00, 6.000, 80.00),
+-- Session 5: 55 kWh over 2h at KC-DN-001 C1 (VF 9)
+('a1000000-0001-0001-0001-000000000011', '11111111-0001-0001-0001-000000000005', 'b3333333-3333-3333-3333-333333333331', 1, NOW() - INTERVAL '1 day 8 hours', 0.000, 100.00, 400.00, 40.000, 5.00),
+('a1000000-0001-0001-0001-000000000012', '11111111-0001-0001-0001-000000000005', 'b3333333-3333-3333-3333-333333333331', 1, NOW() - INTERVAL '1 day 7 hours 30 minutes', 14.000, 98.00, 400.00, 39.200, 16.00),
+('a1000000-0001-0001-0001-000000000013', '11111111-0001-0001-0001-000000000005', 'b3333333-3333-3333-3333-333333333331', 1, NOW() - INTERVAL '1 day 7 hours', 28.500, 90.00, 398.00, 35.820, 28.00),
+('a1000000-0001-0001-0001-000000000014', '11111111-0001-0001-0001-000000000005', 'b3333333-3333-3333-3333-333333333331', 1, NOW() - INTERVAL '1 day 6 hours 30 minutes', 42.000, 75.00, 395.00, 29.625, 39.00),
+('a1000000-0001-0001-0001-000000000015', '11111111-0001-0001-0001-000000000005', 'b3333333-3333-3333-3333-333333333331', 1, NOW() - INTERVAL '1 day 6 hours', 55.000, 12.00, 400.00, 4.800, 50.00),
+-- Session 10: 38 kWh over 1h at KC-HN-001 C1 (Grab BYD e6)
+('a1000000-0001-0001-0001-000000000016', '11111111-0001-0001-0001-000000000010', 'b1111111-1111-1111-1111-111111111111', 1, NOW() - INTERVAL '4 hours', 0.000, 110.00, 400.00, 44.000, 20.00),
+('a1000000-0001-0001-0001-000000000017', '11111111-0001-0001-0001-000000000010', 'b1111111-1111-1111-1111-111111111111', 1, NOW() - INTERVAL '3 hours 45 minutes', 10.000, 108.00, 400.00, 43.200, 34.00),
+('a1000000-0001-0001-0001-000000000018', '11111111-0001-0001-0001-000000000010', 'b1111111-1111-1111-1111-111111111111', 1, NOW() - INTERVAL '3 hours 30 minutes', 20.500, 95.00, 398.00, 37.810, 48.00),
+('a1000000-0001-0001-0001-000000000019', '11111111-0001-0001-0001-000000000010', 'b1111111-1111-1111-1111-111111111111', 1, NOW() - INTERVAL '3 hours 15 minutes', 30.000, 60.00, 395.00, 23.700, 62.00),
+('a1000000-0001-0001-0001-000000000020', '11111111-0001-0001-0001-000000000010', 'b1111111-1111-1111-1111-111111111111', 1, NOW() - INTERVAL '3 hours', 38.000, 8.00, 400.00, 3.200, 73.00),
+-- Session 17: 30 kWh peak hours at KC-HN-001 C1 (MG ZS EV)
+('a1000000-0001-0001-0001-000000000021', '11111111-0001-0001-0001-000000000017', 'b1111111-1111-1111-1111-111111111111', 1, NOW() - INTERVAL '1 day 18 hours', 0.000, 90.00, 400.00, 36.000, 25.00),
+('a1000000-0001-0001-0001-000000000022', '11111111-0001-0001-0001-000000000017', 'b1111111-1111-1111-1111-111111111111', 1, NOW() - INTERVAL '1 day 17 hours 40 minutes', 7.500, 88.00, 400.00, 35.200, 42.00),
+('a1000000-0001-0001-0001-000000000023', '11111111-0001-0001-0001-000000000017', 'b1111111-1111-1111-1111-111111111111', 1, NOW() - INTERVAL '1 day 17 hours 20 minutes', 15.000, 80.00, 398.00, 31.840, 59.00),
+('a1000000-0001-0001-0001-000000000024', '11111111-0001-0001-0001-000000000017', 'b1111111-1111-1111-1111-111111111111', 1, NOW() - INTERVAL '1 day 17 hours', 23.000, 55.00, 395.00, 21.725, 76.00),
+('a1000000-0001-0001-0001-000000000025', '11111111-0001-0001-0001-000000000017', 'b1111111-1111-1111-1111-111111111111', 1, NOW() - INTERVAL '1 day 16 hours 45 minutes', 30.000, 10.00, 400.00, 4.000, 93.00);
+
+-- ============================================================
+-- 8. PAYMENT TRANSACTIONS (20 payments)
 -- ============================================================
 DELETE FROM "AppPaymentTransactions" WHERE "ReferenceCode" LIKE 'PAY-DEMO-%';
 
@@ -333,6 +456,224 @@ VALUES
 ('66666666-0001-0001-0001-000000000005', 'b3333333-3333-3333-3333-333333333331', 2, 1, 2, 0, 'Lỗi giao tiếp OCPP tại KC-DN-001', NULL, NULL, NULL, NULL, NULL, '{}', NOW() - INTERVAL '2 hours');
 
 -- ============================================================
+-- 10. WALLET TRANSACTIONS (10 transactions)
+-- ============================================================
+DELETE FROM "AppWalletTransactions" WHERE "ReferenceCode" LIKE 'WTX-DEMO-%';
+
+INSERT INTO "AppWalletTransactions" ("Id", "UserId", "Type", "Amount", "BalanceAfter", "PaymentGateway", "GatewayTransactionId", "RelatedSessionId", "Status", "Description", "ReferenceCode", "CreationTime", "CreatorId")
+VALUES
+-- Top-ups
+('77777777-0001-0001-0001-000000000001', 'e1111111-1111-1111-1111-111111111111', 0, 500000, 3000000, 0, 'ZLP_TOPUP_001', NULL, 1, 'Nạp ví qua ZaloPay', 'WTX-DEMO-0001', NOW() - INTERVAL '7 days', 'e1111111-1111-1111-1111-111111111111'),
+('77777777-0001-0001-0001-000000000002', 'e1111111-1111-1111-1111-111111111112', 0, 1000000, 2800000, 1, 'MOMO_TOPUP_001', NULL, 1, 'Nạp ví qua MoMo', 'WTX-DEMO-0002', NOW() - INTERVAL '6 days', 'e1111111-1111-1111-1111-111111111112'),
+('77777777-0001-0001-0001-000000000003', 'e1111111-1111-1111-1111-111111111118', 0, 10000000, 60000000, 3, 'WALLET_TOPUP_001', NULL, 1, 'Nạp ví doanh nghiệp', 'WTX-DEMO-0003', NOW() - INTERVAL '5 days', 'e1111111-1111-1111-1111-111111111118'),
+-- Session payments (debit)
+('77777777-0001-0001-0001-000000000004', 'e1111111-1111-1111-1111-111111111111', 1, -156200, 2343800, 3, NULL, '11111111-0001-0001-0001-000000000001', 1, 'Thanh toán phiên sạc', 'WTX-DEMO-0004', NOW() - INTERVAL '2 days 12 hours', 'e1111111-1111-1111-1111-111111111111'),
+('77777777-0001-0001-0001-000000000005', 'e1111111-1111-1111-1111-111111111118', 1, -110000, 49890000, 3, NULL, '11111111-0001-0001-0001-000000000008', 1, 'Thanh toán Fleet #1', 'WTX-DEMO-0005', NOW() - INTERVAL '5 hours', 'e1111111-1111-1111-1111-111111111118'),
+-- Voucher credit
+('77777777-0001-0001-0001-000000000006', 'e1111111-1111-1111-1111-111111111114', 4, 200000, 700000, NULL, NULL, NULL, 1, 'Nhận voucher khuyến mãi', 'WTX-DEMO-0006', NOW() - INTERVAL '3 days', 'e1111111-1111-1111-1111-111111111114'),
+-- Refund
+('77777777-0001-0001-0001-000000000007', 'e1111111-1111-1111-1111-111111111113', 2, 50000, 3250000, 3, NULL, NULL, 1, 'Hoàn tiền phiên sạc lỗi', 'WTX-DEMO-0007', NOW() - INTERVAL '4 days', NULL),
+-- Pending top-up
+('77777777-0001-0001-0001-000000000008', 'e1111111-1111-1111-1111-111111111115', 0, 2000000, 6500000, 4, 'VNPAY_TOPUP_001', NULL, 0, 'Nạp ví qua VnPay', 'WTX-DEMO-0008', NOW() - INTERVAL '30 minutes', 'e1111111-1111-1111-1111-111111111115'),
+-- Failed top-up
+('77777777-0001-0001-0001-000000000009', 'e1111111-1111-1111-1111-111111111120', 0, 500000, 1500000, 1, NULL, NULL, 2, 'Giao dịch MoMo thất bại', 'WTX-DEMO-0009', NOW() - INTERVAL '1 day', 'e1111111-1111-1111-1111-111111111120'),
+-- Admin adjustment
+('77777777-0001-0001-0001-000000000010', 'e1111111-1111-1111-1111-111111111116', 3, 100000, 5100000, NULL, NULL, NULL, 1, 'Điều chỉnh số dư bởi admin', 'WTX-DEMO-0010', NOW() - INTERVAL '2 days', NULL);
+
+-- ============================================================
+-- 11. DEVICE TOKENS (8 tokens)
+-- ============================================================
+DELETE FROM "AppDeviceTokens" WHERE "Token" LIKE 'demo_%';
+
+INSERT INTO "AppDeviceTokens" ("Id", "UserId", "Token", "Platform", "IsActive", "RegisteredAt", "CreationTime", "CreatorId")
+VALUES
+('88888888-0001-0001-0001-000000000001', 'e1111111-1111-1111-1111-111111111111', 'demo_fcm_token_an_ios_001', 0, true, NOW() - INTERVAL '30 days', NOW() - INTERVAL '30 days', 'e1111111-1111-1111-1111-111111111111'),
+('88888888-0001-0001-0001-000000000002', 'e1111111-1111-1111-1111-111111111112', 'demo_fcm_token_binh_android_001', 1, true, NOW() - INTERVAL '25 days', NOW() - INTERVAL '25 days', 'e1111111-1111-1111-1111-111111111112'),
+('88888888-0001-0001-0001-000000000003', 'e1111111-1111-1111-1111-111111111113', 'demo_fcm_token_cuong_android_001', 1, true, NOW() - INTERVAL '20 days', NOW() - INTERVAL '20 days', 'e1111111-1111-1111-1111-111111111113'),
+('88888888-0001-0001-0001-000000000004', 'e1111111-1111-1111-1111-111111111116', 'demo_fcm_token_john_ios_001', 0, true, NOW() - INTERVAL '28 days', NOW() - INTERVAL '28 days', 'e1111111-1111-1111-1111-111111111116'),
+('88888888-0001-0001-0001-000000000005', 'e1111111-1111-1111-1111-111111111116', 'demo_fcm_token_john_android_001', 1, false, NOW() - INTERVAL '40 days', NOW() - INTERVAL '40 days', 'e1111111-1111-1111-1111-111111111116'),
+('88888888-0001-0001-0001-000000000006', 'e1111111-1111-1111-1111-111111111118', 'demo_fcm_token_abc_fleet_001', 1, true, NOW() - INTERVAL '60 days', NOW() - INTERVAL '60 days', 'e1111111-1111-1111-1111-111111111118'),
+('88888888-0001-0001-0001-000000000007', 'e1111111-1111-1111-1111-111111111119', 'demo_fcm_token_grab_001', 1, true, NOW() - INTERVAL '90 days', NOW() - INTERVAL '90 days', 'e1111111-1111-1111-1111-111111111119'),
+('88888888-0001-0001-0001-000000000008', 'e1111111-1111-1111-1111-111111111120', 'demo_fcm_token_giang_ios_001', 0, true, NOW() - INTERVAL '5 days', NOW() - INTERVAL '5 days', 'e1111111-1111-1111-1111-111111111120');
+
+-- ============================================================
+-- 12. NOTIFICATION PREFERENCES (5 preferences)
+-- ============================================================
+DELETE FROM "AppNotificationPreferences" WHERE "UserId" IN (
+  'e1111111-1111-1111-1111-111111111111', 'e1111111-1111-1111-1111-111111111112',
+  'e1111111-1111-1111-1111-111111111114', 'e1111111-1111-1111-1111-111111111116',
+  'e1111111-1111-1111-1111-111111111120'
+);
+
+INSERT INTO "AppNotificationPreferences" ("Id", "UserId", "ChargingComplete", "PaymentAlerts", "FaultAlerts", "Promotions")
+VALUES
+('99999999-0001-0001-0001-000000000001', 'e1111111-1111-1111-1111-111111111111', true, true, true, true),
+('99999999-0001-0001-0001-000000000002', 'e1111111-1111-1111-1111-111111111112', true, true, false, true),
+('99999999-0001-0001-0001-000000000003', 'e1111111-1111-1111-1111-111111111114', true, false, false, false),
+('99999999-0001-0001-0001-000000000004', 'e1111111-1111-1111-1111-111111111116', true, true, true, false),
+('99999999-0001-0001-0001-000000000005', 'e1111111-1111-1111-1111-111111111120', true, true, true, true);
+
+-- ============================================================
+-- 13. FAVORITE STATIONS (8 favorites)
+-- ============================================================
+DELETE FROM "AppFavoriteStations" WHERE "Id"::text LIKE 'aaa00000-%';
+
+INSERT INTO "AppFavoriteStations" ("Id", "UserId", "StationId", "CreationTime", "CreatorId")
+VALUES
+('aaa00000-0001-0001-0001-000000000001', 'e1111111-1111-1111-1111-111111111111', 'b1111111-1111-1111-1111-111111111111', NOW() - INTERVAL '20 days', 'e1111111-1111-1111-1111-111111111111'),
+('aaa00000-0001-0001-0001-000000000002', 'e1111111-1111-1111-1111-111111111111', 'b2222222-2222-2222-2222-222222222221', NOW() - INTERVAL '15 days', 'e1111111-1111-1111-1111-111111111111'),
+('aaa00000-0001-0001-0001-000000000003', 'e1111111-1111-1111-1111-111111111112', 'b1111111-1111-1111-1111-111111111112', NOW() - INTERVAL '18 days', 'e1111111-1111-1111-1111-111111111112'),
+('aaa00000-0001-0001-0001-000000000004', 'e1111111-1111-1111-1111-111111111113', 'b2222222-2222-2222-2222-222222222221', NOW() - INTERVAL '10 days', 'e1111111-1111-1111-1111-111111111113'),
+('aaa00000-0001-0001-0001-000000000005', 'e1111111-1111-1111-1111-111111111116', 'b1111111-1111-1111-1111-111111111111', NOW() - INTERVAL '25 days', 'e1111111-1111-1111-1111-111111111116'),
+('aaa00000-0001-0001-0001-000000000006', 'e1111111-1111-1111-1111-111111111118', 'b2222222-2222-2222-2222-222222222221', NOW() - INTERVAL '50 days', 'e1111111-1111-1111-1111-111111111118'),
+('aaa00000-0001-0001-0001-000000000007', 'e1111111-1111-1111-1111-111111111118', 'b2222222-2222-2222-2222-222222222222', NOW() - INTERVAL '50 days', 'e1111111-1111-1111-1111-111111111118'),
+('aaa00000-0001-0001-0001-000000000008', 'e1111111-1111-1111-1111-111111111119', 'b1111111-1111-1111-1111-111111111111', NOW() - INTERVAL '80 days', 'e1111111-1111-1111-1111-111111111119');
+
+-- ============================================================
+-- 14. STATION AMENITIES (15 amenities across stations)
+-- ============================================================
+DELETE FROM "AppStationAmenities" WHERE "Id"::text LIKE 'bbb00000-%';
+
+INSERT INTO "AppStationAmenities" ("Id", "StationId", "AmenityType")
+VALUES
+-- Station KC-HN-001: Wifi, Parking, Canopy, Security24h
+('bbb00000-0001-0001-0001-000000000001', 'b1111111-1111-1111-1111-111111111111', 0),
+('bbb00000-0001-0001-0001-000000000002', 'b1111111-1111-1111-1111-111111111111', 3),
+('bbb00000-0001-0001-0001-000000000003', 'b1111111-1111-1111-1111-111111111111', 7),
+('bbb00000-0001-0001-0001-000000000004', 'b1111111-1111-1111-1111-111111111111', 8),
+-- Station KC-HN-002: Wifi, Restroom, CoffeeShop, WaitingRoom
+('bbb00000-0001-0001-0001-000000000005', 'b1111111-1111-1111-1111-111111111112', 0),
+('bbb00000-0001-0001-0001-000000000006', 'b1111111-1111-1111-1111-111111111112', 1),
+('bbb00000-0001-0001-0001-000000000007', 'b1111111-1111-1111-1111-111111111112', 2),
+('bbb00000-0001-0001-0001-000000000008', 'b1111111-1111-1111-1111-111111111112', 6),
+-- Station KC-HCM-001: Wifi, Parking, Restaurant, Security24h
+('bbb00000-0001-0001-0001-000000000009', 'b2222222-2222-2222-2222-222222222221', 0),
+('bbb00000-0001-0001-0001-000000000010', 'b2222222-2222-2222-2222-222222222221', 3),
+('bbb00000-0001-0001-0001-000000000011', 'b2222222-2222-2222-2222-222222222221', 4),
+('bbb00000-0001-0001-0001-000000000012', 'b2222222-2222-2222-2222-222222222221', 8),
+-- Station KC-HCM-002: Parking, ConvenienceStore
+('bbb00000-0001-0001-0001-000000000013', 'b2222222-2222-2222-2222-222222222222', 3),
+('bbb00000-0001-0001-0001-000000000014', 'b2222222-2222-2222-2222-222222222222', 5),
+-- Station KC-DN-001: Wifi, Parking, Canopy
+('bbb00000-0001-0001-0001-000000000015', 'b3333333-3333-3333-3333-333333333331', 0),
+('bbb00000-0001-0001-0001-000000000016', 'b3333333-3333-3333-3333-333333333331', 3),
+('bbb00000-0001-0001-0001-000000000017', 'b3333333-3333-3333-3333-333333333331', 7);
+
+-- ============================================================
+-- 15. STATION PHOTOS (6 photos)
+-- ============================================================
+DELETE FROM "AppStationPhotos" WHERE "Id"::text LIKE 'ccc00000-%';
+
+INSERT INTO "AppStationPhotos" ("Id", "StationId", "Url", "ThumbnailUrl", "IsPrimary", "SortOrder", "CreationTime", "CreatorId")
+VALUES
+('ccc00000-0001-0001-0001-000000000001', 'b1111111-1111-1111-1111-111111111111', '/uploads/stations/kc-hn-001-front.jpg', '/uploads/stations/kc-hn-001-front-thumb.jpg', true, 0, NOW() - INTERVAL '30 days', NULL),
+('ccc00000-0001-0001-0001-000000000002', 'b1111111-1111-1111-1111-111111111111', '/uploads/stations/kc-hn-001-chargers.jpg', '/uploads/stations/kc-hn-001-chargers-thumb.jpg', false, 1, NOW() - INTERVAL '30 days', NULL),
+('ccc00000-0001-0001-0001-000000000003', 'b1111111-1111-1111-1111-111111111112', '/uploads/stations/kc-hn-002-front.jpg', '/uploads/stations/kc-hn-002-front-thumb.jpg', true, 0, NOW() - INTERVAL '25 days', NULL),
+('ccc00000-0001-0001-0001-000000000004', 'b2222222-2222-2222-2222-222222222221', '/uploads/stations/kc-hcm-001-aerial.jpg', '/uploads/stations/kc-hcm-001-aerial-thumb.jpg', true, 0, NOW() - INTERVAL '20 days', NULL),
+('ccc00000-0001-0001-0001-000000000005', 'b2222222-2222-2222-2222-222222222221', '/uploads/stations/kc-hcm-001-night.jpg', '/uploads/stations/kc-hcm-001-night-thumb.jpg', false, 1, NOW() - INTERVAL '20 days', NULL),
+('ccc00000-0001-0001-0001-000000000006', 'b3333333-3333-3333-3333-333333333331', '/uploads/stations/kc-dn-001-front.jpg', '/uploads/stations/kc-dn-001-front-thumb.jpg', true, 0, NOW() - INTERVAL '15 days', NULL);
+
+-- ============================================================
+-- 16. VOUCHERS (4 vouchers)
+-- ============================================================
+DELETE FROM "AppUserVouchers" WHERE "VoucherId" IN (SELECT "Id" FROM "AppVouchers" WHERE "Code" LIKE 'DEMO%');
+DELETE FROM "AppVouchers" WHERE "Code" LIKE 'DEMO%';
+
+INSERT INTO "AppVouchers" ("Id", "Code", "Type", "Value", "MinOrderAmount", "MaxDiscountAmount", "ExpiryDate", "TotalQuantity", "UsedQuantity", "IsActive", "Description", "ExtraProperties", "ConcurrencyStamp", "CreationTime", "IsDeleted")
+VALUES
+('dd000000-0001-0001-0001-000000000001', 'DEMO-WELCOME', 0, 50000, NULL, NULL, '2026-12-31', 1000, 3, true, 'Voucher chào mừng tài khoản mới - Giảm 50.000đ', '{}', 'seed-v001', NOW() - INTERVAL '30 days', false),
+('dd000000-0001-0001-0001-000000000002', 'DEMO-20PCT', 1, 20, 100000, 200000, '2026-06-30', 500, 1, true, 'Giảm 20% tối đa 200.000đ cho đơn từ 100.000đ', '{}', 'seed-v002', NOW() - INTERVAL '20 days', false),
+('dd000000-0001-0001-0001-000000000003', 'DEMO-FREE30', 2, 30, NULL, NULL, '2026-06-30', 100, 0, true, 'Miễn phí sạc 30 phút đầu tiên', '{}', 'seed-v003', NOW() - INTERVAL '15 days', false),
+('dd000000-0001-0001-0001-000000000004', 'DEMO-EXPIRED', 0, 100000, NULL, NULL, '2026-02-28', 200, 45, false, 'Voucher đã hết hạn', '{}', 'seed-v004', NOW() - INTERVAL '60 days', false);
+
+-- ============================================================
+-- 17. USER VOUCHERS (4 redemptions)
+-- ============================================================
+INSERT INTO "AppUserVouchers" ("Id", "UserId", "VoucherId", "IsUsed", "UsedAt", "CreationTime", "CreatorId")
+VALUES
+('ee000000-0001-0001-0001-000000000001', 'e1111111-1111-1111-1111-111111111111', 'dd000000-0001-0001-0001-000000000001', true, NOW() - INTERVAL '25 days', NOW() - INTERVAL '28 days', 'e1111111-1111-1111-1111-111111111111'),
+('ee000000-0001-0001-0001-000000000002', 'e1111111-1111-1111-1111-111111111112', 'dd000000-0001-0001-0001-000000000001', true, NOW() - INTERVAL '20 days', NOW() - INTERVAL '22 days', 'e1111111-1111-1111-1111-111111111112'),
+('ee000000-0001-0001-0001-000000000003', 'e1111111-1111-1111-1111-111111111114', 'dd000000-0001-0001-0001-000000000001', true, NOW() - INTERVAL '3 days', NOW() - INTERVAL '5 days', 'e1111111-1111-1111-1111-111111111114'),
+('ee000000-0001-0001-0001-000000000004', 'e1111111-1111-1111-1111-111111111116', 'dd000000-0001-0001-0001-000000000002', false, NULL, NOW() - INTERVAL '10 days', 'e1111111-1111-1111-1111-111111111116');
+
+-- ============================================================
+-- 18. PROMOTIONS (3 promotions)
+-- ============================================================
+DELETE FROM "AppPromotions" WHERE "Title" LIKE '%DEMO%' OR "Title" LIKE '%demo%' OR "Id"::text LIKE 'ff000000-%';
+
+INSERT INTO "AppPromotions" ("Id", "Title", "Description", "ImageUrl", "StartDate", "EndDate", "Type", "IsActive", "ExtraProperties", "ConcurrencyStamp", "CreationTime", "IsDeleted")
+VALUES
+('ff000000-0001-0001-0001-000000000001', 'Giảm 20% giờ thấp điểm', 'Sạc xe điện từ 22h-6h chỉ còn 2.240đ/kWh. Áp dụng tại tất cả trạm KLC.', '/uploads/promotions/off-peak-banner.jpg', '2026-03-01', '2026-06-30', 0, true, '{}', 'seed-p001', NOW() - INTERVAL '5 days', false),
+('ff000000-0001-0001-0001-000000000002', 'Miễn phí sạc lần đầu', 'Đăng ký tài khoản mới, nhận ngay 30 phút sạc miễn phí!', '/uploads/promotions/first-charge-free.jpg', '2026-03-01', '2026-12-31', 2, true, '{}', 'seed-p002', NOW() - INTERVAL '5 days', false),
+('ff000000-0001-0001-0001-000000000003', 'Flash Sale cuối tuần', 'Giảm 50% phí sạc vào Thứ 7 & Chủ nhật. Số lượng có hạn!', '/uploads/promotions/weekend-flash-sale.jpg', '2026-02-01', '2026-02-28', 1, false, '{}', 'seed-p003', NOW() - INTERVAL '35 days', false);
+
+-- ============================================================
+-- 19. USER FEEDBACK (5 feedback items)
+-- ============================================================
+DELETE FROM "AppUserFeedbacks" WHERE "Subject" LIKE '%DEMO%' OR "Subject" LIKE '%demo%' OR "Id"::text LIKE '11000000-%';
+
+INSERT INTO "AppUserFeedbacks" ("Id", "UserId", "Type", "Subject", "Message", "Status", "AdminResponse", "RespondedAt", "RespondedBy", "CreationTime", "IsDeleted")
+VALUES
+('11000000-0001-0001-0001-000000000001', 'e1111111-1111-1111-1111-111111111111', 2, '[DEMO] Không sạc được tại KC-HN-003', 'Đã cắm sạc nhưng xe không nhận điện. Connector 1 có vẻ bị lỏng.', 2, 'Cảm ơn bạn đã phản hồi. Đội kỹ thuật đã sửa connector. Mong bạn thử lại.', NOW() - INTERVAL '3 days', NULL, NOW() - INTERVAL '5 days', false),
+('11000000-0001-0001-0001-000000000002', 'e1111111-1111-1111-1111-111111111112', 3, '[DEMO] Thanh toán bị trừ tiền 2 lần', 'Phiên sạc ngày 28/02 bị trừ tiền 2 lần. Số tiền 123.200đ x2. Mong được hoàn tiền.', 1, NULL, NULL, NULL, NOW() - INTERVAL '3 days', false),
+('11000000-0001-0001-0001-000000000003', 'e1111111-1111-1111-1111-111111111116', 1, '[DEMO] Request: Apple Pay support', 'It would be great to have Apple Pay as a payment option for the wallet top-up.', 0, NULL, NULL, NULL, NOW() - INTERVAL '2 days', false),
+('11000000-0001-0001-0001-000000000004', 'e1111111-1111-1111-1111-111111111118', 0, '[DEMO] App crash khi xem lịch sử sạc', 'App bị crash khi mở trang lịch sử với nhiều phiên sạc (>50). Dùng Android 14.', 0, NULL, NULL, NULL, NOW() - INTERVAL '1 day', false),
+('11000000-0001-0001-0001-000000000005', 'e1111111-1111-1111-1111-111111111120', 4, '[DEMO] Cảm ơn đội ngũ KLC', 'Trải nghiệm sạc rất tốt, app dễ dùng. Cảm ơn!', 3, 'Cảm ơn bạn đã gửi nhận xét tích cực! Chúng tôi sẽ tiếp tục cải thiện dịch vụ.', NOW() - INTERVAL '6 hours', NULL, NOW() - INTERVAL '1 day', false);
+
+-- ============================================================
+-- 20. E-INVOICES (10 e-invoices for completed invoices)
+-- ============================================================
+DELETE FROM "AppEInvoices" WHERE "Id"::text LIKE '12000000-%';
+
+INSERT INTO "AppEInvoices" ("Id", "InvoiceId", "Provider", "ExternalInvoiceId", "EInvoiceNumber", "Status", "ViewUrl", "PdfUrl", "SignatureHash", "IssuedAt", "ErrorMessage", "RetryCount", "CreationTime", "IsDeleted")
+VALUES
+-- Issued e-invoices (MISA provider) - linked to first 5 invoices
+('12000000-0001-0001-0001-000000000001', '33333333-0001-0001-0001-000000000001', 0, 'MISA-2026-00001', 'EI-KLC-2026-000001', 2, 'https://einvoice.misa.vn/view/MISA-2026-00001', 'https://einvoice.misa.vn/pdf/MISA-2026-00001', 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6', NOW() - INTERVAL '2 days 12 hours', NULL, 0, NOW() - INTERVAL '2 days 12 hours 20 minutes', false),
+('12000000-0001-0001-0001-000000000002', '33333333-0001-0001-0001-000000000002', 0, 'MISA-2026-00002', 'EI-KLC-2026-000002', 2, 'https://einvoice.misa.vn/view/MISA-2026-00002', 'https://einvoice.misa.vn/pdf/MISA-2026-00002', 'b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7', NOW() - INTERVAL '2 days 8 hours', NULL, 0, NOW() - INTERVAL '2 days 8 hours 35 minutes', false),
+('12000000-0001-0001-0001-000000000003', '33333333-0001-0001-0001-000000000003', 1, 'VTL-2026-00001', 'EI-KLC-2026-000003', 2, 'https://einvoice.viettel.vn/view/VTL-2026-00001', 'https://einvoice.viettel.vn/pdf/VTL-2026-00001', 'c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8', NOW() - INTERVAL '1 day 15 hours', NULL, 0, NOW() - INTERVAL '1 day 15 hours 10 minutes', false),
+('12000000-0001-0001-0001-000000000004', '33333333-0001-0001-0001-000000000004', 1, 'VTL-2026-00002', 'EI-KLC-2026-000004', 2, 'https://einvoice.viettel.vn/view/VTL-2026-00002', 'https://einvoice.viettel.vn/pdf/VTL-2026-00002', 'd4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9', NOW() - INTERVAL '1 day 10 hours', NULL, 0, NOW() - INTERVAL '1 day 10 hours 5 minutes', false),
+('12000000-0001-0001-0001-000000000005', '33333333-0001-0001-0001-000000000005', 0, 'MISA-2026-00003', 'EI-KLC-2026-000005', 2, 'https://einvoice.misa.vn/view/MISA-2026-00003', 'https://einvoice.misa.vn/pdf/MISA-2026-00003', 'e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0', NOW() - INTERVAL '1 day 5 hours', NULL, 0, NOW() - INTERVAL '1 day 5 hours 50 minutes', false),
+-- Processing e-invoice (VNPT provider)
+('12000000-0001-0001-0001-000000000006', '33333333-0001-0001-0001-000000000006', 2, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, 0, NOW() - INTERVAL '9 hours 20 minutes', false),
+-- Failed e-invoice (MISA) - retryable
+('12000000-0001-0001-0001-000000000007', '33333333-0001-0001-0001-000000000007', 0, NULL, NULL, 3, NULL, NULL, NULL, NULL, 'Connection timeout to MISA API server', 1, NOW() - INTERVAL '6 hours 35 minutes', false),
+-- Pending e-invoices (not yet submitted)
+('12000000-0001-0001-0001-000000000008', '33333333-0001-0001-0001-000000000008', 1, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, 0, NOW() - INTERVAL '4 hours 50 minutes', false),
+('12000000-0001-0001-0001-000000000009', '33333333-0001-0001-0001-000000000009', 0, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, 0, NOW() - INTERVAL '4 hours 10 minutes', false),
+-- Cancelled e-invoice (customer requested cancellation)
+('12000000-0001-0001-0001-000000000010', '33333333-0001-0001-0001-000000000010', 0, 'MISA-2026-00004', 'EI-KLC-2026-000010', 4, NULL, NULL, NULL, NOW() - INTERVAL '2 hours 45 minutes', 'Cancelled by admin - customer requested correction', 0, NOW() - INTERVAL '2 hours 50 minutes', false);
+
+-- ============================================================
+-- 23. STATUS CHANGE LOGS (15 logs)
+-- ============================================================
+DELETE FROM "AppStatusChangeLogs" WHERE "Id"::text LIKE '5c000000-%';
+
+INSERT INTO "AppStatusChangeLogs" ("Id", "StationId", "ConnectorNumber", "PreviousStatus", "NewStatus", "Timestamp", "Source", "Details")
+VALUES
+-- KC-HN-001 C1: Available -> Charging -> Available (recent session)
+('5c000000-0001-0001-0001-000000000001', 'b1111111-1111-1111-1111-111111111111', 1, 'Available', 'Preparing', NOW() - INTERVAL '4 hours 5 minutes', 'OCPP', 'Vehicle connected'),
+('5c000000-0001-0001-0001-000000000002', 'b1111111-1111-1111-1111-111111111111', 1, 'Preparing', 'Charging', NOW() - INTERVAL '4 hours', 'OCPP', 'Charging started - Transaction 1010'),
+('5c000000-0001-0001-0001-000000000003', 'b1111111-1111-1111-1111-111111111111', 1, 'Charging', 'Available', NOW() - INTERVAL '3 hours', 'OCPP', 'Charging complete - 38 kWh delivered'),
+-- KC-HN-003: Station went Offline
+('5c000000-0001-0001-0001-000000000004', 'b1111111-1111-1111-1111-111111111113', NULL, 'Available', 'Offline', NOW() - INTERVAL '35 minutes', 'System', 'Heartbeat timeout - no response for 30 minutes'),
+-- KC-HN-003 C1: Fault history
+('5c000000-0001-0001-0001-000000000005', 'b1111111-1111-1111-1111-111111111113', 1, 'Available', 'Faulted', NOW() - INTERVAL '5 days', 'OCPP', 'GroundFailure detected'),
+('5c000000-0001-0001-0001-000000000006', 'b1111111-1111-1111-1111-111111111113', 1, 'Faulted', 'Available', NOW() - INTERVAL '4 days 20 hours', 'Admin', 'Fault resolved - ground connection replaced'),
+('5c000000-0001-0001-0001-000000000007', 'b1111111-1111-1111-1111-111111111113', 1, 'Available', 'Faulted', NOW() - INTERVAL '1 day', 'OCPP', 'ReaderFailure - RFID not responding'),
+-- KC-HCM-001 C1: Currently Charging
+('5c000000-0001-0001-0001-000000000008', 'b2222222-2222-2222-2222-222222222221', 1, 'Available', 'Preparing', NOW() - INTERVAL '20 minutes', 'OCPP', 'Vehicle connected'),
+('5c000000-0001-0001-0001-000000000009', 'b2222222-2222-2222-2222-222222222221', 1, 'Preparing', 'Charging', NOW() - INTERVAL '15 minutes', 'OCPP', 'Charging started'),
+-- KC-DN-001 C2: Faulted
+('5c000000-0001-0001-0001-000000000010', 'b3333333-3333-3333-3333-333333333331', 2, 'Available', 'Faulted', NOW() - INTERVAL '2 hours', 'OCPP', 'EVCommunicationError - timeout with vehicle'),
+-- KC-DN-002: Scheduled maintenance
+('5c000000-0001-0001-0001-000000000011', 'b3333333-3333-3333-3333-333333333332', NULL, 'Available', 'Unavailable', NOW() - INTERVAL '3 days', 'Admin', 'Scheduled maintenance - firmware upgrade'),
+('5c000000-0001-0001-0001-000000000012', 'b3333333-3333-3333-3333-333333333332', 1, 'Available', 'Unavailable', NOW() - INTERVAL '3 days', 'Admin', 'Connector disabled for maintenance'),
+('5c000000-0001-0001-0001-000000000013', 'b3333333-3333-3333-3333-333333333332', 2, 'Available', 'Unavailable', NOW() - INTERVAL '3 days', 'Admin', 'Connector disabled for maintenance'),
+-- KC-HN-002 C1: Normal daily operations
+('5c000000-0001-0001-0001-000000000014', 'b1111111-1111-1111-1111-111111111112', 1, 'Available', 'Charging', NOW() - INTERVAL '2 hours', 'OCPP', 'Session started - Transaction 1012'),
+('5c000000-0001-0001-0001-000000000015', 'b1111111-1111-1111-1111-111111111112', 1, 'Charging', 'Available', NOW() - INTERVAL '1 hour 30 minutes', 'OCPP', 'Session completed - 15 kWh delivered');
+
+-- ============================================================
 -- VERIFICATION
 -- ============================================================
 SELECT 'Seed Data Summary' AS info;
@@ -340,18 +681,31 @@ SELECT '=================' AS separator;
 SELECT 'ABP Roles' AS entity, COUNT(*) AS count FROM "AbpRoles" WHERE "Name" IN ('admin', 'operator', 'viewer');
 SELECT 'ABP Admin Users' AS entity, COUNT(*) AS count FROM "AbpUsers" WHERE "UserName" IN ('admin', 'operator', 'viewer') AND "IsDeleted" = false;
 SELECT 'Permission Grants' AS entity, COUNT(*) AS count FROM "AbpPermissionGrants" WHERE "ProviderKey" IN ('admin', 'operator', 'viewer');
-SELECT 'Tariff Plans' AS entity, COUNT(*) AS count FROM "AppTariffPlans" WHERE "IsDeleted" = false;
 SELECT 'Station Groups' AS entity, COUNT(*) AS count FROM "AppStationGroups" WHERE "IsDeleted" = false;
+SELECT 'Tariff Plans' AS entity, COUNT(*) AS count FROM "AppTariffPlans" WHERE "IsDeleted" = false;
 SELECT 'Charging Stations' AS entity, COUNT(*) AS count FROM "AppChargingStations" WHERE "IsDeleted" = false;
 SELECT 'Connectors' AS entity, COUNT(*) AS count FROM "AppConnectors" WHERE "IsDeleted" = false;
 SELECT 'App Users' AS entity, COUNT(*) AS count FROM "AppAppUsers" WHERE "IsDeleted" = false;
 SELECT 'Vehicles' AS entity, COUNT(*) AS count FROM "AppVehicles" WHERE "IsDeleted" = false;
 SELECT 'Charging Sessions' AS entity, COUNT(*) AS count FROM "AppChargingSessions" WHERE "IsDeleted" = false;
+SELECT 'Meter Values' AS entity, COUNT(*) AS count FROM "AppMeterValues";
 SELECT 'Payment Transactions' AS entity, COUNT(*) AS count FROM "AppPaymentTransactions" WHERE "IsDeleted" = false;
 SELECT 'Invoices' AS entity, COUNT(*) AS count FROM "AppInvoices" WHERE "IsDeleted" = false;
 SELECT 'Faults' AS entity, COUNT(*) AS count FROM "AppFaults" WHERE "IsDeleted" = false;
+SELECT 'Status Change Logs' AS entity, COUNT(*) AS count FROM "AppStatusChangeLogs";
 SELECT 'Notifications' AS entity, COUNT(*) AS count FROM "AppNotifications";
 SELECT 'Alerts' AS entity, COUNT(*) AS count FROM "AppAlerts";
+SELECT 'Wallet Transactions' AS entity, COUNT(*) AS count FROM "AppWalletTransactions";
+SELECT 'Device Tokens' AS entity, COUNT(*) AS count FROM "AppDeviceTokens";
+SELECT 'Notification Prefs' AS entity, COUNT(*) AS count FROM "AppNotificationPreferences";
+SELECT 'Favorite Stations' AS entity, COUNT(*) AS count FROM "AppFavoriteStations";
+SELECT 'Station Amenities' AS entity, COUNT(*) AS count FROM "AppStationAmenities";
+SELECT 'Station Photos' AS entity, COUNT(*) AS count FROM "AppStationPhotos";
+SELECT 'Vouchers' AS entity, COUNT(*) AS count FROM "AppVouchers" WHERE "IsDeleted" = false;
+SELECT 'User Vouchers' AS entity, COUNT(*) AS count FROM "AppUserVouchers";
+SELECT 'Promotions' AS entity, COUNT(*) AS count FROM "AppPromotions" WHERE "IsDeleted" = false;
+SELECT 'User Feedbacks' AS entity, COUNT(*) AS count FROM "AppUserFeedbacks" WHERE "IsDeleted" = false;
+SELECT 'E-Invoices' AS entity, COUNT(*) AS count FROM "AppEInvoices" WHERE "IsDeleted" = false;
 SELECT '' AS separator;
 SELECT 'Total Revenue (VND)' AS metric, TO_CHAR(SUM("TotalCost"), 'FM999,999,999') AS value FROM "AppChargingSessions" WHERE "Status" = 5 AND "IsDeleted" = false;
 SELECT 'Total Energy (kWh)' AS metric, ROUND(SUM("TotalEnergyKwh")::numeric, 2) AS value FROM "AppChargingSessions" WHERE "Status" = 5 AND "IsDeleted" = false;

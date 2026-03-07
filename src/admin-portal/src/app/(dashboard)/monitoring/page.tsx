@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { monitoringApi, api } from "@/lib/api";
+import { monitoringApi } from "@/lib/api";
 import {
   useMonitoringHub,
   type StationStatusUpdate,
@@ -30,29 +30,41 @@ interface DashboardStats {
   totalStations: number;
   onlineStations: number;
   offlineStations: number;
+  faultedStations: number;
   totalConnectors: number;
   availableConnectors: number;
   chargingConnectors: number;
   faultedConnectors: number;
   activeSessions: number;
-  todayEnergy: number;
+  todayEnergyKwh: number;
   todayRevenue: number;
+  stationSummaries: StationSummary[];
 }
 
-interface StationStatus {
-  id: string;
-  name: string;
-  status: "Online" | "Offline" | "Faulted";
-  connectors: ConnectorStatusItem[];
-  lastHeartbeat: string;
+interface StationSummary {
+  stationId: string;
+  stationName: string;
+  status: number;
+  latitude: number | null;
+  longitude: number | null;
+  totalConnectors: number;
+  availableConnectors: number;
+  chargingConnectors: number;
+  lastHeartbeat: string | null;
 }
 
-interface ConnectorStatusItem {
-  id: string;
-  connectorId: number;
-  status: "Available" | "Charging" | "Faulted" | "Unavailable";
-  currentPower: number;
-  sessionId?: string;
+// Map numeric StationStatus enum to display strings
+const StationStatusMap: Record<number, string> = {
+  0: "Offline",
+  1: "Available",
+  2: "Occupied",
+  3: "Unavailable",
+  4: "Faulted",
+  5: "Decommissioned",
+};
+
+function getStationStatusLabel(status: number): string {
+  return StationStatusMap[status] ?? "Unknown";
 }
 
 interface RealtimeAlert {
@@ -94,49 +106,18 @@ export default function MonitoringPage() {
   const [realtimeAlerts, setRealtimeAlerts] = useState<RealtimeAlert[]>([]);
   const [lastEvent, setLastEvent] = useState<Date | null>(null);
 
-  // SignalR event handlers
+  // SignalR event handlers — invalidate dashboard to refresh all data
   const onStationStatusChanged = useCallback(
-    (update: StationStatusUpdate) => {
+    (_update: StationStatusUpdate) => {
       setLastEvent(new Date());
-      // Update station in cache
-      queryClient.setQueryData<StationStatus[]>(
-        ["monitoring-stations"],
-        (old) =>
-          old?.map((s) =>
-            s.id === update.stationId
-              ? { ...s, status: update.newStatus as StationStatus["status"] }
-              : s
-          )
-      );
-      // Refetch dashboard for updated counts
       queryClient.invalidateQueries({ queryKey: ["monitoring-dashboard"] });
     },
     [queryClient]
   );
 
   const onConnectorStatusChanged = useCallback(
-    (update: ConnectorStatusUpdate) => {
+    (_update: ConnectorStatusUpdate) => {
       setLastEvent(new Date());
-      queryClient.setQueryData<StationStatus[]>(
-        ["monitoring-stations"],
-        (old) =>
-          old?.map((s) =>
-            s.id === update.stationId
-              ? {
-                  ...s,
-                  connectors: s.connectors.map((c) =>
-                    c.connectorId === update.connectorNumber
-                      ? {
-                          ...c,
-                          status:
-                            update.newStatus as ConnectorStatusItem["status"],
-                        }
-                      : c
-                  ),
-                }
-              : s
-          )
-      );
       queryClient.invalidateQueries({ queryKey: ["monitoring-dashboard"] });
     },
     [queryClient]
@@ -186,30 +167,22 @@ export default function MonitoringPage() {
     refetchInterval: pollingInterval,
   });
 
-  // Fetch station statuses (initial + fallback polling)
-  const { data: stations } = useQuery<StationStatus[]>({
-    queryKey: ["monitoring-stations"],
-    queryFn: async () => {
-      const res = await api.get("/stations", {
-        params: { maxResultCount: 50 },
-      });
-      return res.data.items || [];
-    },
-    refetchInterval: pollingInterval,
-  });
-
   const stats = dashboard || {
     totalStations: 0,
     onlineStations: 0,
     offlineStations: 0,
+    faultedStations: 0,
     totalConnectors: 0,
     availableConnectors: 0,
     chargingConnectors: 0,
     faultedConnectors: 0,
     activeSessions: 0,
-    todayEnergy: 0,
+    todayEnergyKwh: 0,
     todayRevenue: 0,
+    stationSummaries: [],
   };
+
+  const stations = stats.stationSummaries;
 
   const getStatusColor = (
     status: string
@@ -218,6 +191,7 @@ export default function MonitoringPage() {
       case "Online":
       case "Available":
         return "success";
+      case "Occupied":
       case "Charging":
         return "default";
       case "Offline":
@@ -336,7 +310,7 @@ export default function MonitoringPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {(stats.todayEnergy / 1000).toFixed(1)} kWh
+              {stats.todayEnergyKwh.toFixed(1)} kWh
             </div>
             <p className="text-xs text-muted-foreground">
               Revenue: {stats.todayRevenue.toLocaleString("vi-VN")}đ
@@ -352,52 +326,82 @@ export default function MonitoringPage() {
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {(stations || []).slice(0, 12).map((station) => (
-              <div
-                key={station.id}
-                className="rounded-lg border p-4 hover:bg-accent/50 transition-colors"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-medium truncate">{station.name}</h3>
-                  <Badge variant={getStatusColor(station.status)}>
-                    {station.status}
-                  </Badge>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex gap-1">
-                    {(station.connectors || []).map((conn) => (
-                      <div
-                        key={conn.id}
-                        className={`flex-1 h-8 rounded flex items-center justify-center text-xs font-medium ${
-                          conn.status === "Available"
-                            ? "bg-green-100 text-green-700"
-                            : conn.status === "Charging"
-                              ? "bg-blue-100 text-blue-700"
-                              : conn.status === "Faulted"
-                                ? "bg-red-100 text-red-700"
-                                : "bg-gray-100 text-gray-700"
-                        }`}
-                        title={`Connector ${conn.connectorId}: ${conn.status}`}
-                      >
-                        #{conn.connectorId}
-                      </div>
-                    ))}
-                    {(!station.connectors ||
-                      station.connectors.length === 0) && (
-                      <div className="flex-1 h-8 rounded bg-gray-100 flex items-center justify-center text-xs text-gray-500">
-                        No connectors
-                      </div>
-                    )}
+            {(stations || []).slice(0, 12).map((station) => {
+              const statusLabel = getStationStatusLabel(station.status);
+              const faultedConnectors =
+                station.totalConnectors -
+                station.availableConnectors -
+                station.chargingConnectors;
+              return (
+                <div
+                  key={station.stationId}
+                  className="rounded-lg border p-4 hover:bg-accent/50 transition-colors"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-medium truncate">
+                      {station.stationName}
+                    </h3>
+                    <Badge variant={getStatusColor(statusLabel)}>
+                      {statusLabel}
+                    </Badge>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    Last heartbeat:{" "}
-                    {station.lastHeartbeat
-                      ? new Date(station.lastHeartbeat).toLocaleTimeString()
-                      : "N/A"}
+                  <div className="space-y-2">
+                    <div className="flex gap-1">
+                      {station.totalConnectors > 0 ? (
+                        <>
+                          {Array.from({
+                            length: station.availableConnectors,
+                          }).map((_, i) => (
+                            <div
+                              key={`avail-${i}`}
+                              className="flex-1 h-8 rounded bg-green-100 text-green-700 flex items-center justify-center text-xs font-medium"
+                              title="Available"
+                            >
+                              Available
+                            </div>
+                          ))}
+                          {Array.from({
+                            length: station.chargingConnectors,
+                          }).map((_, i) => (
+                            <div
+                              key={`charge-${i}`}
+                              className="flex-1 h-8 rounded bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-medium"
+                              title="Charging"
+                            >
+                              Charging
+                            </div>
+                          ))}
+                          {faultedConnectors > 0 &&
+                            Array.from({ length: faultedConnectors }).map(
+                              (_, i) => (
+                                <div
+                                  key={`other-${i}`}
+                                  className="flex-1 h-8 rounded bg-gray-100 text-gray-700 flex items-center justify-center text-xs font-medium"
+                                  title="Unavailable"
+                                >
+                                  Other
+                                </div>
+                              )
+                            )}
+                        </>
+                      ) : (
+                        <div className="flex-1 h-8 rounded bg-gray-100 flex items-center justify-center text-xs text-gray-500">
+                          No connectors
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Last heartbeat:{" "}
+                      {station.lastHeartbeat
+                        ? new Date(
+                            station.lastHeartbeat
+                          ).toLocaleTimeString()
+                        : "N/A"}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {(!stations || stations.length === 0) && (
               <div className="col-span-full text-center py-8 text-muted-foreground">
                 No stations found. Add stations to see monitoring data.

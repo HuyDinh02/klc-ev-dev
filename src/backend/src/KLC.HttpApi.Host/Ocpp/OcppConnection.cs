@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using KLC.Enums;
 using KLC.Ocpp.Messages;
 
 namespace KLC.Ocpp;
@@ -45,6 +46,11 @@ public class OcppConnection
     public Guid? StationId { get; private set; }
 
     /// <summary>
+    /// Detected vendor profile type for this connection.
+    /// </summary>
+    public VendorProfileType VendorProfileType { get; private set; } = VendorProfileType.Generic;
+
+    /// <summary>
     /// Pending requests awaiting response from Charge Point.
     /// </summary>
     private readonly Dictionary<string, TaskCompletionSource<string>> _pendingRequests = new();
@@ -68,6 +74,11 @@ public class OcppConnection
     {
         IsRegistered = true;
         StationId = stationId;
+    }
+
+    public void SetVendorProfile(VendorProfileType vendorProfileType)
+    {
+        VendorProfileType = vendorProfileType;
     }
 
     /// <summary>

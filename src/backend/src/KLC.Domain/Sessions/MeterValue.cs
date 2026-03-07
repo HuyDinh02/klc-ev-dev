@@ -65,6 +65,7 @@ public class MeterValue : Entity<Guid>
         Guid stationId,
         int connectorNumber,
         decimal energyKwh,
+        DateTime timestamp,
         decimal? currentAmps = null,
         decimal? voltageVolts = null,
         decimal? powerKw = null,
@@ -74,7 +75,7 @@ public class MeterValue : Entity<Guid>
         SessionId = sessionId;
         StationId = stationId;
         ConnectorNumber = connectorNumber;
-        Timestamp = DateTime.UtcNow;
+        Timestamp = timestamp;
         EnergyKwh = energyKwh;
         CurrentAmps = currentAmps;
         VoltageVolts = voltageVolts;

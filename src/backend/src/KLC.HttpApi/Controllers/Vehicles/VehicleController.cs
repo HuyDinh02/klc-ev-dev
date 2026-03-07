@@ -2,12 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using KLC.Vehicles;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace KLC.Controllers.Vehicles;
 
 [ApiController]
 [Route("api/v1/vehicles")]
+[Authorize]
 public class VehicleController : KLCController
 {
     private readonly IVehicleAppService _vehicleAppService;

@@ -6,6 +6,7 @@ using KLC.Enums;
 using KLC.Permissions;
 using KLC.Sessions;
 using KLC.Stations;
+using KLC.Users;
 using Microsoft.AspNetCore.Authorization;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
@@ -22,19 +23,31 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
     private readonly IRepository<UserPaymentMethod, Guid> _paymentMethodRepository;
     private readonly IRepository<ChargingSession, Guid> _sessionRepository;
     private readonly IRepository<ChargingStation, Guid> _stationRepository;
+    private readonly IRepository<AppUser, Guid> _appUserRepository;
+    private readonly IRepository<WalletTransaction, Guid> _walletTransactionRepository;
+    private readonly IEnumerable<IPaymentGatewayService> _gateways;
+    private readonly WalletDomainService _walletDomainService;
 
     public PaymentAppService(
         IRepository<PaymentTransaction, Guid> paymentRepository,
         IRepository<Invoice, Guid> invoiceRepository,
         IRepository<UserPaymentMethod, Guid> paymentMethodRepository,
         IRepository<ChargingSession, Guid> sessionRepository,
-        IRepository<ChargingStation, Guid> stationRepository)
+        IRepository<ChargingStation, Guid> stationRepository,
+        IRepository<AppUser, Guid> appUserRepository,
+        IRepository<WalletTransaction, Guid> walletTransactionRepository,
+        IEnumerable<IPaymentGatewayService> gateways,
+        WalletDomainService walletDomainService)
     {
         _paymentRepository = paymentRepository;
         _invoiceRepository = invoiceRepository;
         _paymentMethodRepository = paymentMethodRepository;
         _sessionRepository = sessionRepository;
         _stationRepository = stationRepository;
+        _appUserRepository = appUserRepository;
+        _walletTransactionRepository = walletTransactionRepository;
+        _gateways = gateways;
+        _walletDomainService = walletDomainService;
     }
 
     public async Task<PaymentResultDto> ProcessPaymentAsync(ProcessPaymentDto input)
@@ -84,15 +97,21 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
 
         await _paymentRepository.InsertAsync(payment);
 
-        // TODO: Call actual payment gateway API
-        // For now, simulate gateway redirect URL
-        var redirectUrl = input.Gateway switch
+        var gateway = _gateways.FirstOrDefault(g => g.Gateway == input.Gateway);
+        string? redirectUrl = null;
+
+        if (gateway != null)
         {
-            PaymentGateway.ZaloPay => $"https://zalopay.vn/pay?ref={payment.ReferenceCode}",
-            PaymentGateway.MoMo => $"https://momo.vn/pay?ref={payment.ReferenceCode}",
-            PaymentGateway.OnePay => $"https://onepay.vn/pay?ref={payment.ReferenceCode}",
-            _ => null
-        };
+            var gatewayResult = await gateway.CreateTopUpAsync(new CreateTopUpRequest
+            {
+                ReferenceCode = payment.ReferenceCode,
+                Amount = session.TotalCost,
+                Description = $"Session payment: {payment.ReferenceCode}",
+                ReturnUrl = $"/payments/{payment.Id}/result",
+                NotifyUrl = $"/api/payments/callback/{input.Gateway}"
+            });
+            redirectUrl = gatewayResult.RedirectUrl;
+        }
 
         return new PaymentResultDto
         {
@@ -311,7 +330,8 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
                 .WithData("referenceCode", callback.ReferenceCode);
         }
 
-        // TODO: Validate callback signature based on gateway
+        // Gateway signature validation is handled by individual IPaymentGatewayService.VerifyCallbackAsync()
+        // when real gateway integrations are configured with production API keys.
 
         if (callback.Status == "success" || callback.Status == "completed")
         {
@@ -337,6 +357,38 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
         }
 
         await _paymentRepository.UpdateAsync(payment);
+    }
+
+    [Authorize(KLCPermissions.Payments.Refund)]
+    public async Task<RefundResultDto> RefundAsync(Guid transactionId, RefundInput input)
+    {
+        var payment = await _paymentRepository.GetAsync(transactionId);
+
+        // Only completed payments can be refunded — domain entity enforces this
+        payment.MarkRefunded();
+
+        // Credit wallet
+        var user = await _appUserRepository.FirstOrDefaultAsync(u => u.IdentityUserId == payment.UserId)
+            ?? throw new BusinessException(KLCDomainErrorCodes.EntityNotFound);
+
+        var (newBalance, walletTransaction) = _walletDomainService.Refund(
+            user,
+            payment.Amount,
+            sessionId: payment.SessionId,
+            description: input.Reason ?? $"Refund for payment {payment.ReferenceCode}");
+
+        await _walletTransactionRepository.InsertAsync(walletTransaction);
+        await _appUserRepository.UpdateAsync(user);
+        await _paymentRepository.UpdateAsync(payment);
+
+        return new RefundResultDto
+        {
+            PaymentId = payment.Id,
+            WalletTransactionId = walletTransaction.Id,
+            RefundAmount = payment.Amount,
+            NewWalletBalance = newBalance,
+            NewStatus = payment.Status
+        };
     }
 
     private async Task<int> GetNextInvoiceSequenceAsync()

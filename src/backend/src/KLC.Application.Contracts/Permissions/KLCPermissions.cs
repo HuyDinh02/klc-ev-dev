@@ -106,4 +106,48 @@ public static class KLCPermissions
         public const string Delete = Default + ".Delete";
         public const string ManagePermissions = Default + ".ManagePermissions";
     }
+
+    public static class MobileUsers
+    {
+        public const string Default = GroupName + ".MobileUsers";
+        public const string ViewAll = Default + ".ViewAll";
+        public const string Suspend = Default + ".Suspend";
+        public const string WalletAdjust = Default + ".WalletAdjust";
+    }
+
+    public static class Vouchers
+    {
+        public const string Default = GroupName + ".Vouchers";
+        public const string Create = Default + ".Create";
+        public const string Update = Default + ".Update";
+        public const string Delete = Default + ".Delete";
+    }
+
+    public static class Promotions
+    {
+        public const string Default = GroupName + ".Promotions";
+        public const string Create = Default + ".Create";
+        public const string Update = Default + ".Update";
+        public const string Delete = Default + ".Delete";
+    }
+
+    public static class Feedback
+    {
+        public const string Default = GroupName + ".Feedback";
+        public const string Respond = Default + ".Respond";
+    }
+
+    public static class Notifications
+    {
+        public const string Default = GroupName + ".Notifications";
+        public const string Broadcast = Default + ".Broadcast";
+    }
+
+    public static class Maintenance
+    {
+        public const string Default = GroupName + ".Maintenance";
+        public const string Create = Default + ".Create";
+        public const string Update = Default + ".Update";
+        public const string Delete = Default + ".Delete";
+    }
 }
