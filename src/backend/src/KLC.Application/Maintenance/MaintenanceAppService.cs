@@ -38,10 +38,13 @@ public class MaintenanceAppService : KLCAppService, IMaintenanceAppService
         if (input.StationId.HasValue)
             query = query.Where(t => t.StationId == input.StationId.Value);
 
+        if (input.Cursor.HasValue)
+            query = query.Where(t => t.Id.CompareTo(input.Cursor.Value) > 0);
+
         var totalCount = await AsyncExecuter.CountAsync(query);
 
         query = query.OrderByDescending(t => t.CreationTime);
-        var tasks = await AsyncExecuter.ToListAsync(query.Skip(input.SkipCount).Take(input.MaxResultCount));
+        var tasks = await AsyncExecuter.ToListAsync(query.Take(input.MaxResultCount));
 
         var stationIds = tasks.Select(t => t.StationId).Distinct().ToList();
         var stations = await AsyncExecuter.ToListAsync(

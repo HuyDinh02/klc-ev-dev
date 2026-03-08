@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,7 @@ interface PaymentStats {
 }
 
 export default function PaymentsPage() {
+  const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -328,7 +330,7 @@ export default function PaymentsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="sm" title="View details">
+                          <Button variant="ghost" size="sm" title="View details" onClick={() => router.push(`/payments/${payment.id}`)}>
                             <FileText className="h-4 w-4" />
                           </Button>
                           {payment.status === 2 && (

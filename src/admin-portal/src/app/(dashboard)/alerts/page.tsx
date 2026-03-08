@@ -60,22 +60,25 @@ export default function AlertsPage() {
   const queryClient = useQueryClient();
   const [typeFilter, setTypeFilter] = useState("all");
   const [acknowledgedFilter, setAcknowledgedFilter] = useState("all");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [cursorStack, setCursorStack] = useState<(string | null)[]>([]);
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const pageSize = 20;
 
+  const resetPagination = () => { setCursor(null); setCursorStack([]); };
+
   // Fetch alerts
   const { data: alertsData, isLoading } = useQuery({
-    queryKey: ["alerts", typeFilter, acknowledgedFilter, currentPage],
+    queryKey: ["alerts", typeFilter, acknowledgedFilter, cursor],
     queryFn: async () => {
-      const params: Record<string, string | number | boolean> = {
-        skipCount: (currentPage - 1) * pageSize,
+      const params: Record<string, string | number> = {
         maxResultCount: pageSize,
       };
       // typeFilter is severity-based (critical/warning/info) — client-side filtering only
       if (acknowledgedFilter !== "all") {
-        params.status = acknowledgedFilter;
+        params.status = Number(acknowledgedFilter);
       }
+      if (cursor) params.cursor = cursor;
 
       const res = await api.get("/alerts", { params });
       return res.data;
@@ -94,7 +97,6 @@ export default function AlertsPage() {
 
   const alerts: Alert[] = alertsData?.items || [];
   const totalCount = alertsData?.totalCount || 0;
-  const totalPages = Math.ceil(totalCount / pageSize);
 
   // Compute stats from fetched data
   const stats: AlertStats = {
@@ -370,29 +372,41 @@ export default function AlertsPage() {
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {(totalCount > pageSize || cursorStack.length > 0) && (
         <div className="flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
-            Showing {(currentPage - 1) * pageSize + 1} -{" "}
-            {Math.min(currentPage * pageSize, totalCount)} of {totalCount}
+            {totalCount} total alerts
           </div>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+            {cursorStack.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const prev = [...cursorStack];
+                  const prevCursor = prev.pop()!;
+                  setCursorStack(prev);
+                  setCursor(prevCursor);
+                }}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+            )}
+            {alerts.length === pageSize && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const lastId = alerts[alerts.length - 1]?.id;
+                  if (lastId) {
+                    setCursorStack([...cursorStack, cursor]);
+                    setCursor(lastId);
+                  }
+                }}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
       )}

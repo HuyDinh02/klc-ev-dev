@@ -53,7 +53,7 @@ public class GetMaintenanceTaskListDto
     public MaintenanceTaskStatus? Status { get; set; }
     public MaintenanceTaskType? Type { get; set; }
     public Guid? StationId { get; set; }
-    public int SkipCount { get; set; } = 0;
+    public Guid? Cursor { get; set; }
     public int MaxResultCount { get; set; } = 20;
 }
 

@@ -130,13 +130,13 @@ export const paymentsApi = {
 };
 
 export const alertsApi = {
-  getAll: (params?: { skipCount?: number; maxResultCount?: number }) =>
+  getAll: (params?: { maxResultCount?: number; status?: number; cursor?: string }) =>
     api.get("/alerts", { params }),
   acknowledge: (id: string) => api.post(`/alerts/${id}/acknowledge`),
 };
 
 export const auditLogsApi = {
-  getAll: (params?: { skipCount?: number; maxResultCount?: number; entityType?: string }) =>
+  getAll: (params?: { maxResultCount?: number; entityType?: string; url?: string; httpMethod?: string; startTime?: string; endTime?: string; cursor?: string }) =>
     api.get("/audit-logs", { params }),
   getById: (id: string) => api.get(`/audit-logs/${id}`),
   getEntityChanges: (params?: { skipCount?: number; maxResultCount?: number }) =>
@@ -156,7 +156,7 @@ export const monitoringApi = {
 };
 
 export const eInvoicesApi = {
-  getAll: (params?: { skipCount?: number; maxResultCount?: number; status?: number }) =>
+  getAll: (params?: { maxResultCount?: number; status?: number; provider?: number; fromDate?: string; toDate?: string; search?: string; cursor?: string }) =>
     api.get("/e-invoices", { params }),
   getById: (id: string) => api.get(`/e-invoices/${id}`),
   generate: (invoiceId: string) => api.post("/e-invoices", { invoiceId }),
@@ -204,7 +204,7 @@ export const vehiclesApi = {
 };
 
 export const maintenanceApi = {
-  getAll: (params?: { skipCount?: number; maxResultCount?: number; status?: number; type?: number; stationId?: string }) =>
+  getAll: (params?: { maxResultCount?: number; status?: number; type?: number; stationId?: string; cursor?: string }) =>
     api.get("/maintenance", { params }),
   getById: (id: string) => api.get(`/maintenance/${id}`),
   getStats: () => api.get("/maintenance/stats"),

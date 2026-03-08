@@ -53,22 +53,25 @@ export default function AuditLogsPage() {
   const [httpMethod, setHttpMethod] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [cursorStack, setCursorStack] = useState<(string | null)[]>([]);
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
   const pageSize = 20;
 
+  const resetPagination = () => { setCursor(null); setCursorStack([]); };
+
   // Fetch audit logs
   const { data: logsData, isLoading } = useQuery({
-    queryKey: ["audit-logs", searchQuery, httpMethod, dateFrom, dateTo, currentPage],
+    queryKey: ["audit-logs", searchQuery, httpMethod, dateFrom, dateTo, cursor],
     queryFn: async () => {
       const params: Record<string, string | number> = {
-        skipCount: (currentPage - 1) * pageSize,
         maxResultCount: pageSize,
       };
       if (searchQuery) params.url = searchQuery;
       if (httpMethod !== "all") params.httpMethod = httpMethod;
       if (dateFrom) params.startTime = dateFrom;
       if (dateTo) params.endTime = dateTo;
+      if (cursor) params.cursor = cursor;
 
       const res = await api.get("/audit-logs", { params });
       return res.data;
@@ -99,7 +102,6 @@ export default function AuditLogsPage() {
 
   const logs: AuditLog[] = logsData?.items || [];
   const totalCount = logsData?.totalCount || 0;
-  const totalPages = Math.ceil(totalCount / pageSize);
 
   const getMethodColor = (method: string): "default" | "success" | "warning" | "destructive" | "secondary" => {
     switch (method) {
@@ -297,29 +299,41 @@ export default function AuditLogsPage() {
           </div>
 
           {/* Pagination */}
-          {totalPages > 1 && (
+          {(totalCount > pageSize || cursorStack.length > 0) && (
             <div className="flex items-center justify-between border-t px-4 py-3">
               <div className="text-sm text-muted-foreground">
-                Showing {(currentPage - 1) * pageSize + 1} -{" "}
-                {Math.min(currentPage * pageSize, totalCount)} of {totalCount}
+                {totalCount} total audit logs
               </div>
               <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+                {cursorStack.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const prev = [...cursorStack];
+                      const prevCursor = prev.pop()!;
+                      setCursorStack(prev);
+                      setCursor(prevCursor);
+                    }}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                )}
+                {logs.length === pageSize && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const lastId = logs[logs.length - 1]?.id;
+                      if (lastId) {
+                        setCursorStack([...cursorStack, cursor]);
+                        setCursor(lastId);
+                      }
+                    }}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             </div>
           )}

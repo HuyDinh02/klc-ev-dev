@@ -58,8 +58,11 @@ export default function EInvoicesPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [cursorStack, setCursorStack] = useState<(string | null)[]>([]);
   const pageSize = 20;
+
+  const resetPagination = () => { setCursor(null); setCursorStack([]); };
 
   // Fetch e-invoices
   const { data: invoicesData, isLoading } = useQuery({
@@ -70,11 +73,10 @@ export default function EInvoicesPage() {
       dateFrom,
       dateTo,
       searchQuery,
-      currentPage,
+      cursor,
     ],
     queryFn: async () => {
       const params: Record<string, string | number> = {
-        skipCount: (currentPage - 1) * pageSize,
         maxResultCount: pageSize,
       };
       if (statusFilter !== "all") params.status = statusFilter;
@@ -82,6 +84,7 @@ export default function EInvoicesPage() {
       if (dateFrom) params.fromDate = dateFrom;
       if (dateTo) params.toDate = dateTo;
       if (searchQuery) params.search = searchQuery;
+      if (cursor) params.cursor = cursor;
 
       const res = await api.get("/e-invoices", { params });
       return res.data;
@@ -110,7 +113,6 @@ export default function EInvoicesPage() {
 
   const invoices: EInvoice[] = invoicesData?.items || [];
   const totalCount = invoicesData?.totalCount || 0;
-  const totalPages = Math.ceil(totalCount / pageSize);
 
   // Compute stats from fetched data
   const stats: EInvoiceStats = {
@@ -433,29 +435,41 @@ export default function EInvoicesPage() {
           </div>
 
           {/* Pagination */}
-          {totalPages > 1 && (
+          {(totalCount > pageSize || cursorStack.length > 0) && (
             <div className="flex items-center justify-between border-t px-4 py-3">
               <div className="text-sm text-muted-foreground">
-                Showing {(currentPage - 1) * pageSize + 1} -{" "}
-                {Math.min(currentPage * pageSize, totalCount)} of {totalCount}
+                {totalCount} total e-invoices
               </div>
               <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+                {cursorStack.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const prev = [...cursorStack];
+                      const prevCursor = prev.pop()!;
+                      setCursorStack(prev);
+                      setCursor(prevCursor);
+                    }}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                )}
+                {invoices.length === pageSize && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const lastId = invoices[invoices.length - 1]?.id;
+                      if (lastId) {
+                        setCursorStack([...cursorStack, cursor]);
+                        setCursor(lastId);
+                      }
+                    }}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             </div>
           )}

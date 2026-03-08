@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Search, AlertTriangle, CheckCircle, Clock, Wrench } from "lucide-react";
 import { Header } from "@/components/layout/header";
@@ -54,6 +55,7 @@ function getSeverityBadge(severity: number | string) {
 }
 
 export default function FaultsPage() {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [cursor, setCursor] = useState<string | null>(null);
@@ -186,7 +188,7 @@ export default function FaultsPage() {
         ) : (
           <div className="space-y-4">
             {filteredFaults.map((fault: { id: string; errorCode: string; status: number | string; priority?: number; errorInfo?: string; stationName?: string; connectorNumber?: number; detectedAt?: string; resolvedAt?: string | null }) => (
-              <Card key={fault.id}>
+              <Card key={fault.id} className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => router.push(`/faults/${fault.id}`)}>
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between">
                     <div className="space-y-2">

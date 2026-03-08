@@ -18,7 +18,7 @@ type TabType = "users" | "roles";
 function UsersTab() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [pageIndex, setPageIndex] = useState(0);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingUser, setEditingUser] = useState<Record<string, unknown> | null>(null);
   const [roleModalUser, setRoleModalUser] = useState<Record<string, unknown> | null>(null);
@@ -28,9 +28,9 @@ function UsersTab() {
   const pageSize = 20;
 
   const { data: usersData, isLoading } = useQuery({
-    queryKey: ["users", search, currentPage],
+    queryKey: ["users", search, pageIndex],
     queryFn: async () => {
-      const { data } = await usersApi.getAll({ skipCount: (currentPage - 1) * pageSize, maxResultCount: pageSize, filter: search || undefined });
+      const { data } = await usersApi.getAll({ skipCount: pageIndex * pageSize, maxResultCount: pageSize, filter: search || undefined });
       return data;
     },
   });
@@ -96,7 +96,6 @@ function UsersTab() {
 
   const users = usersData?.items || [];
   const totalCount = usersData?.totalCount || 0;
-  const totalPages = Math.ceil(totalCount / pageSize);
 
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
 
@@ -107,7 +106,7 @@ function UsersTab() {
         <div className="relative w-72">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input type="search" placeholder="Search users..." value={search}
-            onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+            onChange={(e) => { setSearch(e.target.value); setPageIndex(0); }}
             className="h-10 w-full rounded-md border bg-background pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
         </div>
         <Button onClick={() => { resetForm(); setShowCreateModal(true); }}><Plus className="mr-2 h-4 w-4" /> Add User</Button>
@@ -178,12 +177,16 @@ function UsersTab() {
               </tbody>
             </table>
           </div>
-          {totalPages > 1 && (
+          {(totalCount > pageSize || pageIndex > 0) && (
             <div className="flex items-center justify-between border-t px-4 py-3">
-              <div className="text-sm text-muted-foreground">Page {currentPage} of {totalPages} ({totalCount} users)</div>
+              <div className="text-sm text-muted-foreground">{totalCount} total users</div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}><ChevronLeft className="h-4 w-4" /></Button>
-                <Button variant="outline" size="sm" onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}><ChevronRight className="h-4 w-4" /></Button>
+                {pageIndex > 0 && (
+                  <Button variant="outline" size="sm" onClick={() => setPageIndex((p) => p - 1)}><ChevronLeft className="h-4 w-4" /></Button>
+                )}
+                {users.length === pageSize && (
+                  <Button variant="outline" size="sm" onClick={() => setPageIndex((p) => p + 1)}><ChevronRight className="h-4 w-4" /></Button>
+                )}
               </div>
             </div>
           )}

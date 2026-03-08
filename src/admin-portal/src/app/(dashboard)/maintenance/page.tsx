@@ -62,7 +62,8 @@ export default function MaintenancePage() {
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [cursorStack, setCursorStack] = useState<(string | null)[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [formData, setFormData] = useState({
     stationId: "",
@@ -75,16 +76,18 @@ export default function MaintenancePage() {
   });
   const pageSize = 20;
 
+  const resetPagination = () => { setCursor(null); setCursorStack([]); };
+
   // Fetch tasks
   const { data: tasksData, isLoading } = useQuery({
-    queryKey: ["maintenance-tasks", statusFilter, typeFilter, currentPage],
+    queryKey: ["maintenance-tasks", statusFilter, typeFilter, cursor],
     queryFn: async () => {
       const params: Record<string, string | number> = {
-        skipCount: (currentPage - 1) * pageSize,
         maxResultCount: pageSize,
       };
       if (statusFilter !== "all") params.status = statusFilter;
       if (typeFilter !== "all") params.type = typeFilter;
+      if (cursor) params.cursor = cursor;
 
       const res = await maintenanceApi.getAll(params as Parameters<typeof maintenanceApi.getAll>[0]);
       return res.data;
@@ -175,7 +178,6 @@ export default function MaintenancePage() {
 
   const tasks: MaintenanceTask[] = tasksData?.items || [];
   const totalCount = tasksData?.totalCount || 0;
-  const totalPages = Math.ceil(totalCount / pageSize);
 
   const getStatusColor = (status: number): "secondary" | "default" | "success" | "destructive" => {
     switch (status) {
@@ -396,7 +398,7 @@ export default function MaintenancePage() {
           <div className="flex gap-4">
             <select
               value={statusFilter}
-              onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+              onChange={(e) => { setStatusFilter(e.target.value); resetPagination(); }}
               className="rounded-md border px-3 py-2"
             >
               <option value="all">All Status</option>
@@ -407,7 +409,7 @@ export default function MaintenancePage() {
             </select>
             <select
               value={typeFilter}
-              onChange={(e) => { setTypeFilter(e.target.value); setCurrentPage(1); }}
+              onChange={(e) => { setTypeFilter(e.target.value); resetPagination(); }}
               className="rounded-md border px-3 py-2"
             >
               <option value="all">All Types</option>
@@ -529,29 +531,41 @@ export default function MaintenancePage() {
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {(totalCount > pageSize || cursorStack.length > 0) && (
         <div className="flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
-            Showing {(currentPage - 1) * pageSize + 1} -{" "}
-            {Math.min(currentPage * pageSize, totalCount)} of {totalCount}
+            {totalCount} total tasks
           </div>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+            {cursorStack.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const prev = [...cursorStack];
+                  const prevCursor = prev.pop()!;
+                  setCursorStack(prev);
+                  setCursor(prevCursor);
+                }}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+            )}
+            {tasks.length === pageSize && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const lastId = tasks[tasks.length - 1]?.id;
+                  if (lastId) {
+                    setCursorStack([...cursorStack, cursor]);
+                    setCursor(lastId);
+                  }
+                }}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
       )}
