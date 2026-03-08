@@ -5,55 +5,78 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   MapPin,
-  Map,
-  BarChart3,
   Activity,
   Zap,
   DollarSign,
   AlertTriangle,
   Wrench,
-  FolderTree,
   FileText,
-  Receipt,
   Bell,
   ChevronLeft,
   ChevronRight,
   Settings,
   LogOut,
   Users,
-  Car,
   Ticket,
-  Megaphone,
-  MessageSquare,
-  Smartphone,
-  Plug,
+  CreditCard,
+  BarChart3,
+  Shield,
+  type LucideIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useSidebarStore, useAuthStore, useAlertsStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 
-const menuItems = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/stations", label: "Stations", icon: MapPin },
-  { href: "/map", label: "Station Map", icon: Map },
-  { href: "/monitoring", label: "Monitoring", icon: Activity },
-  { href: "/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/sessions", label: "Sessions", icon: Zap },
-  { href: "/tariffs", label: "Tariffs", icon: DollarSign },
-  { href: "/payments", label: "Payments", icon: Receipt },
-  { href: "/faults", label: "Faults", icon: AlertTriangle },
-  { href: "/maintenance", label: "Maintenance", icon: Wrench },
-  { href: "/groups", label: "Station Groups", icon: FolderTree },
-  { href: "/audit-logs", label: "Audit Logs", icon: FileText },
-  { href: "/e-invoices", label: "E-Invoices", icon: Receipt },
-  { href: "/vehicles", label: "Vehicles", icon: Car },
-  { href: "/vouchers", label: "Vouchers", icon: Ticket },
-  { href: "/promotions", label: "Promotions", icon: Megaphone },
-  { href: "/feedback", label: "Feedback", icon: MessageSquare },
-  { href: "/mobile-users", label: "Mobile Users", icon: Smartphone },
-  { href: "/ocpp", label: "OCPP Management", icon: Plug },
-  { href: "/user-management", label: "User Management", icon: Users },
+interface NavItem {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+}
+
+interface NavSection {
+  title: string;
+  items: NavItem[];
+}
+
+const navigation: NavSection[] = [
+  {
+    title: "Operations",
+    items: [
+      { href: "/", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/stations", label: "Stations", icon: MapPin },
+      { href: "/monitoring", label: "Monitoring", icon: Activity },
+      { href: "/sessions", label: "Sessions", icon: Zap },
+    ],
+  },
+  {
+    title: "Incidents",
+    items: [
+      { href: "/faults", label: "Faults & Alerts", icon: AlertTriangle },
+      { href: "/maintenance", label: "Maintenance", icon: Wrench },
+    ],
+  },
+  {
+    title: "Business",
+    items: [
+      { href: "/tariffs", label: "Tariffs", icon: DollarSign },
+      { href: "/payments", label: "Payments", icon: CreditCard },
+      { href: "/vouchers", label: "Marketing", icon: Ticket },
+    ],
+  },
+  {
+    title: "Users",
+    items: [
+      { href: "/user-management", label: "Users", icon: Users },
+    ],
+  },
+  {
+    title: "System",
+    items: [
+      { href: "/analytics", label: "Reports", icon: BarChart3 },
+      { href: "/audit-logs", label: "Audit Logs", icon: FileText },
+    ],
+  },
 ];
 
 export function Sidebar() {
@@ -63,6 +86,11 @@ export function Sidebar() {
   const { logout, user } = useAuthStore();
   const { unreadCount } = useAlertsStore();
 
+  const isActive = (href: string) => {
+    if (href === "/") return pathname === "/";
+    return pathname === href || pathname.startsWith(`${href}/`);
+  };
+
   return (
     <aside
       className={cn(
@@ -71,59 +99,91 @@ export function Sidebar() {
       )}
     >
       <div className="flex h-full flex-col">
-        {/* Logo */}
+        {/* Brand */}
         <div className="flex h-16 items-center justify-between border-b px-4">
           {!isCollapsed && (
-            <Link href="/" className="flex items-center gap-2">
-              <Zap className="h-6 w-6 text-primary" />
-              <span className="text-lg font-bold">KLC</span>
+            <Link href="/" className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+                <Zap className="h-4.5 w-4.5 text-white" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-sm font-bold tracking-tight text-foreground">K-Charge</span>
+                <span className="text-[10px] text-muted-foreground">by KLC Energy</span>
+              </div>
             </Link>
           )}
-          <Button variant="ghost" size="icon" onClick={toggle} className="ml-auto">
-            {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-          </Button>
+          {isCollapsed && (
+            <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+              <Zap className="h-4.5 w-4.5 text-white" />
+            </div>
+          )}
+          {!isCollapsed && (
+            <Button variant="ghost" size="icon" onClick={toggle} className="h-7 w-7">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          )}
         </div>
 
+        {/* Expand button when collapsed */}
+        {isCollapsed && (
+          <div className="flex justify-center py-2">
+            <Button variant="ghost" size="icon" onClick={toggle} className="h-7 w-7">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+
         {/* Navigation */}
-        <nav className="flex-1 space-y-1 overflow-y-auto p-2">
-          {menuItems.map((item) => {
-            const isActive = item.href === "/"
-              ? pathname === "/"
-              : pathname === item.href || pathname.startsWith(`${item.href}/`);
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                  isActive
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                )}
-              >
-                <Icon className="h-5 w-5 flex-shrink-0" />
-                {!isCollapsed && <span>{item.label}</span>}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 overflow-y-auto px-2 py-1">
+          {navigation.map((section) => (
+            <div key={section.title} className="mb-1">
+              {!isCollapsed && (
+                <p className="mb-1 px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {section.title}
+                </p>
+              )}
+              {isCollapsed && <div className="my-1 mx-2 border-t" />}
+              <div className="space-y-0.5">
+                {section.items.map((item) => {
+                  const active = isActive(item.href);
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      title={isCollapsed ? item.label : undefined}
+                      className={cn(
+                        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                        active
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                      )}
+                    >
+                      <Icon className="h-[18px] w-[18px] flex-shrink-0" />
+                      {!isCollapsed && <span>{item.label}</span>}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         {/* Alerts */}
-        <div className="border-t p-2">
+        <div className="border-t px-2 py-1.5">
           <Link
             href="/alerts"
             className={cn(
               "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
               pathname === "/alerts"
                 ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
             )}
           >
             <div className="relative">
-              <Bell className="h-5 w-5 flex-shrink-0" />
+              <Bell className="h-[18px] w-[18px] flex-shrink-0" />
               {unreadCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] text-white">
+                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white">
                   {unreadCount > 9 ? "9+" : unreadCount}
                 </span>
               )}
@@ -133,27 +193,34 @@ export function Sidebar() {
         </div>
 
         {/* User section */}
-        <div className="border-t p-2">
+        <div className="border-t px-2 py-2">
           {user && !isCollapsed && (
-            <div className="mb-2 px-3 py-2">
+            <div className="mb-1.5 px-3 py-1.5">
               <p className="text-sm font-medium">{user.username}</p>
               <p className="text-xs text-muted-foreground">{user.role}</p>
             </div>
           )}
-          <Link
-            href="/settings"
-            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-          >
-            <Settings className="h-5 w-5 flex-shrink-0" />
-            {!isCollapsed && <span>Settings</span>}
-          </Link>
-          <button
-            onClick={() => { logout(); router.push("/login"); }}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-          >
-            <LogOut className="h-5 w-5 flex-shrink-0" />
-            {!isCollapsed && <span>Logout</span>}
-          </button>
+          <div className="space-y-0.5">
+            <Link
+              href="/settings"
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                pathname === "/settings"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+              )}
+            >
+              <Settings className="h-[18px] w-[18px] flex-shrink-0" />
+              {!isCollapsed && <span>Settings</span>}
+            </Link>
+            <button
+              onClick={() => { logout(); router.push("/login"); }}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
+            >
+              <LogOut className="h-[18px] w-[18px] flex-shrink-0" />
+              {!isCollapsed && <span>Logout</span>}
+            </button>
+          </div>
         </div>
       </div>
     </aside>

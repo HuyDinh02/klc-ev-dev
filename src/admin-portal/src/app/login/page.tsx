@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Zap, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { useAuthStore } from "@/lib/store";
 import { authApi } from "@/lib/api";
 
@@ -32,17 +32,15 @@ function LoginForm() {
     setHydrated(true);
   }, []);
 
-  // Redirect if already authenticated (only after hydration)
   useEffect(() => {
     if (hydrated && isAuthenticated) {
       router.push(returnUrl);
     }
   }, [hydrated, isAuthenticated, router, returnUrl]);
 
-  // Show loading while checking auth state
   if (!hydrated || isAuthenticated) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/10 to-background">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[var(--color-brand-green)]/5 via-background to-[var(--color-brand-orange)]/5">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
           <p className="text-sm text-muted-foreground">Loading...</p>
@@ -57,11 +55,9 @@ function LoginForm() {
     setIsLoading(true);
 
     try {
-      // Call the real OpenIddict token endpoint
       const tokenResponse = await authApi.login(email, password);
 
       if (tokenResponse.access_token) {
-        // Parse JWT to extract user info
         const payload = authApi.parseToken(tokenResponse.access_token);
 
         if (payload) {
@@ -84,7 +80,6 @@ function LoginForm() {
     } catch (err: unknown) {
       console.error("Login error:", err);
 
-      // Handle different error types
       if (err && typeof err === "object" && "response" in err) {
         const axiosError = err as { response?: { data?: { error_description?: string; error?: string }; status?: number } };
         if (axiosError.response?.data?.error_description) {
@@ -105,45 +100,45 @@ function LoginForm() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/10 to-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-4 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary">
-            <Zap className="h-8 w-8 text-primary-foreground" />
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[var(--color-brand-green)]/5 via-background to-[var(--color-brand-orange)]/5 p-4">
+      <Card className="w-full max-w-[420px] shadow-lg">
+        <CardContent className="p-8">
+          {/* Brand */}
+          <div className="mb-8 flex flex-col items-center text-center">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-primary shadow-sm">
+              <Zap className="h-7 w-7 text-white" />
+            </div>
+            <h1 className="text-xl font-bold tracking-tight text-foreground">K-Charge</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Charging Network Management
+            </p>
           </div>
-          <div>
-            <CardTitle className="text-2xl">KLC Admin</CardTitle>
-            <CardDescription>
-              Sign in to manage your charging network
-            </CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+              <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
                 <AlertCircle className="h-4 w-4 flex-shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <label htmlFor="email" className="text-sm font-medium">
-                Username or Email
+                Username
               </label>
               <input
                 id="email"
                 type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin"
+                placeholder="Enter your username"
                 required
                 autoComplete="username"
-                className="h-10 w-full rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                className="h-10 w-full rounded-lg border bg-background px-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <label htmlFor="password" className="text-sm font-medium">
                 Password
               </label>
@@ -156,35 +151,44 @@ function LoginForm() {
                   placeholder="Enter your password"
                   required
                   autoComplete="current-password"
-                  className="h-10 w-full rounded-md border bg-background px-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="h-10 w-full rounded-lg border bg-background px-3 pr-10 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Signing in..." : "Sign In"}
+            <Button type="submit" className="w-full h-10" disabled={isLoading}>
+              {isLoading ? (
+                <span className="flex items-center gap-2">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Signing in...
+                </span>
+              ) : (
+                "Sign In"
+              )}
             </Button>
           </form>
 
-          <div className="mt-6 rounded-md bg-muted p-4 text-sm">
-            <p className="font-medium mb-2">Demo Credentials:</p>
-            <div className="space-y-1 text-muted-foreground">
+          {/* Demo credentials */}
+          <div className="mt-6 rounded-lg border border-dashed p-4 text-sm">
+            <p className="font-medium text-foreground mb-2">Demo Credentials</p>
+            <div className="space-y-1 text-muted-foreground text-xs">
               <p><span className="font-medium text-foreground">Admin:</span> admin / Admin@123</p>
               <p><span className="font-medium text-foreground">Operator:</span> operator / Admin@123</p>
               <p><span className="font-medium text-foreground">Viewer:</span> viewer / Admin@123</p>
             </div>
           </div>
+
+          {/* Footer */}
+          <p className="mt-6 text-center text-xs text-muted-foreground">
+            Powered by KLC Energy
+          </p>
         </CardContent>
       </Card>
     </div>
