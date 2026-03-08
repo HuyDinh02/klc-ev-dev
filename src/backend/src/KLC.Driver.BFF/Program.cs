@@ -139,11 +139,18 @@ var app = builder.Build();
 // Initialize ABP
 await app.InitializeApplicationAsync();
 
-// Configure middleware
-if (app.Environment.IsDevelopment())
+// Configure middleware — API docs via config flag (safe to enable temporarily in non-prod)
+var enableApiDocs = app.Environment.IsDevelopment()
+    || app.Configuration.GetValue<bool>("EnableApiDocs");
+if (enableApiDocs)
 {
     app.MapOpenApi();
-    app.MapScalarApiReference();
+    app.MapScalarApiReference(options =>
+    {
+        options.Title = "KLC Driver BFF API";
+        options.Theme = ScalarTheme.BluePlanet;
+        options.DefaultHttpClient = new(ScalarTarget.JavaScript, ScalarClient.Fetch);
+    });
 }
 
 app.UseCors("MobileApp");
