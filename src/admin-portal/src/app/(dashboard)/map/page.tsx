@@ -4,8 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
 import { monitoringApi } from "@/lib/api";
-import { MapPin, Wifi, WifiOff } from "lucide-react";
+import { STATION_STATUS } from "@/lib/constants";
+import { MapPin, WifiOff } from "lucide-react";
 
 interface StationSummary {
   stationId: string;
@@ -19,23 +22,7 @@ interface StationSummary {
   lastHeartbeat: string | null;
 }
 
-const StationStatusMap: Record<number, string> = {
-  0: "Offline",
-  1: "Available",
-  2: "Occupied",
-  3: "Unavailable",
-  4: "Faulted",
-  5: "Decommissioned",
-};
-
-const StatusColors: Record<number, string> = {
-  0: "#6b7280", // gray - Offline
-  1: "#22c55e", // green - Available
-  2: "#3b82f6", // blue - Occupied
-  3: "#f59e0b", // amber - Unavailable
-  4: "#ef4444", // red - Faulted
-  5: "#9ca3af", // light gray - Decommissioned
-};
+const DEFAULT_STATUS_COLOR = "#9CA3AF";
 
 // Hanoi center
 const DEFAULT_CENTER: [number, number] = [21.0285, 105.8542];
@@ -87,8 +74,9 @@ function StationMapInner({ stations }: { stations: StationSummary[] }) {
     const validStations = stations.filter((s) => s.latitude && s.longitude);
 
     validStations.forEach((station) => {
-      const color = StatusColors[station.status] || "#6b7280";
-      const statusLabel = StationStatusMap[station.status] || "Unknown";
+      const statusConfig = STATION_STATUS[station.status];
+      const color = statusConfig?.dotColor || DEFAULT_STATUS_COLOR;
+      const statusLabel = statusConfig?.label || "Unknown";
 
       const icon = L.divIcon({
         className: "custom-marker",
@@ -126,9 +114,9 @@ function StationMapInner({ stations }: { stations: StationSummary[] }) {
           </div>
           <div style="font-size: 12px; color: #555; line-height: 1.6;">
             <div><strong>Connectors:</strong> ${station.totalConnectors}</div>
-            <div style="color: #22c55e;">Available: ${station.availableConnectors}</div>
-            <div style="color: #3b82f6;">Charging: ${station.chargingConnectors}</div>
-            ${faulted > 0 ? `<div style="color: #ef4444;">Faulted/Other: ${faulted}</div>` : ""}
+            <div style="color: ${STATION_STATUS[1].dotColor};">Available: ${station.availableConnectors}</div>
+            <div style="color: ${STATION_STATUS[2].dotColor};">Charging: ${station.chargingConnectors}</div>
+            ${faulted > 0 ? `<div style="color: ${STATION_STATUS[4].dotColor};">Faulted/Other: ${faulted}</div>` : ""}
             <div style="margin-top: 4px; color: #888;">Last heartbeat: ${heartbeat}</div>
           </div>
         </div>
@@ -181,30 +169,27 @@ export default function StationMapPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Station Map</h1>
-        <p className="text-muted-foreground">
-          Geographic overview of all charging stations
-        </p>
+      <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <PageHeader title="Station Map" description="Geographic overview of all charging stations" />
       </div>
 
       {/* Legend & Stats */}
-      <div className="flex flex-wrap gap-3">
-        <Badge variant="success" className="gap-1">
-          <span className="h-2.5 w-2.5 rounded-full bg-green-500" />
-          Available ({statusCounts.online})
+      <div className="flex flex-wrap gap-3 px-6">
+        <Badge variant={STATION_STATUS[1].badgeVariant} className="gap-1">
+          <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: STATION_STATUS[1].dotColor }} />
+          {STATION_STATUS[1].label} ({statusCounts.online})
         </Badge>
-        <Badge variant="default" className="gap-1">
-          <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
-          Occupied ({stations.filter((s) => s.status === 2).length})
+        <Badge variant={STATION_STATUS[2].badgeVariant} className="gap-1">
+          <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: STATION_STATUS[2].dotColor }} />
+          {STATION_STATUS[2].label} ({stations.filter((s) => s.status === 2).length})
         </Badge>
-        <Badge variant="secondary" className="gap-1">
-          <span className="h-2.5 w-2.5 rounded-full bg-gray-500" />
-          Offline ({statusCounts.offline})
+        <Badge variant={STATION_STATUS[0].badgeVariant} className="gap-1">
+          <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: STATION_STATUS[0].dotColor }} />
+          {STATION_STATUS[0].label} ({statusCounts.offline})
         </Badge>
-        <Badge variant="destructive" className="gap-1">
-          <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
-          Faulted ({statusCounts.faulted})
+        <Badge variant={STATION_STATUS[4].badgeVariant} className="gap-1">
+          <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: STATION_STATUS[4].dotColor }} />
+          {STATION_STATUS[4].label} ({statusCounts.faulted})
         </Badge>
         <div className="ml-auto text-sm text-muted-foreground flex items-center gap-1">
           <MapPin className="h-4 w-4" />
@@ -224,8 +209,8 @@ export default function StationMapPage() {
               <StationMapInner stations={stations} />
             </>
           ) : (
-            <div className="flex h-full items-center justify-center text-muted-foreground">
-              Loading map...
+            <div className="flex h-full flex-col items-center justify-center gap-4 p-6">
+              <Skeleton className="h-full w-full" />
             </div>
           )}
         </CardContent>
@@ -250,8 +235,8 @@ export default function StationMapPage() {
                       <WifiOff className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">{station.stationName}</span>
                     </div>
-                    <Badge variant="secondary">
-                      {StationStatusMap[station.status] || "Unknown"}
+                    <Badge variant={STATION_STATUS[station.status]?.badgeVariant || "secondary"}>
+                      {STATION_STATUS[station.status]?.label || "Unknown"}
                     </Badge>
                   </div>
                 ))}

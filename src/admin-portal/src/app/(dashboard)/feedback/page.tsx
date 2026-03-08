@@ -2,12 +2,20 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/ui/page-header";
+import { SkeletonTable } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Dialog,
+  DialogHeader,
+  DialogContent,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { api } from "@/lib/api";
-import { AlertCircle, MessageSquare, Send, X } from "lucide-react";
+import { AlertCircle, MessageSquare, Send } from "lucide-react";
 
 interface Feedback {
   id: string;
@@ -24,17 +32,17 @@ interface Feedback {
 
 const FeedbackTypeLabels: Record<number, string> = {
   0: "Bug",
-  1: "Yêu cầu tính năng",
-  2: "Lỗi sạc",
-  3: "Lỗi thanh toán",
+  1: "Y\u00eau c\u1ea7u t\u00ednh n\u0103ng",
+  2: "L\u1ed7i s\u1ea1c",
+  3: "L\u1ed7i thanh to\u00e1n",
   4: "Chung",
 };
 
 const FeedbackStatusLabels: Record<number, string> = {
-  0: "Mở",
-  1: "Đang xem xét",
-  2: "Đã giải quyết",
-  3: "Đã đóng",
+  0: "M\u1edf",
+  1: "\u0110ang xem x\u00e9t",
+  2: "\u0110\u00e3 gi\u1ea3i quy\u1ebft",
+  3: "\u0110\u00e3 \u0111\u00f3ng",
 };
 
 function getStatusBadge(status: number) {
@@ -129,10 +137,10 @@ export default function FeedbackPage() {
         } else if (apiError?.message) {
           setFormError(apiError.message);
         } else {
-          setFormError("Không thể gửi phản hồi. Vui lòng thử lại.");
+          setFormError("Kh\u00f4ng th\u1ec3 g\u1eedi ph\u1ea3n h\u1ed3i. Vui l\u00f2ng th\u1eed l\u1ea1i.");
         }
       } else {
-        setFormError("Không thể kết nối đến máy chủ. Vui lòng thử lại.");
+        setFormError("Kh\u00f4ng th\u1ec3 k\u1ebft n\u1ed1i \u0111\u1ebfn m\u00e1y ch\u1ee7. Vui l\u00f2ng th\u1eed l\u1ea1i.");
       }
     },
   });
@@ -160,267 +168,267 @@ export default function FeedbackPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Quản lý phản hồi</h1>
-          <p className="text-muted-foreground">
-            Xem và phản hồi ý kiến từ người dùng
-          </p>
+    <div className="flex flex-col">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="p-6 pb-4">
+          <PageHeader
+            title="Qu\u1ea3n l\u00fd ph\u1ea3n h\u1ed3i"
+            description="Xem v\u00e0 ph\u1ea3n h\u1ed3i \u00fd ki\u1ebfn t\u1eeb ng\u01b0\u1eddi d\u00f9ng"
+          />
+        </div>
+
+        {/* Status Filter */}
+        <div className="flex items-center gap-2 px-6 pb-4">
+          <Button
+            variant={statusFilter === "all" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setStatusFilter("all")}
+          >
+            T\u1ea5t c\u1ea3
+          </Button>
+          <Button
+            variant={statusFilter === "0" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setStatusFilter("0")}
+          >
+            M\u1edf
+          </Button>
+          <Button
+            variant={statusFilter === "1" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setStatusFilter("1")}
+          >
+            \u0110ang xem x\u00e9t
+          </Button>
+          <Button
+            variant={statusFilter === "2" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setStatusFilter("2")}
+          >
+            \u0110\u00e3 gi\u1ea3i quy\u1ebft
+          </Button>
+          <Button
+            variant={statusFilter === "3" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setStatusFilter("3")}
+          >
+            \u0110\u00e3 \u0111\u00f3ng
+          </Button>
         </div>
       </div>
 
-      {/* Status Filter */}
-      <div className="flex items-center gap-2">
-        <Button
-          variant={statusFilter === "all" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setStatusFilter("all")}
-        >
-          Tất cả
-        </Button>
-        <Button
-          variant={statusFilter === "0" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setStatusFilter("0")}
-        >
-          Mở
-        </Button>
-        <Button
-          variant={statusFilter === "1" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setStatusFilter("1")}
-        >
-          Đang xem xét
-        </Button>
-        <Button
-          variant={statusFilter === "2" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setStatusFilter("2")}
-        >
-          Đã giải quyết
-        </Button>
-        <Button
-          variant={statusFilter === "3" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setStatusFilter("3")}
-        >
-          Đã đóng
-        </Button>
+      <div className="flex-1 space-y-6 p-6">
+        {/* Feedback Table */}
+        {isLoading ? (
+          <SkeletonTable rows={8} cols={6} />
+        ) : feedbackList && feedbackList.length > 0 ? (
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="px-4 py-3 text-left text-sm font-medium">
+                        Lo\u1ea1i
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">
+                        Ti\u00eau \u0111\u1ec1
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">
+                        Ng\u01b0\u1eddi d\u00f9ng
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">
+                        Tr\u1ea1ng th\u00e1i
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">
+                        Ng\u00e0y t\u1ea1o
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">
+                        Thao t\u00e1c
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {feedbackList.map((feedback) => (
+                      <tr
+                        key={feedback.id}
+                        className={`border-b hover:bg-muted/50 cursor-pointer ${
+                          selectedId === feedback.id ? "bg-muted/50" : ""
+                        }`}
+                        onClick={() => handleSelect(feedback)}
+                      >
+                        <td className="px-4 py-3 text-sm">
+                          {FeedbackTypeLabels[feedback.type] || "Kh\u00e1c"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="font-medium">{feedback.subject}</p>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">
+                          {feedback.userName || feedback.userId.substring(0, 8) + "..."}
+                        </td>
+                        <td className="px-4 py-3">
+                          {getStatusBadge(feedback.status)}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          {new Date(feedback.createdAt).toLocaleDateString(
+                            "vi-VN"
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSelect(feedback);
+                            }}
+                          >
+                            <MessageSquare className="h-4 w-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <EmptyState
+            icon={MessageSquare}
+            title="Kh\u00f4ng c\u00f3 ph\u1ea3n h\u1ed3i n\u00e0o"
+            description="Ch\u01b0a c\u00f3 ph\u1ea3n h\u1ed3i n\u00e0o t\u1eeb ng\u01b0\u1eddi d\u00f9ng"
+          />
+        )}
       </div>
 
-      {/* Feedback Table */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="px-4 py-3 text-left text-sm font-medium">
-                    Loại
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">
-                    Tiêu đề
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">
-                    Người dùng
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">
-                    Trạng thái
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">
-                    Ngày tạo
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">
-                    Thao tác
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center">
-                      Đang tải...
-                    </td>
-                  </tr>
-                ) : feedbackList && feedbackList.length > 0 ? (
-                  feedbackList.map((feedback) => (
-                    <tr
-                      key={feedback.id}
-                      className={`border-b hover:bg-muted/50 cursor-pointer ${
-                        selectedId === feedback.id ? "bg-muted/50" : ""
-                      }`}
-                      onClick={() => handleSelect(feedback)}
-                    >
-                      <td className="px-4 py-3 text-sm">
-                        {FeedbackTypeLabels[feedback.type] || "Khác"}
-                      </td>
-                      <td className="px-4 py-3">
-                        <p className="font-medium">{feedback.subject}</p>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">
-                        {feedback.userName || feedback.userId.substring(0, 8) + "..."}
-                      </td>
-                      <td className="px-4 py-3">
-                        {getStatusBadge(feedback.status)}
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        {new Date(feedback.createdAt).toLocaleDateString(
-                          "vi-VN"
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSelect(feedback);
-                          }}
-                        >
-                          <MessageSquare className="h-4 w-4" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td
-                      colSpan={6}
-                      className="px-4 py-8 text-center text-muted-foreground"
-                    >
-                      Không có phản hồi nào
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+      {/* Detail / Respond Dialog */}
+      <Dialog
+        open={!!selectedId && !!selectedFeedback}
+        onClose={handleClose}
+        size="lg"
+      >
+        <DialogHeader onClose={handleClose}>
+          <div className="flex items-center gap-2">
+            <MessageSquare className="h-5 w-5" />
+            Chi ti\u1ebft ph\u1ea3n h\u1ed3i
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Detail / Respond Section */}
-      {selectedId && selectedFeedback && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="h-5 w-5" />
-                Chi tiết phản hồi
-              </CardTitle>
-              <Button variant="ghost" size="icon" onClick={handleClose}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Feedback Info */}
-            <div className="grid gap-4 md:grid-cols-3">
-              <div>
-                <p className="text-sm text-muted-foreground">Loại</p>
-                <p className="font-medium">
-                  {FeedbackTypeLabels[selectedFeedback.type] || "Khác"}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Trạng thái</p>
-                <div className="mt-1">
-                  {getStatusBadge(selectedFeedback.status)}
+        </DialogHeader>
+        <DialogContent className="space-y-4 max-h-[60vh] overflow-y-auto">
+          {selectedFeedback && (
+            <>
+              {/* Feedback Info */}
+              <div className="grid gap-4 md:grid-cols-3">
+                <div>
+                  <p className="text-sm text-muted-foreground">Lo\u1ea1i</p>
+                  <p className="font-medium">
+                    {FeedbackTypeLabels[selectedFeedback.type] || "Kh\u00e1c"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Tr\u1ea1ng th\u00e1i</p>
+                  <div className="mt-1">
+                    {getStatusBadge(selectedFeedback.status)}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Ng\u00e0y t\u1ea1o</p>
+                  <p className="font-medium">
+                    {new Date(selectedFeedback.createdAt).toLocaleDateString(
+                      "vi-VN"
+                    )}
+                  </p>
                 </div>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Ngày tạo</p>
-                <p className="font-medium">
-                  {new Date(selectedFeedback.createdAt).toLocaleDateString(
-                    "vi-VN"
-                  )}
-                </p>
-              </div>
-            </div>
 
-            {/* Subject & Message */}
-            <div>
-              <p className="text-sm text-muted-foreground">Tiêu đề</p>
-              <p className="font-medium">{selectedFeedback.subject}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Nội dung</p>
-              <div className="mt-1 rounded-md border bg-muted/30 p-3 text-sm">
-                {selectedFeedback.message}
-              </div>
-            </div>
-
-            {/* Existing Admin Response */}
-            {selectedFeedback.adminResponse && (
+              {/* Subject & Message */}
               <div>
-                <p className="text-sm text-muted-foreground">
-                  Phản hồi trước đó
-                </p>
-                <div className="mt-1 rounded-md border border-primary/20 bg-primary/5 p-3 text-sm">
-                  {selectedFeedback.adminResponse}
+                <p className="text-sm text-muted-foreground">Ti\u00eau \u0111\u1ec1</p>
+                <p className="font-medium">{selectedFeedback.subject}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">N\u1ed9i dung</p>
+                <div className="mt-1 rounded-md border bg-muted/30 p-3 text-sm">
+                  {selectedFeedback.message}
                 </div>
               </div>
-            )}
 
-            {/* Response Form */}
-            <form onSubmit={handleRespond} className="space-y-4 border-t pt-4">
-              <h3 className="text-sm font-semibold">Phản hồi từ quản trị</h3>
-
-              {formError && (
-                <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                  <span>{formError}</span>
+              {/* Existing Admin Response */}
+              {selectedFeedback.adminResponse && (
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    Ph\u1ea3n h\u1ed3i tr\u01b0\u1edbc \u0111\u00f3
+                  </p>
+                  <div className="mt-1 rounded-md border border-primary/20 bg-primary/5 p-3 text-sm">
+                    {selectedFeedback.adminResponse}
+                  </div>
                 </div>
               )}
 
-              <div>
-                <label className="mb-1 block text-sm font-medium">
-                  Cập nhật trạng thái
-                </label>
-                <select
-                  value={responseStatus}
-                  onChange={(e) =>
-                    setResponseStatus(parseInt(e.target.value, 10))
-                  }
-                  className="h-10 w-full max-w-xs rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value={0}>Mở</option>
-                  <option value={1}>Đang xem xét</option>
-                  <option value={2}>Đã giải quyết</option>
-                  <option value={3}>Đã đóng</option>
-                </select>
-              </div>
+              {/* Response Form */}
+              <form
+                id="feedback-response-form"
+                onSubmit={handleRespond}
+                className="space-y-4 border-t pt-4"
+              >
+                <h3 className="text-sm font-semibold">Ph\u1ea3n h\u1ed3i t\u1eeb qu\u1ea3n tr\u1ecb</h3>
 
-              <div>
-                <label className="mb-1 block text-sm font-medium">
-                  Nội dung phản hồi
-                </label>
-                <textarea
-                  value={responseText}
-                  onChange={(e) => setResponseText(e.target.value)}
-                  placeholder="Nhập phản hồi cho người dùng..."
-                  rows={4}
-                  className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-              </div>
+                {formError && (
+                  <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                    <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                    <span>{formError}</span>
+                  </div>
+                )}
 
-              <div className="flex gap-2">
-                <Button
-                  type="submit"
-                  disabled={respondMutation.isPending}
-                >
-                  <Send className="mr-2 h-4 w-4" />
-                  {respondMutation.isPending ? "Đang gửi..." : "Gửi phản hồi"}
-                </Button>
-                <Button type="button" variant="outline" onClick={handleClose}>
-                  Hủy
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
+                <div>
+                  <label className="mb-1 block text-sm font-medium">
+                    C\u1eadp nh\u1eadt tr\u1ea1ng th\u00e1i
+                  </label>
+                  <select
+                    value={responseStatus}
+                    onChange={(e) =>
+                      setResponseStatus(parseInt(e.target.value, 10))
+                    }
+                    className="h-10 w-full max-w-xs rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value={0}>M\u1edf</option>
+                    <option value={1}>\u0110ang xem x\u00e9t</option>
+                    <option value={2}>\u0110\u00e3 gi\u1ea3i quy\u1ebft</option>
+                    <option value={3}>\u0110\u00e3 \u0111\u00f3ng</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium">
+                    N\u1ed9i dung ph\u1ea3n h\u1ed3i
+                  </label>
+                  <textarea
+                    value={responseText}
+                    onChange={(e) => setResponseText(e.target.value)}
+                    placeholder="Nh\u1eadp ph\u1ea3n h\u1ed3i cho ng\u01b0\u1eddi d\u00f9ng..."
+                    rows={4}
+                    className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+              </form>
+            </>
+          )}
+        </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={handleClose}>
+            H\u1ee7y
+          </Button>
+          <Button
+            type="submit"
+            form="feedback-response-form"
+            disabled={respondMutation.isPending}
+          >
+            <Send className="mr-2 h-4 w-4" />
+            {respondMutation.isPending ? "\u0110ang g\u1eedi..." : "G\u1eedi ph\u1ea3n h\u1ed3i"}
+          </Button>
+        </DialogFooter>
+      </Dialog>
     </div>
   );
 }

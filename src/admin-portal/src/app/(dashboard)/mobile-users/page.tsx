@@ -6,6 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatCard } from "@/components/ui/stat-card";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { SkeletonTable, SkeletonCard } from "@/components/ui/skeleton";
+import { Tabs } from "@/components/ui/tabs";
 import { api } from "@/lib/api";
 import {
   Search,
@@ -14,6 +20,10 @@ import {
   AlertCircle,
   ChevronDown,
   ChevronUp,
+  Users,
+  Wallet,
+  Receipt,
+  Zap,
 } from "lucide-react";
 
 interface MobileUser {
@@ -78,16 +88,6 @@ const MembershipTierVariant: Record<number, "secondary" | "default" | "warning" 
   1: "default",
   2: "warning",
   3: "success",
-};
-
-const SessionStatusLabels: Record<number, string> = {
-  0: "Pending",
-  1: "Starting",
-  2: "InProgress",
-  3: "Suspended",
-  4: "Stopping",
-  5: "Completed",
-  6: "Failed",
 };
 
 const TransactionTypeLabels: Record<number, string> = {
@@ -205,14 +205,20 @@ export default function MobileUsersPage() {
     return user.fullName || "—";
   };
 
+  const detailTabs = [
+    { value: "profile", label: "Profile" },
+    { value: "wallet", label: "Wallet" },
+    { value: "sessions", label: "Sessions" },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Mobile Users</h1>
-        <p className="text-muted-foreground">
-          Manage mobile app users, view activity, and handle account status
-        </p>
+      <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <PageHeader
+          title="Mobile Users"
+          description="Manage mobile app users, view activity, and handle account status"
+        />
       </div>
 
       {/* Search */}
@@ -237,7 +243,7 @@ export default function MobileUsersPage() {
                   <th className="px-4 py-3 text-left text-sm font-medium">Name</th>
                   <th className="px-4 py-3 text-left text-sm font-medium">Phone</th>
                   <th className="px-4 py-3 text-left text-sm font-medium">Email</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Wallet Balance</th>
+                  <th className="px-4 py-3 text-right text-sm font-medium">Wallet Balance</th>
                   <th className="px-4 py-3 text-left text-sm font-medium">Membership</th>
                   <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
                   <th className="px-4 py-3 text-left text-sm font-medium">Last Login</th>
@@ -247,8 +253,8 @@ export default function MobileUsersPage() {
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center">
-                      Loading...
+                    <td colSpan={8} className="p-0">
+                      <SkeletonTable rows={5} cols={8} />
                     </td>
                   </tr>
                 ) : users.length > 0 ? (
@@ -278,7 +284,7 @@ export default function MobileUsersPage() {
                         <td className="px-4 py-3 text-sm">
                           {user.email || "—"}
                         </td>
-                        <td className="px-4 py-3 text-sm font-medium">
+                        <td className="px-4 py-3 text-sm font-medium tabular-nums text-right">
                           {formatCurrency(user.walletBalance)}
                         </td>
                         <td className="px-4 py-3">
@@ -334,35 +340,21 @@ export default function MobileUsersPage() {
                           <td colSpan={8} className="border-b bg-muted/30 p-0">
                             <div className="p-4 space-y-4">
                               {/* Tab Navigation */}
-                              <div className="flex items-center gap-2 border-b pb-2">
-                                <Button
-                                  variant={detailTab === "profile" ? "default" : "outline"}
-                                  size="sm"
-                                  onClick={() => setDetailTab("profile")}
-                                >
-                                  Profile
-                                </Button>
-                                <Button
-                                  variant={detailTab === "wallet" ? "default" : "outline"}
-                                  size="sm"
-                                  onClick={() => setDetailTab("wallet")}
-                                >
-                                  Wallet
-                                </Button>
-                                <Button
-                                  variant={detailTab === "sessions" ? "default" : "outline"}
-                                  size="sm"
-                                  onClick={() => setDetailTab("sessions")}
-                                >
-                                  Sessions
-                                </Button>
-                              </div>
+                              <Tabs
+                                tabs={detailTabs}
+                                value={detailTab}
+                                onChange={(v) => setDetailTab(v as "profile" | "wallet" | "sessions")}
+                              />
 
                               {/* Profile Tab */}
                               {detailTab === "profile" && (
                                 <div>
                                   {isLoadingDetail ? (
-                                    <p className="text-sm text-muted-foreground">Loading profile...</p>
+                                    <div className="grid gap-4 md:grid-cols-3">
+                                      <SkeletonCard />
+                                      <SkeletonCard />
+                                      <SkeletonCard />
+                                    </div>
                                   ) : userDetail ? (
                                     <div className="grid gap-4 md:grid-cols-3">
                                       <Card>
@@ -447,15 +439,25 @@ export default function MobileUsersPage() {
                               {/* Wallet Tab */}
                               {detailTab === "wallet" && (
                                 <div className="space-y-4">
-                                  <div className="flex items-center gap-4">
-                                    <Card className="flex-1">
-                                      <CardContent className="pt-6">
-                                        <p className="text-sm text-muted-foreground">Wallet Balance</p>
-                                        <p className="text-2xl font-bold">
-                                          {formatCurrency(userDetail?.walletBalance)}
-                                        </p>
-                                      </CardContent>
-                                    </Card>
+                                  <div className="grid gap-4 md:grid-cols-3">
+                                    <StatCard
+                                      label="Wallet Balance"
+                                      value={formatCurrency(userDetail?.walletBalance)}
+                                      icon={Wallet}
+                                      iconColor="bg-emerald-500/10 text-emerald-600"
+                                    />
+                                    <StatCard
+                                      label="Total Sessions"
+                                      value={userDetail?.sessionCount ?? 0}
+                                      icon={Zap}
+                                      iconColor="bg-blue-500/10 text-blue-600"
+                                    />
+                                    <StatCard
+                                      label="Total Spent"
+                                      value={formatCurrency(userDetail?.totalSpent)}
+                                      icon={Receipt}
+                                      iconColor="bg-amber-500/10 text-amber-600"
+                                    />
                                   </div>
 
                                   <div>
@@ -466,7 +468,7 @@ export default function MobileUsersPage() {
                                           <thead>
                                             <tr className="border-b bg-muted/50">
                                               <th className="px-3 py-2 text-left text-xs font-medium">Type</th>
-                                              <th className="px-3 py-2 text-left text-xs font-medium">Amount</th>
+                                              <th className="px-3 py-2 text-right text-xs font-medium">Amount</th>
                                               <th className="px-3 py-2 text-left text-xs font-medium">Description</th>
                                               <th className="px-3 py-2 text-left text-xs font-medium">Date</th>
                                             </tr>
@@ -479,8 +481,8 @@ export default function MobileUsersPage() {
                                                     {TransactionTypeLabels[tx.type] || "Unknown"}
                                                   </Badge>
                                                 </td>
-                                                <td className="px-3 py-2 text-sm font-medium">
-                                                  <span className={tx.type === 1 ? "text-destructive" : "text-green-600"}>
+                                                <td className="px-3 py-2 text-sm font-medium tabular-nums text-right">
+                                                  <span className={tx.type === 1 ? "text-destructive" : "text-emerald-600"}>
                                                     {tx.type === 1 ? "-" : "+"}{formatCurrency(tx.amount)}
                                                   </span>
                                                 </td>
@@ -496,7 +498,12 @@ export default function MobileUsersPage() {
                                         </table>
                                       </div>
                                     ) : (
-                                      <p className="text-sm text-muted-foreground">No recent transactions.</p>
+                                      <EmptyState
+                                        icon={Wallet}
+                                        title="No recent transactions"
+                                        description="This user has no wallet transactions yet."
+                                        className="py-8"
+                                      />
                                     )}
                                   </div>
                                 </div>
@@ -515,8 +522,8 @@ export default function MobileUsersPage() {
                                             <th className="px-3 py-2 text-left text-xs font-medium">Status</th>
                                             <th className="px-3 py-2 text-left text-xs font-medium">Start Time</th>
                                             <th className="px-3 py-2 text-left text-xs font-medium">End Time</th>
-                                            <th className="px-3 py-2 text-left text-xs font-medium">Energy</th>
-                                            <th className="px-3 py-2 text-left text-xs font-medium">Cost</th>
+                                            <th className="px-3 py-2 text-right text-xs font-medium">Energy</th>
+                                            <th className="px-3 py-2 text-right text-xs font-medium">Cost</th>
                                           </tr>
                                         </thead>
                                         <tbody>
@@ -526,19 +533,7 @@ export default function MobileUsersPage() {
                                                 <span className="font-medium font-mono text-xs">{session.stationId?.substring(0, 8) || "—"}</span>
                                               </td>
                                               <td className="px-3 py-2 text-sm">
-                                                <Badge
-                                                  variant={
-                                                    session.status === 5
-                                                      ? "success"
-                                                      : session.status === 6
-                                                        ? "destructive"
-                                                        : session.status === 2
-                                                          ? "default"
-                                                          : "secondary"
-                                                  }
-                                                >
-                                                  {SessionStatusLabels[session.status] || "Unknown"}
-                                                </Badge>
+                                                <StatusBadge type="session" value={session.status} />
                                               </td>
                                               <td className="px-3 py-2 text-sm">
                                                 {formatDateTime(session.startTime)}
@@ -546,10 +541,10 @@ export default function MobileUsersPage() {
                                               <td className="px-3 py-2 text-sm">
                                                 {formatDateTime(session.endTime)}
                                               </td>
-                                              <td className="px-3 py-2 text-sm">
+                                              <td className="px-3 py-2 text-sm tabular-nums text-right">
                                                 {((session.totalEnergyKwh ?? 0)).toFixed(2)} kWh
                                               </td>
-                                              <td className="px-3 py-2 text-sm font-medium">
+                                              <td className="px-3 py-2 text-sm font-medium tabular-nums text-right">
                                                 {formatCurrency(session.totalCost)}
                                               </td>
                                             </tr>
@@ -558,7 +553,12 @@ export default function MobileUsersPage() {
                                       </table>
                                     </div>
                                   ) : (
-                                    <p className="text-sm text-muted-foreground">No recent sessions.</p>
+                                    <EmptyState
+                                      icon={Zap}
+                                      title="No recent sessions"
+                                      description="This user has no charging sessions yet."
+                                      className="py-8"
+                                    />
                                   )}
                                 </div>
                               )}
@@ -570,8 +570,12 @@ export default function MobileUsersPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
-                      No mobile users found.
+                    <td colSpan={8} className="p-0">
+                      <EmptyState
+                        icon={Users}
+                        title="No mobile users found"
+                        description={search ? "Try adjusting your search criteria." : "No registered mobile users yet."}
+                      />
                     </td>
                   </tr>
                 )}

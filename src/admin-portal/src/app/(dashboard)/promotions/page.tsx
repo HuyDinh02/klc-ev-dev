@@ -2,10 +2,20 @@
 
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/ui/page-header";
+import { SkeletonCard } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Dialog,
+  DialogHeader,
+  DialogContent,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { PROMOTION_TYPE } from "@/lib/constants";
 import { api } from "@/lib/api";
 import {
   Plus,
@@ -42,20 +52,6 @@ interface PromotionFormData {
   type: number;
   isActive: boolean;
 }
-
-const PROMOTION_TYPES: Record<number, string> = {
-  0: "Banner",
-  1: "Popup",
-  2: "In-App",
-  3: "Push",
-};
-
-const TYPE_COLORS: Record<number, string> = {
-  0: "bg-blue-100 text-blue-800",
-  1: "bg-amber-100 text-amber-800",
-  2: "bg-purple-100 text-purple-800",
-  3: "bg-green-100 text-green-800",
-};
 
 type FilterTab = "all" | "active" | "inactive";
 
@@ -275,48 +271,46 @@ export default function PromotionsPage() {
 
   const isFormOpen = isCreating || editingId;
 
+  const closeForm = () => {
+    setIsCreating(false);
+    setEditingId(null);
+    resetForm();
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Promotions</h1>
-          <p className="text-muted-foreground">
-            Manage promotional campaigns for drivers
-          </p>
-        </div>
-        {!isFormOpen && (
+    <div className="flex flex-col">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <PageHeader title="Promotions" description="Manage promotional campaigns for drivers">
           <Button onClick={() => setIsCreating(true)}>
             <Plus className="mr-2 h-4 w-4" />
             Add Promotion
           </Button>
-        )}
+        </PageHeader>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex gap-2">
-        {(["all", "active", "inactive"] as FilterTab[]).map((tab) => (
-          <Button
-            key={tab}
-            variant={filter === tab ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFilter(tab)}
-          >
-            {tab === "all" ? "All" : tab === "active" ? "Active" : "Inactive"}
-          </Button>
-        ))}
-      </div>
+      <div className="flex-1 space-y-6 p-6">
+        {/* Filter Tabs */}
+        <div className="flex gap-2">
+          {(["all", "active", "inactive"] as FilterTab[]).map((tab) => (
+            <Button
+              key={tab}
+              variant={filter === tab ? "default" : "outline"}
+              size="sm"
+              onClick={() => setFilter(tab)}
+            >
+              {tab === "all" ? "All" : tab === "active" ? "Active" : "Inactive"}
+            </Button>
+          ))}
+        </div>
 
-      {/* Create/Edit Form */}
-      {isFormOpen && (
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {editingId ? "Edit Promotion" : "New Promotion"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Create/Edit Dialog */}
+        <Dialog open={!!isFormOpen} onClose={closeForm} size="xl">
+          <DialogHeader onClose={closeForm}>
+            {editingId ? "Edit Promotion" : "New Promotion"}
+          </DialogHeader>
+          <DialogContent>
+            <form id="promotion-form" onSubmit={handleSubmit} className="space-y-4">
               {formError && (
                 <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
                   <AlertCircle className="h-4 w-4 flex-shrink-0" />
@@ -351,9 +345,9 @@ export default function PromotionsPage() {
                     }
                     className="h-10 w-full rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   >
-                    {Object.entries(PROMOTION_TYPES).map(([val, label]) => (
+                    {Object.entries(PROMOTION_TYPE).map(([val, config]) => (
                       <option key={val} value={val}>
-                        {label}
+                        {config.label}
                       </option>
                     ))}
                   </select>
@@ -464,130 +458,139 @@ export default function PromotionsPage() {
                   Active
                 </label>
               </div>
-
-              <div className="flex gap-2">
-                <Button
-                  type="submit"
-                  disabled={
-                    createMutation.isPending ||
-                    updateMutation.isPending ||
-                    isUploading
-                  }
-                >
-                  {createMutation.isPending || updateMutation.isPending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : null}
-                  {editingId ? "Update" : "Create"} Promotion
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setIsCreating(false);
-                    setEditingId(null);
-                    resetForm();
-                  }}
-                >
-                  Cancel
-                </Button>
-              </div>
             </form>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Promotions Grid */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {isLoading ? (
-          <div className="col-span-full text-center py-8">Loading...</div>
-        ) : promotions && promotions.length > 0 ? (
-          promotions.map((promo) => (
-            <Card
-              key={promo.id}
-              className="group overflow-hidden transition-shadow hover:shadow-lg"
+          </DialogContent>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={closeForm}
             >
-              {/* Image / Placeholder */}
-              <div className="relative h-48 w-full overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-100">
-                {promo.imageUrl ? (
-                  <img
-                    src={promo.imageUrl}
-                    alt={promo.title}
-                    className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center">
-                    <ImageIcon className="h-16 w-16 text-blue-200" />
-                  </div>
-                )}
-                {/* Status badge overlay */}
-                <div className="absolute right-3 top-3">
-                  <Badge
-                    variant={promo.isActive ? "success" : "secondary"}
-                    className="shadow-sm"
-                  >
-                    {promo.isActive ? "Active" : "Inactive"}
-                  </Badge>
-                </div>
-                {/* Type badge overlay */}
-                <div className="absolute left-3 top-3">
-                  <span
-                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium shadow-sm ${TYPE_COLORS[promo.type] || "bg-gray-100 text-gray-800"}`}
-                  >
-                    {PROMOTION_TYPES[promo.type] || "Unknown"}
-                  </span>
-                </div>
-              </div>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              form="promotion-form"
+              disabled={
+                createMutation.isPending ||
+                updateMutation.isPending ||
+                isUploading
+              }
+            >
+              {createMutation.isPending || updateMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              {editingId ? "Update" : "Create"} Promotion
+            </Button>
+          </DialogFooter>
+        </Dialog>
 
-              <CardContent className="p-4">
-                <h3 className="font-semibold text-lg leading-tight mb-1 line-clamp-1">
-                  {promo.title}
-                </h3>
-                {promo.description && (
-                  <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                    {promo.description}
-                  </p>
-                )}
-
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-3">
-                  <Calendar className="h-3.5 w-3.5" />
-                  <span>
-                    {formatDate(promo.startDate)} - {formatDate(promo.endDate)}
-                  </span>
-                </div>
-
-                <div className="flex gap-2 pt-3 border-t">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => handleEdit(promo)}
-                  >
-                    <Edit className="mr-1.5 h-3.5 w-3.5" />
-                    Edit
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => {
-                      if (confirm("Delete this promotion?")) {
-                        deleteMutation.mutate(promo.id);
-                      }
-                    }}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        ) : (
-          <div className="col-span-full text-center py-12 text-muted-foreground">
-            <Megaphone className="mx-auto mb-3 h-12 w-12 opacity-30" />
-            <p>No promotions found.</p>
-            <p className="text-sm">
-              Create your first promotion to get started.
-            </p>
+        {/* Promotions Grid */}
+        {isLoading ? (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
           </div>
+        ) : promotions && promotions.length > 0 ? (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {promotions.map((promo) => {
+              const typeConfig = PROMOTION_TYPE[promo.type];
+              return (
+                <Card
+                  key={promo.id}
+                  className="group overflow-hidden transition-shadow hover:shadow-lg"
+                >
+                  {/* Image / Placeholder */}
+                  <div className="relative h-48 w-full overflow-hidden bg-muted">
+                    {promo.imageUrl ? (
+                      <img
+                        src={promo.imageUrl}
+                        alt={promo.title}
+                        className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center">
+                        <ImageIcon className="h-16 w-16 text-muted-foreground/25" />
+                      </div>
+                    )}
+                    {/* Status badge overlay */}
+                    <div className="absolute right-3 top-3">
+                      <Badge
+                        variant={promo.isActive ? "success" : "secondary"}
+                        className="shadow-sm"
+                      >
+                        {promo.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </div>
+                    {/* Type badge overlay */}
+                    <div className="absolute left-3 top-3">
+                      <Badge
+                        variant={typeConfig?.badgeVariant || "secondary"}
+                        className="shadow-sm"
+                      >
+                        {typeConfig?.label || "Unknown"}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <CardContent className="p-4">
+                    <h3 className="font-semibold text-lg leading-tight mb-1 line-clamp-1">
+                      {promo.title}
+                    </h3>
+                    {promo.description && (
+                      <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                        {promo.description}
+                      </p>
+                    )}
+
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-3">
+                      <Calendar className="h-3.5 w-3.5" />
+                      <span>
+                        {formatDate(promo.startDate)} - {formatDate(promo.endDate)}
+                      </span>
+                    </div>
+
+                    <div className="flex gap-2 pt-3 border-t">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => handleEdit(promo)}
+                      >
+                        <Edit className="mr-1.5 h-3.5 w-3.5" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => {
+                          if (confirm("Delete this promotion?")) {
+                            deleteMutation.mutate(promo.id);
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        ) : (
+          <EmptyState
+            icon={Megaphone}
+            title="No promotions found"
+            description="Create your first promotion to get started."
+            action={{
+              label: "Add Promotion",
+              onClick: () => setIsCreating(true),
+            }}
+          />
         )}
       </div>
     </div>

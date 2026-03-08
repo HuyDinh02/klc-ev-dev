@@ -100,12 +100,36 @@ export const ALERT_SEVERITY: Record<number, StatusConfig> = {
   3: { label: "Info",     color: "text-blue-600",   bgColor: "bg-blue-50",   dotColor: "#3B82F6", icon: Info,           badgeVariant: "info" },
 };
 
+// --- E-Invoice Status ---
+export const EINVOICE_STATUS: Record<number, StatusConfig> = {
+  0: { label: "Pending",    color: "text-amber-600",  bgColor: "bg-amber-50",  dotColor: "#F59E0B", icon: Clock,         badgeVariant: "warning" },
+  1: { label: "Processing", color: "text-blue-600",   bgColor: "bg-blue-50",   dotColor: "#3B82F6", icon: RefreshCw,     badgeVariant: "info" },
+  2: { label: "Issued",     color: "text-green-600",  bgColor: "bg-green-50",  dotColor: "#22C55E", icon: CheckCircle,   badgeVariant: "success" },
+  3: { label: "Failed",     color: "text-red-600",    bgColor: "bg-red-50",    dotColor: "#EF4444", icon: XCircle,       badgeVariant: "destructive" },
+  4: { label: "Cancelled",  color: "text-gray-500",   bgColor: "bg-gray-50",   dotColor: "#9CA3AF", icon: MinusCircle,   badgeVariant: "secondary" },
+};
+
+// --- E-Invoice Provider Labels ---
+export const EINVOICE_PROVIDER_LABELS: Record<number, string> = {
+  0: "MISA",
+  1: "Viettel",
+  2: "VNPT",
+};
+
 // --- Maintenance Task Status ---
 export const MAINTENANCE_STATUS: Record<number, StatusConfig> = {
   0: { label: "Scheduled",   color: "text-blue-600",   bgColor: "bg-blue-50",   dotColor: "#3B82F6", icon: Clock,        badgeVariant: "info" },
   1: { label: "In Progress", color: "text-amber-600",  bgColor: "bg-amber-50",  dotColor: "#F59E0B", icon: RefreshCw,    badgeVariant: "warning" },
   2: { label: "Completed",   color: "text-green-600",  bgColor: "bg-green-50",  dotColor: "#22C55E", icon: CheckCircle,  badgeVariant: "success" },
   3: { label: "Cancelled",   color: "text-gray-500",   bgColor: "bg-gray-50",   dotColor: "#9CA3AF", icon: XCircle,      badgeVariant: "secondary" },
+};
+
+// --- Promotion Type ---
+export const PROMOTION_TYPE: Record<number, StatusConfig> = {
+  0: { label: "Banner", color: "text-blue-600",   bgColor: "bg-blue-50",   dotColor: "#3B82F6", icon: Info,          badgeVariant: "info" },
+  1: { label: "Popup",  color: "text-amber-600",  bgColor: "bg-amber-50",  dotColor: "#F59E0B", icon: AlertTriangle, badgeVariant: "warning" },
+  2: { label: "In-App", color: "text-violet-600", bgColor: "bg-violet-50", dotColor: "#8B5CF6", icon: Info,          badgeVariant: "default" },
+  3: { label: "Push",   color: "text-green-600",  bgColor: "bg-green-50",  dotColor: "#22C55E", icon: CheckCircle,   badgeVariant: "success" },
 };
 
 // ============================================
