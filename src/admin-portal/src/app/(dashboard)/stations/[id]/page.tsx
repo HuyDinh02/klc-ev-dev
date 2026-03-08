@@ -8,6 +8,8 @@ import { Header } from "@/components/layout/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { stationsApi, connectorsApi, faultsApi } from "@/lib/api";
 import { formatDateTime } from "@/lib/utils";
 import {
@@ -17,48 +19,14 @@ import {
   PowerOff,
   Trash2,
   Plus,
-  MapPin,
   Zap,
   AlertTriangle,
-  Clock,
-  X,
 } from "lucide-react";
-
-const StationStatusLabels: Record<number, string> = {
-  0: "Offline", 1: "Available", 2: "Occupied", 3: "Unavailable", 4: "Faulted", 5: "Decommissioned",
-};
 
 const ConnectorTypeLabels: Record<number | string, string> = {
   0: "Type 2", 1: "CCS2", 2: "CHAdeMO", 3: "GBT", 4: "Type 1",
   "Type1": "Type 1", "Type2": "Type 2", "CCS2": "CCS2", "CHAdeMO": "CHAdeMO", "GBT": "GBT",
 };
-
-const ConnectorStatusLabels: Record<number, string> = {
-  0: "Available", 1: "Preparing", 2: "Charging", 3: "SuspendedEV",
-  4: "SuspendedEVSE", 5: "Finishing", 6: "Reserved", 7: "Unavailable", 8: "Faulted",
-};
-
-function getStatusBadge(status: number | string) {
-  const label = typeof status === "number" ? (StationStatusLabels[status] || "Unknown") : status;
-  switch (label) {
-    case "Available": return <Badge variant="success">Available</Badge>;
-    case "Occupied": return <Badge variant="default">Occupied</Badge>;
-    case "Offline": return <Badge variant="destructive">Offline</Badge>;
-    case "Faulted": return <Badge variant="warning">Faulted</Badge>;
-    default: return <Badge variant="secondary">{label}</Badge>;
-  }
-}
-
-function getConnectorStatusBadge(status: number | string) {
-  const label = typeof status === "number" ? (ConnectorStatusLabels[status] || "Unknown") : status;
-  switch (label) {
-    case "Available": return <Badge variant="success">Available</Badge>;
-    case "Charging": return <Badge variant="default">Charging</Badge>;
-    case "Faulted": return <Badge variant="destructive">Faulted</Badge>;
-    case "Unavailable": return <Badge variant="secondary">Unavailable</Badge>;
-    default: return <Badge variant="warning">{label}</Badge>;
-  }
-}
 
 export default function StationDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -124,7 +92,50 @@ export default function StationDetailPage() {
   });
 
   if (isLoading) {
-    return <div className="p-6 text-center">Loading...</div>;
+    return (
+      <div className="flex flex-col">
+        <div className="border-b px-6 py-4 space-y-2">
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="h-4 w-32" />
+        </div>
+        <div className="flex-1 space-y-6 p-6">
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-9 w-36" />
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-9 w-20" />
+              <Skeleton className="h-9 w-24" />
+              <Skeleton className="h-9 w-32" />
+            </div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-lg border bg-card p-5 space-y-3">
+              <Skeleton className="h-5 w-40" />
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex justify-between">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-32" />
+                </div>
+              ))}
+            </div>
+            <div className="rounded-lg border bg-card p-5 space-y-3">
+              <Skeleton className="h-5 w-40" />
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex justify-between">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-32" />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-lg border bg-card p-5 space-y-3">
+            <Skeleton className="h-5 w-32" />
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (!station) {
@@ -168,7 +179,7 @@ export default function StationDetailPage() {
           <Card>
             <CardHeader><CardTitle>Station Information</CardTitle></CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex justify-between"><span className="text-muted-foreground">Status</span>{getStatusBadge(station.status)}</div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Status</span><StatusBadge type="station" value={typeof station.status === "number" ? station.status : 0} /></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Code</span><span className="font-mono">{station.stationCode}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Address</span><span className="text-right max-w-[200px]">{station.address}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Coordinates</span><span>{station.latitude?.toFixed(6)}, {station.longitude?.toFixed(6)}</span></div>
@@ -254,7 +265,7 @@ export default function StationDetailPage() {
                         <td className="px-4 py-3 font-medium">#{conn.connectorNumber}</td>
                         <td className="px-4 py-3">{ConnectorTypeLabels[conn.connectorType] || conn.connectorType}</td>
                         <td className="px-4 py-3">{conn.maxPowerKw} kW</td>
-                        <td className="px-4 py-3">{getConnectorStatusBadge(conn.status)}</td>
+                        <td className="px-4 py-3"><StatusBadge type="connector" value={typeof conn.status === "number" ? conn.status : 0} /></td>
                         <td className="px-4 py-3"><Badge variant={conn.isEnabled ? "success" : "secondary"}>{conn.isEnabled ? "Yes" : "No"}</Badge></td>
                         <td className="px-4 py-3">
                           <div className="flex gap-1">

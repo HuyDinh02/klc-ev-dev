@@ -66,9 +66,9 @@ export default function DashboardPage() {
   };
 
   const connectorStatusData = [
-    { name: "Available", value: data.availableConnectors || 0, color: "#22C55E" },
-    { name: "Charging", value: data.chargingConnectors || 0, color: "#3B82F6" },
-    { name: "Faulted", value: data.faultedConnectors || 0, color: "#EF4444" },
+    { name: "Available", value: data.availableConnectors || 0, color: CHART_COLORS.green },
+    { name: "Charging", value: data.chargingConnectors || 0, color: CHART_COLORS.blue },
+    { name: "Faulted", value: data.faultedConnectors || 0, color: CHART_COLORS.red },
   ];
 
   const networkAvailability = data.totalConnectors > 0

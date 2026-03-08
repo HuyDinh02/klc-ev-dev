@@ -16,18 +16,10 @@ import {
 import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { Skeleton, SkeletonCard } from "@/components/ui/skeleton";
 import { paymentsApi } from "@/lib/api";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
-
-const PaymentStatusLabels: Record<number, string> = {
-  0: "Pending",
-  1: "Processing",
-  2: "Completed",
-  3: "Failed",
-  4: "Refunded",
-  5: "Cancelled",
-};
 
 const PaymentGatewayLabels: Record<number, string> = {
   0: "ZaloPay",
@@ -39,26 +31,6 @@ const PaymentGatewayLabels: Record<number, string> = {
   6: "Voucher",
   7: "Urbox",
 };
-
-function getStatusBadge(status: number) {
-  const label = PaymentStatusLabels[status] || "Unknown";
-  switch (status) {
-    case 2:
-      return <Badge variant="success">{label}</Badge>;
-    case 0:
-      return <Badge variant="warning">{label}</Badge>;
-    case 1:
-      return <Badge variant="default">{label}</Badge>;
-    case 3:
-      return <Badge variant="destructive">{label}</Badge>;
-    case 4:
-      return <Badge variant="secondary">{label}</Badge>;
-    case 5:
-      return <Badge variant="secondary">{label}</Badge>;
-    default:
-      return <Badge variant="secondary">{label}</Badge>;
-  }
-}
 
 interface PaymentDetail {
   id: string;
@@ -99,9 +71,11 @@ export default function PaymentDetailPage() {
     return (
       <div className="flex flex-col">
         <Header title="Payment Detail" description="Loading payment data..." />
-        <div className="flex-1 p-6">
-          <div className="flex items-center justify-center py-20 text-muted-foreground">
-            Loading...
+        <div className="flex-1 space-y-6 p-6">
+          <Skeleton className="h-9 w-40" />
+          <div className="grid gap-6 md:grid-cols-2">
+            <SkeletonCard />
+            <SkeletonCard />
           </div>
         </div>
       </div>
@@ -169,7 +143,7 @@ export default function PaymentDetailPage() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Status</span>
-                  {getStatusBadge(payment.status)}
+                  <StatusBadge type="payment" value={payment.status} />
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Payment Method</span>

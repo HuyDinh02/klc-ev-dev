@@ -139,6 +139,7 @@ export const PROMOTION_TYPE: Record<number, StatusConfig> = {
 export const CHART_COLORS = {
   green:  "#28A649",
   blue:   "#3B82F6",
+  red:    "#EF4444",
   orange: "#FAA623",
   purple: "#8B5CF6",
   pink:   "#EC4899",

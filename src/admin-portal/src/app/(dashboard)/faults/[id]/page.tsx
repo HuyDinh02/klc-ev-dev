@@ -15,55 +15,10 @@ import {
 import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { Skeleton, SkeletonCard } from "@/components/ui/skeleton";
 import { faultsApi } from "@/lib/api";
 import { formatDateTime } from "@/lib/utils";
-
-const FaultStatusLabels: Record<number, string> = {
-  0: "Open",
-  1: "Investigating",
-  2: "Resolved",
-  3: "Closed",
-};
-
-const PriorityLabels: Record<number, string> = {
-  1: "Critical",
-  2: "High",
-  3: "Medium",
-  4: "Low",
-};
-
-function getStatusBadge(status: number) {
-  const label = FaultStatusLabels[status] || "Unknown";
-  switch (status) {
-    case 0:
-      return <Badge variant="destructive">{label}</Badge>;
-    case 1:
-      return <Badge variant="warning">{label}</Badge>;
-    case 2:
-      return <Badge variant="success">{label}</Badge>;
-    case 3:
-      return <Badge variant="secondary">{label}</Badge>;
-    default:
-      return <Badge variant="secondary">{label}</Badge>;
-  }
-}
-
-function getPriorityBadge(priority: number) {
-  const label = PriorityLabels[priority] || "Unknown";
-  switch (priority) {
-    case 1:
-      return <Badge variant="destructive">{label}</Badge>;
-    case 2:
-      return <Badge className="bg-orange-500 text-white">{label}</Badge>;
-    case 3:
-      return <Badge variant="warning">{label}</Badge>;
-    case 4:
-      return <Badge variant="secondary">{label}</Badge>;
-    default:
-      return <Badge variant="secondary">{label}</Badge>;
-  }
-}
 
 interface FaultDetail {
   id: string;
@@ -111,9 +66,11 @@ export default function FaultDetailPage() {
     return (
       <div className="flex flex-col">
         <Header title="Fault Detail" description="Loading fault data..." />
-        <div className="flex-1 p-6">
-          <div className="flex items-center justify-center py-20 text-muted-foreground">
-            Loading...
+        <div className="flex-1 space-y-6 p-6">
+          <Skeleton className="h-9 w-36" />
+          <div className="grid gap-6 md:grid-cols-2">
+            <SkeletonCard />
+            <SkeletonCard />
           </div>
         </div>
       </div>
@@ -203,11 +160,11 @@ export default function FaultDetailPage() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Status</span>
-                  {getStatusBadge(fault.status)}
+                  <StatusBadge type="faultStatus" value={fault.status} />
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Priority</span>
-                  {getPriorityBadge(fault.priority ?? 4)}
+                  <StatusBadge type="faultSeverity" value={fault.priority ?? 4} />
                 </div>
                 {fault.errorInfo && (
                   <div>

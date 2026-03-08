@@ -6,6 +6,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Header } from "@/components/layout/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { stationsApi, stationGroupsApi, tariffsApi } from "@/lib/api";
 import { ArrowLeft } from "lucide-react";
 
@@ -84,7 +85,46 @@ export default function EditStationPage() {
   };
 
   if (isLoading) {
-    return <div className="p-6 text-center">Loading...</div>;
+    return (
+      <div className="flex flex-col">
+        <div className="border-b px-6 py-4 space-y-2">
+          <Skeleton className="h-6 w-32" />
+          <Skeleton className="h-4 w-24" />
+        </div>
+        <div className="flex-1 space-y-6 p-6">
+          <Skeleton className="h-9 w-36" />
+          <div className="rounded-lg border bg-card p-5 space-y-4">
+            <Skeleton className="h-5 w-32" />
+            {Array.from({ length: 2 }).map((_, i) => (
+              <div key={i} className="space-y-1">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ))}
+            <div className="grid gap-4 md:grid-cols-2">
+              {Array.from({ length: 2 }).map((_, i) => (
+                <div key={i} className="space-y-1">
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ))}
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              {Array.from({ length: 2 }).map((_, i) => (
+                <div key={i} className="space-y-1">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Skeleton className="h-10 w-28" />
+              <Skeleton className="h-10 w-20" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
