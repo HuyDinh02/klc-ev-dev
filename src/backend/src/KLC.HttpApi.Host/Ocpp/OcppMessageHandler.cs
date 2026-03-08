@@ -25,6 +25,7 @@ public class OcppMessageHandler
     private readonly VendorProfileFactory _vendorProfileFactory;
     private readonly IRepository<OcppRawEvent, Guid> _rawEventRepository;
     private readonly IGuidGenerator _guidGenerator;
+    private readonly OcppMessageParserFactory _parserFactory;
 
     public OcppMessageHandler(
         ILogger<OcppMessageHandler> logger,
@@ -33,7 +34,8 @@ public class OcppMessageHandler
         IMonitoringNotifier notifier,
         VendorProfileFactory vendorProfileFactory,
         IRepository<OcppRawEvent, Guid> rawEventRepository,
-        IGuidGenerator guidGenerator)
+        IGuidGenerator guidGenerator,
+        OcppMessageParserFactory parserFactory)
     {
         _logger = logger;
         _connectionManager = connectionManager;
@@ -42,6 +44,7 @@ public class OcppMessageHandler
         _vendorProfileFactory = vendorProfileFactory;
         _rawEventRepository = rawEventRepository;
         _guidGenerator = guidGenerator;
+        _parserFactory = parserFactory;
     }
 
     /// <summary>
@@ -51,25 +54,24 @@ public class OcppMessageHandler
     {
         try
         {
-            _logger.LogDebug("Received from {ChargePointId}: {Message}", connection.ChargePointId, message);
+            _logger.LogDebug("Received from {ChargePointId} ({OcppVersion}): {Message}",
+                connection.ChargePointId, connection.OcppVersion, message);
 
-            // Parse OCPP JSON array format: [MessageType, UniqueId, ...]
-            var jsonArray = JsonSerializer.Deserialize<JsonElement[]>(message);
-            if (jsonArray == null || jsonArray.Length < 3)
+            var parser = _parserFactory.GetParser(connection.OcppVersion);
+            var parsed = parser.Parse(message);
+
+            if (parsed == null)
             {
                 _logger.LogWarning("Invalid OCPP message format from {ChargePointId}", connection.ChargePointId);
                 return null;
             }
 
-            var messageType = jsonArray[0].GetInt32();
-            var uniqueId = jsonArray[1].GetString() ?? string.Empty;
-
-            return messageType switch
+            return parsed.MessageType switch
             {
-                OcppMessageType.Call => await HandleCallAsync(connection, uniqueId, jsonArray),
-                OcppMessageType.CallResult => HandleCallResult(connection, uniqueId, jsonArray),
-                OcppMessageType.CallError => HandleCallError(connection, uniqueId, jsonArray),
-                _ => CreateErrorResponse(uniqueId, OcppErrorCode.ProtocolError, "Unknown message type")
+                OcppMessageType.Call => await HandleCallAsync(connection, parsed, parser),
+                OcppMessageType.CallResult => HandleCallResult(connection, parsed),
+                OcppMessageType.CallError => HandleCallError(connection, parsed),
+                _ => parser.SerializeCallError(parsed.UniqueId, OcppErrorCode.ProtocolError, "Unknown message type")
             };
         }
         catch (JsonException ex)
@@ -80,32 +82,34 @@ public class OcppMessageHandler
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing message from {ChargePointId}", connection.ChargePointId);
-            return CreateErrorResponse("", OcppErrorCode.InternalError, ex.Message);
+            var parser = _parserFactory.GetParser(connection.OcppVersion);
+            return parser.SerializeCallError("", OcppErrorCode.InternalError, ex.Message);
         }
     }
 
-    private async Task<string> HandleCallAsync(OcppConnection connection, string uniqueId, JsonElement[] jsonArray)
+    private async Task<string> HandleCallAsync(OcppConnection connection, ParsedOcppMessage parsed, IOcppMessageParser parser)
     {
-        var action = jsonArray[2].GetString() ?? string.Empty;
-        var payload = jsonArray.Length > 3 ? jsonArray[3] : default;
+        var action = parsed.Action ?? string.Empty;
+        var payload = parsed.Payload;
+        var uniqueId = parsed.UniqueId;
         var sw = Stopwatch.StartNew();
 
-        _logger.LogInformation("Handling {Action} from {ChargePointId} [uid={UniqueId}]",
-            action, connection.ChargePointId, uniqueId);
+        _logger.LogInformation("Handling {Action} from {ChargePointId} [uid={UniqueId}, proto={OcppVersion}]",
+            action, connection.ChargePointId, uniqueId, connection.OcppVersion);
 
         var result = action switch
         {
-            "BootNotification" => await HandleBootNotificationAsync(connection, uniqueId, payload),
-            "Heartbeat" => await HandleHeartbeatAsync(connection, uniqueId),
-            "StatusNotification" => await HandleStatusNotificationAsync(connection, uniqueId, payload),
-            "StartTransaction" => await HandleStartTransactionAsync(connection, uniqueId, payload),
-            "StopTransaction" => await HandleStopTransactionAsync(connection, uniqueId, payload),
-            "MeterValues" => await HandleMeterValuesAsync(connection, uniqueId, payload),
-            "Authorize" => await HandleAuthorizeAsync(uniqueId, payload),
-            "DataTransfer" => HandleDataTransfer(uniqueId, payload),
-            "DiagnosticsStatusNotification" => await HandleDiagnosticsStatusNotificationAsync(connection, uniqueId, payload),
-            "FirmwareStatusNotification" => await HandleFirmwareStatusNotificationAsync(connection, uniqueId, payload),
-            _ => CreateErrorResponse(uniqueId, OcppErrorCode.NotImplemented, $"Action {action} not implemented")
+            "BootNotification" => await HandleBootNotificationAsync(connection, uniqueId, payload, parser),
+            "Heartbeat" => await HandleHeartbeatAsync(connection, uniqueId, parser),
+            "StatusNotification" => await HandleStatusNotificationAsync(connection, uniqueId, payload, parser),
+            "StartTransaction" => await HandleStartTransactionAsync(connection, uniqueId, payload, parser),
+            "StopTransaction" => await HandleStopTransactionAsync(connection, uniqueId, payload, parser),
+            "MeterValues" => await HandleMeterValuesAsync(connection, uniqueId, payload, parser),
+            "Authorize" => await HandleAuthorizeAsync(uniqueId, payload, parser),
+            "DataTransfer" => HandleDataTransfer(uniqueId, payload, parser),
+            "DiagnosticsStatusNotification" => await HandleDiagnosticsStatusNotificationAsync(connection, uniqueId, payload, parser),
+            "FirmwareStatusNotification" => await HandleFirmwareStatusNotificationAsync(connection, uniqueId, payload, parser),
+            _ => parser.SerializeCallError(uniqueId, OcppErrorCode.NotImplemented, $"Action {action} not implemented")
         };
 
         sw.Stop();
@@ -150,11 +154,11 @@ public class OcppMessageHandler
         }
     }
 
-    private async Task<string> HandleBootNotificationAsync(OcppConnection connection, string uniqueId, JsonElement payload)
+    private async Task<string> HandleBootNotificationAsync(OcppConnection connection, string uniqueId, JsonElement payload, IOcppMessageParser parser)
     {
         var request = JsonSerializer.Deserialize<BootNotificationRequest>(payload.GetRawText());
         if (request == null)
-            return CreateErrorResponse(uniqueId, OcppErrorCode.FormationViolation, "Invalid BootNotification payload");
+            return parser.SerializeCallError(uniqueId, OcppErrorCode.FormationViolation, "Invalid BootNotification payload");
 
         _logger.LogInformation("BootNotification from {ChargePointId}: Vendor={Vendor}, Model={Model}, FW={FirmwareVersion}",
             connection.ChargePointId, request.ChargePointVendor, request.ChargePointModel, request.FirmwareVersion);
@@ -202,10 +206,10 @@ public class OcppMessageHandler
             Interval = vendorProfile.HeartbeatIntervalSeconds
         };
 
-        return CreateCallResult(uniqueId, response);
+        return parser.SerializeCallResult(uniqueId, response);
     }
 
-    private async Task<string> HandleHeartbeatAsync(OcppConnection connection, string uniqueId)
+    private async Task<string> HandleHeartbeatAsync(OcppConnection connection, string uniqueId, IOcppMessageParser parser)
     {
         connection.RecordHeartbeat();
         _logger.LogDebug("Heartbeat from {ChargePointId}", connection.ChargePointId);
@@ -218,14 +222,14 @@ public class OcppMessageHandler
             CurrentTime = DateTime.UtcNow.ToString("o")
         };
 
-        return CreateCallResult(uniqueId, response);
+        return parser.SerializeCallResult(uniqueId, response);
     }
 
-    private async Task<string> HandleStatusNotificationAsync(OcppConnection connection, string uniqueId, JsonElement payload)
+    private async Task<string> HandleStatusNotificationAsync(OcppConnection connection, string uniqueId, JsonElement payload, IOcppMessageParser parser)
     {
         var request = JsonSerializer.Deserialize<StatusNotificationRequest>(payload.GetRawText());
         if (request == null)
-            return CreateErrorResponse(uniqueId, OcppErrorCode.FormationViolation, "Invalid StatusNotification payload");
+            return parser.SerializeCallError(uniqueId, OcppErrorCode.FormationViolation, "Invalid StatusNotification payload");
 
         _logger.LogInformation("StatusNotification from {ChargePointId}: Connector={ConnectorId}, Status={Status}, Error={ErrorCode}",
             connection.ChargePointId, request.ConnectorId, request.Status, request.ErrorCode);
@@ -252,14 +256,14 @@ public class OcppMessageHandler
                 statusResult.NewStatus);
         }
 
-        return CreateCallResult(uniqueId, new StatusNotificationResponse());
+        return parser.SerializeCallResult(uniqueId, new StatusNotificationResponse());
     }
 
-    private async Task<string> HandleStartTransactionAsync(OcppConnection connection, string uniqueId, JsonElement payload)
+    private async Task<string> HandleStartTransactionAsync(OcppConnection connection, string uniqueId, JsonElement payload, IOcppMessageParser parser)
     {
         var request = JsonSerializer.Deserialize<StartTransactionRequest>(payload.GetRawText());
         if (request == null)
-            return CreateErrorResponse(uniqueId, OcppErrorCode.FormationViolation, "Invalid StartTransaction payload");
+            return parser.SerializeCallError(uniqueId, OcppErrorCode.FormationViolation, "Invalid StartTransaction payload");
 
         _logger.LogInformation("StartTransaction from {ChargePointId}: Connector={ConnectorId}, IdTag={IdTag}, MeterStart={MeterStart}",
             connection.ChargePointId, request.ConnectorId, request.IdTag, request.MeterStart);
@@ -295,14 +299,14 @@ public class OcppMessageHandler
             }
         };
 
-        return CreateCallResult(uniqueId, response);
+        return parser.SerializeCallResult(uniqueId, response);
     }
 
-    private async Task<string> HandleStopTransactionAsync(OcppConnection connection, string uniqueId, JsonElement payload)
+    private async Task<string> HandleStopTransactionAsync(OcppConnection connection, string uniqueId, JsonElement payload, IOcppMessageParser parser)
     {
         var request = JsonSerializer.Deserialize<StopTransactionRequest>(payload.GetRawText());
         if (request == null)
-            return CreateErrorResponse(uniqueId, OcppErrorCode.FormationViolation, "Invalid StopTransaction payload");
+            return parser.SerializeCallError(uniqueId, OcppErrorCode.FormationViolation, "Invalid StopTransaction payload");
 
         _logger.LogInformation("StopTransaction from {ChargePointId}: TransactionId={TransactionId}, MeterStop={MeterStop}, Reason={Reason}, TransactionData={DataCount}",
             connection.ChargePointId, request.TransactionId, request.MeterStop, request.Reason,
@@ -357,14 +361,14 @@ public class OcppMessageHandler
             }
         };
 
-        return CreateCallResult(uniqueId, response);
+        return parser.SerializeCallResult(uniqueId, response);
     }
 
-    private async Task<string> HandleMeterValuesAsync(OcppConnection connection, string uniqueId, JsonElement payload)
+    private async Task<string> HandleMeterValuesAsync(OcppConnection connection, string uniqueId, JsonElement payload, IOcppMessageParser parser)
     {
         var request = JsonSerializer.Deserialize<MeterValuesRequest>(payload.GetRawText());
         if (request == null)
-            return CreateErrorResponse(uniqueId, OcppErrorCode.FormationViolation, "Invalid MeterValues payload");
+            return parser.SerializeCallError(uniqueId, OcppErrorCode.FormationViolation, "Invalid MeterValues payload");
 
         // Resolve vendor profile for this connection
         var vendorProfile = _vendorProfileFactory.Resolve(connection.VendorProfileType);
@@ -414,10 +418,10 @@ public class OcppMessageHandler
             }
         }
 
-        return CreateCallResult(uniqueId, new MeterValuesResponse());
+        return parser.SerializeCallResult(uniqueId, new MeterValuesResponse());
     }
 
-    private async Task<string> HandleAuthorizeAsync(string uniqueId, JsonElement payload)
+    private async Task<string> HandleAuthorizeAsync(string uniqueId, JsonElement payload, IOcppMessageParser parser)
     {
         var idTag = string.Empty;
         if (payload.ValueKind == JsonValueKind.Object && payload.TryGetProperty("idTag", out var idTagElement))
@@ -437,10 +441,10 @@ public class OcppMessageHandler
             }
         };
 
-        return CreateCallResult(uniqueId, response);
+        return parser.SerializeCallResult(uniqueId, response);
     }
 
-    private string HandleDataTransfer(string uniqueId, JsonElement payload)
+    private string HandleDataTransfer(string uniqueId, JsonElement payload, IOcppMessageParser parser)
     {
         _logger.LogDebug("DataTransfer received: {Payload}", payload.GetRawText());
 
@@ -450,10 +454,10 @@ public class OcppMessageHandler
             data = (string?)null
         };
 
-        return CreateCallResult(uniqueId, response);
+        return parser.SerializeCallResult(uniqueId, response);
     }
 
-    private async Task<string> HandleDiagnosticsStatusNotificationAsync(OcppConnection connection, string uniqueId, JsonElement payload)
+    private async Task<string> HandleDiagnosticsStatusNotificationAsync(OcppConnection connection, string uniqueId, JsonElement payload, IOcppMessageParser parser)
     {
         var status = payload.TryGetProperty("status", out var statusProp) ? statusProp.GetString() : "Unknown";
         _logger.LogInformation("DiagnosticsStatusNotification from {ChargePointId}: Status={Status}",
@@ -461,10 +465,10 @@ public class OcppMessageHandler
 
         await _ocppService.HandleDiagnosticsStatusAsync(connection.ChargePointId, status ?? "Unknown");
 
-        return CreateCallResult(uniqueId, new { });
+        return parser.SerializeCallResult(uniqueId, new { });
     }
 
-    private async Task<string> HandleFirmwareStatusNotificationAsync(OcppConnection connection, string uniqueId, JsonElement payload)
+    private async Task<string> HandleFirmwareStatusNotificationAsync(OcppConnection connection, string uniqueId, JsonElement payload, IOcppMessageParser parser)
     {
         var status = payload.TryGetProperty("status", out var statusProp) ? statusProp.GetString() : "Unknown";
         _logger.LogInformation("FirmwareStatusNotification from {ChargePointId}: Status={Status}",
@@ -472,36 +476,35 @@ public class OcppMessageHandler
 
         await _ocppService.HandleFirmwareStatusAsync(connection.ChargePointId, status ?? "Unknown");
 
-        return CreateCallResult(uniqueId, new { });
+        return parser.SerializeCallResult(uniqueId, new { });
     }
 
-    private string? HandleCallResult(OcppConnection connection, string uniqueId, JsonElement[] jsonArray)
+    private string? HandleCallResult(OcppConnection connection, ParsedOcppMessage parsed)
     {
-        var payload = jsonArray.Length > 2 ? jsonArray[2].GetRawText() : "{}";
+        var payload = parsed.Payload.ValueKind != JsonValueKind.Undefined
+            ? parsed.Payload.GetRawText()
+            : "{}";
 
-        if (connection.TryCompletePendingRequest(uniqueId, payload))
+        if (connection.TryCompletePendingRequest(parsed.UniqueId, payload))
         {
             _logger.LogDebug("Received CallResult for {UniqueId} from {ChargePointId}",
-                uniqueId, connection.ChargePointId);
+                parsed.UniqueId, connection.ChargePointId);
         }
         else
         {
             _logger.LogWarning("Received unexpected CallResult for {UniqueId} from {ChargePointId}",
-                uniqueId, connection.ChargePointId);
+                parsed.UniqueId, connection.ChargePointId);
         }
 
         return null; // No response needed for CallResult
     }
 
-    private string? HandleCallError(OcppConnection connection, string uniqueId, JsonElement[] jsonArray)
+    private string? HandleCallError(OcppConnection connection, ParsedOcppMessage parsed)
     {
-        var errorCode = jsonArray.Length > 2 ? jsonArray[2].GetString() : "Unknown";
-        var errorDescription = jsonArray.Length > 3 ? jsonArray[3].GetString() : "";
-
         _logger.LogWarning("Received CallError from {ChargePointId}: {ErrorCode} - {ErrorDescription}",
-            connection.ChargePointId, errorCode, errorDescription);
+            connection.ChargePointId, parsed.ErrorCode, parsed.ErrorDescription);
 
-        connection.TryCompletePendingRequest(uniqueId, $"ERROR:{errorCode}:{errorDescription}");
+        connection.TryCompletePendingRequest(parsed.UniqueId, $"ERROR:{parsed.ErrorCode}:{parsed.ErrorDescription}");
 
         return null; // No response needed for CallError
     }
@@ -566,15 +569,4 @@ public class OcppMessageHandler
         };
     }
 
-    private static string CreateCallResult(string uniqueId, object payload)
-    {
-        var response = new object[] { OcppMessageType.CallResult, uniqueId, payload };
-        return JsonSerializer.Serialize(response);
-    }
-
-    private static string CreateErrorResponse(string uniqueId, string errorCode, string errorDescription)
-    {
-        var response = new object[] { OcppMessageType.CallError, uniqueId, errorCode, errorDescription, new { } };
-        return JsonSerializer.Serialize(response);
-    }
 }

@@ -46,6 +46,11 @@ public class OcppConnection
     public Guid? StationId { get; private set; }
 
     /// <summary>
+    /// OCPP protocol version negotiated during WebSocket handshake.
+    /// </summary>
+    public OcppProtocolVersion OcppVersion { get; }
+
+    /// <summary>
     /// Detected vendor profile type for this connection.
     /// </summary>
     public VendorProfileType VendorProfileType { get; private set; } = VendorProfileType.Generic;
@@ -56,10 +61,11 @@ public class OcppConnection
     private readonly Dictionary<string, TaskCompletionSource<string>> _pendingRequests = new();
     private readonly object _lock = new();
 
-    public OcppConnection(string chargePointId, WebSocket webSocket)
+    public OcppConnection(string chargePointId, WebSocket webSocket, OcppProtocolVersion ocppVersion = OcppProtocolVersion.Ocpp16J)
     {
         ChargePointId = chargePointId;
         WebSocket = webSocket;
+        OcppVersion = ocppVersion;
         ConnectedAt = DateTime.UtcNow;
         LastHeartbeat = DateTime.UtcNow;
         IsRegistered = false;
@@ -127,20 +133,23 @@ public class OcppConnection
 
     /// <summary>
     /// Send an OCPP Call message and wait for a response with timeout.
+    /// Uses the connection's negotiated protocol version for framing.
     /// </summary>
-    public async Task<string?> SendCallAsync(string action, object payload, TimeSpan timeout)
+    public async Task<string?> SendCallAsync(string action, object payload, TimeSpan timeout, IOcppMessageParser? parser = null)
     {
         if (WebSocket.State != WebSocketState.Open)
             return null;
 
         var uniqueId = Guid.NewGuid().ToString("N")[..8];
-        var message = JsonSerializer.Serialize(new object[]
-        {
-            OcppMessageType.Call,
-            uniqueId,
-            action,
-            payload
-        });
+        var message = parser != null
+            ? parser.SerializeCall(uniqueId, action, payload)
+            : JsonSerializer.Serialize(new object[]
+            {
+                OcppMessageType.Call,
+                uniqueId,
+                action,
+                payload
+            });
 
         var tcs = RegisterPendingRequest(uniqueId);
 

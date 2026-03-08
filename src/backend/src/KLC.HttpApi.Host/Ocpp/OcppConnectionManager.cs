@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.WebSockets;
+using KLC.Enums;
 using Microsoft.Extensions.Logging;
 
 namespace KLC.Ocpp;
@@ -28,9 +29,9 @@ public class OcppConnectionManager
     /// <summary>
     /// Add a new connection.
     /// </summary>
-    public OcppConnection AddConnection(string chargePointId, WebSocket webSocket)
+    public OcppConnection AddConnection(string chargePointId, WebSocket webSocket, OcppProtocolVersion ocppVersion = OcppProtocolVersion.Ocpp16J)
     {
-        var connection = new OcppConnection(chargePointId, webSocket);
+        var connection = new OcppConnection(chargePointId, webSocket, ocppVersion);
 
         // Remove existing connection if any
         if (_connections.TryRemove(chargePointId, out var existing))

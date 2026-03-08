@@ -188,6 +188,7 @@ public class KLCHttpApiHostModule : AbpModule
     {
         // Register OCPP services
         context.Services.AddSingleton<OcppConnectionManager>();
+        context.Services.AddSingleton<OcppMessageParserFactory>();
         context.Services.AddScoped<OcppMessageHandler>();
         context.Services.AddHostedService<HeartbeatMonitorService>();
         context.Services.AddScoped<IOcppRemoteCommandService, OcppRemoteCommandService>();

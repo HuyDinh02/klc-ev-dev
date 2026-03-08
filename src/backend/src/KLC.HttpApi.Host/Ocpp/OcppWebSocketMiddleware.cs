@@ -1,9 +1,11 @@
 using System;
+using System.Linq;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using KLC.Enums;
 using KLC.Stations;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,6 +25,11 @@ public class OcppWebSocketMiddleware
     private readonly IServiceScopeFactory _scopeFactory;
     private const int BufferSize = 4096;
     private static readonly Regex CpIdPattern = new(@"^[A-Za-z0-9\-_.]{1,64}$", RegexOptions.Compiled);
+
+    /// <summary>
+    /// Supported OCPP subprotocols in order of preference (newest first).
+    /// </summary>
+    private static readonly string[] SupportedSubprotocols = ["ocpp2.0.1", "ocpp1.6"];
 
     public OcppWebSocketMiddleware(
         RequestDelegate next,
@@ -120,9 +127,15 @@ public class OcppWebSocketMiddleware
 
         _logger.LogInformation("WebSocket connection request from ChargePoint {ChargePointId}", chargePointId);
 
-        // Accept WebSocket with OCPP subprotocol
-        var webSocket = await context.WebSockets.AcceptWebSocketAsync("ocpp1.6");
-        var connection = connectionManager.AddConnection(chargePointId, webSocket);
+        // Negotiate OCPP subprotocol from client's Sec-WebSocket-Protocol header
+        var (subprotocol, ocppVersion) = NegotiateSubprotocol(context);
+
+        _logger.LogInformation("ChargePoint {ChargePointId} negotiated protocol: {Subprotocol} ({OcppVersion})",
+            chargePointId, subprotocol, ocppVersion);
+
+        // Accept WebSocket with negotiated OCPP subprotocol
+        var webSocket = await context.WebSockets.AcceptWebSocketAsync(subprotocol);
+        var connection = connectionManager.AddConnection(chargePointId, webSocket, ocppVersion);
 
         try
         {
@@ -240,5 +253,34 @@ public class OcppWebSocketMiddleware
             WebSocketMessageType.Text,
             true,
             CancellationToken.None);
+    }
+
+    /// <summary>
+    /// Negotiate OCPP subprotocol from the client's Sec-WebSocket-Protocol header.
+    /// Returns the best matching subprotocol and its version enum.
+    /// Falls back to ocpp1.6 if no match or no header.
+    /// </summary>
+    private static (string subprotocol, OcppProtocolVersion version) NegotiateSubprotocol(HttpContext context)
+    {
+        var requestedProtocols = context.WebSockets.WebSocketRequestedProtocols;
+
+        if (requestedProtocols.Count > 0)
+        {
+            // Pick the first supported subprotocol that the client also supports
+            foreach (var supported in SupportedSubprotocols)
+            {
+                if (requestedProtocols.Contains(supported, StringComparer.OrdinalIgnoreCase))
+                {
+                    return supported switch
+                    {
+                        "ocpp2.0.1" => (supported, OcppProtocolVersion.Ocpp201),
+                        _ => (supported, OcppProtocolVersion.Ocpp16J)
+                    };
+                }
+            }
+        }
+
+        // Default: OCPP 1.6J (most chargers in the field)
+        return ("ocpp1.6", OcppProtocolVersion.Ocpp16J);
     }
 }
