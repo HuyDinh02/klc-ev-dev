@@ -4,6 +4,8 @@
 -- Run with: PGPASSWORD=postgres psql -h localhost -p 5433 -U postgres -d KLC -f scripts/seed-demo-data.sql
 -- ============================================================
 
+BEGIN;
+
 -- ============================================================
 -- 0. ABP IDENTITY - ADMIN USERS, ROLES & PERMISSIONS
 -- ============================================================
@@ -673,8 +675,10 @@ VALUES
 ('5c000000-0001-0001-0001-000000000014', 'b1111111-1111-1111-1111-111111111112', 1, 'Available', 'Charging', NOW() - INTERVAL '2 hours', 'OCPP', 'Session started - Transaction 1012'),
 ('5c000000-0001-0001-0001-000000000015', 'b1111111-1111-1111-1111-111111111112', 1, 'Charging', 'Available', NOW() - INTERVAL '1 hour 30 minutes', 'OCPP', 'Session completed - 15 kWh delivered');
 
+COMMIT;
+
 -- ============================================================
--- VERIFICATION
+-- VERIFICATION (runs outside transaction so it reads committed data)
 -- ============================================================
 SELECT 'Seed Data Summary' AS info;
 SELECT '=================' AS separator;

@@ -1,0 +1,16 @@
+# OCPP Charger Vendor IP Allowlist
+# Format: one CIDR per line
+# Lines starting with # are comments
+#
+# Add vendor outbound IP ranges here.
+# After editing, run:
+#   gcloud compute security-policies rules update 1000 \
+#     --security-policy=evcms-dev-ocpp-armor \
+#     --src-ip-ranges="$(grep -v '^#' infra/vendor-allowlist.txt | grep -v '^$' | paste -sd, -)"
+#
+# --- EmeSoft Office (dev/testing) ---
+0.0.0.0/0
+# TODO: Replace 0.0.0.0/0 with actual vendor CIDRs before production.
+# Example:
+# 203.0.113.0/24
+# 198.51.100.0/24

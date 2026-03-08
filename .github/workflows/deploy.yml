@@ -123,8 +123,10 @@ jobs:
             --max-instances=3
             --timeout=3600
             --session-affinity
+            --vpc-connector=klc-vpc-connector
+            --vpc-egress=private-ranges-only
             --set-env-vars=ASPNETCORE_ENVIRONMENT=Production
-            --set-secrets=ConnectionStrings__Default=db-connection-string:latest,Jwt__SecretKey=jwt-secret-key:latest,StringEncryption__DefaultPassPhrase=string-encryption-passphrase:latest
+            --set-secrets=ConnectionStrings__Default=db-connection-string:latest,ConnectionStrings__Redis=redis-connection-string:latest,Jwt__SecretKey=jwt-secret-key:latest,StringEncryption__DefaultPassPhrase=string-encryption-passphrase:latest,Payment__MoMo__PartnerCode=momo-partner-code:latest,Payment__MoMo__AccessKey=momo-access-key:latest,Payment__MoMo__SecretKey=momo-secret-key:latest,Payment__VnPay__TmnCode=vnpay-tmn-code:latest,Payment__VnPay__HashSecret=vnpay-hash-secret:latest
 
   deploy-driver-bff:
     name: Deploy Driver BFF
@@ -170,8 +172,10 @@ jobs:
             --cpu=1
             --min-instances=0
             --max-instances=5
+            --vpc-connector=klc-vpc-connector
+            --vpc-egress=private-ranges-only
             --set-env-vars=ASPNETCORE_ENVIRONMENT=Production
-            --set-secrets=ConnectionStrings__Default=db-connection-string:latest,ConnectionStrings__Redis=redis-connection-string:latest,Jwt__SecretKey=jwt-secret-key:latest
+            --set-secrets=ConnectionStrings__Default=db-connection-string:latest,ConnectionStrings__Redis=redis-connection-string:latest,Jwt__SecretKey=jwt-secret-key:latest,Payment__MoMo__PartnerCode=momo-partner-code:latest,Payment__MoMo__AccessKey=momo-access-key:latest,Payment__MoMo__SecretKey=momo-secret-key:latest,Payment__VnPay__TmnCode=vnpay-tmn-code:latest,Payment__VnPay__HashSecret=vnpay-hash-secret:latest
 
   deploy-admin-portal:
     name: Deploy Admin Portal

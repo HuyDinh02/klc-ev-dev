@@ -1,0 +1,378 @@
+name: Deploy Dev
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - "src/backend/**"
+      - "src/admin-portal/**"
+      - ".github/workflows/deploy-dev.yml"
+  workflow_dispatch:
+    inputs:
+      run_migrations:
+        description: "Run EF Core database migrations"
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-dev-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  GCP_REGION: ${{ secrets.GCP_REGION }}
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  AR_REPO: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/evcms-dev-ar
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Detect which paths changed
+  # ---------------------------------------------------------------------------
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      admin-portal: ${{ steps.filter.outputs.admin-portal }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'src/backend/**'
+            admin-portal:
+              - 'src/admin-portal/**'
+
+  # ---------------------------------------------------------------------------
+  # Backend tests (gate for deploy)
+  # ---------------------------------------------------------------------------
+  test:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: KLC
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+          dotnet-quality: "preview"
+
+      - name: Test
+        run: dotnet test src/backend -c Release --logger "trx;LogFileName=test-results.trx" --results-directory ./test-results
+        env:
+          ConnectionStrings__Default: "Host=localhost;Port=5433;Database=KLC;Username=postgres;Password=postgres"
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: ./test-results
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # Build & push Docker images to Artifact Registry
+  # ---------------------------------------------------------------------------
+  build-and-push:
+    name: Build & Push Images
+    runs-on: ubuntu-latest
+    needs: [changes, test]
+    if: |
+      always() &&
+      (needs.changes.outputs.backend == 'true' || needs.changes.outputs.admin-portal == 'true') &&
+      (needs.test.result == 'success' || needs.test.result == 'skipped')
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SA_EMAIL }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
+
+      # --- Backend API ---
+      - name: Build and push Backend API image
+        if: needs.changes.outputs.backend == 'true'
+        run: |
+          IMAGE="${{ env.AR_REPO }}/backend-api:${{ github.sha }}"
+          docker build -t "${IMAGE}" \
+            -f src/backend/src/KLC.HttpApi.Host/Dockerfile \
+            src/backend
+          docker tag "${IMAGE}" "${{ env.AR_REPO }}/backend-api:latest"
+          docker push "${IMAGE}"
+          docker push "${{ env.AR_REPO }}/backend-api:latest"
+
+      # --- BFF Socket ---
+      - name: Build and push BFF Socket image
+        if: needs.changes.outputs.backend == 'true'
+        run: |
+          IMAGE="${{ env.AR_REPO }}/bff-socket:${{ github.sha }}"
+          docker build -t "${IMAGE}" \
+            -f src/backend/src/KLC.Driver.BFF/Dockerfile \
+            src/backend
+          docker tag "${IMAGE}" "${{ env.AR_REPO }}/bff-socket:latest"
+          docker push "${IMAGE}"
+          docker push "${{ env.AR_REPO }}/bff-socket:latest"
+
+      # --- OCPP Gateway (same Dockerfile as Backend API) ---
+      - name: Build and push OCPP Gateway image
+        if: needs.changes.outputs.backend == 'true'
+        run: |
+          IMAGE="${{ env.AR_REPO }}/ocpp-gateway:${{ github.sha }}"
+          docker build -t "${IMAGE}" \
+            -f src/backend/src/KLC.HttpApi.Host/Dockerfile \
+            src/backend
+          docker tag "${IMAGE}" "${{ env.AR_REPO }}/ocpp-gateway:latest"
+          docker push "${IMAGE}"
+          docker push "${{ env.AR_REPO }}/ocpp-gateway:latest"
+
+      # --- Admin Portal ---
+      - name: Build and push Admin Portal image
+        if: needs.changes.outputs.admin-portal == 'true'
+        run: |
+          IMAGE="${{ env.AR_REPO }}/admin-portal:${{ github.sha }}"
+          docker build -t "${IMAGE}" \
+            --build-arg NEXT_PUBLIC_API_URL=https://api.ev.odcall.com \
+            -f src/admin-portal/Dockerfile \
+            src/admin-portal
+          docker tag "${IMAGE}" "${{ env.AR_REPO }}/admin-portal:latest"
+          docker push "${IMAGE}"
+          docker push "${{ env.AR_REPO }}/admin-portal:latest"
+
+  # ---------------------------------------------------------------------------
+  # Deploy Backend API
+  # ---------------------------------------------------------------------------
+  deploy-backend-api:
+    name: Deploy Backend API
+    runs-on: ubuntu-latest
+    needs: [changes, build-and-push]
+    if: needs.changes.outputs.backend == 'true'
+    timeout-minutes: 10
+
+    steps:
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SA_EMAIL }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: evcms-dev-backend-api
+          region: ${{ env.GCP_REGION }}
+          image: ${{ env.AR_REPO }}/backend-api:${{ github.sha }}
+          flags: >-
+            --port=8080
+            --memory=1Gi
+            --cpu=1
+            --min-instances=0
+            --max-instances=3
+            --timeout=3600
+            --session-affinity
+            --vpc-connector=evcms-dev-vpc-connector
+            --vpc-egress=private-ranges-only
+            --set-env-vars=ASPNETCORE_ENVIRONMENT=Development
+            --set-secrets=ConnectionStrings__Default=evcms-dev-db-connection-string:latest,ConnectionStrings__Redis=evcms-dev-redis-auth-string:latest,Jwt__SecretKey=evcms-dev-jwt-secret-key:latest,StringEncryption__DefaultPassPhrase=evcms-dev-string-encryption-passphrase:latest,Payment__MoMo__PartnerCode=evcms-dev-momo-partner-code:latest,Payment__MoMo__AccessKey=evcms-dev-momo-access-key:latest,Payment__MoMo__SecretKey=evcms-dev-momo-secret-key:latest,Payment__VnPay__TmnCode=evcms-dev-vnpay-tmn-code:latest,Payment__VnPay__HashSecret=evcms-dev-vnpay-hash-secret:latest
+
+  # ---------------------------------------------------------------------------
+  # Deploy BFF Socket
+  # ---------------------------------------------------------------------------
+  deploy-bff-socket:
+    name: Deploy BFF Socket
+    runs-on: ubuntu-latest
+    needs: [changes, build-and-push]
+    if: needs.changes.outputs.backend == 'true'
+    timeout-minutes: 10
+
+    steps:
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SA_EMAIL }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: evcms-dev-bff-socket
+          region: ${{ env.GCP_REGION }}
+          image: ${{ env.AR_REPO }}/bff-socket:${{ github.sha }}
+          flags: >-
+            --port=8080
+            --memory=512Mi
+            --cpu=1
+            --min-instances=0
+            --max-instances=5
+            --vpc-connector=evcms-dev-vpc-connector
+            --vpc-egress=private-ranges-only
+            --set-env-vars=ASPNETCORE_ENVIRONMENT=Development
+            --set-secrets=ConnectionStrings__Default=evcms-dev-db-connection-string:latest,ConnectionStrings__Redis=evcms-dev-redis-auth-string:latest,Jwt__SecretKey=evcms-dev-jwt-secret-key:latest,StringEncryption__DefaultPassPhrase=evcms-dev-string-encryption-passphrase:latest,Payment__MoMo__PartnerCode=evcms-dev-momo-partner-code:latest,Payment__MoMo__AccessKey=evcms-dev-momo-access-key:latest,Payment__MoMo__SecretKey=evcms-dev-momo-secret-key:latest,Payment__VnPay__TmnCode=evcms-dev-vnpay-tmn-code:latest,Payment__VnPay__HashSecret=evcms-dev-vnpay-hash-secret:latest
+
+  # ---------------------------------------------------------------------------
+  # Deploy OCPP Gateway
+  # ---------------------------------------------------------------------------
+  deploy-ocpp-gateway:
+    name: Deploy OCPP Gateway
+    runs-on: ubuntu-latest
+    needs: [changes, build-and-push]
+    if: needs.changes.outputs.backend == 'true'
+    timeout-minutes: 10
+
+    steps:
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SA_EMAIL }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: evcms-dev-ocpp-gateway
+          region: ${{ env.GCP_REGION }}
+          image: ${{ env.AR_REPO }}/ocpp-gateway:${{ github.sha }}
+          flags: >-
+            --port=8080
+            --memory=1Gi
+            --cpu=1
+            --min-instances=1
+            --max-instances=3
+            --timeout=3600
+            --session-affinity
+            --vpc-connector=evcms-dev-vpc-connector
+            --vpc-egress=private-ranges-only
+            --set-env-vars=ASPNETCORE_ENVIRONMENT=Development
+            --set-secrets=ConnectionStrings__Default=evcms-dev-db-connection-string:latest,ConnectionStrings__Redis=evcms-dev-redis-auth-string:latest,Jwt__SecretKey=evcms-dev-jwt-secret-key:latest,StringEncryption__DefaultPassPhrase=evcms-dev-string-encryption-passphrase:latest,Payment__MoMo__PartnerCode=evcms-dev-momo-partner-code:latest,Payment__MoMo__AccessKey=evcms-dev-momo-access-key:latest,Payment__MoMo__SecretKey=evcms-dev-momo-secret-key:latest,Payment__VnPay__TmnCode=evcms-dev-vnpay-tmn-code:latest,Payment__VnPay__HashSecret=evcms-dev-vnpay-hash-secret:latest,Ocpp__AuthKey=evcms-dev-ocpp-auth-key:latest
+
+  # ---------------------------------------------------------------------------
+  # Deploy Admin Portal
+  # ---------------------------------------------------------------------------
+  deploy-admin-portal:
+    name: Deploy Admin Portal
+    runs-on: ubuntu-latest
+    needs: [changes, build-and-push]
+    if: needs.changes.outputs.admin-portal == 'true'
+    timeout-minutes: 10
+
+    steps:
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SA_EMAIL }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: evcms-dev-admin-portal
+          region: ${{ env.GCP_REGION }}
+          image: ${{ env.AR_REPO }}/admin-portal:${{ github.sha }}
+          flags: >-
+            --port=3000
+            --memory=512Mi
+            --cpu=1
+            --min-instances=0
+            --max-instances=3
+            --set-env-vars=NODE_ENV=production,BACKEND_API_URL=https://api.ev.odcall.com,OIDC_CLIENT_ID=KLC_Api
+            --set-secrets=OIDC_CLIENT_SECRET=evcms-dev-oidc-client-secret:latest
+
+  # ---------------------------------------------------------------------------
+  # Database Migration (manual trigger only)
+  # ---------------------------------------------------------------------------
+  db-migrate:
+    name: Run Database Migrations
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.run_migrations == 'true'
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SA_EMAIL }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+          dotnet-quality: "preview"
+
+      - name: Install EF Core tools
+        run: dotnet tool install --global dotnet-ef
+
+      - name: Run database migrations
+        run: |
+          dotnet ef database update \
+            --project src/backend/src/KLC.EntityFrameworkCore \
+            --startup-project src/backend/src/KLC.HttpApi.Host
+        env:
+          ConnectionStrings__Default: ${{ secrets.DEV_DB_CONNECTION_STRING }}
+          # NOTE: The DEV_DB_CONNECTION_STRING secret must contain the full
+          # connection string to the dev Cloud SQL instance. The runner must
+          # have network access (e.g., via Cloud SQL Auth Proxy or public IP
+          # with authorized networks). Example proxy setup:
+          #
+          #   gcloud components install cloud-sql-proxy
+          #   cloud-sql-proxy ${{ secrets.DEV_CLOUD_SQL_INSTANCE }} &
+          #   sleep 5
+          #
+          # Then use Host=127.0.0.1 in the connection string.
