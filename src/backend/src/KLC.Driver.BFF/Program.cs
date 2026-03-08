@@ -52,6 +52,9 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 });
 builder.Services.AddSingleton<ICacheService, RedisCacheService>();
 
+// Add HttpClient for payment gateways (MoMo API)
+builder.Services.AddHttpClient();
+
 // Add BFF services
 builder.Services.AddScoped<IStationBffService, StationBffService>();
 builder.Services.AddScoped<ISessionBffService, SessionBffService>();

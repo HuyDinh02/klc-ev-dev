@@ -96,6 +96,7 @@ public class KLCHttpApiHostModule : AbpModule
         ConfigureExceptionHttpStatusCodes();
         ConfigureHealthChecks(context, configuration);
         ConfigureRateLimiting(context);
+        ConfigureHttpClients(context);
     }
 
     private static void ConfigureRateLimiting(ServiceConfigurationContext context)
@@ -308,6 +309,12 @@ public class KLCHttpApiHostModule : AbpModule
                     .AllowCredentials();
             });
         });
+    }
+
+    private static void ConfigureHttpClients(ServiceConfigurationContext context)
+    {
+        // HttpClient for payment gateways (MoMo API)
+        context.Services.AddHttpClient();
     }
 
     private void ConfigureHealthChecks(ServiceConfigurationContext context, IConfiguration configuration)
