@@ -123,6 +123,7 @@ jobs:
             --max-instances=3
             --timeout=3600
             --session-affinity
+            --add-cloudsql-instances=klc-ev-charging:asia-southeast1:klc-postgres
             --vpc-connector=klc-connector
             --vpc-egress=private-ranges-only
             --set-env-vars=ASPNETCORE_ENVIRONMENT=Production
@@ -172,6 +173,7 @@ jobs:
             --cpu=1
             --min-instances=0
             --max-instances=5
+            --add-cloudsql-instances=klc-ev-charging:asia-southeast1:klc-postgres
             --vpc-connector=klc-connector
             --vpc-egress=private-ranges-only
             --set-env-vars=ASPNETCORE_ENVIRONMENT=Production
