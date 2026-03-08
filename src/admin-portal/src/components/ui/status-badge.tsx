@@ -8,6 +8,7 @@ import {
   FAULT_STATUS,
   ALERT_SEVERITY,
   MAINTENANCE_STATUS,
+  EINVOICE_STATUS,
   type StatusConfig,
 } from "@/lib/constants";
 import { Badge } from "./badge";
@@ -20,7 +21,8 @@ type StatusType =
   | "faultSeverity"
   | "faultStatus"
   | "alertSeverity"
-  | "maintenance";
+  | "maintenance"
+  | "eInvoice";
 
 const STATUS_MAPS: Record<StatusType, Record<number, StatusConfig>> = {
   connector: CONNECTOR_STATUS,
@@ -31,6 +33,7 @@ const STATUS_MAPS: Record<StatusType, Record<number, StatusConfig>> = {
   faultStatus: FAULT_STATUS,
   alertSeverity: ALERT_SEVERITY,
   maintenance: MAINTENANCE_STATUS,
+  eInvoice: EINVOICE_STATUS,
 };
 
 interface StatusBadgeProps {

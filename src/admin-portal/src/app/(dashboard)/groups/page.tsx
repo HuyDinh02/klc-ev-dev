@@ -5,6 +5,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatCard } from "@/components/ui/stat-card";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { SkeletonCard } from "@/components/ui/skeleton";
+import { Dialog, DialogHeader, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { api, stationGroupsApi } from "@/lib/api";
 import {
   Plus,
@@ -91,40 +97,24 @@ const GroupTypeIcons: Record<number, typeof MapPin> = {
   3: Tag,
 };
 
-const GroupTypeColors: Record<number, string> = {
-  0: "bg-blue-100 text-blue-700",
-  1: "bg-orange-100 text-orange-700",
-  2: "bg-green-100 text-green-700",
-  3: "bg-purple-100 text-purple-700",
+const GROUP_TYPE_STYLES: Record<number, { bg: string; text: string; iconColor: string }> = {
+  0: { bg: "bg-blue-100",   text: "text-blue-700",   iconColor: "bg-blue-100 text-blue-700" },
+  1: { bg: "bg-orange-100", text: "text-orange-700", iconColor: "bg-orange-100 text-orange-700" },
+  2: { bg: "bg-green-100",  text: "text-green-700",  iconColor: "bg-green-100 text-green-700" },
+  3: { bg: "bg-purple-100", text: "text-purple-700", iconColor: "bg-purple-100 text-purple-700" },
 };
 
-const StationStatusConfig: Record<string, { label: string; color: string }> = {
-  Offline: { label: "Offline", color: "bg-gray-100 text-gray-700" },
-  Available: { label: "Available", color: "bg-green-100 text-green-700" },
-  Occupied: { label: "Occupied", color: "bg-blue-100 text-blue-700" },
-  Unavailable: { label: "Unavailable", color: "bg-yellow-100 text-yellow-700" },
-  Faulted: { label: "Faulted", color: "bg-red-100 text-red-700" },
-  Decommissioned: { label: "Decommissioned", color: "bg-gray-200 text-gray-500" },
+/** Map string-based station status to numeric value for StatusBadge */
+const STATION_STATUS_NAME_TO_VALUE: Record<string, number> = {
+  Offline: 0,
+  Available: 1,
+  Occupied: 2,
+  Unavailable: 3,
+  Faulted: 4,
+  Decommissioned: 5,
 };
 
 // --- Components ---
-
-function StatCard({ icon: Icon, label, value, color }: {
-  icon: typeof Zap;
-  label: string;
-  value: number | string;
-  color: string;
-}) {
-  return (
-    <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${color}`}>
-      <Icon className="h-4 w-4 shrink-0" />
-      <div>
-        <p className="text-xs font-medium opacity-70">{label}</p>
-        <p className="text-sm font-bold">{value}</p>
-      </div>
-    </div>
-  );
-}
 
 function GroupForm({
   initialData,
@@ -156,12 +146,13 @@ function GroupForm({
   });
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{initialData ? "Edit Group" : "New Group"}</CardTitle>
-      </CardHeader>
-      <CardContent>
+    <Dialog open onClose={onCancel} size="xl">
+      <DialogHeader onClose={onCancel}>
+        {initialData ? "Edit Group" : "New Group"}
+      </DialogHeader>
+      <DialogContent>
         <form
+          id="group-form"
           onSubmit={(e) => {
             e.preventDefault();
             onSubmit({
@@ -179,7 +170,7 @@ function GroupForm({
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-                placeholder="e.g., Khu vực Hà Nội"
+                placeholder="e.g., Khu vuc Ha Noi"
                 required
               />
             </div>
@@ -240,17 +231,17 @@ function GroupForm({
               Active
             </label>
           )}
-          <div className="flex gap-2">
-            <Button type="submit" disabled={isLoading}>
-              {initialData ? "Update" : "Create"} Group
-            </Button>
-            <Button type="button" variant="outline" onClick={onCancel}>
-              Cancel
-            </Button>
-          </div>
         </form>
-      </CardContent>
-    </Card>
+      </DialogContent>
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="submit" form="group-form" disabled={isLoading}>
+          {initialData ? "Update" : "Create"} Group
+        </Button>
+      </DialogFooter>
+    </Dialog>
   );
 }
 
@@ -317,7 +308,7 @@ function GroupCard({
   });
 
   const TypeIcon = GroupTypeIcons[group.groupType] || Tag;
-  const typeColor = GroupTypeColors[group.groupType] || "bg-gray-100 text-gray-700";
+  const typeStyle = GROUP_TYPE_STYLES[group.groupType] || { bg: "bg-muted", text: "text-muted-foreground", iconColor: "bg-muted text-muted-foreground" };
   const stats = detail?.stats;
 
   return (
@@ -336,7 +327,7 @@ function GroupCard({
                   <ChevronRight className="h-5 w-5" />
                 )}
               </button>
-              <div className={`p-1.5 rounded ${typeColor}`}>
+              <div className={`p-1.5 rounded ${typeStyle.bg} ${typeStyle.text}`}>
                 <TypeIcon className="h-4 w-4" />
               </div>
               <div className="min-w-0">
@@ -428,19 +419,23 @@ function GroupCard({
         {expanded && (
           <CardContent className="pt-0 space-y-4">
             {detailLoading ? (
-              <div className="text-center py-4 text-sm text-muted-foreground">Loading details...</div>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
+                {Array.from({ length: 7 }).map((_, i) => (
+                  <SkeletonCard key={i} />
+                ))}
+              </div>
             ) : detail ? (
               <>
                 {/* Stats row */}
                 {stats && stats.totalStations > 0 && (
                   <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
-                    <StatCard icon={Building2} label="Stations" value={stats.totalStations} color="bg-slate-50" />
-                    <StatCard icon={Zap} label="Connectors" value={stats.totalConnectors} color="bg-slate-50" />
-                    <StatCard icon={Zap} label="Available" value={stats.availableConnectors} color="bg-green-50 text-green-700" />
-                    <StatCard icon={Zap} label="Occupied" value={stats.occupiedConnectors} color="bg-blue-50 text-blue-700" />
-                    <StatCard icon={AlertTriangle} label="Faulted" value={stats.faultedConnectors} color={stats.faultedConnectors > 0 ? "bg-red-50 text-red-700" : "bg-slate-50"} />
-                    <StatCard icon={WifiOff} label="Offline" value={stats.offlineStations} color={stats.offlineStations > 0 ? "bg-gray-100 text-gray-700" : "bg-slate-50"} />
-                    <StatCard icon={BarChart3} label="Capacity" value={`${stats.totalCapacityKw.toFixed(0)} kW`} color="bg-slate-50" />
+                    <StatCard icon={Building2} label="Stations" value={stats.totalStations} iconColor="bg-muted text-muted-foreground" />
+                    <StatCard icon={Zap} label="Connectors" value={stats.totalConnectors} iconColor="bg-muted text-muted-foreground" />
+                    <StatCard icon={Zap} label="Available" value={stats.availableConnectors} iconColor="bg-green-100 text-green-700" />
+                    <StatCard icon={Zap} label="Occupied" value={stats.occupiedConnectors} iconColor="bg-blue-100 text-blue-700" />
+                    <StatCard icon={AlertTriangle} label="Faulted" value={stats.faultedConnectors} iconColor={stats.faultedConnectors > 0 ? "bg-red-100 text-red-700" : "bg-muted text-muted-foreground"} />
+                    <StatCard icon={WifiOff} label="Offline" value={stats.offlineStations} iconColor={stats.offlineStations > 0 ? "bg-muted text-muted-foreground" : "bg-muted text-muted-foreground"} />
+                    <StatCard icon={BarChart3} label="Capacity" value={`${stats.totalCapacityKw.toFixed(0)} kW`} iconColor="bg-muted text-muted-foreground" />
                   </div>
                 )}
 
@@ -473,7 +468,7 @@ function GroupCard({
                     </h4>
                     <div className="space-y-2">
                       {detail.stations.map((station) => {
-                        const statusCfg = StationStatusConfig[station.status] || { label: station.status, color: "bg-gray-100 text-gray-700" };
+                        const statusValue = STATION_STATUS_NAME_TO_VALUE[station.status] ?? -1;
                         return (
                           <div
                             key={station.stationId}
@@ -487,9 +482,11 @@ function GroupCard({
                               </div>
                             </div>
                             <div className="flex items-center gap-2 shrink-0 ml-4">
-                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusCfg.color}`}>
-                                {statusCfg.label}
-                              </span>
+                              {statusValue >= 0 ? (
+                                <StatusBadge type="station" value={statusValue} className="text-xs" />
+                              ) : (
+                                <Badge variant="secondary" className="text-xs">{station.status}</Badge>
+                              )}
                               <span className="text-xs text-muted-foreground">
                                 {station.availableConnectors}/{station.connectorCount} avail
                               </span>
@@ -509,9 +506,12 @@ function GroupCard({
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground py-2 text-center">
-                    No stations assigned yet. Click + to add stations.
-                  </p>
+                  <EmptyState
+                    icon={MapPin}
+                    title="No stations assigned"
+                    description="Click + to add stations to this group."
+                    className="py-6"
+                  />
                 )}
               </>
             ) : null}
@@ -592,136 +592,125 @@ export default function StationGroupsPage() {
   const totalStations = allGroups.reduce((sum, g) => sum + g.stationCount, 0);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Station Groups</h1>
-          <p className="text-muted-foreground">
-            Organize stations by geography, operations, or business units
-          </p>
-        </div>
-        <Button onClick={() => { setIsCreating(true); setEditingGroup(null); }} disabled={isCreating}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Group
-        </Button>
-      </div>
-
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <Card
-          className={`cursor-pointer transition-colors ${filterType === null ? "ring-2 ring-primary" : "hover:bg-muted/50"}`}
-          onClick={() => setFilterType(null)}
+    <div className="flex flex-col">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <PageHeader
+          title="Station Groups"
+          description="Organize stations by geography, operations, or business units"
         >
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <FolderTree className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{allGroups.length}</p>
-              <p className="text-xs text-muted-foreground">All Groups</p>
-            </div>
-          </CardContent>
-        </Card>
-        {Object.entries(GroupTypeLabels).map(([val, label]) => {
-          const type = Number(val);
-          const Icon = GroupTypeIcons[type];
-          const isSelected = filterType === type;
-          return (
-            <Card
-              key={val}
-              className={`cursor-pointer transition-colors ${isSelected ? "ring-2 ring-primary" : "hover:bg-muted/50"}`}
-              onClick={() => setFilterType(isSelected ? null : type)}
-            >
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${GroupTypeColors[type]}`}>
-                  <Icon className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{typeCounts[type] || 0}</p>
-                  <p className="text-xs text-muted-foreground">{label}</p>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+          <Button onClick={() => { setIsCreating(true); setEditingGroup(null); }} disabled={isCreating}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Group
+          </Button>
+        </PageHeader>
       </div>
 
-      {/* Quick stats bar */}
-      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-        <span>{totalStations} total stations assigned</span>
-        <span className="text-muted-foreground/30">|</span>
-        <label className="flex items-center gap-1.5 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={showTopLevelOnly}
-            onChange={(e) => setShowTopLevelOnly(e.target.checked)}
-            className="rounded"
+      <div className="flex-1 space-y-6 p-6">
+        {/* Summary cards */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <StatCard
+            label="All Groups"
+            value={allGroups.length}
+            icon={FolderTree}
+            iconColor="bg-primary/10 text-primary"
+            onClick={() => setFilterType(null)}
+            className={filterType === null ? "ring-2 ring-primary" : ""}
           />
-          Top-level only
-        </label>
-      </div>
+          {Object.entries(GroupTypeLabels).map(([val, label]) => {
+            const type = Number(val);
+            const Icon = GroupTypeIcons[type];
+            const style = GROUP_TYPE_STYLES[type];
+            const isSelected = filterType === type;
+            return (
+              <StatCard
+                key={val}
+                label={label}
+                value={typeCounts[type] || 0}
+                icon={Icon}
+                iconColor={style?.iconColor}
+                onClick={() => setFilterType(isSelected ? null : type)}
+                className={isSelected ? "ring-2 ring-primary" : ""}
+              />
+            );
+          })}
+        </div>
 
-      {/* Create/Edit Form */}
-      {isCreating && (
-        <GroupForm
-          parentGroups={allGroups}
-          onSubmit={(data) => createMutation.mutate({ ...data, parentGroupId: data.parentGroupId || undefined })}
-          onCancel={() => setIsCreating(false)}
-          isLoading={createMutation.isPending}
-        />
-      )}
-      {editingGroup && (
-        <GroupForm
-          initialData={{
-            name: editingGroup.name,
-            description: editingGroup.description || "",
-            region: editingGroup.region || "",
-            groupType: editingGroup.groupType,
-            parentGroupId: editingGroup.parentGroupId,
-            isActive: editingGroup.isActive,
-          }}
-          parentGroups={allGroups.filter((g) => g.id !== editingGroup.id)}
-          onSubmit={(data) => updateMutation.mutate({ id: editingGroup.id, data })}
-          onCancel={() => setEditingGroup(null)}
-          isLoading={updateMutation.isPending}
-        />
-      )}
-
-      {/* Groups List */}
-      <div className="space-y-3">
-        {isLoading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-3" />
-            <p className="text-muted-foreground">Loading groups...</p>
-          </div>
-        ) : groups.length > 0 ? (
-          groups.map((group) => (
-            <GroupCard
-              key={group.id}
-              group={group}
-              onEdit={(g) => { setEditingGroup(g); setIsCreating(false); }}
-              onDelete={(id) => deleteMutation.mutate(id)}
-              onAssignStation={() => {}}
+        {/* Quick stats bar */}
+        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <span>{totalStations} total stations assigned</span>
+          <span className="text-muted-foreground/30">|</span>
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showTopLevelOnly}
+              onChange={(e) => setShowTopLevelOnly(e.target.checked)}
+              className="rounded"
             />
-          ))
-        ) : (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <FolderTree className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-1">No groups found</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                {filterType !== null
-                  ? `No ${GroupTypeLabels[filterType]} groups yet. Create one to get started.`
-                  : "Create your first group to organize charging stations."}
-              </p>
-              <Button onClick={() => setIsCreating(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Create Group
-              </Button>
-            </CardContent>
-          </Card>
+            Top-level only
+          </label>
+        </div>
+
+        {/* Create/Edit Form (Dialog) */}
+        {isCreating && (
+          <GroupForm
+            parentGroups={allGroups}
+            onSubmit={(data) => createMutation.mutate({ ...data, parentGroupId: data.parentGroupId || undefined })}
+            onCancel={() => setIsCreating(false)}
+            isLoading={createMutation.isPending}
+          />
         )}
+        {editingGroup && (
+          <GroupForm
+            initialData={{
+              name: editingGroup.name,
+              description: editingGroup.description || "",
+              region: editingGroup.region || "",
+              groupType: editingGroup.groupType,
+              parentGroupId: editingGroup.parentGroupId,
+              isActive: editingGroup.isActive,
+            }}
+            parentGroups={allGroups.filter((g) => g.id !== editingGroup.id)}
+            onSubmit={(data) => updateMutation.mutate({ id: editingGroup.id, data })}
+            onCancel={() => setEditingGroup(null)}
+            isLoading={updateMutation.isPending}
+          />
+        )}
+
+        {/* Groups List */}
+        <div className="space-y-3">
+          {isLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <SkeletonCard key={i} />
+              ))}
+            </div>
+          ) : groups.length > 0 ? (
+            groups.map((group) => (
+              <GroupCard
+                key={group.id}
+                group={group}
+                onEdit={(g) => { setEditingGroup(g); setIsCreating(false); }}
+                onDelete={(id) => deleteMutation.mutate(id)}
+                onAssignStation={() => {}}
+              />
+            ))
+          ) : (
+            <EmptyState
+              icon={FolderTree}
+              title="No groups found"
+              description={
+                filterType !== null
+                  ? `No ${GroupTypeLabels[filterType]} groups yet. Create one to get started.`
+                  : "Create your first group to organize charging stations."
+              }
+              action={{
+                label: "Create Group",
+                onClick: () => setIsCreating(true),
+              }}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

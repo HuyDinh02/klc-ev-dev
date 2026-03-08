@@ -2,9 +2,12 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatCard } from "@/components/ui/stat-card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { SkeletonCard, SkeletonTable } from "@/components/ui/skeleton";
 import { vehiclesApi } from "@/lib/api";
 import { Car, Battery, Plug, Star, Search } from "lucide-react";
 
@@ -57,169 +60,168 @@ export default function VehiclesPage() {
   });
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Vehicles</h1>
-          <p className="text-muted-foreground">
-            Registered EV vehicles across all users
-          </p>
+    <div className="flex flex-col">
+      {/* Sticky header with search */}
+      <div className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="p-6 pb-4">
+          <PageHeader
+            title="Vehicles"
+            description="Registered EV vehicles across all users"
+          >
+            <Badge variant="secondary" className="text-sm">
+              {vehicles.length} total
+            </Badge>
+          </PageHeader>
         </div>
-        <Badge variant="secondary" className="text-sm">
-          {vehicles.length} total
-        </Badge>
+
+        {/* Search */}
+        <div className="px-6 pb-4">
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="search"
+              placeholder="Search by make, model, plate..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-10 w-full rounded-md border bg-background pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+            />
+          </div>
+        </div>
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <input
-          type="text"
-          placeholder="Search by make, model, plate..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-md border bg-background pl-9 pr-4 py-2 text-sm"
-        />
-      </div>
+      <div className="flex-1 space-y-6 p-6">
+        {/* Stats */}
+        {isLoading ? (
+          <div className="grid gap-4 md:grid-cols-4">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-4">
+            <StatCard
+              label="Total Vehicles"
+              value={vehicles.length}
+              icon={Car}
+              iconColor="bg-blue-50 text-blue-600"
+            />
+            <StatCard
+              label="Active"
+              value={vehicles.filter((v) => v.isActive).length}
+              icon={Battery}
+              iconColor="bg-green-50 text-green-600"
+            />
+            <StatCard
+              label="With CCS2"
+              value={vehicles.filter((v) => v.preferredConnectorType === 1).length}
+              icon={Plug}
+              iconColor="bg-purple-50 text-purple-600"
+            />
+            <StatCard
+              label="Default Set"
+              value={vehicles.filter((v) => v.isDefault).length}
+              icon={Star}
+              iconColor="bg-[var(--color-warning-light)] text-[var(--color-warning)]"
+            />
+          </div>
+        )}
 
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Vehicles</CardTitle>
-            <Car className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{vehicles.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active</CardTitle>
-            <Battery className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {vehicles.filter((v) => v.isActive).length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">With CCS2</CardTitle>
-            <Plug className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {vehicles.filter((v) => v.preferredConnectorType === 1).length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Default Set</CardTitle>
-            <Star className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {vehicles.filter((v) => v.isDefault).length}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Vehicle List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>All Vehicles</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Loading vehicles...
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              {search ? "No vehicles match your search." : "No vehicles registered yet."}
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-muted-foreground">
-                    <th className="pb-3 pr-4 font-medium">Vehicle</th>
-                    <th className="pb-3 pr-4 font-medium">License Plate</th>
-                    <th className="pb-3 pr-4 font-medium">Battery</th>
-                    <th className="pb-3 pr-4 font-medium">Connector</th>
-                    <th className="pb-3 pr-4 font-medium">Status</th>
-                    <th className="pb-3 font-medium">Registered</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((vehicle) => (
-                    <tr key={vehicle.id} className="border-b last:border-0">
-                      <td className="py-3 pr-4">
-                        <div className="flex items-center gap-2">
-                          <div>
-                            <p className="font-medium">
-                              {vehicle.nickname || `${vehicle.make} ${vehicle.model}`}
-                            </p>
-                            {vehicle.nickname && (
-                              <p className="text-xs text-muted-foreground">
-                                {vehicle.make} {vehicle.model}
-                                {vehicle.year ? ` (${vehicle.year})` : ""}
-                              </p>
+        {/* Vehicle List */}
+        {isLoading ? (
+          <SkeletonTable rows={8} cols={6} />
+        ) : (
+          <Card>
+            <CardContent className="p-0">
+              {filtered.length === 0 ? (
+                <EmptyState
+                  icon={search ? Search : Car}
+                  title={search ? "No vehicles match your search" : "No vehicles registered yet"}
+                  description={
+                    search
+                      ? "Try adjusting your search terms."
+                      : "Vehicles will appear here once users register them in the mobile app."
+                  }
+                />
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="px-4 py-3 text-left text-sm font-medium">Vehicle</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium">License Plate</th>
+                        <th className="px-4 py-3 text-right text-sm font-medium">Battery</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium">Connector</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium">Registered</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.map((vehicle) => (
+                        <tr key={vehicle.id} className="border-b last:border-0 hover:bg-muted/50">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <div>
+                                <p className="font-medium">
+                                  {vehicle.nickname || `${vehicle.make} ${vehicle.model}`}
+                                </p>
+                                {vehicle.nickname && (
+                                  <p className="text-xs text-muted-foreground">
+                                    {vehicle.make} {vehicle.model}
+                                    {vehicle.year ? ` (${vehicle.year})` : ""}
+                                  </p>
+                                )}
+                                {!vehicle.nickname && vehicle.year && (
+                                  <p className="text-xs text-muted-foreground">
+                                    {vehicle.year}
+                                    {vehicle.color ? ` · ${vehicle.color}` : ""}
+                                  </p>
+                                )}
+                              </div>
+                              {vehicle.isDefault && (
+                                <Star className="h-4 w-4 text-[var(--color-warning)] fill-[var(--color-warning)]" />
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            {vehicle.licensePlate || (
+                              <span className="text-muted-foreground">—</span>
                             )}
-                            {!vehicle.nickname && vehicle.year && (
-                              <p className="text-xs text-muted-foreground">
-                                {vehicle.year}
-                                {vehicle.color ? ` · ${vehicle.color}` : ""}
-                              </p>
+                          </td>
+                          <td className="px-4 py-3 text-right tabular-nums">
+                            {vehicle.batteryCapacityKwh
+                              ? `${vehicle.batteryCapacityKwh} kWh`
+                              : "—"}
+                          </td>
+                          <td className="px-4 py-3">
+                            {vehicle.preferredConnectorType !== null &&
+                            vehicle.preferredConnectorType !== undefined
+                              ? connectorTypeLabels[vehicle.preferredConnectorType] ||
+                                `Type ${vehicle.preferredConnectorType}`
+                              : "—"}
+                          </td>
+                          <td className="px-4 py-3">
+                            <Badge
+                              variant={vehicle.isActive ? "success" : "secondary"}
+                            >
+                              {vehicle.isActive ? "Active" : "Inactive"}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground">
+                            {new Date(vehicle.creationTime).toLocaleDateString(
+                              "vi-VN"
                             )}
-                          </div>
-                          {vehicle.isDefault && (
-                            <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-3 pr-4">
-                        {vehicle.licensePlate || (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </td>
-                      <td className="py-3 pr-4">
-                        {vehicle.batteryCapacityKwh
-                          ? `${vehicle.batteryCapacityKwh} kWh`
-                          : "—"}
-                      </td>
-                      <td className="py-3 pr-4">
-                        {vehicle.preferredConnectorType !== null &&
-                        vehicle.preferredConnectorType !== undefined
-                          ? connectorTypeLabels[vehicle.preferredConnectorType] ||
-                            `Type ${vehicle.preferredConnectorType}`
-                          : "—"}
-                      </td>
-                      <td className="py-3 pr-4">
-                        <Badge
-                          variant={vehicle.isActive ? "success" : "secondary"}
-                        >
-                          {vehicle.isActive ? "Active" : "Inactive"}
-                        </Badge>
-                      </td>
-                      <td className="py-3 text-muted-foreground">
-                        {new Date(vehicle.creationTime).toLocaleDateString(
-                          "vi-VN"
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }

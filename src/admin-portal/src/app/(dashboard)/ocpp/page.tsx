@@ -6,6 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/ui/page-header";
+import { Dialog, DialogHeader, DialogContent, DialogFooter } from "@/components/ui/dialog";
+import { EmptyState } from "@/components/ui/empty-state";
+import { SkeletonTable } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
 import {
   Plug,
@@ -15,9 +19,7 @@ import {
   Square,
   RefreshCw,
   FileText,
-  Clock,
   Cpu,
-  X,
   RotateCcw,
   Unlock,
   ToggleLeft,
@@ -70,11 +72,11 @@ const VendorProfileMap: Record<number, string> = {
   2: "JUHANG",
 };
 
-const vendorProfileColor = (vp: number) => {
+const vendorProfileVariant = (vp: number): "info" | "warning" | "secondary" => {
   switch (vp) {
-    case 1: return "bg-blue-100 text-blue-800";
-    case 2: return "bg-orange-100 text-orange-800";
-    default: return "bg-gray-100 text-gray-800";
+    case 1: return "info";
+    case 2: return "warning";
+    default: return "secondary";
   }
 };
 
@@ -227,13 +229,11 @@ export default function OcppManagementPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">OCPP Management</h1>
-          <p className="text-muted-foreground">
-            Connected chargers: {connections.length}
-          </p>
-        </div>
+      <PageHeader
+        title="OCPP Management"
+        description={`Connected chargers: ${connections.length}`}
+        className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 pb-4"
+      >
         <Button
           variant="outline"
           size="sm"
@@ -242,7 +242,7 @@ export default function OcppManagementPage() {
           <RefreshCw className="mr-2 h-4 w-4" />
           Refresh
         </Button>
-      </div>
+      </PageHeader>
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Connections List */}
@@ -256,9 +256,13 @@ export default function OcppManagementPage() {
             </CardHeader>
             <CardContent>
               {connectionsLoading ? (
-                <p className="text-muted-foreground">Loading...</p>
+                <SkeletonTable rows={3} cols={3} />
               ) : connections.length === 0 ? (
-                <p className="text-muted-foreground">No chargers currently connected</p>
+                <EmptyState
+                  icon={Plug}
+                  title="No chargers connected"
+                  description="No chargers are currently connected via OCPP"
+                />
               ) : (
                 <div className="space-y-2">
                   {connections.map((conn) => (
@@ -281,18 +285,12 @@ export default function OcppManagementPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge className={vendorProfileColor(conn.vendorProfile)}>
+                        <Badge variant={vendorProfileVariant(conn.vendorProfile)}>
                           {VendorProfileMap[conn.vendorProfile] || "Unknown"}
                         </Badge>
-                        {conn.isRegistered ? (
-                          <Badge variant="outline" className="text-green-600 border-green-600">
-                            Registered
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-yellow-600 border-yellow-600">
-                            Pending
-                          </Badge>
-                        )}
+                        <Badge variant={conn.isRegistered ? "success" : "warning"}>
+                          {conn.isRegistered ? "Registered" : "Pending"}
+                        </Badge>
                       </div>
                     </div>
                   ))}
@@ -319,9 +317,13 @@ export default function OcppManagementPage() {
             </CardHeader>
             <CardContent>
               {eventsLoading ? (
-                <p className="text-muted-foreground">Loading...</p>
+                <SkeletonTable rows={5} cols={5} />
               ) : events.length === 0 ? (
-                <p className="text-muted-foreground">No events recorded</p>
+                <EmptyState
+                  icon={FileText}
+                  title="No events recorded"
+                  description="OCPP events will appear here when chargers communicate"
+                />
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -345,9 +347,9 @@ export default function OcppManagementPage() {
                             <Badge variant="outline">{evt.action}</Badge>
                           </td>
                           <td className="py-2">
-                            <span className={`text-xs px-1.5 py-0.5 rounded ${vendorProfileColor(evt.vendorProfile)}`}>
+                            <Badge variant={vendorProfileVariant(evt.vendorProfile)} className="text-xs">
                               {VendorProfileMap[evt.vendorProfile] || "?"}
-                            </span>
+                            </Badge>
                           </td>
                           <td className="py-2 text-right text-xs">
                             {evt.latencyMs != null ? `${evt.latencyMs}ms` : "-"}
@@ -379,9 +381,9 @@ export default function OcppManagementPage() {
                   ) : (
                     <WifiOff className="h-4 w-4 text-red-500" />
                   )}
-                  <span className={detail.isOnline ? "text-green-600" : "text-red-600"}>
+                  <Badge variant={detail.isOnline ? "success" : "destructive"}>
                     {detail.isOnline ? "Online" : "Offline"}
-                  </span>
+                  </Badge>
                 </div>
 
                 <div className="space-y-2 text-sm">
@@ -403,7 +405,7 @@ export default function OcppManagementPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Profile</span>
-                    <Badge className={vendorProfileColor(detail.vendorProfile)}>
+                    <Badge variant={vendorProfileVariant(detail.vendorProfile)}>
                       {VendorProfileMap[detail.vendorProfile] || "Unknown"}
                     </Badge>
                   </div>
@@ -481,9 +483,12 @@ export default function OcppManagementPage() {
             </Card>
           ) : (
             <Card>
-              <CardContent className="py-12 text-center text-muted-foreground">
-                <Plug className="mx-auto h-8 w-8 mb-2 opacity-50" />
-                <p>Select a charger to view details</p>
+              <CardContent className="py-0">
+                <EmptyState
+                  icon={Plug}
+                  title="Select a charger"
+                  description="Choose a charger from the list to view details and send commands"
+                />
               </CardContent>
             </Card>
           )}
@@ -491,513 +496,444 @@ export default function OcppManagementPage() {
       </div>
 
       {/* Remote Start Dialog */}
-      {showRemoteStart && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-background rounded-lg p-6 w-96 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold">Remote Start Transaction</h3>
-              <Button variant="ghost" size="icon" onClick={() => setShowRemoteStart(false)}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Charger: <strong>{selectedCp}</strong>
-            </p>
-            <div className="space-y-3">
-              <div>
-                <label className="text-sm font-medium">Connector ID</label>
-                <Input
-                  type="number"
-                  value={remoteStartForm.connectorId}
-                  onChange={(e) =>
-                    setRemoteStartForm({ ...remoteStartForm, connectorId: parseInt(e.target.value) || 1 })
-                  }
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">ID Tag</label>
-                <Input
-                  placeholder="User ID or RFID tag"
-                  value={remoteStartForm.idTag}
-                  onChange={(e) =>
-                    setRemoteStartForm({ ...remoteStartForm, idTag: e.target.value })
-                  }
-                />
-              </div>
-            </div>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setShowRemoteStart(false)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={() => remoteStartMutation.mutate()}
-                disabled={remoteStartMutation.isPending || !remoteStartForm.idTag}
-              >
-                {remoteStartMutation.isPending ? "Sending..." : "Send Start"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Remote Stop Dialog */}
-      {showRemoteStop && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-background rounded-lg p-6 w-96 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold">Remote Stop Transaction</h3>
-              <Button variant="ghost" size="icon" onClick={() => setShowRemoteStop(false)}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Charger: <strong>{selectedCp}</strong>
-            </p>
-            <div>
-              <label className="text-sm font-medium">Transaction ID</label>
-              <Input
-                type="number"
-                value={remoteStopForm.transactionId}
-                onChange={(e) =>
-                  setRemoteStopForm({ transactionId: parseInt(e.target.value) || 0 })
-                }
-              />
-            </div>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setShowRemoteStop(false)}>
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={() => remoteStopMutation.mutate()}
-                disabled={remoteStopMutation.isPending || !remoteStopForm.transactionId}
-              >
-                {remoteStopMutation.isPending ? "Sending..." : "Send Stop"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Reset Dialog */}
-      {showReset && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-background rounded-lg p-6 w-96 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold">Reset Charger</h3>
-              <Button variant="ghost" size="icon" onClick={() => setShowReset(false)}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Charger: <strong>{selectedCp}</strong>
-            </p>
-            <div>
-              <label className="text-sm font-medium">Reset Type</label>
-              <select
-                className="w-full mt-1 rounded-md border p-2 text-sm"
-                value={resetForm.type}
-                onChange={(e) => setResetForm({ type: e.target.value })}
-              >
-                <option value="Soft">Soft (graceful restart)</option>
-                <option value="Hard">Hard (immediate restart)</option>
-              </select>
-            </div>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setShowReset(false)}>Cancel</Button>
-              <Button
-                variant="destructive"
-                onClick={() => resetMutation.mutate()}
-                disabled={resetMutation.isPending}
-              >
-                {resetMutation.isPending ? "Sending..." : "Send Reset"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Unlock Connector Dialog */}
-      {showUnlock && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-background rounded-lg p-6 w-96 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold">Unlock Connector</h3>
-              <Button variant="ghost" size="icon" onClick={() => setShowUnlock(false)}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Charger: <strong>{selectedCp}</strong>
-            </p>
+      <Dialog open={showRemoteStart} onClose={() => setShowRemoteStart(false)} size="sm">
+        <DialogHeader onClose={() => setShowRemoteStart(false)}>Remote Start Transaction</DialogHeader>
+        <DialogContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Charger: <strong>{selectedCp}</strong>
+          </p>
+          <div className="space-y-3">
             <div>
               <label className="text-sm font-medium">Connector ID</label>
               <Input
                 type="number"
-                value={unlockForm.connectorId}
-                onChange={(e) => setUnlockForm({ connectorId: parseInt(e.target.value) || 1 })}
+                value={remoteStartForm.connectorId}
+                onChange={(e) =>
+                  setRemoteStartForm({ ...remoteStartForm, connectorId: parseInt(e.target.value) || 1 })
+                }
               />
             </div>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setShowUnlock(false)}>Cancel</Button>
-              <Button onClick={() => unlockMutation.mutate()} disabled={unlockMutation.isPending}>
-                {unlockMutation.isPending ? "Sending..." : "Unlock"}
-              </Button>
+            <div>
+              <label className="text-sm font-medium">ID Tag</label>
+              <Input
+                placeholder="User ID or RFID tag"
+                value={remoteStartForm.idTag}
+                onChange={(e) =>
+                  setRemoteStartForm({ ...remoteStartForm, idTag: e.target.value })
+                }
+              />
             </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setShowRemoteStart(false)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => remoteStartMutation.mutate()}
+            disabled={remoteStartMutation.isPending || !remoteStartForm.idTag}
+          >
+            {remoteStartMutation.isPending ? "Sending..." : "Send Start"}
+          </Button>
+        </DialogFooter>
+      </Dialog>
+
+      {/* Remote Stop Dialog */}
+      <Dialog open={showRemoteStop} onClose={() => setShowRemoteStop(false)} size="sm">
+        <DialogHeader onClose={() => setShowRemoteStop(false)}>Remote Stop Transaction</DialogHeader>
+        <DialogContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Charger: <strong>{selectedCp}</strong>
+          </p>
+          <div>
+            <label className="text-sm font-medium">Transaction ID</label>
+            <Input
+              type="number"
+              value={remoteStopForm.transactionId}
+              onChange={(e) =>
+                setRemoteStopForm({ transactionId: parseInt(e.target.value) || 0 })
+              }
+            />
+          </div>
+        </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setShowRemoteStop(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => remoteStopMutation.mutate()}
+            disabled={remoteStopMutation.isPending || !remoteStopForm.transactionId}
+          >
+            {remoteStopMutation.isPending ? "Sending..." : "Send Stop"}
+          </Button>
+        </DialogFooter>
+      </Dialog>
+
+      {/* Reset Dialog */}
+      <Dialog open={showReset} onClose={() => setShowReset(false)} size="sm">
+        <DialogHeader onClose={() => setShowReset(false)}>Reset Charger</DialogHeader>
+        <DialogContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Charger: <strong>{selectedCp}</strong>
+          </p>
+          <div>
+            <label className="text-sm font-medium">Reset Type</label>
+            <select
+              className="w-full mt-1 rounded-md border p-2 text-sm"
+              value={resetForm.type}
+              onChange={(e) => setResetForm({ type: e.target.value })}
+            >
+              <option value="Soft">Soft (graceful restart)</option>
+              <option value="Hard">Hard (immediate restart)</option>
+            </select>
+          </div>
+        </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setShowReset(false)}>Cancel</Button>
+          <Button
+            variant="destructive"
+            onClick={() => resetMutation.mutate()}
+            disabled={resetMutation.isPending}
+          >
+            {resetMutation.isPending ? "Sending..." : "Send Reset"}
+          </Button>
+        </DialogFooter>
+      </Dialog>
+
+      {/* Unlock Connector Dialog */}
+      <Dialog open={showUnlock} onClose={() => setShowUnlock(false)} size="sm">
+        <DialogHeader onClose={() => setShowUnlock(false)}>Unlock Connector</DialogHeader>
+        <DialogContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Charger: <strong>{selectedCp}</strong>
+          </p>
+          <div>
+            <label className="text-sm font-medium">Connector ID</label>
+            <Input
+              type="number"
+              value={unlockForm.connectorId}
+              onChange={(e) => setUnlockForm({ connectorId: parseInt(e.target.value) || 1 })}
+            />
+          </div>
+        </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setShowUnlock(false)}>Cancel</Button>
+          <Button onClick={() => unlockMutation.mutate()} disabled={unlockMutation.isPending}>
+            {unlockMutation.isPending ? "Sending..." : "Unlock"}
+          </Button>
+        </DialogFooter>
+      </Dialog>
 
       {/* Change Availability Dialog */}
-      {showAvailability && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-background rounded-lg p-6 w-96 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold">Change Availability</h3>
-              <Button variant="ghost" size="icon" onClick={() => setShowAvailability(false)}>
-                <X className="h-4 w-4" />
-              </Button>
+      <Dialog open={showAvailability} onClose={() => setShowAvailability(false)} size="sm">
+        <DialogHeader onClose={() => setShowAvailability(false)}>Change Availability</DialogHeader>
+        <DialogContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Charger: <strong>{selectedCp}</strong>
+          </p>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm font-medium">Connector ID</label>
+              <Input
+                type="number"
+                value={availabilityForm.connectorId}
+                onChange={(e) => setAvailabilityForm({ ...availabilityForm, connectorId: parseInt(e.target.value) || 0 })}
+              />
+              <p className="text-xs text-muted-foreground mt-1">0 = entire charger</p>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Charger: <strong>{selectedCp}</strong>
-            </p>
-            <div className="space-y-3">
-              <div>
-                <label className="text-sm font-medium">Connector ID</label>
-                <Input
-                  type="number"
-                  value={availabilityForm.connectorId}
-                  onChange={(e) => setAvailabilityForm({ ...availabilityForm, connectorId: parseInt(e.target.value) || 0 })}
-                />
-                <p className="text-xs text-muted-foreground mt-1">0 = entire charger</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Availability</label>
-                <select
-                  className="w-full mt-1 rounded-md border p-2 text-sm"
-                  value={availabilityForm.type}
-                  onChange={(e) => setAvailabilityForm({ ...availabilityForm, type: e.target.value })}
-                >
-                  <option value="Operative">Operative (available)</option>
-                  <option value="Inoperative">Inoperative (disabled)</option>
-                </select>
-              </div>
-            </div>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setShowAvailability(false)}>Cancel</Button>
-              <Button onClick={() => availabilityMutation.mutate()} disabled={availabilityMutation.isPending}>
-                {availabilityMutation.isPending ? "Sending..." : "Change"}
-              </Button>
+            <div>
+              <label className="text-sm font-medium">Availability</label>
+              <select
+                className="w-full mt-1 rounded-md border p-2 text-sm"
+                value={availabilityForm.type}
+                onChange={(e) => setAvailabilityForm({ ...availabilityForm, type: e.target.value })}
+              >
+                <option value="Operative">Operative (available)</option>
+                <option value="Inoperative">Inoperative (disabled)</option>
+              </select>
             </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setShowAvailability(false)}>Cancel</Button>
+          <Button onClick={() => availabilityMutation.mutate()} disabled={availabilityMutation.isPending}>
+            {availabilityMutation.isPending ? "Sending..." : "Change"}
+          </Button>
+        </DialogFooter>
+      </Dialog>
 
       {/* Trigger Message Dialog */}
-      {showTrigger && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-background rounded-lg p-6 w-96 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold">Trigger Message</h3>
-              <Button variant="ghost" size="icon" onClick={() => setShowTrigger(false)}>
-                <X className="h-4 w-4" />
-              </Button>
+      <Dialog open={showTrigger} onClose={() => setShowTrigger(false)} size="sm">
+        <DialogHeader onClose={() => setShowTrigger(false)}>Trigger Message</DialogHeader>
+        <DialogContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Charger: <strong>{selectedCp}</strong>
+          </p>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm font-medium">Message Type</label>
+              <select
+                className="w-full mt-1 rounded-md border p-2 text-sm"
+                value={triggerForm.requestedMessage}
+                onChange={(e) => setTriggerForm({ ...triggerForm, requestedMessage: e.target.value })}
+              >
+                <option value="StatusNotification">StatusNotification</option>
+                <option value="MeterValues">MeterValues</option>
+                <option value="Heartbeat">Heartbeat</option>
+                <option value="BootNotification">BootNotification</option>
+                <option value="DiagnosticsStatusNotification">DiagnosticsStatusNotification</option>
+                <option value="FirmwareStatusNotification">FirmwareStatusNotification</option>
+              </select>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Charger: <strong>{selectedCp}</strong>
-            </p>
-            <div className="space-y-3">
-              <div>
-                <label className="text-sm font-medium">Message Type</label>
-                <select
-                  className="w-full mt-1 rounded-md border p-2 text-sm"
-                  value={triggerForm.requestedMessage}
-                  onChange={(e) => setTriggerForm({ ...triggerForm, requestedMessage: e.target.value })}
-                >
-                  <option value="StatusNotification">StatusNotification</option>
-                  <option value="MeterValues">MeterValues</option>
-                  <option value="Heartbeat">Heartbeat</option>
-                  <option value="BootNotification">BootNotification</option>
-                  <option value="DiagnosticsStatusNotification">DiagnosticsStatusNotification</option>
-                  <option value="FirmwareStatusNotification">FirmwareStatusNotification</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Connector ID (optional)</label>
-                <Input
-                  type="number"
-                  placeholder="Leave empty for all"
-                  onChange={(e) => setTriggerForm({ ...triggerForm, connectorId: e.target.value ? parseInt(e.target.value) : undefined })}
-                />
-              </div>
-            </div>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setShowTrigger(false)}>Cancel</Button>
-              <Button onClick={() => triggerMutation.mutate()} disabled={triggerMutation.isPending}>
-                {triggerMutation.isPending ? "Sending..." : "Trigger"}
-              </Button>
+            <div>
+              <label className="text-sm font-medium">Connector ID (optional)</label>
+              <Input
+                type="number"
+                placeholder="Leave empty for all"
+                onChange={(e) => setTriggerForm({ ...triggerForm, connectorId: e.target.value ? parseInt(e.target.value) : undefined })}
+              />
             </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setShowTrigger(false)}>Cancel</Button>
+          <Button onClick={() => triggerMutation.mutate()} disabled={triggerMutation.isPending}>
+            {triggerMutation.isPending ? "Sending..." : "Trigger"}
+          </Button>
+        </DialogFooter>
+      </Dialog>
 
       {/* Configuration Viewer Dialog */}
-      {showConfig && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-background rounded-lg p-6 w-[500px] max-h-[80vh] space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold">Charger Configuration</h3>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => { setShowConfig(false); setShowChangeConfig(true); }}>
-                  Edit Key
-                </Button>
-                <Button variant="ghost" size="icon" onClick={() => setShowConfig(false)}>
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-            <div className="overflow-y-auto max-h-[60vh]">
-              {configData && configData.length > 0 ? (
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-left text-muted-foreground">
-                      <th className="pb-2">Key</th>
-                      <th className="pb-2">Value</th>
-                      <th className="pb-2 text-center">RO</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {configData.map((entry) => (
-                      <tr key={entry.key} className="border-b">
-                        <td className="py-1.5 font-mono text-xs">{entry.key}</td>
-                        <td className="py-1.5 text-xs break-all">{entry.value ?? "-"}</td>
-                        <td className="py-1.5 text-center text-xs">{entry.readonly ? "Yes" : "No"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <p className="text-muted-foreground">No configuration keys returned</p>
-              )}
-            </div>
+      <Dialog open={showConfig} onClose={() => setShowConfig(false)} size="lg">
+        <DialogHeader onClose={() => setShowConfig(false)}>
+          <div className="flex items-center gap-2">
+            Charger Configuration
+            <Button size="sm" variant="outline" onClick={() => { setShowConfig(false); setShowChangeConfig(true); }}>
+              Edit Key
+            </Button>
           </div>
-        </div>
-      )}
+        </DialogHeader>
+        <DialogContent className="max-h-[60vh] overflow-y-auto">
+          {configData && configData.length > 0 ? (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-muted-foreground">
+                  <th className="pb-2">Key</th>
+                  <th className="pb-2">Value</th>
+                  <th className="pb-2 text-center">RO</th>
+                </tr>
+              </thead>
+              <tbody>
+                {configData.map((entry) => (
+                  <tr key={entry.key} className="border-b">
+                    <td className="py-1.5 font-mono text-xs">{entry.key}</td>
+                    <td className="py-1.5 text-xs break-all">{entry.value ?? "-"}</td>
+                    <td className="py-1.5 text-center text-xs">{entry.readonly ? "Yes" : "No"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <EmptyState
+              icon={Settings}
+              title="No configuration keys"
+              description="No configuration keys were returned from the charger"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Change Configuration Dialog */}
-      {showChangeConfig && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-background rounded-lg p-6 w-96 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold">Change Configuration</h3>
-              <Button variant="ghost" size="icon" onClick={() => setShowChangeConfig(false)}>
-                <X className="h-4 w-4" />
-              </Button>
+      <Dialog open={showChangeConfig} onClose={() => setShowChangeConfig(false)} size="sm">
+        <DialogHeader onClose={() => setShowChangeConfig(false)}>Change Configuration</DialogHeader>
+        <DialogContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Charger: <strong>{selectedCp}</strong>
+          </p>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm font-medium">Configuration Key</label>
+              <Input
+                placeholder="e.g. MeterValueSampleInterval"
+                value={changeConfigForm.key}
+                onChange={(e) => setChangeConfigForm({ ...changeConfigForm, key: e.target.value })}
+              />
             </div>
-            <p className="text-sm text-muted-foreground">
-              Charger: <strong>{selectedCp}</strong>
-            </p>
-            <div className="space-y-3">
-              <div>
-                <label className="text-sm font-medium">Configuration Key</label>
-                <Input
-                  placeholder="e.g. MeterValueSampleInterval"
-                  value={changeConfigForm.key}
-                  onChange={(e) => setChangeConfigForm({ ...changeConfigForm, key: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Value</label>
-                <Input
-                  placeholder="New value"
-                  value={changeConfigForm.value}
-                  onChange={(e) => setChangeConfigForm({ ...changeConfigForm, value: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setShowChangeConfig(false)}>Cancel</Button>
-              <Button
-                onClick={() => changeConfigMutation.mutate()}
-                disabled={changeConfigMutation.isPending || !changeConfigForm.key}
-              >
-                {changeConfigMutation.isPending ? "Sending..." : "Save"}
-              </Button>
+            <div>
+              <label className="text-sm font-medium">Value</label>
+              <Input
+                placeholder="New value"
+                value={changeConfigForm.value}
+                onChange={(e) => setChangeConfigForm({ ...changeConfigForm, value: e.target.value })}
+              />
             </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setShowChangeConfig(false)}>Cancel</Button>
+          <Button
+            onClick={() => changeConfigMutation.mutate()}
+            disabled={changeConfigMutation.isPending || !changeConfigForm.key}
+          >
+            {changeConfigMutation.isPending ? "Sending..." : "Save"}
+          </Button>
+        </DialogFooter>
+      </Dialog>
 
       {/* Set Power Limit Dialog */}
-      {showPowerLimit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-background rounded-lg p-6 w-96 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold">Set Power Limit</h3>
-              <Button variant="ghost" size="icon" onClick={() => setShowPowerLimit(false)}>
-                <X className="h-4 w-4" />
-              </Button>
+      <Dialog open={showPowerLimit} onClose={() => setShowPowerLimit(false)} size="sm">
+        <DialogHeader onClose={() => setShowPowerLimit(false)}>Set Power Limit</DialogHeader>
+        <DialogContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Charger: <strong>{selectedCp}</strong>
+          </p>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm font-medium">Connector ID</label>
+              <Input
+                type="number"
+                value={powerLimitForm.connectorId}
+                onChange={(e) => setPowerLimitForm({ ...powerLimitForm, connectorId: parseInt(e.target.value) || 1 })}
+              />
             </div>
-            <p className="text-sm text-muted-foreground">
-              Charger: <strong>{selectedCp}</strong>
-            </p>
-            <div className="space-y-3">
-              <div>
-                <label className="text-sm font-medium">Connector ID</label>
-                <Input
-                  type="number"
-                  value={powerLimitForm.connectorId}
-                  onChange={(e) => setPowerLimitForm({ ...powerLimitForm, connectorId: parseInt(e.target.value) || 1 })}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Max Power (kW)</label>
-                <Input
-                  type="number"
-                  step="0.1"
-                  value={powerLimitForm.maxPowerKw}
-                  onChange={(e) => setPowerLimitForm({ ...powerLimitForm, maxPowerKw: parseFloat(e.target.value) || 0 })}
-                />
-              </div>
-            </div>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setShowPowerLimit(false)}>Cancel</Button>
-              <Button
-                onClick={() => powerLimitMutation.mutate()}
-                disabled={powerLimitMutation.isPending || powerLimitForm.maxPowerKw <= 0}
-              >
-                {powerLimitMutation.isPending ? "Sending..." : "Set Limit"}
-              </Button>
+            <div>
+              <label className="text-sm font-medium">Max Power (kW)</label>
+              <Input
+                type="number"
+                step="0.1"
+                value={powerLimitForm.maxPowerKw}
+                onChange={(e) => setPowerLimitForm({ ...powerLimitForm, maxPowerKw: parseFloat(e.target.value) || 0 })}
+              />
             </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setShowPowerLimit(false)}>Cancel</Button>
+          <Button
+            onClick={() => powerLimitMutation.mutate()}
+            disabled={powerLimitMutation.isPending || powerLimitForm.maxPowerKw <= 0}
+          >
+            {powerLimitMutation.isPending ? "Sending..." : "Set Limit"}
+          </Button>
+        </DialogFooter>
+      </Dialog>
 
       {/* Update Firmware Dialog */}
-      {showUpdateFirmware && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-background rounded-lg p-6 w-96 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold">Update Firmware</h3>
-              <Button variant="ghost" size="icon" onClick={() => setShowUpdateFirmware(false)}>
-                <X className="h-4 w-4" />
-              </Button>
+      <Dialog open={showUpdateFirmware} onClose={() => setShowUpdateFirmware(false)} size="sm">
+        <DialogHeader onClose={() => setShowUpdateFirmware(false)}>Update Firmware</DialogHeader>
+        <DialogContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Charger: <strong>{selectedCp}</strong>
+          </p>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm font-medium">Download URL</label>
+              <Input
+                placeholder="https://example.com/firmware.bin"
+                value={updateFirmwareForm.location}
+                onChange={(e) => setUpdateFirmwareForm({ ...updateFirmwareForm, location: e.target.value })}
+              />
             </div>
-            <p className="text-sm text-muted-foreground">
-              Charger: <strong>{selectedCp}</strong>
-            </p>
-            <div className="space-y-3">
-              <div>
-                <label className="text-sm font-medium">Download URL</label>
-                <Input
-                  placeholder="https://example.com/firmware.bin"
-                  value={updateFirmwareForm.location}
-                  onChange={(e) => setUpdateFirmwareForm({ ...updateFirmwareForm, location: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Retrieve Date</label>
-                <Input
-                  type="datetime-local"
-                  value={updateFirmwareForm.retrieveDate}
-                  onChange={(e) => setUpdateFirmwareForm({ ...updateFirmwareForm, retrieveDate: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Retries (optional)</label>
-                <Input
-                  type="number"
-                  placeholder="Leave empty for default"
-                  onChange={(e) => setUpdateFirmwareForm({ ...updateFirmwareForm, retries: e.target.value ? parseInt(e.target.value) : undefined })}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Retry Interval (seconds, optional)</label>
-                <Input
-                  type="number"
-                  placeholder="Leave empty for default"
-                  onChange={(e) => setUpdateFirmwareForm({ ...updateFirmwareForm, retryInterval: e.target.value ? parseInt(e.target.value) : undefined })}
-                />
-              </div>
+            <div>
+              <label className="text-sm font-medium">Retrieve Date</label>
+              <Input
+                type="datetime-local"
+                value={updateFirmwareForm.retrieveDate}
+                onChange={(e) => setUpdateFirmwareForm({ ...updateFirmwareForm, retrieveDate: e.target.value })}
+              />
             </div>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setShowUpdateFirmware(false)}>Cancel</Button>
-              <Button
-                onClick={() => updateFirmwareMutation.mutate()}
-                disabled={updateFirmwareMutation.isPending || !updateFirmwareForm.location || !updateFirmwareForm.retrieveDate}
-              >
-                {updateFirmwareMutation.isPending ? "Sending..." : "Update Firmware"}
-              </Button>
+            <div>
+              <label className="text-sm font-medium">Retries (optional)</label>
+              <Input
+                type="number"
+                placeholder="Leave empty for default"
+                onChange={(e) => setUpdateFirmwareForm({ ...updateFirmwareForm, retries: e.target.value ? parseInt(e.target.value) : undefined })}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Retry Interval (seconds, optional)</label>
+              <Input
+                type="number"
+                placeholder="Leave empty for default"
+                onChange={(e) => setUpdateFirmwareForm({ ...updateFirmwareForm, retryInterval: e.target.value ? parseInt(e.target.value) : undefined })}
+              />
             </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setShowUpdateFirmware(false)}>Cancel</Button>
+          <Button
+            onClick={() => updateFirmwareMutation.mutate()}
+            disabled={updateFirmwareMutation.isPending || !updateFirmwareForm.location || !updateFirmwareForm.retrieveDate}
+          >
+            {updateFirmwareMutation.isPending ? "Sending..." : "Update Firmware"}
+          </Button>
+        </DialogFooter>
+      </Dialog>
 
       {/* Get Diagnostics Dialog */}
-      {showGetDiagnostics && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-background rounded-lg p-6 w-96 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold">Get Diagnostics</h3>
-              <Button variant="ghost" size="icon" onClick={() => setShowGetDiagnostics(false)}>
-                <X className="h-4 w-4" />
-              </Button>
+      <Dialog open={showGetDiagnostics} onClose={() => setShowGetDiagnostics(false)} size="sm">
+        <DialogHeader onClose={() => setShowGetDiagnostics(false)}>Get Diagnostics</DialogHeader>
+        <DialogContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Charger: <strong>{selectedCp}</strong>
+          </p>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm font-medium">Upload URL</label>
+              <Input
+                placeholder="https://example.com/upload"
+                value={getDiagnosticsForm.location}
+                onChange={(e) => setGetDiagnosticsForm({ ...getDiagnosticsForm, location: e.target.value })}
+              />
             </div>
-            <p className="text-sm text-muted-foreground">
-              Charger: <strong>{selectedCp}</strong>
-            </p>
-            <div className="space-y-3">
-              <div>
-                <label className="text-sm font-medium">Upload URL</label>
-                <Input
-                  placeholder="https://example.com/upload"
-                  value={getDiagnosticsForm.location}
-                  onChange={(e) => setGetDiagnosticsForm({ ...getDiagnosticsForm, location: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Start Time (optional)</label>
-                <Input
-                  type="datetime-local"
-                  value={getDiagnosticsForm.startTime}
-                  onChange={(e) => setGetDiagnosticsForm({ ...getDiagnosticsForm, startTime: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Stop Time (optional)</label>
-                <Input
-                  type="datetime-local"
-                  value={getDiagnosticsForm.stopTime}
-                  onChange={(e) => setGetDiagnosticsForm({ ...getDiagnosticsForm, stopTime: e.target.value })}
-                />
-              </div>
+            <div>
+              <label className="text-sm font-medium">Start Time (optional)</label>
+              <Input
+                type="datetime-local"
+                value={getDiagnosticsForm.startTime}
+                onChange={(e) => setGetDiagnosticsForm({ ...getDiagnosticsForm, startTime: e.target.value })}
+              />
             </div>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setShowGetDiagnostics(false)}>Cancel</Button>
-              <Button
-                onClick={() => getDiagnosticsMutation.mutate()}
-                disabled={getDiagnosticsMutation.isPending || !getDiagnosticsForm.location}
-              >
-                {getDiagnosticsMutation.isPending ? "Sending..." : "Get Diagnostics"}
-              </Button>
+            <div>
+              <label className="text-sm font-medium">Stop Time (optional)</label>
+              <Input
+                type="datetime-local"
+                value={getDiagnosticsForm.stopTime}
+                onChange={(e) => setGetDiagnosticsForm({ ...getDiagnosticsForm, stopTime: e.target.value })}
+              />
             </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setShowGetDiagnostics(false)}>Cancel</Button>
+          <Button
+            onClick={() => getDiagnosticsMutation.mutate()}
+            disabled={getDiagnosticsMutation.isPending || !getDiagnosticsForm.location}
+          >
+            {getDiagnosticsMutation.isPending ? "Sending..." : "Get Diagnostics"}
+          </Button>
+        </DialogFooter>
+      </Dialog>
 
       {/* Command Result Toast */}
       {commandResult && (
         <div className="fixed bottom-4 right-4 z-50">
-          <div className={`rounded-lg p-4 shadow-lg ${commandResult.success ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"}`}>
-            <div className="flex items-center gap-2">
-              <span className={commandResult.success ? "text-green-800" : "text-red-800"}>
-                {commandResult.success ? "✓" : "✗"} {commandResult.message}
-              </span>
-              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setCommandResult(null)}>
-                <X className="h-3 w-3" />
-              </Button>
-            </div>
-          </div>
+          <Card className="shadow-lg">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
+                <Badge variant={commandResult.success ? "success" : "destructive"}>
+                  {commandResult.success ? "Success" : "Failed"}
+                </Badge>
+                <span className="text-sm">{commandResult.message}</span>
+                <Button variant="ghost" size="icon" className="h-6 w-6 ml-2" onClick={() => setCommandResult(null)}>
+                  <span className="sr-only">Dismiss</span>
+                  <span className="text-xs">&times;</span>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>

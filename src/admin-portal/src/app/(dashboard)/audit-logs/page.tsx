@@ -2,9 +2,13 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
+import { Dialog, DialogHeader, DialogContent } from "@/components/ui/dialog";
+import { SkeletonTable } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 import { api } from "@/lib/api";
 import {
   FileText,
@@ -12,12 +16,10 @@ import {
   Download,
   Calendar,
   User,
-  Activity,
   ChevronLeft,
   ChevronRight,
   Clock,
   Eye,
-  X,
 } from "lucide-react";
 
 interface AuditLog {
@@ -47,6 +49,26 @@ interface PropertyChange {
   originalValue?: string;
   newValue?: string;
 }
+
+const METHOD_VARIANT: Record<string, "default" | "success" | "warning" | "destructive" | "secondary"> = {
+  GET: "default",
+  POST: "success",
+  PUT: "warning",
+  DELETE: "destructive",
+};
+
+function getHttpStatusVariant(status: number): "success" | "warning" | "destructive" | "secondary" {
+  if (status >= 200 && status < 300) return "success";
+  if (status >= 400 && status < 500) return "warning";
+  if (status >= 500) return "destructive";
+  return "secondary";
+}
+
+const CHANGE_TYPE_VARIANT: Record<string, "success" | "destructive" | "warning"> = {
+  Created: "success",
+  Deleted: "destructive",
+  Updated: "warning",
+};
 
 export default function AuditLogsPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -103,28 +125,6 @@ export default function AuditLogsPage() {
   const logs: AuditLog[] = logsData?.items || [];
   const totalCount = logsData?.totalCount || 0;
 
-  const getMethodColor = (method: string): "default" | "success" | "warning" | "destructive" | "secondary" => {
-    switch (method) {
-      case "GET":
-        return "default";
-      case "POST":
-        return "success";
-      case "PUT":
-        return "warning";
-      case "DELETE":
-        return "destructive";
-      default:
-        return "secondary";
-    }
-  };
-
-  const getStatusColor = (status: number) => {
-    if (status >= 200 && status < 300) return "success";
-    if (status >= 400 && status < 500) return "warning";
-    if (status >= 500) return "destructive";
-    return "secondary";
-  };
-
   const formatDuration = (ms: number) => {
     if (ms < 1000) return `${ms}ms`;
     return `${(ms / 1000).toFixed(2)}s`;
@@ -137,17 +137,13 @@ export default function AuditLogsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Audit Logs</h1>
-          <p className="text-muted-foreground">
-            Track all system activities and changes
-          </p>
-        </div>
-        <Button variant="outline" onClick={handleExport}>
-          <Download className="mr-2 h-4 w-4" />
-          Export CSV
-        </Button>
+      <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <PageHeader title="Audit Logs" description="Track all system activities and changes">
+          <Button variant="outline" onClick={handleExport}>
+            <Download className="mr-2 h-4 w-4" />
+            Export CSV
+          </Button>
+        </PageHeader>
       </div>
 
       {/* Filters */}
@@ -198,47 +194,53 @@ export default function AuditLogsPage() {
       </Card>
 
       {/* Logs Table */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="border-b bg-muted/50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-medium">
-                    Time
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">
-                    User
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">
-                    Method
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">
-                    URL
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">
-                    Duration
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">
-                    IP
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
+      {isLoading ? (
+        <SkeletonTable rows={10} cols={8} />
+      ) : logs.length === 0 ? (
+        <Card>
+          <CardContent className="p-0">
+            <EmptyState
+              icon={FileText}
+              title="No audit logs found"
+              description="Try adjusting your filters or check back later."
+            />
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="border-b bg-muted/50">
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center">
-                      Loading...
-                    </td>
+                    <th className="px-4 py-3 text-left text-sm font-medium">
+                      Time
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">
+                      User
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">
+                      Method
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">
+                      URL
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-right text-sm font-medium">
+                      Duration
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">
+                      IP
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">
+                      Actions
+                    </th>
                   </tr>
-                ) : logs.length > 0 ? (
-                  logs.map((log) => (
+                </thead>
+                <tbody>
+                  {logs.map((log) => (
                     <tr key={log.id} className="border-b hover:bg-muted/50">
                       <td className="px-4 py-3 text-sm">
                         <div className="flex items-center gap-2">
@@ -253,7 +255,7 @@ export default function AuditLogsPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <Badge variant={getMethodColor(log.httpMethod)}>
+                        <Badge variant={METHOD_VARIANT[log.httpMethod] ?? "secondary"}>
                           {log.httpMethod}
                         </Badge>
                       </td>
@@ -263,11 +265,11 @@ export default function AuditLogsPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <Badge variant={getStatusColor(log.httpStatusCode)}>
+                        <Badge variant={getHttpStatusVariant(log.httpStatusCode)}>
                           {log.httpStatusCode}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 text-sm">
+                      <td className="px-4 py-3 text-sm text-right tabular-nums">
                         {formatDuration(log.executionDuration)}
                       </td>
                       <td className="px-4 py-3 text-sm font-mono">
@@ -283,78 +285,62 @@ export default function AuditLogsPage() {
                         </Button>
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td
-                      colSpan={8}
-                      className="px-4 py-8 text-center text-muted-foreground"
-                    >
-                      No audit logs found
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination */}
-          {(totalCount > pageSize || cursorStack.length > 0) && (
-            <div className="flex items-center justify-between border-t px-4 py-3">
-              <div className="text-sm text-muted-foreground">
-                {totalCount} total audit logs
-              </div>
-              <div className="flex gap-2">
-                {cursorStack.length > 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const prev = [...cursorStack];
-                      const prevCursor = prev.pop()!;
-                      setCursorStack(prev);
-                      setCursor(prevCursor);
-                    }}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                )}
-                {logs.length === pageSize && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const lastId = logs[logs.length - 1]?.id;
-                      if (lastId) {
-                        setCursorStack([...cursorStack, cursor]);
-                        setCursor(lastId);
-                      }
-                    }}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          )}
-        </CardContent>
-      </Card>
 
-      {/* Detail Modal */}
-      {selectedLog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <Card className="w-full max-w-2xl max-h-[80vh] overflow-auto m-4">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Audit Log Details</CardTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSelectedLog(null)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            {/* Pagination */}
+            {(totalCount > pageSize || cursorStack.length > 0) && (
+              <div className="flex items-center justify-between border-t px-4 py-3">
+                <div className="text-sm text-muted-foreground">
+                  {totalCount} total audit logs
+                </div>
+                <div className="flex gap-2">
+                  {cursorStack.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const prev = [...cursorStack];
+                        const prevCursor = prev.pop()!;
+                        setCursorStack(prev);
+                        setCursor(prevCursor);
+                      }}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {logs.length === pageSize && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const lastId = logs[logs.length - 1]?.id;
+                        if (lastId) {
+                          setCursorStack([...cursorStack, cursor]);
+                          setCursor(lastId);
+                        }
+                      }}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Detail Dialog */}
+      <Dialog open={!!selectedLog} onClose={() => setSelectedLog(null)} size="xl">
+        <DialogHeader onClose={() => setSelectedLog(null)}>
+          Audit Log Details
+        </DialogHeader>
+        <DialogContent className="max-h-[60vh] overflow-y-auto space-y-4">
+          {selectedLog && (
+            <>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <p className="text-sm text-muted-foreground">Time</p>
@@ -368,13 +354,13 @@ export default function AuditLogsPage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Method</p>
-                  <Badge variant={getMethodColor(selectedLog.httpMethod)}>
+                  <Badge variant={METHOD_VARIANT[selectedLog.httpMethod] ?? "secondary"}>
                     {selectedLog.httpMethod}
                   </Badge>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Status</p>
-                  <Badge variant={getStatusColor(selectedLog.httpStatusCode)}>
+                  <Badge variant={getHttpStatusVariant(selectedLog.httpStatusCode)}>
                     {selectedLog.httpStatusCode}
                   </Badge>
                 </div>
@@ -384,7 +370,7 @@ export default function AuditLogsPage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Duration</p>
-                  <p className="font-medium">
+                  <p className="font-medium tabular-nums">
                     {formatDuration(selectedLog.executionDuration)}
                   </p>
                 </div>
@@ -409,15 +395,7 @@ export default function AuditLogsPage() {
                         className="rounded-lg border p-3 bg-muted/30"
                       >
                         <div className="flex items-center gap-2 mb-2">
-                          <Badge
-                            variant={
-                              change.changeType === "Created"
-                                ? "success"
-                                : change.changeType === "Deleted"
-                                ? "destructive"
-                                : "warning"
-                            }
-                          >
+                          <Badge variant={CHANGE_TYPE_VARIANT[change.changeType] ?? "secondary"}>
                             {change.changeType}
                           </Badge>
                           <span className="font-mono text-sm">
@@ -433,12 +411,12 @@ export default function AuditLogsPage() {
                                     {prop.propertyName}:
                                   </span>{" "}
                                   {prop.originalValue && (
-                                    <span className="text-red-500 line-through">
+                                    <span className="text-destructive line-through">
                                       {prop.originalValue}
                                     </span>
                                   )}{" "}
                                   {prop.newValue && (
-                                    <span className="text-green-500">
+                                    <span className="text-green-600 dark:text-green-400">
                                       {prop.newValue}
                                     </span>
                                   )}
@@ -451,10 +429,10 @@ export default function AuditLogsPage() {
                   </div>
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

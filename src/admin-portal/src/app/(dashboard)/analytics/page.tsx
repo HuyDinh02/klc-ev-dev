@@ -4,21 +4,23 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatCard } from "@/components/ui/stat-card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { SkeletonCard, SkeletonChart } from "@/components/ui/skeleton";
 import { monitoringApi } from "@/lib/api";
 import { formatCurrency, formatEnergy } from "@/lib/utils";
+import { CHART_COLORS } from "@/lib/constants";
 import {
   AreaChart,
   Area,
   BarChart,
   Bar,
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from "recharts";
 import {
   TrendingUp,
@@ -26,11 +28,10 @@ import {
   DollarSign,
   Clock,
   Activity,
-  ArrowUpRight,
-  ArrowDownRight,
   ArrowUpDown,
   Wrench,
   Sun,
+  BarChart3,
 } from "lucide-react";
 
 interface DailyStats {
@@ -175,164 +176,146 @@ export default function AnalyticsPage() {
       ? data.totalSessions / data.dailyStats.length
       : 0;
 
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <PageHeader title="Analytics" description="Revenue trends, utilization rates, and performance KPIs" />
+        </div>
+        <div className="px-6 space-y-6">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+          <SkeletonChart />
+          <div className="grid gap-4 md:grid-cols-2">
+            <SkeletonChart />
+            <SkeletonChart />
+          </div>
+          <SkeletonChart />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Analytics</h1>
-          <p className="text-muted-foreground">
-            Revenue trends, utilization rates, and performance KPIs
-          </p>
-        </div>
-        <div className="flex gap-1 rounded-lg border p-1">
-          {(["7d", "30d", "90d"] as DateRange[]).map((r) => (
-            <button
-              key={r}
-              onClick={() => setRange(r)}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                range === r
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-accent"
-              }`}
-            >
-              {rangeLabels[r]}
-            </button>
-          ))}
-        </div>
+      <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <PageHeader title="Analytics" description="Revenue trends, utilization rates, and performance KPIs">
+          <div className="flex gap-1 rounded-lg border p-1">
+            {(["7d", "30d", "90d"] as DateRange[]).map((r) => (
+              <button
+                key={r}
+                onClick={() => setRange(r)}
+                className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                  range === r
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-accent"
+                }`}
+              >
+                {rangeLabels[r]}
+              </button>
+            ))}
+          </div>
+        </PageHeader>
       </div>
 
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatCurrency(data.totalRevenue)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              ~{formatCurrency(dailyAvgRevenue)}/day avg
-            </p>
-          </CardContent>
-        </Card>
+        <StatCard
+          label="Total Revenue"
+          value={formatCurrency(data.totalRevenue)}
+          icon={DollarSign}
+          iconColor="bg-green-100 text-green-700"
+        >
+          <p className="text-xs text-muted-foreground">
+            ~{formatCurrency(dailyAvgRevenue)}/day avg
+          </p>
+        </StatCard>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Energy Delivered
-            </CardTitle>
-            <Zap className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatEnergy(data.totalEnergyKwh)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {data.totalSessions} sessions
-            </p>
-          </CardContent>
-        </Card>
+        <StatCard
+          label="Energy Delivered"
+          value={formatEnergy(data.totalEnergyKwh)}
+          icon={Zap}
+          iconColor="bg-amber-100 text-amber-700"
+        >
+          <p className="text-xs text-muted-foreground">
+            {data.totalSessions} sessions
+          </p>
+        </StatCard>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Avg Session Duration
-            </CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {data.averageSessionDurationMinutes.toFixed(0)} min
-            </div>
-            <p className="text-xs text-muted-foreground">
-              ~{dailyAvgSessions.toFixed(1)} sessions/day
-            </p>
-          </CardContent>
-        </Card>
+        <StatCard
+          label="Avg Session Duration"
+          value={`${data.averageSessionDurationMinutes.toFixed(0)} min`}
+          icon={Clock}
+          iconColor="bg-blue-100 text-blue-700"
+        >
+          <p className="text-xs text-muted-foreground">
+            ~{dailyAvgSessions.toFixed(1)} sessions/day
+          </p>
+        </StatCard>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Network Uptime
-            </CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${uptimeColorClass(data.uptimePercent)}`}>
-              {data.uptimePercent.toFixed(1)}%
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {data.uptimePercent >= 95 ? "Healthy" : data.uptimePercent >= 90 ? "Degraded" : "Critical"} availability
-            </p>
-          </CardContent>
-        </Card>
+        <StatCard
+          label="Network Uptime"
+          value={`${data.uptimePercent.toFixed(1)}%`}
+          icon={Activity}
+          iconColor="bg-purple-100 text-purple-700"
+          className={uptimeColorClass(data.uptimePercent)}
+        >
+          <p className="text-xs text-muted-foreground">
+            {data.uptimePercent >= 95 ? "Healthy" : data.uptimePercent >= 90 ? "Degraded" : "Critical"} availability
+          </p>
+        </StatCard>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Avg Revenue/kWh
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {data.totalEnergyKwh > 0
-                ? formatCurrency(data.totalRevenue / data.totalEnergyKwh)
-                : "0đ"}
-            </div>
-            <p className="text-xs text-muted-foreground">Effective rate</p>
-          </CardContent>
-        </Card>
+        <StatCard
+          label="Avg Revenue/kWh"
+          value={data.totalEnergyKwh > 0 ? formatCurrency(data.totalRevenue / data.totalEnergyKwh) : "0\u0111"}
+          icon={TrendingUp}
+          iconColor="bg-teal-100 text-teal-700"
+        >
+          <p className="text-xs text-muted-foreground">Effective rate</p>
+        </StatCard>
       </div>
 
       {/* Operational Metrics */}
       <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Mean Time Between Faults (MTBF)
-            </CardTitle>
-            <Wrench className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {data.mtbfHours > 0 ? (
-                data.mtbfHours >= 24
-                  ? `${(data.mtbfHours / 24).toFixed(1)} days`
-                  : `${data.mtbfHours.toFixed(1)} hrs`
-              ) : (
-                "No faults"
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {data.mtbfHours > 0
-                ? "Avg interval between fault occurrences"
-                : "No faults recorded in this period"}
-            </p>
-          </CardContent>
-        </Card>
+        <StatCard
+          label="Mean Time Between Faults (MTBF)"
+          value={
+            data.mtbfHours > 0
+              ? data.mtbfHours >= 24
+                ? `${(data.mtbfHours / 24).toFixed(1)} days`
+                : `${data.mtbfHours.toFixed(1)} hrs`
+              : "No faults"
+          }
+          icon={Wrench}
+          iconColor="bg-orange-100 text-orange-700"
+        >
+          <p className="text-xs text-muted-foreground">
+            {data.mtbfHours > 0
+              ? "Avg interval between fault occurrences"
+              : "No faults recorded in this period"}
+          </p>
+        </StatCard>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Peak Charging Hour
-            </CardTitle>
-            <Sun className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatPeakHour(data.peakHourUtc)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {data.peakHourSessionCount > 0
-                ? `${data.peakHourSessionCount} sessions started during this hour (UTC+7)`
-                : "No sessions in this period"}
-            </p>
-          </CardContent>
-        </Card>
+        <StatCard
+          label="Peak Charging Hour"
+          value={formatPeakHour(data.peakHourUtc)}
+          icon={Sun}
+          iconColor="bg-yellow-100 text-yellow-700"
+        >
+          <p className="text-xs text-muted-foreground">
+            {data.peakHourSessionCount > 0
+              ? `${data.peakHourSessionCount} sessions started during this hour (UTC+7)`
+              : "No sessions in this period"}
+          </p>
+        </StatCard>
       </div>
 
       {/* Revenue Trend */}
@@ -378,9 +361,12 @@ export default function AnalyticsPage() {
               </AreaChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex h-[300px] items-center justify-center text-muted-foreground">
-              {isLoading ? "Loading..." : "No data for selected period"}
-            </div>
+            <EmptyState
+              icon={BarChart3}
+              title="No revenue data"
+              description="No data available for the selected period"
+              className="h-[300px] py-0"
+            />
           )}
         </CardContent>
       </Card>
@@ -400,8 +386,8 @@ export default function AnalyticsPage() {
                 <AreaChart data={data.dailyStats}>
                   <defs>
                     <linearGradient id="energyGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                      <stop offset="5%" stopColor={CHART_COLORS.green} stopOpacity={0.3} />
+                      <stop offset="95%" stopColor={CHART_COLORS.green} stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
@@ -418,16 +404,19 @@ export default function AnalyticsPage() {
                   <Area
                     type="monotone"
                     dataKey="energyKwh"
-                    stroke="#22c55e"
+                    stroke={CHART_COLORS.green}
                     fill="url(#energyGradient)"
                     strokeWidth={2}
                   />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex h-[250px] items-center justify-center text-muted-foreground">
-                {isLoading ? "Loading..." : "No data"}
-              </div>
+              <EmptyState
+                icon={Zap}
+                title="No energy data"
+                description="No data available for the selected period"
+                className="h-[250px] py-0"
+              />
             )}
           </CardContent>
         </Card>
@@ -454,13 +443,16 @@ export default function AnalyticsPage() {
                       border: "1px solid var(--border)",
                     }}
                   />
-                  <Bar dataKey="sessions" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="sessions" fill={CHART_COLORS.blue} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex h-[250px] items-center justify-center text-muted-foreground">
-                {isLoading ? "Loading..." : "No data"}
-              </div>
+              <EmptyState
+                icon={Activity}
+                title="No session data"
+                description="No data available for the selected period"
+                className="h-[250px] py-0"
+              />
             )}
           </CardContent>
         </Card>
@@ -570,14 +562,14 @@ export default function AnalyticsPage() {
                     {sortedUtilization.map((station) => (
                       <tr key={station.stationId} className="border-b last:border-0">
                         <td className="px-4 py-3 font-medium">{station.stationName}</td>
-                        <td className="px-4 py-3 text-right">{station.totalSessions}</td>
-                        <td className="px-4 py-3 text-right">
+                        <td className="px-4 py-3 text-right tabular-nums">{station.totalSessions}</td>
+                        <td className="px-4 py-3 text-right tabular-nums">
                           {formatEnergy(station.totalEnergyKwh)}
                         </td>
-                        <td className="px-4 py-3 text-right">
+                        <td className="px-4 py-3 text-right tabular-nums">
                           {formatCurrency(station.totalRevenue)}
                         </td>
-                        <td className="px-4 py-3 text-right">
+                        <td className="px-4 py-3 text-right tabular-nums">
                           <Badge
                             variant={
                               station.utilizationPercent > 50
@@ -590,7 +582,7 @@ export default function AnalyticsPage() {
                             {station.utilizationPercent.toFixed(1)}%
                           </Badge>
                         </td>
-                        <td className="px-4 py-3 text-right">
+                        <td className="px-4 py-3 text-right tabular-nums">
                           <Badge
                             variant={
                               station.onlinePercent >= 95
@@ -610,9 +602,11 @@ export default function AnalyticsPage() {
               </div>
             </div>
           ) : (
-            <div className="flex h-32 items-center justify-center text-muted-foreground">
-              {isLoading ? "Loading..." : "No station data for selected period"}
-            </div>
+            <EmptyState
+              icon={BarChart3}
+              title="No station data"
+              description="No utilization data available for the selected period"
+            />
           )}
         </CardContent>
       </Card>

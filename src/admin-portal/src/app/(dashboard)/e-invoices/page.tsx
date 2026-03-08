@@ -2,9 +2,17 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatCard } from "@/components/ui/stat-card";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { Dialog, DialogHeader, DialogContent, DialogFooter } from "@/components/ui/dialog";
+import { SkeletonCard, SkeletonTable } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import { EINVOICE_STATUS, EINVOICE_PROVIDER_LABELS } from "@/lib/constants";
+import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { api } from "@/lib/api";
 import {
   Receipt,
@@ -16,7 +24,7 @@ import {
   ChevronLeft,
   ChevronRight,
   DollarSign,
-  CheckCircle2,
+  CheckCircle,
   Clock,
   AlertTriangle,
 } from "lucide-react";
@@ -33,22 +41,6 @@ interface EInvoice {
   retryCount?: number;
   creationTime?: string;
   stationName?: string;
-}
-
-const EInvoiceStatusLabels: Record<number, string> = {
-  0: "Pending", 1: "Processing", 2: "Issued", 3: "Failed", 4: "Cancelled",
-};
-
-const EInvoiceProviderLabels: Record<number, string> = {
-  0: "MISA", 1: "Viettel", 2: "VNPT",
-};
-
-interface EInvoiceStats {
-  totalIssued: number;
-  totalPending: number;
-  totalFailed: number;
-  totalCancelled: number;
-  totalAmount: number;
 }
 
 export default function EInvoicesPage() {
@@ -115,7 +107,7 @@ export default function EInvoicesPage() {
   const totalCount = invoicesData?.totalCount || 0;
 
   // Compute stats from fetched data
-  const stats: EInvoiceStats = {
+  const stats = {
     totalIssued: invoices.filter((i) => i.status === 2).length,
     totalPending: invoices.filter((i) => i.status === 0 || i.status === 1).length,
     totalFailed: invoices.filter((i) => i.status === 3).length,
@@ -123,36 +115,8 @@ export default function EInvoicesPage() {
     totalAmount: invoices.reduce((sum, i) => sum + (i.totalAmount || 0), 0),
   };
 
-  const getStatusIcon = (status: number) => {
-    switch (status) {
-      case 2: return <CheckCircle2 className="h-4 w-4 text-green-500" />;    // Issued
-      case 0: return <Clock className="h-4 w-4 text-yellow-500" />;          // Pending
-      case 1: return <Clock className="h-4 w-4 text-blue-500" />;            // Processing
-      case 3: return <AlertTriangle className="h-4 w-4 text-red-500" />;     // Failed
-      case 4: return <XCircle className="h-4 w-4 text-gray-500" />;          // Cancelled
-      default: return null;
-    }
-  };
-
-  const getStatusColor = (status: number): "success" | "warning" | "destructive" | "secondary" | "default" => {
-    switch (status) {
-      case 2: return "success";     // Issued
-      case 0: return "warning";     // Pending
-      case 1: return "default";     // Processing
-      case 3: return "destructive"; // Failed
-      case 4: return "secondary";   // Cancelled
-      default: return "secondary";
-    }
-  };
-
-  const formatCurrency = (value?: number | null) => {
-    return (value ?? 0).toLocaleString("vi-VN") + "đ";
-  };
-
-  const formatDate = (dateString?: string | null) => {
-    if (!dateString) return "—";
-    return new Date(dateString).toLocaleString("vi-VN");
-  };
+  // Cancel confirmation dialog state
+  const [cancelTarget, setCancelTarget] = useState<string | null>(null);
 
   const handleDownloadPdf = async (invoiceId: string) => {
     try {
@@ -169,77 +133,53 @@ export default function EInvoicesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">E-Invoices</h1>
-          <p className="text-muted-foreground">
-            Manage electronic invoices (Hóa đơn điện tử)
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="E-Invoices"
+        description="Manage electronic invoices (Hóa đơn điện tử)"
+        className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 -mx-1 px-1 py-2"
+      />
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Issued</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {stats?.totalIssued || 0}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending</CardTitle>
-            <Clock className="h-4 w-4 text-yellow-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">
-              {stats?.totalPending || 0}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Failed</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {stats?.totalFailed || 0}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Cancelled</CardTitle>
-            <XCircle className="h-4 w-4 text-gray-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-600">
-              {stats?.totalCancelled || 0}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Amount</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatCurrency(stats?.totalAmount || 0)}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {isLoading ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+          <StatCard
+            label="Issued"
+            value={stats.totalIssued}
+            icon={CheckCircle}
+            iconColor="bg-green-50 text-green-600"
+          />
+          <StatCard
+            label="Pending"
+            value={stats.totalPending}
+            icon={Clock}
+            iconColor="bg-amber-50 text-amber-600"
+          />
+          <StatCard
+            label="Failed"
+            value={stats.totalFailed}
+            icon={AlertTriangle}
+            iconColor="bg-red-50 text-red-600"
+          />
+          <StatCard
+            label="Cancelled"
+            value={stats.totalCancelled}
+            icon={XCircle}
+            iconColor="bg-gray-50 text-gray-500"
+          />
+          <StatCard
+            label="Total Amount"
+            value={formatCurrency(stats.totalAmount)}
+            icon={DollarSign}
+            iconColor="bg-primary/10 text-primary"
+          />
+        </div>
+      )}
 
       {/* Filters */}
       <Card>
@@ -253,31 +193,29 @@ export default function EInvoicesPage() {
                   placeholder="Search by invoice number..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full rounded-md border pl-10 pr-3 py-2"
+                  className="w-full rounded-md border pl-10 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 />
               </div>
             </div>
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-md border px-3 py-2"
+              onChange={(e) => { setStatusFilter(e.target.value); resetPagination(); }}
+              className="rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
             >
               <option value="all">All Status</option>
-              <option value="0">Pending</option>
-              <option value="1">Processing</option>
-              <option value="2">Issued</option>
-              <option value="3">Failed</option>
-              <option value="4">Cancelled</option>
+              {Object.entries(EINVOICE_STATUS).map(([key, config]) => (
+                <option key={key} value={key}>{config.label}</option>
+              ))}
             </select>
             <select
               value={providerFilter}
-              onChange={(e) => setProviderFilter(e.target.value)}
-              className="rounded-md border px-3 py-2"
+              onChange={(e) => { setProviderFilter(e.target.value); resetPagination(); }}
+              className="rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
             >
               <option value="all">All Providers</option>
-              <option value="0">MISA</option>
-              <option value="1">Viettel</option>
-              <option value="2">VNPT</option>
+              {Object.entries(EINVOICE_PROVIDER_LABELS).map(([key, label]) => (
+                <option key={key} value={key}>{label}</option>
+              ))}
             </select>
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -285,14 +223,14 @@ export default function EInvoicesPage() {
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
-                className="rounded-md border px-3 py-2"
+                className="rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
               />
               <span>to</span>
               <input
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
-                className="rounded-md border px-3 py-2"
+                className="rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
               />
             </div>
           </div>
@@ -300,47 +238,53 @@ export default function EInvoicesPage() {
       </Card>
 
       {/* Invoices Table */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="border-b bg-muted/50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-medium">
-                    Invoice #
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">
-                    Station
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">
-                    Provider
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">
-                    Amount
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">
-                    Retries
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">
-                    Date
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
+      {isLoading ? (
+        <SkeletonTable rows={8} cols={8} />
+      ) : invoices.length === 0 ? (
+        <Card>
+          <CardContent className="p-0">
+            <EmptyState
+              icon={Receipt}
+              title="No e-invoices found"
+              description="Try adjusting your filters or search query."
+            />
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="border-b bg-muted/50">
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center">
-                      Loading...
-                    </td>
+                    <th className="px-4 py-3 text-left text-sm font-medium">
+                      Invoice #
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">
+                      Station
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">
+                      Provider
+                    </th>
+                    <th className="px-4 py-3 text-right text-sm font-medium">
+                      Amount
+                    </th>
+                    <th className="px-4 py-3 text-right text-sm font-medium">
+                      Retries
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">
+                      Date
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">
+                      Actions
+                    </th>
                   </tr>
-                ) : invoices.length > 0 ? (
-                  invoices.map((invoice) => (
+                </thead>
+                <tbody>
+                  {invoices.map((invoice) => (
                     <tr key={invoice.id} className="border-b hover:bg-muted/50">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
@@ -361,24 +305,19 @@ export default function EInvoicesPage() {
                         <span>{invoice.stationName || "—"}</span>
                       </td>
                       <td className="px-4 py-3">
-                        <Badge variant="outline">{EInvoiceProviderLabels[invoice.provider] ?? invoice.provider}</Badge>
+                        <Badge variant="outline">{EINVOICE_PROVIDER_LABELS[invoice.provider] ?? invoice.provider}</Badge>
                       </td>
-                      <td className="px-4 py-3 font-semibold">
+                      <td className="px-4 py-3 text-right tabular-nums font-semibold">
                         {formatCurrency(invoice.totalAmount)}
                       </td>
-                      <td className="px-4 py-3 text-sm">
+                      <td className="px-4 py-3 text-right tabular-nums text-sm">
                         {invoice.retryCount ?? 0}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          {getStatusIcon(invoice.status)}
-                          <Badge variant={getStatusColor(invoice.status)}>
-                            {EInvoiceStatusLabels[invoice.status] || "Unknown"}
-                          </Badge>
-                        </div>
+                        <StatusBadge type="eInvoice" value={invoice.status} showIcon />
                       </td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">
-                        {formatDate(invoice.issuedAt || invoice.creationTime)}
+                        {formatDateTime(invoice.issuedAt || invoice.creationTime)}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
@@ -406,75 +345,95 @@ export default function EInvoicesPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => {
-                                if (confirm("Cancel this e-invoice?")) {
-                                  cancelMutation.mutate(invoice.id);
-                                }
-                              }}
+                              onClick={() => setCancelTarget(invoice.id)}
                               title="Cancel"
                             >
-                              <XCircle className="h-4 w-4 text-red-500" />
+                              <XCircle className="h-4 w-4 text-destructive" />
                             </Button>
                           )}
                         </div>
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td
-                      colSpan={8}
-                      className="px-4 py-8 text-center text-muted-foreground"
-                    >
-                      No e-invoices found
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination */}
-          {(totalCount > pageSize || cursorStack.length > 0) && (
-            <div className="flex items-center justify-between border-t px-4 py-3">
-              <div className="text-sm text-muted-foreground">
-                {totalCount} total e-invoices
-              </div>
-              <div className="flex gap-2">
-                {cursorStack.length > 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const prev = [...cursorStack];
-                      const prevCursor = prev.pop()!;
-                      setCursorStack(prev);
-                      setCursor(prevCursor);
-                    }}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                )}
-                {invoices.length === pageSize && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const lastId = invoices[invoices.length - 1]?.id;
-                      if (lastId) {
-                        setCursorStack([...cursorStack, cursor]);
-                        setCursor(lastId);
-                      }
-                    }}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
+                  ))}
+                </tbody>
+              </table>
             </div>
+
+            {/* Pagination */}
+            {(totalCount > pageSize || cursorStack.length > 0) && (
+              <div className="flex items-center justify-between border-t px-4 py-3">
+                <div className="text-sm text-muted-foreground">
+                  {totalCount} total e-invoices
+                </div>
+                <div className="flex gap-2">
+                  {cursorStack.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const prev = [...cursorStack];
+                        const prevCursor = prev.pop()!;
+                        setCursorStack(prev);
+                        setCursor(prevCursor);
+                      }}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {invoices.length === pageSize && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const lastId = invoices[invoices.length - 1]?.id;
+                        if (lastId) {
+                          setCursorStack([...cursorStack, cursor]);
+                          setCursor(lastId);
+                        }
+                      }}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Cancel Confirmation Dialog */}
+      <Dialog open={!!cancelTarget} onClose={() => setCancelTarget(null)}>
+        <DialogHeader onClose={() => setCancelTarget(null)}>Cancel E-Invoice</DialogHeader>
+        <DialogContent>
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to cancel this e-invoice? This action cannot be undone.
+          </p>
+          {cancelMutation.isError && (
+            <p className="text-sm text-destructive mt-3">
+              {(cancelMutation.error as Error)?.message || "Cancellation failed. Please try again."}
+            </p>
           )}
-        </CardContent>
-      </Card>
+        </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setCancelTarget(null)}>
+            No, Keep It
+          </Button>
+          <Button
+            variant="destructive"
+            disabled={cancelMutation.isPending}
+            onClick={() => {
+              if (cancelTarget) {
+                cancelMutation.mutate(cancelTarget, {
+                  onSuccess: () => setCancelTarget(null),
+                });
+              }
+            }}
+          >
+            {cancelMutation.isPending ? "Cancelling..." : "Yes, Cancel"}
+          </Button>
+        </DialogFooter>
+      </Dialog>
     </div>
   );
 }

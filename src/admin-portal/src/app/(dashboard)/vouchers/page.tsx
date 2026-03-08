@@ -2,10 +2,14 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/ui/page-header";
+import { SkeletonTable } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Dialog, DialogHeader, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
 import { Plus, Edit, Trash2, AlertCircle, Ticket, Eye } from "lucide-react";
 
@@ -52,18 +56,11 @@ const VoucherTypeLabels: Record<number, string> = {
   2: "Miễn phí sạc",
 };
 
-function getTypeBadge(type: number) {
-  switch (type) {
-    case 0:
-      return <Badge variant="default">{VoucherTypeLabels[0]}</Badge>;
-    case 1:
-      return <Badge variant="warning">{VoucherTypeLabels[1]}</Badge>;
-    case 2:
-      return <Badge variant="success">{VoucherTypeLabels[2]}</Badge>;
-    default:
-      return <Badge variant="secondary">Unknown</Badge>;
-  }
-}
+const VoucherTypeBadgeVariants: Record<number, "default" | "warning" | "success" | "secondary"> = {
+  0: "default",
+  1: "warning",
+  2: "success",
+};
 
 export default function VouchersPage() {
   const queryClient = useQueryClient();
@@ -230,29 +227,32 @@ export default function VouchersPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Voucher Management</h1>
-          <p className="text-muted-foreground">
-            Create and manage discount vouchers for charging sessions
-          </p>
-        </div>
-        <Button onClick={() => { setIsCreating(true); setEditingId(null); resetForm(); }} disabled={isCreating}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Voucher
-        </Button>
+    <div className="flex flex-col">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <PageHeader
+          title="Voucher Management"
+          description="Create and manage discount vouchers for charging sessions"
+        >
+          <Button onClick={() => { setIsCreating(true); setEditingId(null); resetForm(); }} disabled={isCreating}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Voucher
+          </Button>
+        </PageHeader>
       </div>
 
-      {/* Create/Edit Form */}
-      {(isCreating || editingId) && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{editingId ? "Edit Voucher" : "New Voucher"}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="flex-1 space-y-6 p-6">
+        {/* Create/Edit Form Dialog */}
+        <Dialog
+          open={isCreating || !!editingId}
+          onClose={() => { setIsCreating(false); setEditingId(null); resetForm(); }}
+          size="xl"
+        >
+          <DialogHeader onClose={() => { setIsCreating(false); setEditingId(null); resetForm(); }}>
+            {editingId ? "Edit Voucher" : "New Voucher"}
+          </DialogHeader>
+          <form onSubmit={handleSubmit}>
+            <DialogContent className="space-y-4">
               {formError && (
                 <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
                   <AlertCircle className="h-4 w-4 flex-shrink-0" />
@@ -363,42 +363,39 @@ export default function VouchersPage() {
                 }
                 placeholder="e.g., Summer promotion - 20% off all charging sessions"
               />
-              <div className="flex gap-2">
-                <Button
-                  type="submit"
-                  disabled={createMutation.isPending || updateMutation.isPending}
-                >
-                  {editingId ? "Update" : "Create"} Voucher
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setIsCreating(false);
-                    setEditingId(null);
-                    resetForm();
-                  }}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Usage Detail */}
-      {viewingUsageId && usageData && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Voucher Usage ({usageData.usedQuantity}/{usageData.totalQuantity})</CardTitle>
-              <Button variant="outline" size="sm" onClick={() => setViewingUsageId(null)}>
-                Close
+            </DialogContent>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsCreating(false);
+                  setEditingId(null);
+                  resetForm();
+                }}
+              >
+                Cancel
               </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
+              <Button
+                type="submit"
+                disabled={createMutation.isPending || updateMutation.isPending}
+              >
+                {editingId ? "Update" : "Create"} Voucher
+              </Button>
+            </DialogFooter>
+          </form>
+        </Dialog>
+
+        {/* Usage Detail Dialog */}
+        <Dialog
+          open={!!viewingUsageId && !!usageData}
+          onClose={() => setViewingUsageId(null)}
+          size="lg"
+        >
+          <DialogHeader onClose={() => setViewingUsageId(null)}>
+            Voucher Usage ({usageData?.usedQuantity ?? 0}/{usageData?.totalQuantity ?? 0})
+          </DialogHeader>
+          <DialogContent className="p-0">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -410,10 +407,10 @@ export default function VouchersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {usageData.usages.length > 0 ? (
+                  {usageData && usageData.usages.length > 0 ? (
                     usageData.usages.map((usage, idx) => (
                       <tr key={idx} className="border-b hover:bg-muted/50">
-                        <td className="px-4 py-3 text-sm font-mono text-xs">{usage.userId.substring(0, 8)}...</td>
+                        <td className="px-4 py-3 font-mono text-xs">{usage.userId.substring(0, 8)}...</td>
                         <td className="px-4 py-3 text-sm">
                           <Badge variant={usage.isUsed ? "success" : "secondary"}>
                             {usage.isUsed ? "Used" : "Claimed"}
@@ -425,130 +422,144 @@ export default function VouchersPage() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
-                        No usage records found
+                      <td colSpan={4}>
+                        <EmptyState
+                          icon={Ticket}
+                          title="No usage records"
+                          description="No one has claimed or used this voucher yet."
+                        />
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </DialogContent>
+        </Dialog>
 
-      {/* Filter */}
-      <div className="flex items-center gap-2">
-        <Ticket className="h-4 w-4 text-muted-foreground" />
-        <Button
-          variant={activeFilter === "all" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setActiveFilter("all")}
-        >
-          All
-        </Button>
-        <Button
-          variant={activeFilter === "active" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setActiveFilter("active")}
-        >
-          Active
-        </Button>
-        <Button
-          variant={activeFilter === "inactive" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setActiveFilter("inactive")}
-        >
-          Inactive
-        </Button>
-      </div>
+        {/* Filter */}
+        <div className="flex items-center gap-2">
+          <Ticket className="h-4 w-4 text-muted-foreground" />
+          <Button
+            variant={activeFilter === "all" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setActiveFilter("all")}
+          >
+            All
+          </Button>
+          <Button
+            variant={activeFilter === "active" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setActiveFilter("active")}
+          >
+            Active
+          </Button>
+          <Button
+            variant={activeFilter === "inactive" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setActiveFilter("inactive")}
+          >
+            Inactive
+          </Button>
+        </div>
 
-      {/* Vouchers Table */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="px-4 py-3 text-left text-sm font-medium">Code</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Type</th>
-                  <th className="px-4 py-3 text-right text-sm font-medium">Value</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Expiry Date</th>
-                  <th className="px-4 py-3 text-right text-sm font-medium">Quantity</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
-                  <th className="px-4 py-3 text-right text-sm font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center">Loading...</td>
-                  </tr>
-                ) : vouchers && vouchers.length > 0 ? (
-                  vouchers.map((voucher) => (
-                    <tr key={voucher.id} className="border-b hover:bg-muted/50">
-                      <td className="px-4 py-3">
-                        <span className="font-mono font-medium">{voucher.code}</span>
-                      </td>
-                      <td className="px-4 py-3">{getTypeBadge(voucher.type)}</td>
-                      <td className="px-4 py-3 text-right font-medium">
-                        {formatValue(voucher.type, voucher.value)}
-                      </td>
-                      <td className="px-4 py-3 text-sm">{formatDate(voucher.expiryDate)}</td>
-                      <td className="px-4 py-3 text-right text-sm">
-                        {voucher.usedQuantity}/{voucher.totalQuantity}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge variant={voucher.isActive ? "success" : "secondary"}>
-                          {voucher.isActive ? "Active" : "Inactive"}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setViewingUsageId(voucher.id)}
-                            title="View usage"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEdit(voucher)}
-                            title="Edit"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => {
-                              if (confirm("Delete this voucher?")) {
-                                deleteMutation.mutate(voucher.id);
-                              }
-                            }}
-                            title="Delete"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </td>
+        {/* Vouchers Table */}
+        {isLoading ? (
+          <SkeletonTable rows={5} cols={7} />
+        ) : vouchers && vouchers.length > 0 ? (
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="px-4 py-3 text-left text-sm font-medium">Code</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">Type</th>
+                      <th className="px-4 py-3 text-right text-sm font-medium">Value</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">Expiry Date</th>
+                      <th className="px-4 py-3 text-right text-sm font-medium">Quantity</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
+                      <th className="px-4 py-3 text-right text-sm font-medium">Actions</th>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-                      No vouchers found. Create your first voucher to get started.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+                  </thead>
+                  <tbody>
+                    {vouchers.map((voucher) => (
+                      <tr key={voucher.id} className="border-b hover:bg-muted/50">
+                        <td className="px-4 py-3">
+                          <span className="font-mono font-medium">{voucher.code}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge variant={VoucherTypeBadgeVariants[voucher.type] ?? "secondary"}>
+                            {VoucherTypeLabels[voucher.type] ?? "Unknown"}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums font-medium">
+                          {formatValue(voucher.type, voucher.value)}
+                        </td>
+                        <td className="px-4 py-3 text-sm">{formatDate(voucher.expiryDate)}</td>
+                        <td className="px-4 py-3 text-right text-sm tabular-nums">
+                          {voucher.usedQuantity}/{voucher.totalQuantity}
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge variant={voucher.isActive ? "success" : "secondary"}>
+                            {voucher.isActive ? "Active" : "Inactive"}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setViewingUsageId(voucher.id)}
+                              title="View usage"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEdit(voucher)}
+                              title="Edit"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => {
+                                if (confirm("Delete this voucher?")) {
+                                  deleteMutation.mutate(voucher.id);
+                                }
+                              }}
+                              title="Delete"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="p-0">
+              <EmptyState
+                icon={Ticket}
+                title="No vouchers found"
+                description="Create your first voucher to get started."
+                action={{
+                  label: "Add Voucher",
+                  onClick: () => { setIsCreating(true); setEditingId(null); resetForm(); },
+                }}
+              />
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }

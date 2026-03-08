@@ -6,6 +6,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatCard } from "@/components/ui/stat-card";
+import { SkeletonCard } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Dialog,
+  DialogHeader,
+  DialogContent,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { api } from "@/lib/api";
 import {
   Plus,
@@ -14,10 +24,12 @@ import {
   Check,
   X,
   DollarSign,
-  Clock,
   Zap,
   Star,
   AlertCircle,
+  Receipt,
+  BarChart3,
+  Percent,
 } from "lucide-react";
 
 interface Tariff {
@@ -188,34 +200,72 @@ export default function TariffsPage() {
     }
   };
 
+  const handleCloseDialog = () => {
+    setIsCreating(false);
+    setEditingId(null);
+    resetForm();
+  };
+
   const formatCurrency = (value?: number | null) => {
     return (value ?? 0).toLocaleString("vi-VN") + "đ";
   };
 
+  // Computed stats
+  const totalTariffs = tariffs?.length ?? 0;
+  const activeTariffs = tariffs?.filter((t) => t.isActive).length ?? 0;
+  const defaultTariff = tariffs?.find((t) => t.isDefault);
+  const avgRate = totalTariffs > 0
+    ? (tariffs!.reduce((sum, t) => sum + t.totalRatePerKwh, 0) / totalTariffs)
+    : 0;
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Tariff Management</h1>
-          <p className="text-muted-foreground">
-            Configure pricing plans for charging sessions
-          </p>
-        </div>
-        <Button onClick={() => setIsCreating(true)} disabled={isCreating}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Tariff
-        </Button>
+    <div className="flex flex-col">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <PageHeader title="Tariff Management" description="Configure pricing plans for charging sessions">
+          <Button onClick={() => setIsCreating(true)} disabled={isCreating || !!editingId}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Tariff
+          </Button>
+        </PageHeader>
       </div>
 
-      {/* Create/Edit Form */}
-      {(isCreating || editingId) && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{editingId ? "Edit Tariff" : "New Tariff"}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="flex-1 space-y-6 p-6">
+        {/* KPI Stats */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            label="Total Tariffs"
+            value={totalTariffs}
+            icon={Receipt}
+            iconColor="bg-primary/10 text-primary"
+          />
+          <StatCard
+            label="Active"
+            value={activeTariffs}
+            icon={Check}
+            iconColor="bg-green-500/10 text-green-600"
+          />
+          <StatCard
+            label="Avg Rate/kWh"
+            value={formatCurrency(Math.round(avgRate))}
+            icon={BarChart3}
+            iconColor="bg-blue-500/10 text-blue-600"
+          />
+          <StatCard
+            label="Default Plan"
+            value={defaultTariff?.name ?? "None"}
+            icon={Star}
+            iconColor="bg-amber-500/10 text-amber-600"
+          />
+        </div>
+
+        {/* Create/Edit Dialog */}
+        <Dialog open={isCreating || !!editingId} onClose={handleCloseDialog} size="lg">
+          <DialogHeader onClose={handleCloseDialog}>
+            {editingId ? "Edit Tariff" : "New Tariff"}
+          </DialogHeader>
+          <form onSubmit={handleSubmit}>
+            <DialogContent className="space-y-4">
               {formError && (
                 <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
                   <AlertCircle className="h-4 w-4 flex-shrink-0" />
@@ -286,147 +336,153 @@ export default function TariffsPage() {
                   suffix="%"
                 />
               </div>
-              <div className="flex gap-2">
-                <Button
-                  type="submit"
-                  disabled={createMutation.isPending || updateMutation.isPending}
-                >
-                  {editingId ? "Update" : "Create"} Tariff
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setIsCreating(false);
-                    setEditingId(null);
-                    resetForm();
-                  }}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
+            </DialogContent>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCloseDialog}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={createMutation.isPending || updateMutation.isPending}
+              >
+                {editingId ? "Update" : "Create"} Tariff
+              </Button>
+            </DialogFooter>
+          </form>
+        </Dialog>
 
-      {/* Tariffs Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {isLoading ? (
-          <div className="col-span-full text-center py-8">Loading...</div>
-        ) : tariffs && tariffs.length > 0 ? (
-          tariffs.map((tariff) => (
-            <Card
-              key={tariff.id}
-              className={`relative ${tariff.isDefault ? "ring-2 ring-primary" : ""}`}
-            >
-              {tariff.isDefault && (
-                <div className="absolute -top-2 -right-2">
-                  <Badge variant="default" className="flex items-center gap-1">
-                    <Star className="h-3 w-3" />
-                    Default
-                  </Badge>
-                </div>
-              )}
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">{tariff.name}</CardTitle>
-                  <Badge variant={tariff.isActive ? "success" : "secondary"}>
-                    {tariff.isActive ? "Active" : "Inactive"}
-                  </Badge>
-                </div>
-                {tariff.description && (
-                  <p className="text-sm text-muted-foreground">
-                    {tariff.description}
-                  </p>
+        {/* Tariffs Grid */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {isLoading ? (
+            Array.from({ length: 6 }).map((_, i) => (
+              <SkeletonCard key={i} />
+            ))
+          ) : tariffs && tariffs.length > 0 ? (
+            tariffs.map((tariff) => (
+              <Card
+                key={tariff.id}
+                className={`relative ${tariff.isDefault ? "ring-2 ring-primary" : ""}`}
+              >
+                {tariff.isDefault && (
+                  <div className="absolute -top-2 -right-2">
+                    <Badge variant="default" className="flex items-center gap-1">
+                      <Star className="h-3 w-3" />
+                      Default
+                    </Badge>
+                  </div>
                 )}
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
+                <CardHeader>
                   <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-sm">
-                      <Zap className="h-4 w-4 text-yellow-500" />
-                      Base Rate/kWh
-                    </span>
-                    <span className="font-semibold">
-                      {formatCurrency(tariff.baseRatePerKwh)}
-                    </span>
+                    <CardTitle className="text-lg">{tariff.name}</CardTitle>
+                    <Badge variant={tariff.isActive ? "success" : "secondary"}>
+                      {tariff.isActive ? "Active" : "Inactive"}
+                    </Badge>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-sm">
-                      <DollarSign className="h-4 w-4 text-green-500" />
-                      Total Rate/kWh
-                    </span>
-                    <span className="font-semibold">
-                      {formatCurrency(tariff.totalRatePerKwh)}
-                    </span>
+                  {tariff.description && (
+                    <p className="text-sm text-muted-foreground">
+                      {tariff.description}
+                    </p>
+                  )}
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-2 text-sm">
+                        <Zap className="h-4 w-4 text-amber-500" />
+                        Base Rate/kWh
+                      </span>
+                      <span className="font-semibold tabular-nums text-right">
+                        {formatCurrency(tariff.baseRatePerKwh)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-2 text-sm">
+                        <DollarSign className="h-4 w-4 text-green-600" />
+                        Total Rate/kWh
+                      </span>
+                      <span className="font-semibold tabular-nums text-right">
+                        {formatCurrency(tariff.totalRatePerKwh)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-2 text-sm">
+                        <Percent className="h-4 w-4 text-blue-600" />
+                        Tax Rate
+                      </span>
+                      <span className="font-semibold tabular-nums text-right">
+                        {tariff.taxRatePercent}%
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-sm">
-                      <Clock className="h-4 w-4 text-blue-500" />
-                      Tax Rate
-                    </span>
-                    <span className="font-semibold">
-                      {tariff.taxRatePercent}%
-                    </span>
-                  </div>
-                </div>
 
-                <div className="flex flex-wrap gap-2 pt-2 border-t">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleEdit(tariff)}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={tariff.isActive ? "outline" : "default"}
-                    size="sm"
-                    onClick={() =>
-                      toggleActiveMutation.mutate({
-                        id: tariff.id,
-                        activate: !tariff.isActive,
-                      })
-                    }
-                  >
-                    {tariff.isActive ? (
-                      <X className="h-4 w-4" />
-                    ) : (
-                      <Check className="h-4 w-4" />
-                    )}
-                  </Button>
-                  {!tariff.isDefault && tariff.isActive && (
+                  <div className="flex flex-wrap gap-2 pt-2 border-t">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setDefaultMutation.mutate(tariff.id)}
+                      onClick={() => handleEdit(tariff)}
                     >
-                      <Star className="h-4 w-4" />
+                      <Edit className="h-4 w-4" />
                     </Button>
-                  )}
-                  {!tariff.isDefault && (
                     <Button
-                      variant="destructive"
+                      variant={tariff.isActive ? "outline" : "default"}
                       size="sm"
-                      onClick={() => {
-                        if (confirm("Delete this tariff?")) {
-                          deleteMutation.mutate(tariff.id);
-                        }
-                      }}
+                      onClick={() =>
+                        toggleActiveMutation.mutate({
+                          id: tariff.id,
+                          activate: !tariff.isActive,
+                        })
+                      }
                     >
-                      <Trash2 className="h-4 w-4" />
+                      {tariff.isActive ? (
+                        <X className="h-4 w-4" />
+                      ) : (
+                        <Check className="h-4 w-4" />
+                      )}
                     </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        ) : (
-          <div className="col-span-full text-center py-8 text-muted-foreground">
-            No tariffs found. Create your first tariff to get started.
-          </div>
-        )}
+                    {!tariff.isDefault && tariff.isActive && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setDefaultMutation.mutate(tariff.id)}
+                      >
+                        <Star className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {!tariff.isDefault && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => {
+                          if (confirm("Delete this tariff?")) {
+                            deleteMutation.mutate(tariff.id);
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            <div className="col-span-full">
+              <EmptyState
+                icon={Receipt}
+                title="No tariffs found"
+                description="Create your first tariff to get started."
+                action={{
+                  label: "Add Tariff",
+                  onClick: () => setIsCreating(true),
+                }}
+              />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
