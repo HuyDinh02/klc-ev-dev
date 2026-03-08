@@ -16,7 +16,8 @@ import {
 import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { Skeleton, SkeletonCard } from "@/components/ui/skeleton";
 import { sessionsApi } from "@/lib/api";
 import {
   formatCurrency,
@@ -24,6 +25,7 @@ import {
   formatEnergy,
   formatDuration,
 } from "@/lib/utils";
+import { CHART_COLORS } from "@/lib/constants";
 import {
   LineChart,
   Line,
@@ -34,41 +36,6 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-
-const SessionStatusLabels: Record<number, string> = {
-  0: "Pending",
-  1: "Starting",
-  2: "InProgress",
-  3: "Suspended",
-  4: "Stopping",
-  5: "Completed",
-  6: "Failed",
-};
-
-function getStatusBadge(status: number | string) {
-  const label =
-    typeof status === "number"
-      ? SessionStatusLabels[status] || "Unknown"
-      : status;
-  switch (label) {
-    case "InProgress":
-      return <Badge variant="default">Charging</Badge>;
-    case "Starting":
-      return <Badge variant="default">Starting</Badge>;
-    case "Completed":
-      return <Badge variant="success">Completed</Badge>;
-    case "Failed":
-      return <Badge variant="destructive">Failed</Badge>;
-    case "Pending":
-      return <Badge variant="secondary">Pending</Badge>;
-    case "Suspended":
-      return <Badge variant="warning">Suspended</Badge>;
-    case "Stopping":
-      return <Badge variant="secondary">Stopping</Badge>;
-    default:
-      return <Badge variant="secondary">{label}</Badge>;
-  }
-}
 
 interface SessionDetail {
   id: string;
@@ -153,10 +120,13 @@ export default function SessionDetailPage() {
     return (
       <div className="flex flex-col">
         <Header title="Session Detail" description="Loading session data..." />
-        <div className="flex-1 p-6">
-          <div className="flex items-center justify-center py-20 text-muted-foreground">
-            Loading...
+        <div className="flex-1 space-y-6 p-6">
+          <Skeleton className="h-9 w-40" />
+          <div className="grid gap-6 md:grid-cols-2">
+            <SkeletonCard />
+            <SkeletonCard />
           </div>
+          <Skeleton className="h-[350px] w-full rounded-lg" />
         </div>
       </div>
     );
@@ -226,7 +196,7 @@ export default function SessionDetailPage() {
                     <Zap className="h-4 w-4" />
                     Status
                   </span>
-                  {getStatusBadge(session.status)}
+                  <StatusBadge type="session" value={session.status} />
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -330,8 +300,9 @@ export default function SessionDetailPage() {
           </CardHeader>
           <CardContent>
             {meterLoading ? (
-              <div className="flex items-center justify-center py-12 text-muted-foreground">
-                Loading meter data...
+              <div className="space-y-4 py-4">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-[300px] w-full" />
               </div>
             ) : chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={350}>
@@ -383,7 +354,7 @@ export default function SessionDetailPage() {
                     type="monotone"
                     dataKey="energyKwh"
                     name="Energy (kWh)"
-                    stroke="#3b82f6"
+                    stroke={CHART_COLORS.blue}
                     strokeWidth={2}
                     dot={false}
                     connectNulls
@@ -393,7 +364,7 @@ export default function SessionDetailPage() {
                     type="monotone"
                     dataKey="powerKw"
                     name="Power (kW)"
-                    stroke="#f59e0b"
+                    stroke={CHART_COLORS.orange}
                     strokeWidth={2}
                     dot={false}
                     connectNulls
@@ -404,7 +375,7 @@ export default function SessionDetailPage() {
                       type="monotone"
                       dataKey="socPercent"
                       name="SoC (%)"
-                      stroke="#22c55e"
+                      stroke={CHART_COLORS.green}
                       strokeWidth={2}
                       dot={false}
                       connectNulls
@@ -427,8 +398,10 @@ export default function SessionDetailPage() {
           </CardHeader>
           <CardContent className="p-0">
             {meterLoading ? (
-              <div className="flex items-center justify-center py-12 text-muted-foreground">
-                Loading...
+              <div className="space-y-3 p-4">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-4 w-full" />
+                ))}
               </div>
             ) : (meterValues || []).length > 0 ? (
               <div className="overflow-x-auto">
