@@ -67,16 +67,14 @@ public class KLCHttpApiHostModule : AbpModule
             });
         });
 
-        // Configure OpenIddict server with ephemeral signing keys (avoids macOS Keychain issues)
-        if (hostingEnvironment.IsDevelopment())
+        // Configure OpenIddict server with ephemeral signing keys
+        // TODO: Use persistent keys (X.509 cert or data protection) for production
+        PreConfigure<OpenIddictServerBuilder>(serverBuilder =>
         {
-            PreConfigure<OpenIddictServerBuilder>(serverBuilder =>
-            {
-                serverBuilder.AddEphemeralEncryptionKey()
-                             .AddEphemeralSigningKey()
-                             .DisableAccessTokenEncryption();
-            });
-        }
+            serverBuilder.AddEphemeralEncryptionKey()
+                         .AddEphemeralSigningKey()
+                         .DisableAccessTokenEncryption();
+        });
     }
 
     public override void ConfigureServices(ServiceConfigurationContext context)
@@ -333,6 +331,17 @@ public class KLCHttpApiHostModule : AbpModule
     {
         var app = context.GetApplicationBuilder();
         var env = context.GetEnvironment();
+
+        // Trust forwarded headers from Cloud Run load balancer (X-Forwarded-For, X-Forwarded-Proto)
+        // This ensures OpenIddict sees HTTPS scheme even though Cloud Run terminates TLS
+        var forwardedHeadersOptions = new Microsoft.AspNetCore.Builder.ForwardedHeadersOptions
+        {
+            ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor
+                             | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
+        };
+        forwardedHeadersOptions.KnownNetworks.Clear();
+        forwardedHeadersOptions.KnownProxies.Clear();
+        app.UseForwardedHeaders(forwardedHeadersOptions);
 
         if (env.IsDevelopment())
         {
