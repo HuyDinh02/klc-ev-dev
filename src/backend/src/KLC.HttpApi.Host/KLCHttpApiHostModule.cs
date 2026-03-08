@@ -84,6 +84,12 @@ public class KLCHttpApiHostModule : AbpModule
         var configuration = context.Services.GetConfiguration();
         var hostingEnvironment = context.Services.GetHostingEnvironment();
 
+        // Disable ABP libs check — this is an API-only host, no frontend assets needed
+        Configure<Volo.Abp.AspNetCore.Mvc.Libs.AbpMvcLibsOptions>(options =>
+        {
+            options.CheckLibs = false;
+        });
+
         ConfigureAuthentication(context);
         ConfigureBundles();
         ConfigureUrls(configuration);
