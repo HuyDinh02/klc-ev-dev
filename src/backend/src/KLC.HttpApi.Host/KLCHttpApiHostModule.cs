@@ -350,10 +350,8 @@ public class KLCHttpApiHostModule : AbpModule
 
         app.UseAbpRequestLocalization();
 
-        if (!env.IsDevelopment())
-        {
-            app.UseErrorPage();
-        }
+        // Don't use ABP error page — it redirects API 403/500 to /Error HTML page
+        // which breaks CORS for SPA clients. ABP exception filter returns proper JSON.
 
         app.UseCorrelationId();
         app.MapAbpStaticAssets();

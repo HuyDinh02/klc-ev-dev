@@ -65,3 +65,9 @@ public class CreatePromotionResultDto
     public Guid Id { get; set; }
     public string Title { get; set; } = string.Empty;
 }
+
+public class ImageUploadResultDto
+{
+    public string Url { get; set; } = string.Empty;
+    public long FileSize { get; set; }
+}

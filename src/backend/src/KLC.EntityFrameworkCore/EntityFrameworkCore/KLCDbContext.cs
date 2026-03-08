@@ -216,8 +216,16 @@ public static class KLCDbContextModelCreatingExtensions
             b.Property(x => x.Description).HasMaxLength(1000);
             b.Property(x => x.Region).HasMaxLength(100);
 
+            b.HasOne(x => x.ParentGroup)
+                .WithMany(x => x.Children)
+                .HasForeignKey(x => x.ParentGroupId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
+
             b.HasIndex(x => x.Name);
             b.HasIndex(x => x.IsActive);
+            b.HasIndex(x => x.GroupType);
+            b.HasIndex(x => x.ParentGroupId);
         });
 
         // StatusChangeLog

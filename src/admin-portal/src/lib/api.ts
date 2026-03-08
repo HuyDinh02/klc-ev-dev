@@ -111,7 +111,7 @@ export const faultsApi = {
 };
 
 export const stationGroupsApi = {
-  getAll: (params?: { skipCount?: number; maxResultCount?: number }) =>
+  getAll: (params?: { skipCount?: number; maxResultCount?: number; topLevelOnly?: boolean; parentGroupId?: string; groupType?: number }) =>
     api.get("/station-groups", { params }),
   getById: (id: string) => api.get(`/station-groups/${id}`),
   create: (data: CreateStationGroupDto) => api.post("/station-groups", data),
@@ -325,9 +325,16 @@ export interface UpdateTariffDto {
 export interface CreateStationGroupDto {
   name: string;
   description?: string;
+  region?: string;
+  groupType?: number;
+  parentGroupId?: string;
 }
 
 export interface UpdateStationGroupDto {
-  name?: string;
+  name: string;
   description?: string;
+  region?: string;
+  groupType?: number;
+  parentGroupId?: string | null;
+  isActive?: boolean;
 }

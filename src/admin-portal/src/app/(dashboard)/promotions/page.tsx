@@ -1,13 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
-import { Plus, Edit, Trash2, AlertCircle, Megaphone, Calendar } from "lucide-react";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  AlertCircle,
+  Megaphone,
+  Calendar,
+  Upload,
+  X,
+  Image as ImageIcon,
+  Loader2,
+} from "lucide-react";
 
 interface Promotion {
   id: string;
@@ -39,11 +50,11 @@ const PROMOTION_TYPES: Record<number, string> = {
   3: "Push",
 };
 
-const TYPE_VARIANTS: Record<number, "default" | "secondary" | "warning" | "outline"> = {
-  0: "default",
-  1: "warning",
-  2: "secondary",
-  3: "outline",
+const TYPE_COLORS: Record<number, string> = {
+  0: "bg-blue-100 text-blue-800",
+  1: "bg-amber-100 text-amber-800",
+  2: "bg-purple-100 text-purple-800",
+  3: "bg-green-100 text-green-800",
 };
 
 type FilterTab = "all" | "active" | "inactive";
@@ -54,6 +65,9 @@ export default function PromotionsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formError, setFormError] = useState("");
   const [filter, setFilter] = useState<FilterTab>("all");
+  const [isUploading, setIsUploading] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState<PromotionFormData>({
     title: "",
     description: "",
@@ -64,11 +78,12 @@ export default function PromotionsPage() {
     isActive: true,
   });
 
-  // Fetch promotions (backend doesn't support isActive filter, so filter client-side)
   const { data: allPromotions, isLoading } = useQuery<Promotion[]>({
     queryKey: ["promotions"],
     queryFn: async () => {
-      const res = await api.get("/admin/promotions", { params: { pageSize: 50 } });
+      const res = await api.get("/admin/promotions", {
+        params: { pageSize: 50 },
+      });
       return res.data.data || [];
     },
   });
@@ -79,7 +94,6 @@ export default function PromotionsPage() {
     return true;
   });
 
-  // Create promotion
   const createMutation = useMutation({
     mutationFn: async (data: PromotionFormData) => {
       const res = await api.post("/admin/promotions", {
@@ -95,14 +109,17 @@ export default function PromotionsPage() {
       setFormError("");
       resetForm();
     },
-    onError: (err: unknown) => {
-      handleMutationError(err);
-    },
+    onError: (err: unknown) => handleMutationError(err),
   });
 
-  // Update promotion
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: PromotionFormData }) => {
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: PromotionFormData;
+    }) => {
       const res = await api.put(`/admin/promotions/${id}`, {
         ...data,
         startDate: new Date(data.startDate).toISOString(),
@@ -116,30 +133,36 @@ export default function PromotionsPage() {
       setFormError("");
       resetForm();
     },
-    onError: (err: unknown) => {
-      handleMutationError(err);
-    },
+    onError: (err: unknown) => handleMutationError(err),
   });
 
-  // Delete promotion
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       await api.delete(`/admin/promotions/${id}`);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["promotions"] });
-    },
-    onError: (err: unknown) => {
-      handleMutationError(err);
-    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["promotions"] }),
+    onError: (err: unknown) => handleMutationError(err),
   });
 
   const handleMutationError = (err: unknown) => {
     if (err && typeof err === "object" && "response" in err) {
-      const axiosError = err as { response?: { data?: { error?: { message?: string; details?: string; validationErrors?: Array<{ message: string }> } } } };
+      const axiosError = err as {
+        response?: {
+          data?: {
+            error?: {
+              message?: string;
+              details?: string;
+              validationErrors?: Array<{ message: string }>;
+            };
+          };
+        };
+      };
       const apiError = axiosError.response?.data?.error;
       if (apiError?.validationErrors?.length) {
-        setFormError(apiError.validationErrors.map((e) => e.message).join(". "));
+        setFormError(
+          apiError.validationErrors.map((e) => e.message).join(". ")
+        );
       } else if (apiError?.details) {
         setFormError(apiError.details);
       } else if (apiError?.message) {
@@ -154,6 +177,7 @@ export default function PromotionsPage() {
 
   const resetForm = () => {
     setFormError("");
+    setImagePreview(null);
     setFormData({
       title: "",
       description: "",
@@ -168,15 +192,65 @@ export default function PromotionsPage() {
   const handleEdit = (promo: Promotion) => {
     setFormError("");
     setEditingId(promo.id);
+    setImagePreview(promo.imageUrl || null);
     setFormData({
       title: promo.title,
       description: promo.description || "",
       imageUrl: promo.imageUrl || "",
-      startDate: promo.startDate ? promo.startDate.slice(0, 10) : new Date().toISOString().slice(0, 10),
-      endDate: promo.endDate ? promo.endDate.slice(0, 10) : new Date().toISOString().slice(0, 10),
+      startDate: promo.startDate
+        ? promo.startDate.slice(0, 10)
+        : new Date().toISOString().slice(0, 10),
+      endDate: promo.endDate
+        ? promo.endDate.slice(0, 10)
+        : new Date().toISOString().slice(0, 10),
       type: promo.type,
       isActive: promo.isActive,
     });
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setFormError("Image must be less than 5MB");
+      return;
+    }
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      setFormError("Only JPEG, PNG, GIF, and WebP images are allowed");
+      return;
+    }
+
+    setIsUploading(true);
+    setFormError("");
+
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append("file", file);
+
+      const res = await api.post(
+        "/admin/promotions/upload-image",
+        formDataUpload,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+
+      const url = res.data.url;
+      setFormData((prev) => ({ ...prev, imageUrl: url }));
+      setImagePreview(url);
+    } catch {
+      setFormError("Failed to upload image. Please try again.");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setFormData((prev) => ({ ...prev, imageUrl: "" }));
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -189,10 +263,6 @@ export default function PromotionsPage() {
       setFormError("Description must be 2000 characters or less.");
       return;
     }
-    if (formData.imageUrl.length > 500) {
-      setFormError("Image URL must be 500 characters or less.");
-      return;
-    }
     if (editingId) {
       updateMutation.mutate({ id: editingId, data: formData });
     } else {
@@ -200,7 +270,10 @@ export default function PromotionsPage() {
     }
   };
 
-  const formatDate = (date: string) => new Date(date).toLocaleDateString("vi-VN");
+  const formatDate = (date: string) =>
+    new Date(date).toLocaleDateString("vi-VN");
+
+  const isFormOpen = isCreating || editingId;
 
   return (
     <div className="space-y-6">
@@ -212,10 +285,12 @@ export default function PromotionsPage() {
             Manage promotional campaigns for drivers
           </p>
         </div>
-        <Button onClick={() => setIsCreating(true)} disabled={isCreating}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Promotion
-        </Button>
+        {!isFormOpen && (
+          <Button onClick={() => setIsCreating(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Promotion
+          </Button>
+        )}
       </div>
 
       {/* Filter Tabs */}
@@ -233,10 +308,12 @@ export default function PromotionsPage() {
       </div>
 
       {/* Create/Edit Form */}
-      {(isCreating || editingId) && (
+      {isFormOpen && (
         <Card>
           <CardHeader>
-            <CardTitle>{editingId ? "Edit Promotion" : "New Promotion"}</CardTitle>
+            <CardTitle>
+              {editingId ? "Edit Promotion" : "New Promotion"}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -246,6 +323,7 @@ export default function PromotionsPage() {
                   <span>{formError}</span>
                 </div>
               )}
+
               <div className="grid gap-4 md:grid-cols-2">
                 <Input
                   label="Title"
@@ -266,7 +344,10 @@ export default function PromotionsPage() {
                     id="type"
                     value={formData.type}
                     onChange={(e) =>
-                      setFormData({ ...formData, type: parseInt(e.target.value) })
+                      setFormData({
+                        ...formData,
+                        type: parseInt(e.target.value),
+                      })
                     }
                     className="h-10 w-full rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   >
@@ -278,6 +359,7 @@ export default function PromotionsPage() {
                   </select>
                 </div>
               </div>
+
               <div className="space-y-1">
                 <label htmlFor="description" className="text-sm font-medium">
                   Description
@@ -294,16 +376,59 @@ export default function PromotionsPage() {
                   className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
-              <Input
-                label="Image URL"
-                type="url"
-                value={formData.imageUrl}
-                onChange={(e) =>
-                  setFormData({ ...formData, imageUrl: e.target.value })
-                }
-                placeholder="https://example.com/image.jpg"
-                maxLength={500}
-              />
+
+              {/* Image Upload */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Promotion Image</label>
+                {imagePreview ? (
+                  <div className="relative inline-block">
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="h-40 w-auto rounded-lg border object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="absolute -right-2 -top-2 rounded-full bg-destructive p-1 text-white shadow-sm hover:bg-destructive/90"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex h-40 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-muted-foreground/25 bg-muted/50 transition-colors hover:border-muted-foreground/50 hover:bg-muted"
+                  >
+                    {isUploading ? (
+                      <>
+                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">
+                          Uploading...
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-8 w-8 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">
+                          Click to upload image
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          JPEG, PNG, GIF, WebP (max 5MB)
+                        </span>
+                      </>
+                    )}
+                  </div>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/gif,image/webp"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+              </div>
+
               <div className="grid gap-4 md:grid-cols-2">
                 <Input
                   label="Start Date"
@@ -324,6 +449,7 @@ export default function PromotionsPage() {
                   required
                 />
               </div>
+
               <div className="flex items-center gap-2">
                 <input
                   id="isActive"
@@ -338,11 +464,19 @@ export default function PromotionsPage() {
                   Active
                 </label>
               </div>
+
               <div className="flex gap-2">
                 <Button
                   type="submit"
-                  disabled={createMutation.isPending || updateMutation.isPending}
+                  disabled={
+                    createMutation.isPending ||
+                    updateMutation.isPending ||
+                    isUploading
+                  }
                 >
+                  {createMutation.isPending || updateMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : null}
                   {editingId ? "Update" : "Create"} Promotion
                 </Button>
                 <Button
@@ -363,63 +497,73 @@ export default function PromotionsPage() {
       )}
 
       {/* Promotions Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {isLoading ? (
           <div className="col-span-full text-center py-8">Loading...</div>
         ) : promotions && promotions.length > 0 ? (
           promotions.map((promo) => (
-            <Card key={promo.id}>
-              {promo.imageUrl && (
-                <div className="h-40 w-full overflow-hidden rounded-t-lg">
+            <Card
+              key={promo.id}
+              className="group overflow-hidden transition-shadow hover:shadow-lg"
+            >
+              {/* Image / Placeholder */}
+              <div className="relative h-48 w-full overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-100">
+                {promo.imageUrl ? (
                   <img
                     src={promo.imageUrl}
                     alt={promo.title}
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-cover transition-transform group-hover:scale-105"
                   />
-                </div>
-              )}
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">{promo.title}</CardTitle>
-                  <Badge variant={promo.isActive ? "success" : "secondary"}>
+                ) : (
+                  <div className="flex h-full items-center justify-center">
+                    <ImageIcon className="h-16 w-16 text-blue-200" />
+                  </div>
+                )}
+                {/* Status badge overlay */}
+                <div className="absolute right-3 top-3">
+                  <Badge
+                    variant={promo.isActive ? "success" : "secondary"}
+                    className="shadow-sm"
+                  >
                     {promo.isActive ? "Active" : "Inactive"}
                   </Badge>
                 </div>
+                {/* Type badge overlay */}
+                <div className="absolute left-3 top-3">
+                  <span
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium shadow-sm ${TYPE_COLORS[promo.type] || "bg-gray-100 text-gray-800"}`}
+                  >
+                    {PROMOTION_TYPES[promo.type] || "Unknown"}
+                  </span>
+                </div>
+              </div>
+
+              <CardContent className="p-4">
+                <h3 className="font-semibold text-lg leading-tight mb-1 line-clamp-1">
+                  {promo.title}
+                </h3>
                 {promo.description && (
-                  <p className="text-sm text-muted-foreground line-clamp-2">
+                  <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
                     {promo.description}
                   </p>
                 )}
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-sm">
-                      <Megaphone className="h-4 w-4 text-blue-500" />
-                      Type
-                    </span>
-                    <Badge variant={TYPE_VARIANTS[promo.type] || "secondary"}>
-                      {PROMOTION_TYPES[promo.type] || "Unknown"}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-sm">
-                      <Calendar className="h-4 w-4 text-green-500" />
-                      Date Range
-                    </span>
-                    <span className="text-sm font-medium">
-                      {formatDate(promo.startDate)} - {formatDate(promo.endDate)}
-                    </span>
-                  </div>
+
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-3">
+                  <Calendar className="h-3.5 w-3.5" />
+                  <span>
+                    {formatDate(promo.startDate)} - {formatDate(promo.endDate)}
+                  </span>
                 </div>
 
-                <div className="flex flex-wrap gap-2 pt-2 border-t">
+                <div className="flex gap-2 pt-3 border-t">
                   <Button
                     variant="outline"
                     size="sm"
+                    className="flex-1"
                     onClick={() => handleEdit(promo)}
                   >
-                    <Edit className="h-4 w-4" />
+                    <Edit className="mr-1.5 h-3.5 w-3.5" />
+                    Edit
                   </Button>
                   <Button
                     variant="destructive"
@@ -430,15 +574,19 @@ export default function PromotionsPage() {
                       }
                     }}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </CardContent>
             </Card>
           ))
         ) : (
-          <div className="col-span-full text-center py-8 text-muted-foreground">
-            No promotions found. Create your first promotion to get started.
+          <div className="col-span-full text-center py-12 text-muted-foreground">
+            <Megaphone className="mx-auto mb-3 h-12 w-12 opacity-30" />
+            <p>No promotions found.</p>
+            <p className="text-sm">
+              Create your first promotion to get started.
+            </p>
           </div>
         )}
       </div>
