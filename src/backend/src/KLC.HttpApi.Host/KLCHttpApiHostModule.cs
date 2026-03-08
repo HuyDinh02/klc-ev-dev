@@ -67,13 +67,51 @@ public class KLCHttpApiHostModule : AbpModule
             });
         });
 
-        // Configure OpenIddict server with ephemeral signing keys
-        // TODO: Use persistent keys (X.509 cert or data protection) for production
+        // Configure OpenIddict server signing/encryption keys
         PreConfigure<OpenIddictServerBuilder>(serverBuilder =>
         {
-            serverBuilder.AddEphemeralEncryptionKey()
-                         .AddEphemeralSigningKey()
-                         .DisableAccessTokenEncryption();
+            if (hostingEnvironment.IsDevelopment())
+            {
+                // Development: use ephemeral (in-memory) keys
+                serverBuilder.AddEphemeralEncryptionKey()
+                             .AddEphemeralSigningKey();
+            }
+            else
+            {
+                // Production: load persistent X.509 certificates from config or files
+                // Certificates are stored as base64-encoded PFX in environment variables
+                // (injected from GCP Secret Manager via Cloud Run)
+                var signingCertBase64 = Environment.GetEnvironmentVariable("OPENIDDICT_SIGNING_CERT");
+                var signingCertPassword = Environment.GetEnvironmentVariable("OPENIDDICT_SIGNING_PASSWORD");
+                var encryptionCertBase64 = Environment.GetEnvironmentVariable("OPENIDDICT_ENCRYPTION_CERT");
+                var encryptionCertPassword = Environment.GetEnvironmentVariable("OPENIDDICT_ENCRYPTION_PASSWORD");
+
+                if (!string.IsNullOrEmpty(signingCertBase64) && !string.IsNullOrEmpty(encryptionCertBase64))
+                {
+                    var signingCert = new System.Security.Cryptography.X509Certificates.X509Certificate2(
+                        Convert.FromBase64String(signingCertBase64),
+                        signingCertPassword,
+                        System.Security.Cryptography.X509Certificates.X509KeyStorageFlags.MachineKeySet |
+                        System.Security.Cryptography.X509Certificates.X509KeyStorageFlags.EphemeralKeySet);
+
+                    var encryptionCert = new System.Security.Cryptography.X509Certificates.X509Certificate2(
+                        Convert.FromBase64String(encryptionCertBase64),
+                        encryptionCertPassword,
+                        System.Security.Cryptography.X509Certificates.X509KeyStorageFlags.MachineKeySet |
+                        System.Security.Cryptography.X509Certificates.X509KeyStorageFlags.EphemeralKeySet);
+
+                    serverBuilder.AddSigningCertificate(signingCert)
+                                 .AddEncryptionCertificate(encryptionCert);
+                }
+                else
+                {
+                    // Fallback to ephemeral if certs not configured yet
+                    serverBuilder.AddEphemeralEncryptionKey()
+                                 .AddEphemeralSigningKey();
+                }
+            }
+
+            serverBuilder.DisableAccessTokenEncryption();
         });
     }
 
