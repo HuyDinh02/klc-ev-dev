@@ -1,6 +1,8 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using KLC.Files;
 using KLC.MobileUsers;
 using KLC.Permissions;
 using Microsoft.AspNetCore.Authorization;
@@ -13,10 +15,14 @@ namespace KLC.Marketing;
 public class PromotionAppService : KLCAppService, IPromotionAppService
 {
     private readonly IRepository<Promotion, Guid> _promotionRepository;
+    private readonly IFileUploadService _fileUploadService;
 
-    public PromotionAppService(IRepository<Promotion, Guid> promotionRepository)
+    public PromotionAppService(
+        IRepository<Promotion, Guid> promotionRepository,
+        IFileUploadService fileUploadService)
     {
         _promotionRepository = promotionRepository;
+        _fileUploadService = fileUploadService;
     }
 
     public async Task<CursorPagedResultDto<PromotionListDto>> GetListAsync(GetPromotionListDto input)
@@ -115,5 +121,16 @@ public class PromotionAppService : KLCAppService, IPromotionAppService
             throw new BusinessException(KLCDomainErrorCodes.EntityNotFound);
 
         await _promotionRepository.DeleteAsync(promo);
+    }
+
+    [Authorize(KLCPermissions.Promotions.Create)]
+    public async Task<ImageUploadResultDto> UploadImageAsync(Stream stream, string fileName)
+    {
+        var result = await _fileUploadService.UploadAsync(stream, fileName, "promotions");
+        return new ImageUploadResultDto
+        {
+            Url = result.Url,
+            FileSize = result.FileSize
+        };
     }
 }

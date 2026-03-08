@@ -4,6 +4,7 @@ using KLC.Marketing;
 using KLC.MobileUsers;
 using KLC.Permissions;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace KLC.Controllers.Marketing;
@@ -118,5 +119,25 @@ public class PromotionAdminController : KLCController
     {
         await _promotionAppService.DeleteAsync(id);
         return NoContent();
+    }
+
+    [HttpPost("upload-image")]
+    [Authorize(KLCPermissions.Promotions.Create)]
+    [Consumes("multipart/form-data")]
+    public async Task<ActionResult<ImageUploadResultDto>> UploadImageAsync(IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { error = new { message = "No file provided" } });
+
+        if (file.Length > 5 * 1024 * 1024)
+            return BadRequest(new { error = new { message = "File size must be less than 5MB" } });
+
+        var allowedTypes = new[] { "image/jpeg", "image/png", "image/gif", "image/webp" };
+        if (!Array.Exists(allowedTypes, t => t == file.ContentType))
+            return BadRequest(new { error = new { message = "Only JPEG, PNG, GIF, and WebP images are allowed" } });
+
+        using var stream = file.OpenReadStream();
+        var result = await _promotionAppService.UploadImageAsync(stream, file.FileName);
+        return Ok(result);
     }
 }

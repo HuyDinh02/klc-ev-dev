@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using KLC.MobileUsers;
 using Volo.Abp.Application.Services;
@@ -12,4 +13,5 @@ public interface IPromotionAppService : IApplicationService
     Task<CreatePromotionResultDto> CreateAsync(CreatePromotionDto input);
     Task UpdateAsync(Guid id, UpdatePromotionDto input);
     Task DeleteAsync(Guid id);
+    Task<ImageUploadResultDto> UploadImageAsync(Stream stream, string fileName);
 }
