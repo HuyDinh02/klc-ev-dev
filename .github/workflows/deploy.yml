@@ -121,6 +121,8 @@ jobs:
             --cpu=1
             --min-instances=0
             --max-instances=3
+            --timeout=3600
+            --session-affinity
             --set-env-vars=ASPNETCORE_ENVIRONMENT=Production
             --set-secrets=ConnectionStrings__Default=db-connection-string:latest,Jwt__SecretKey=jwt-secret-key:latest,StringEncryption__DefaultPassPhrase=string-encryption-passphrase:latest
 
@@ -193,17 +195,12 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: src/admin-portal/package-lock.json
-
       - name: Build Admin Portal image
         run: |
           IMAGE="${{ env.AR_REPO }}/admin-portal:${{ github.sha }}"
-          docker build -t "${IMAGE}" -f src/admin-portal/Dockerfile src/admin-portal
+          docker build -t "${IMAGE}" \
+            --build-arg NEXT_PUBLIC_API_URL=https://api.ev.odcall.com \
+            -f src/admin-portal/Dockerfile src/admin-portal
           docker tag "${IMAGE}" "${{ env.AR_REPO }}/admin-portal:latest"
           docker push "${IMAGE}"
           docker push "${{ env.AR_REPO }}/admin-portal:latest"
@@ -220,5 +217,5 @@ jobs:
             --cpu=1
             --min-instances=0
             --max-instances=3
-            --set-env-vars=NODE_ENV=production
-            --set-secrets=NEXT_PUBLIC_API_URL=admin-api-url:latest
+            --set-env-vars=NODE_ENV=production,BACKEND_API_URL=https://api.ev.odcall.com,OIDC_CLIENT_ID=KLC_Api
+            --set-secrets=OIDC_CLIENT_SECRET=oidc-client-secret:latest
