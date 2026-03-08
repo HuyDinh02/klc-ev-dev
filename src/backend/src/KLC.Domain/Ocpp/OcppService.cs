@@ -7,6 +7,7 @@ using KLC.Sessions;
 using KLC.Stations;
 using KLC.Tariffs;
 using KLC.Users;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
@@ -26,6 +27,7 @@ public class OcppService : DomainService, IOcppService
     private readonly IRepository<TariffPlan, Guid> _tariffPlanRepository;
     private readonly IRepository<UserIdTag, Guid> _userIdTagRepository;
     private readonly IRepository<Fault, Guid> _faultRepository;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<OcppService> _logger;
 
     public OcppService(
@@ -36,6 +38,7 @@ public class OcppService : DomainService, IOcppService
         IRepository<TariffPlan, Guid> tariffPlanRepository,
         IRepository<UserIdTag, Guid> userIdTagRepository,
         IRepository<Fault, Guid> faultRepository,
+        IConfiguration configuration,
         ILogger<OcppService> logger)
     {
         _stationRepository = stationRepository;
@@ -45,6 +48,7 @@ public class OcppService : DomainService, IOcppService
         _tariffPlanRepository = tariffPlanRepository;
         _userIdTagRepository = userIdTagRepository;
         _faultRepository = faultRepository;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -220,7 +224,7 @@ public class OcppService : DomainService, IOcppService
 
         // Resolve userId from idTag
         var userId = Guid.Empty;
-        if (Guid.TryParse(idTag, out var parsedUserId))
+        if (Guid.TryParse(idTag, out var parsedUserId) && parsedUserId != Guid.Empty)
         {
             // Mobile app sends userId as idTag
             userId = parsedUserId;
@@ -235,6 +239,13 @@ public class OcppService : DomainService, IOcppService
                 userId = userIdTag.UserId;
                 _logger.LogInformation("Resolved idTag {IdTag} to user {UserId}", idTag, userId);
             }
+        }
+
+        // Reject transaction if idTag could not be resolved to a valid user
+        if (userId == Guid.Empty)
+        {
+            _logger.LogWarning("StartTransaction rejected: idTag {IdTag} could not be resolved to a valid user", idTag);
+            return null;
         }
 
         // Resolve tariff rate from station's tariff plan
@@ -463,12 +474,49 @@ public class OcppService : DomainService, IOcppService
             return true;
         }
 
-        // Accept known test/demo idTags (dev/staging only)
+        // Accept known test/demo idTags only when explicitly enabled via configuration
         if (idTag.StartsWith("TEST") || idTag.StartsWith("DEMO"))
-            return true;
+        {
+            var allowTestIdTags = _configuration.GetValue<bool>("Ocpp:AllowTestIdTags", false);
+            if (allowTestIdTags)
+            {
+                _logger.LogInformation("Accepted test/demo idTag: {IdTag} (Ocpp:AllowTestIdTags is enabled)", idTag);
+                return true;
+            }
+        }
 
         _logger.LogWarning("IdTag validation failed for: {IdTag}", idTag);
         return false;
+    }
+
+    public async Task HandleFirmwareStatusAsync(string chargePointId, string status)
+    {
+        var station = await _stationRepository.FirstOrDefaultAsync(s => s.StationCode == chargePointId);
+        if (station == null)
+        {
+            _logger.LogWarning("FirmwareStatusNotification from unknown station: {ChargePointId}", chargePointId);
+            return;
+        }
+
+        station.UpdateFirmwareStatus(status);
+        await _stationRepository.UpdateAsync(station);
+
+        _logger.LogInformation("Firmware status updated for {ChargePointId}: {Status}", chargePointId, status);
+    }
+
+    public async Task HandleDiagnosticsStatusAsync(string chargePointId, string status)
+    {
+        var station = await _stationRepository.FirstOrDefaultAsync(s => s.StationCode == chargePointId);
+        if (station == null)
+        {
+            _logger.LogWarning("DiagnosticsStatusNotification from unknown station: {ChargePointId}", chargePointId);
+            return;
+        }
+
+        station.UpdateDiagnosticsStatus(status);
+        await _stationRepository.UpdateAsync(station);
+
+        _logger.LogInformation("Diagnostics status updated for {ChargePointId}: {Status}", chargePointId, status);
     }
 
     public async Task HandleStationDisconnectAsync(string chargePointId)

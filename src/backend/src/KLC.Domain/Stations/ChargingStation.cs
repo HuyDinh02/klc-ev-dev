@@ -100,6 +100,16 @@ public class ChargingStation : FullAuditedAggregateRoot<Guid>
     public string? OcppPassword { get; private set; }
 
     /// <summary>
+    /// Current firmware update status reported by the charger (e.g., Downloading, Downloaded, Installing, Installed, InstallationFailed, Idle).
+    /// </summary>
+    public string? FirmwareUpdateStatus { get; private set; }
+
+    /// <summary>
+    /// Current diagnostics upload status reported by the charger (e.g., Uploading, Uploaded, UploadFailed, Idle).
+    /// </summary>
+    public string? DiagnosticsStatus { get; private set; }
+
+    /// <summary>
     /// Collection of connectors belonging to this station.
     /// </summary>
     public ICollection<Connector> Connectors { get; private set; } = new List<Connector>();
@@ -223,6 +233,16 @@ public class ChargingStation : FullAuditedAggregateRoot<Guid>
     {
         IsEnabled = false;
         Status = StationStatus.Unavailable;
+    }
+
+    public void UpdateFirmwareStatus(string status)
+    {
+        FirmwareUpdateStatus = status;
+    }
+
+    public void UpdateDiagnosticsStatus(string status)
+    {
+        DiagnosticsStatus = status;
     }
 
     public Connector AddConnector(

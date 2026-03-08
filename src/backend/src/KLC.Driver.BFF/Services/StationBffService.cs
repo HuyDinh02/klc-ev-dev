@@ -8,6 +8,7 @@ namespace KLC.Driver.Services;
 public interface IStationBffService
 {
     Task<List<NearbyStationDto>> GetNearbyStationsAsync(double latitude, double longitude, double radiusKm, int limit);
+    Task<List<NearbyStationDto>> SearchStationsAsync(string query, int limit);
     Task<StationDetailDto?> GetStationDetailAsync(Guid stationId);
     Task<List<ConnectorStatusDto>> GetConnectorStatusAsync(Guid stationId);
 }
@@ -52,6 +53,35 @@ public class StationBffService : IStationBffService
                 AvailableConnectors = s.Connectors.Count(c => c.Status == ConnectorStatus.Available),
                 TotalConnectors = s.Connectors.Count(),
                 Distance = Math.Round(s.Location!.Distance(userLocation) / 1000, 2)
+            })
+            .ToListAsync();
+
+        return stations;
+    }
+
+    public async Task<List<NearbyStationDto>> SearchStationsAsync(string query, int limit)
+    {
+        var normalizedQuery = query.Trim().ToLower();
+
+        var stations = await _dbContext.ChargingStations
+            .AsNoTracking()
+            .Where(s => s.IsEnabled && !s.IsDeleted)
+            .Where(s => s.Name.ToLower().Contains(normalizedQuery)
+                     || s.Address.ToLower().Contains(normalizedQuery)
+                     || s.StationCode.ToLower().Contains(normalizedQuery))
+            .Include(s => s.Connectors.Where(c => c.IsEnabled && !c.IsDeleted))
+            .Take(limit)
+            .Select(s => new NearbyStationDto
+            {
+                Id = s.Id,
+                Name = s.Name,
+                Address = s.Address,
+                Latitude = s.Latitude,
+                Longitude = s.Longitude,
+                Status = s.Status,
+                AvailableConnectors = s.Connectors.Count(c => c.Status == ConnectorStatus.Available),
+                TotalConnectors = s.Connectors.Count(),
+                Distance = 0
             })
             .ToListAsync();
 

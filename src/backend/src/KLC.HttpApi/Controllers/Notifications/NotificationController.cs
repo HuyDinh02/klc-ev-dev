@@ -58,6 +58,7 @@ public class NotificationController : KLCController
 
 [ApiController]
 [Route("api/v1/devices")]
+[Authorize]
 public class DeviceController : KLCController
 {
     private readonly INotificationAppService _notificationAppService;
@@ -77,6 +78,7 @@ public class DeviceController : KLCController
 
 [ApiController]
 [Route("api/v1/alerts")]
+[Authorize(KLCPermissions.Alerts.Default)]
 public class AlertController : KLCController
 {
     private readonly INotificationAppService _notificationAppService;

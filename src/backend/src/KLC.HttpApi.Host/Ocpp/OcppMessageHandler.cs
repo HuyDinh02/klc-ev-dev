@@ -103,8 +103,8 @@ public class OcppMessageHandler
             "MeterValues" => await HandleMeterValuesAsync(connection, uniqueId, payload),
             "Authorize" => await HandleAuthorizeAsync(uniqueId, payload),
             "DataTransfer" => HandleDataTransfer(uniqueId, payload),
-            "DiagnosticsStatusNotification" => HandleDiagnosticsStatusNotification(connection, uniqueId, payload),
-            "FirmwareStatusNotification" => HandleFirmwareStatusNotification(connection, uniqueId, payload),
+            "DiagnosticsStatusNotification" => await HandleDiagnosticsStatusNotificationAsync(connection, uniqueId, payload),
+            "FirmwareStatusNotification" => await HandleFirmwareStatusNotificationAsync(connection, uniqueId, payload),
             _ => CreateErrorResponse(uniqueId, OcppErrorCode.NotImplemented, $"Action {action} not implemented")
         };
 
@@ -453,20 +453,24 @@ public class OcppMessageHandler
         return CreateCallResult(uniqueId, response);
     }
 
-    private string HandleDiagnosticsStatusNotification(OcppConnection connection, string uniqueId, JsonElement payload)
+    private async Task<string> HandleDiagnosticsStatusNotificationAsync(OcppConnection connection, string uniqueId, JsonElement payload)
     {
         var status = payload.TryGetProperty("status", out var statusProp) ? statusProp.GetString() : "Unknown";
         _logger.LogInformation("DiagnosticsStatusNotification from {ChargePointId}: Status={Status}",
             connection.ChargePointId, status);
 
+        await _ocppService.HandleDiagnosticsStatusAsync(connection.ChargePointId, status ?? "Unknown");
+
         return CreateCallResult(uniqueId, new { });
     }
 
-    private string HandleFirmwareStatusNotification(OcppConnection connection, string uniqueId, JsonElement payload)
+    private async Task<string> HandleFirmwareStatusNotificationAsync(OcppConnection connection, string uniqueId, JsonElement payload)
     {
         var status = payload.TryGetProperty("status", out var statusProp) ? statusProp.GetString() : "Unknown";
         _logger.LogInformation("FirmwareStatusNotification from {ChargePointId}: Status={Status}",
             connection.ChargePointId, status);
+
+        await _ocppService.HandleFirmwareStatusAsync(connection.ChargePointId, status ?? "Unknown");
 
         return CreateCallResult(uniqueId, new { });
     }

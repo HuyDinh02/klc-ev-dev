@@ -90,6 +90,21 @@ public class AnalyticsDto
     public int TotalSessions { get; set; }
     public decimal AverageSessionDurationMinutes { get; set; }
     public decimal UptimePercent { get; set; }
+
+    /// <summary>
+    /// Mean time between faults in hours (across all stations in period).
+    /// </summary>
+    public decimal MtbfHours { get; set; }
+
+    /// <summary>
+    /// Peak hour of the day (0-23 UTC) with the most session starts.
+    /// </summary>
+    public int? PeakHourUtc { get; set; }
+
+    /// <summary>
+    /// Number of sessions that started during the peak hour.
+    /// </summary>
+    public int PeakHourSessionCount { get; set; }
 }
 
 public class DailyStatsDto
@@ -108,4 +123,10 @@ public class StationUtilizationDto
     public decimal TotalEnergyKwh { get; set; }
     public decimal TotalRevenue { get; set; }
     public decimal UtilizationPercent { get; set; }
+
+    /// <summary>
+    /// Percentage of time the station was online (not Offline/Faulted) in the period.
+    /// Derived from StatusChangeLog history; falls back to current status snapshot.
+    /// </summary>
+    public decimal OnlinePercent { get; set; }
 }

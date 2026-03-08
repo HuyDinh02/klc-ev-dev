@@ -1,3 +1,4 @@
+using System.Threading.RateLimiting;
 using KLC.Driver;
 using KLC.Driver.Endpoints;
 using KLC.Driver.Services;
@@ -13,14 +14,29 @@ builder.Services.AddApplication<DriverBffModule>();
 // Configure services
 builder.Services.AddOpenApi();
 
-// Add CORS for mobile app
+// Add CORS for mobile app — restrictive in production
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("MobileApp", policy =>
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
+        var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+        if (allowedOrigins?.Length > 0)
+        {
+            policy.WithOrigins(allowedOrigins)
+                  .AllowAnyMethod()
+                  .AllowAnyHeader();
+        }
+        else if (builder.Environment.IsDevelopment())
+        {
+            policy.AllowAnyOrigin()
+                  .AllowAnyMethod()
+                  .AllowAnyHeader();
+        }
+        else
+        {
+            // Production: no CORS (mobile apps don't need it)
+            policy.SetIsOriginAllowed(_ => false);
+        }
     });
 });
 
@@ -52,11 +68,13 @@ builder.Services.AddSignalR();
 builder.Services.AddScoped<IDriverHubNotifier, DriverHubNotifier>();
 
 // Add authentication — validate BFF-issued JWTs with symmetric key
-var jwtKey = builder.Configuration["Jwt:SecretKey"] ?? "KLC_DEFAULT_JWT_SECRET_KEY_FOR_DEVELOPMENT_ONLY_2026";
+var jwtKey = builder.Configuration["Jwt:SecretKey"]
+    ?? throw new InvalidOperationException(
+        "Jwt:SecretKey is not configured. Set it in appsettings.json or environment variable Jwt__SecretKey.");
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
     {
-        options.RequireHttpsMetadata = false;
+        options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
         options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -71,6 +89,34 @@ builder.Services.AddAuthentication("Bearer")
         };
     });
 builder.Services.AddAuthorization();
+
+// Rate limiting
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // Auth endpoints: 10 requests per minute per IP
+    options.AddPolicy("auth", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1)
+            }));
+
+    // General API: 60 requests per minute per user/IP
+    options.AddPolicy("api", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.User.FindFirst("sub")?.Value
+                ?? httpContext.Connection.RemoteIpAddress?.ToString()
+                ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 60,
+                Window = TimeSpan.FromMinutes(1)
+            }));
+});
 
 // Health checks
 builder.Services.AddHealthChecks()
@@ -90,6 +136,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("MobileApp");
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 

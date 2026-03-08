@@ -131,6 +131,181 @@ public class OcppRemoteCommandService : IOcppRemoteCommandService
         return await SendCommandAsync(stationCode, "TriggerMessage", payload);
     }
 
+    public async Task<RemoteCommandResult> SendSetChargingProfileAsync(string stationCode, int connectorId, ChargingProfilePayload profile)
+    {
+        var payload = new
+        {
+            connectorId,
+            csChargingProfiles = new
+            {
+                chargingProfileId = profile.ChargingProfileId,
+                transactionId = profile.TransactionId,
+                stackLevel = profile.StackLevel,
+                chargingProfilePurpose = profile.ChargingProfilePurpose,
+                chargingProfileKind = profile.ChargingProfileKind,
+                chargingSchedule = new
+                {
+                    chargingRateUnit = profile.ChargingSchedule.ChargingRateUnit,
+                    chargingSchedulePeriod = profile.ChargingSchedule.ChargingSchedulePeriod
+                        .Select(p => new
+                        {
+                            startPeriod = p.StartPeriod,
+                            limit = p.Limit,
+                            numberPhases = p.NumberPhases
+                        }).ToArray()
+                }
+            }
+        };
+
+        return await SendCommandAsync(stationCode, "SetChargingProfile", payload);
+    }
+
+    public async Task<RemoteCommandResult> SendUpdateFirmwareAsync(string stationCode, string location, DateTime retrieveDate, int? retries = null, int? retryInterval = null)
+    {
+        var payload = new Dictionary<string, object>
+        {
+            ["location"] = location,
+            ["retrieveDate"] = retrieveDate.ToString("o")
+        };
+
+        if (retries.HasValue)
+            payload["retries"] = retries.Value;
+        if (retryInterval.HasValue)
+            payload["retryInterval"] = retryInterval.Value;
+
+        return await SendCommandAsync(stationCode, "UpdateFirmware", payload);
+    }
+
+    public async Task<RemoteCommandResult> SendGetDiagnosticsAsync(string stationCode, string location, DateTime? startTime = null, DateTime? stopTime = null, int? retries = null, int? retryInterval = null)
+    {
+        var payload = new Dictionary<string, object>
+        {
+            ["location"] = location
+        };
+
+        if (startTime.HasValue)
+            payload["startTime"] = startTime.Value.ToString("o");
+        if (stopTime.HasValue)
+            payload["stopTime"] = stopTime.Value.ToString("o");
+        if (retries.HasValue)
+            payload["retries"] = retries.Value;
+        if (retryInterval.HasValue)
+            payload["retryInterval"] = retryInterval.Value;
+
+        return await SendCommandAsync(stationCode, "GetDiagnostics", payload);
+    }
+
+    public async Task<RemoteCommandResult> SendClearChargingProfileAsync(string stationCode, int? id = null, int? connectorId = null, string? chargingProfilePurpose = null, int? stackLevel = null)
+    {
+        var payload = new Dictionary<string, object>();
+
+        if (id.HasValue)
+            payload["id"] = id.Value;
+        if (connectorId.HasValue)
+            payload["connectorId"] = connectorId.Value;
+        if (!string.IsNullOrWhiteSpace(chargingProfilePurpose))
+            payload["chargingProfilePurpose"] = chargingProfilePurpose;
+        if (stackLevel.HasValue)
+            payload["stackLevel"] = stackLevel.Value;
+
+        return await SendCommandAsync(stationCode, "ClearChargingProfile", payload);
+    }
+
+    public async Task<LocalListVersionResult> SendGetLocalListVersionAsync(string stationCode)
+    {
+        var connection = _connectionManager.GetConnection(stationCode);
+        if (connection == null)
+        {
+            _logger.LogWarning("Station {StationCode} not connected for GetLocalListVersion", stationCode);
+            return new LocalListVersionResult(false);
+        }
+
+        var response = await connection.SendCallAsync("GetLocalListVersion", new { }, Timeout);
+        if (response == null || response.StartsWith("ERROR:"))
+        {
+            _logger.LogWarning("GetLocalListVersion timeout/error for {StationCode}", stationCode);
+            return new LocalListVersionResult(false);
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(response);
+            var listVersion = doc.RootElement.TryGetProperty("listVersion", out var v) ? v.GetInt32() : -1;
+            return new LocalListVersionResult(true, listVersion);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "Failed to parse GetLocalListVersion response from {StationCode}", stationCode);
+            return new LocalListVersionResult(false);
+        }
+    }
+
+    public async Task<SendLocalListResult> SendSendLocalListAsync(string stationCode, int listVersion, string updateType, List<LocalAuthEntry>? localAuthorizationList = null)
+    {
+        var connection = _connectionManager.GetConnection(stationCode);
+        if (connection == null)
+        {
+            _logger.LogWarning("Station {StationCode} not connected for SendLocalList", stationCode);
+            return new SendLocalListResult(false, ErrorMessage: "Station not connected");
+        }
+
+        var payload = new Dictionary<string, object>
+        {
+            ["listVersion"] = listVersion,
+            ["updateType"] = updateType
+        };
+
+        if (localAuthorizationList != null && localAuthorizationList.Count > 0)
+        {
+            payload["localAuthorizationList"] = localAuthorizationList.Select(entry =>
+            {
+                var item = new Dictionary<string, object> { ["idTag"] = entry.IdTag };
+                if (entry.IdTagInfo != null)
+                {
+                    var info = new Dictionary<string, object> { ["status"] = entry.IdTagInfo.Status };
+                    if (entry.IdTagInfo.ExpiryDate != null)
+                        info["expiryDate"] = entry.IdTagInfo.ExpiryDate;
+                    if (entry.IdTagInfo.ParentIdTag != null)
+                        info["parentIdTag"] = entry.IdTagInfo.ParentIdTag;
+                    item["idTagInfo"] = info;
+                }
+                return item;
+            }).ToArray();
+        }
+
+        var response = await connection.SendCallAsync("SendLocalList", payload, Timeout);
+
+        if (response == null)
+        {
+            _logger.LogWarning("SendLocalList timeout for station {StationCode}", stationCode);
+            return new SendLocalListResult(false, ErrorMessage: "Command timed out");
+        }
+
+        if (response.StartsWith("ERROR:"))
+        {
+            _logger.LogWarning("SendLocalList error from {StationCode}: {Response}", stationCode, response);
+            return new SendLocalListResult(false, ErrorMessage: response);
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(response);
+            var status = doc.RootElement.TryGetProperty("status", out var s) ? s.GetString() : null;
+            var accepted = string.Equals(status, "Accepted", StringComparison.OrdinalIgnoreCase);
+
+            if (!accepted)
+            {
+                _logger.LogWarning("SendLocalList rejected by {StationCode}: status={Status}", stationCode, status);
+            }
+
+            return new SendLocalListResult(accepted, status);
+        }
+        catch (JsonException)
+        {
+            return new SendLocalListResult(true, "Unknown");
+        }
+    }
+
     private async Task<RemoteCommandResult> SendCommandAsync(string stationCode, string action, object payload)
     {
         var connection = _connectionManager.GetConnection(stationCode);

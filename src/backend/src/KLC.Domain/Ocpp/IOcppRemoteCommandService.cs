@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -17,6 +18,26 @@ public record ConfigurationResult(
     List<string>? UnknownKey = null);
 
 public record ConfigurationEntry(string Key, string? Value, bool Readonly);
+
+/// <summary>
+/// Result from GetLocalListVersion command.
+/// </summary>
+public record LocalListVersionResult(bool Accepted, int ListVersion = -1);
+
+/// <summary>
+/// Result from SendLocalList command.
+/// </summary>
+public record SendLocalListResult(bool Accepted, string? Status = null, string? ErrorMessage = null);
+
+/// <summary>
+/// An entry in the OCPP Local Authorization List.
+/// </summary>
+public record LocalAuthEntry(string IdTag, IdTagInfoPayload? IdTagInfo = null);
+
+/// <summary>
+/// idTagInfo payload within a Local Authorization List entry.
+/// </summary>
+public record IdTagInfoPayload(string Status, string? ExpiryDate = null, string? ParentIdTag = null);
 
 /// <summary>
 /// Service for sending remote OCPP commands to Charge Points.
@@ -63,4 +84,60 @@ public interface IOcppRemoteCommandService
     /// Send TriggerMessage to request a specific message from the Charge Point.
     /// </summary>
     Task<RemoteCommandResult> SendTriggerMessageAsync(string stationCode, string requestedMessage, int? connectorId = null);
+
+    /// <summary>
+    /// Send SetChargingProfile to apply a charging profile to a connector.
+    /// </summary>
+    Task<RemoteCommandResult> SendSetChargingProfileAsync(string stationCode, int connectorId, ChargingProfilePayload profile);
+
+    /// <summary>
+    /// Send ClearChargingProfile to remove charging profile(s) from a Charge Point.
+    /// </summary>
+    Task<RemoteCommandResult> SendClearChargingProfileAsync(string stationCode, int? id = null, int? connectorId = null, string? chargingProfilePurpose = null, int? stackLevel = null);
+
+    /// <summary>
+    /// Send UpdateFirmware to instruct the Charge Point to download and install new firmware.
+    /// </summary>
+    Task<RemoteCommandResult> SendUpdateFirmwareAsync(string stationCode, string location, DateTime retrieveDate, int? retries = null, int? retryInterval = null);
+
+    /// <summary>
+    /// Send GetDiagnostics to instruct the Charge Point to upload diagnostics.
+    /// </summary>
+    Task<RemoteCommandResult> SendGetDiagnosticsAsync(string stationCode, string location, DateTime? startTime = null, DateTime? stopTime = null, int? retries = null, int? retryInterval = null);
+
+    /// <summary>
+    /// Send GetLocalListVersion to retrieve the current local authorization list version.
+    /// </summary>
+    Task<LocalListVersionResult> SendGetLocalListVersionAsync(string stationCode);
+
+    /// <summary>
+    /// Send SendLocalList to push a local authorization list to the Charge Point.
+    /// </summary>
+    Task<SendLocalListResult> SendSendLocalListAsync(string stationCode, int listVersion, string updateType, List<LocalAuthEntry>? localAuthorizationList = null);
 }
+
+/// <summary>
+/// Represents an OCPP 1.6 ChargingProfile payload.
+/// </summary>
+public record ChargingProfilePayload(
+    int ChargingProfileId,
+    int? TransactionId,
+    int StackLevel,
+    string ChargingProfilePurpose,
+    string ChargingProfileKind,
+    ChargingSchedulePayload ChargingSchedule);
+
+/// <summary>
+/// Represents a ChargingSchedule within a ChargingProfile.
+/// </summary>
+public record ChargingSchedulePayload(
+    string ChargingRateUnit,
+    List<ChargingSchedulePeriodPayload> ChargingSchedulePeriod);
+
+/// <summary>
+/// Represents a single period within a ChargingSchedule.
+/// </summary>
+public record ChargingSchedulePeriodPayload(
+    int StartPeriod,
+    decimal Limit,
+    int? NumberPhases = null);

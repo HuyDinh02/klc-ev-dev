@@ -6,6 +6,7 @@ using KLC.Enums;
 using KLC.Ocpp;
 using KLC.Permissions;
 using KLC.Stations;
+using KLC.Users;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -26,17 +27,20 @@ public class OcppManagementController : AbpControllerBase
     private readonly IOcppRemoteCommandService _remoteCommandService;
     private readonly IRepository<ChargingStation, Guid> _stationRepository;
     private readonly IRepository<OcppRawEvent, Guid> _rawEventRepository;
+    private readonly IRepository<UserIdTag, Guid> _userIdTagRepository;
 
     public OcppManagementController(
         OcppConnectionManager connectionManager,
         IOcppRemoteCommandService remoteCommandService,
         IRepository<ChargingStation, Guid> stationRepository,
-        IRepository<OcppRawEvent, Guid> rawEventRepository)
+        IRepository<OcppRawEvent, Guid> rawEventRepository,
+        IRepository<UserIdTag, Guid> userIdTagRepository)
     {
         _connectionManager = connectionManager;
         _remoteCommandService = remoteCommandService;
         _stationRepository = stationRepository;
         _rawEventRepository = rawEventRepository;
+        _userIdTagRepository = userIdTagRepository;
     }
 
     /// <summary>
@@ -85,7 +89,9 @@ public class OcppManagementController : AbpControllerBase
             Vendor = station?.Vendor,
             Model = station?.Model,
             FirmwareVersion = station?.FirmwareVersion,
-            SerialNumber = station?.SerialNumber
+            SerialNumber = station?.SerialNumber,
+            FirmwareUpdateStatus = station?.FirmwareUpdateStatus,
+            DiagnosticsStatus = station?.DiagnosticsStatus
         });
     }
 
@@ -235,6 +241,215 @@ public class OcppManagementController : AbpControllerBase
     }
 
     /// <summary>
+    /// Send SetChargingProfile to apply a charging profile to a connector.
+    /// </summary>
+    [HttpPost("connections/{chargePointId}/set-charging-profile")]
+    public async Task<ActionResult<RemoteCommandResultDto>> SetChargingProfile(
+        string chargePointId,
+        [FromBody] SetChargingProfileRequest request)
+    {
+        var profile = new ChargingProfilePayload(
+            request.ChargingProfileId,
+            request.TransactionId,
+            request.StackLevel,
+            request.ChargingProfilePurpose,
+            request.ChargingProfileKind,
+            new ChargingSchedulePayload(
+                request.ChargingSchedule.ChargingRateUnit,
+                request.ChargingSchedule.ChargingSchedulePeriod
+                    .Select(p => new ChargingSchedulePeriodPayload(p.StartPeriod, p.Limit, p.NumberPhases))
+                    .ToList()));
+
+        var result = await _remoteCommandService.SendSetChargingProfileAsync(
+            chargePointId, request.ConnectorId, profile);
+
+        return Ok(new RemoteCommandResultDto
+        {
+            Success = result.Accepted,
+            Message = result.Accepted ? "SetChargingProfile accepted" : result.ErrorMessage ?? "SetChargingProfile rejected"
+        });
+    }
+
+    /// <summary>
+    /// Send ClearChargingProfile to remove charging profile(s) from a charger.
+    /// </summary>
+    [HttpPost("connections/{chargePointId}/clear-charging-profile")]
+    public async Task<ActionResult<RemoteCommandResultDto>> ClearChargingProfile(
+        string chargePointId,
+        [FromBody] ClearChargingProfileRequest request)
+    {
+        var result = await _remoteCommandService.SendClearChargingProfileAsync(
+            chargePointId, request.Id, request.ConnectorId, request.ChargingProfilePurpose, request.StackLevel);
+
+        return Ok(new RemoteCommandResultDto
+        {
+            Success = result.Accepted,
+            Message = result.Accepted ? "ClearChargingProfile accepted" : result.ErrorMessage ?? "ClearChargingProfile rejected"
+        });
+    }
+
+    /// <summary>
+    /// Convenience endpoint to set a power limit on a connector.
+    /// Wraps SetChargingProfile with a TxDefaultProfile at the specified kW limit.
+    /// </summary>
+    [HttpPost("connections/{chargePointId}/set-power-limit")]
+    public async Task<ActionResult<RemoteCommandResultDto>> SetPowerLimit(
+        string chargePointId,
+        [FromBody] SetPowerLimitRequest request)
+    {
+        var limitWatts = request.MaxPowerKw * 1000m;
+
+        var profile = new ChargingProfilePayload(
+            ChargingProfileId: 1,
+            TransactionId: null,
+            StackLevel: 0,
+            ChargingProfilePurpose: "TxDefaultProfile",
+            ChargingProfileKind: "Absolute",
+            ChargingSchedule: new ChargingSchedulePayload(
+                ChargingRateUnit: "W",
+                ChargingSchedulePeriod: new List<ChargingSchedulePeriodPayload>
+                {
+                    new(StartPeriod: 0, Limit: limitWatts)
+                }));
+
+        var result = await _remoteCommandService.SendSetChargingProfileAsync(
+            chargePointId, request.ConnectorId, profile);
+
+        return Ok(new RemoteCommandResultDto
+        {
+            Success = result.Accepted,
+            Message = result.Accepted
+                ? $"Power limit set to {request.MaxPowerKw} kW ({limitWatts} W)"
+                : result.ErrorMessage ?? "SetChargingProfile rejected"
+        });
+    }
+
+    /// <summary>
+    /// Send UpdateFirmware to instruct a charger to download and install new firmware.
+    /// </summary>
+    [HttpPost("connections/{chargePointId}/update-firmware")]
+    public async Task<ActionResult<RemoteCommandResultDto>> UpdateFirmware(
+        string chargePointId,
+        [FromBody] UpdateFirmwareRequest request)
+    {
+        var result = await _remoteCommandService.SendUpdateFirmwareAsync(
+            chargePointId, request.Location, request.RetrieveDate, request.Retries, request.RetryInterval);
+        return Ok(new RemoteCommandResultDto
+        {
+            Success = result.Accepted,
+            Message = result.Accepted ? "UpdateFirmware accepted" : result.ErrorMessage ?? "UpdateFirmware rejected"
+        });
+    }
+
+    /// <summary>
+    /// Send GetDiagnostics to instruct a charger to upload diagnostics.
+    /// </summary>
+    [HttpPost("connections/{chargePointId}/get-diagnostics")]
+    public async Task<ActionResult<RemoteCommandResultDto>> GetDiagnostics(
+        string chargePointId,
+        [FromBody] GetDiagnosticsRequest request)
+    {
+        var result = await _remoteCommandService.SendGetDiagnosticsAsync(
+            chargePointId, request.Location, request.StartTime, request.StopTime, request.Retries, request.RetryInterval);
+        return Ok(new RemoteCommandResultDto
+        {
+            Success = result.Accepted,
+            Message = result.Accepted ? "GetDiagnostics accepted" : result.ErrorMessage ?? "GetDiagnostics rejected"
+        });
+    }
+
+    /// <summary>
+    /// Get the current local authorization list version from a charger.
+    /// </summary>
+    [HttpGet("connections/{chargePointId}/local-list-version")]
+    public async Task<ActionResult<LocalListVersionDto>> GetLocalListVersion(string chargePointId)
+    {
+        var result = await _remoteCommandService.SendGetLocalListVersionAsync(chargePointId);
+        if (!result.Accepted)
+            return Ok(new LocalListVersionDto { Success = false, ListVersion = -1 });
+
+        return Ok(new LocalListVersionDto { Success = true, ListVersion = result.ListVersion });
+    }
+
+    /// <summary>
+    /// Send a local authorization list update to a charger.
+    /// </summary>
+    [HttpPost("connections/{chargePointId}/send-local-list")]
+    public async Task<ActionResult<RemoteCommandResultDto>> SendLocalList(
+        string chargePointId,
+        [FromBody] SendLocalListRequest request)
+    {
+        var entries = request.LocalAuthorizationList?.Select(e => new LocalAuthEntry(
+            e.IdTag,
+            e.IdTagInfo != null
+                ? new IdTagInfoPayload(e.IdTagInfo.Status, e.IdTagInfo.ExpiryDate, e.IdTagInfo.ParentIdTag)
+                : null
+        )).ToList();
+
+        var result = await _remoteCommandService.SendSendLocalListAsync(
+            chargePointId, request.ListVersion, request.UpdateType, entries);
+
+        return Ok(new RemoteCommandResultDto
+        {
+            Success = result.Accepted,
+            Message = result.Accepted
+                ? "SendLocalList accepted"
+                : result.ErrorMessage ?? $"SendLocalList rejected: {result.Status}"
+        });
+    }
+
+    /// <summary>
+    /// Convenience endpoint: sync all active UserIdTags to a charger as a full local authorization list.
+    /// Queries the current list version, increments it, and pushes all active tags.
+    /// </summary>
+    [HttpPost("connections/{chargePointId}/sync-local-list")]
+    public async Task<ActionResult<SyncLocalListResultDto>> SyncLocalList(string chargePointId)
+    {
+        // 1. Get current list version from charger
+        var versionResult = await _remoteCommandService.SendGetLocalListVersionAsync(chargePointId);
+        if (!versionResult.Accepted)
+        {
+            return Ok(new SyncLocalListResultDto
+            {
+                Success = false,
+                Message = "Failed to retrieve current local list version from charger"
+            });
+        }
+
+        var newVersion = versionResult.ListVersion + 1;
+
+        // 2. Read all active UserIdTags from DB
+        var queryable = await _userIdTagRepository.GetQueryableAsync();
+        var activeTags = await queryable
+            .Where(t => t.IsActive && !t.IsDeleted)
+            .ToListAsync();
+
+        // 3. Build local auth entries
+        var entries = activeTags.Select(tag => new LocalAuthEntry(
+            tag.IdTag,
+            new IdTagInfoPayload(
+                Status: "Accepted",
+                ExpiryDate: tag.ExpiryDate?.ToString("o"),
+                ParentIdTag: null
+            )
+        )).ToList();
+
+        // 4. Send full update
+        var result = await _remoteCommandService.SendSendLocalListAsync(
+            chargePointId, newVersion, "Full", entries);
+
+        return Ok(new SyncLocalListResultDto
+        {
+            Success = result.Accepted,
+            Message = result.Accepted
+                ? $"Synced {entries.Count} tags to charger (version {newVersion})"
+                : result.ErrorMessage ?? $"SendLocalList rejected: {result.Status}",
+            ListVersion = newVersion,
+            TagCount = entries.Count
+        });
+    }
+
+    /// <summary>
     /// Get OCPP raw event log for a charger.
     /// </summary>
     [HttpGet("events")]
@@ -297,6 +512,8 @@ public class OcppConnectionDetailDto
     public string? Model { get; set; }
     public string? FirmwareVersion { get; set; }
     public string? SerialNumber { get; set; }
+    public string? FirmwareUpdateStatus { get; set; }
+    public string? DiagnosticsStatus { get; set; }
 }
 
 public class RemoteStartRequest
@@ -369,6 +586,95 @@ public class OcppRawEventDto
     public long? LatencyMs { get; set; }
     public VendorProfileType VendorProfile { get; set; }
     public DateTime ReceivedAt { get; set; }
+}
+
+public class SetChargingProfileRequest
+{
+    public int ConnectorId { get; set; }
+    public int ChargingProfileId { get; set; }
+    public int? TransactionId { get; set; }
+    public int StackLevel { get; set; }
+    public string ChargingProfilePurpose { get; set; } = "TxDefaultProfile";
+    public string ChargingProfileKind { get; set; } = "Absolute";
+    public ChargingScheduleDto ChargingSchedule { get; set; } = new();
+}
+
+public class ChargingScheduleDto
+{
+    public string ChargingRateUnit { get; set; } = "W";
+    public List<ChargingSchedulePeriodDto> ChargingSchedulePeriod { get; set; } = new();
+}
+
+public class ChargingSchedulePeriodDto
+{
+    public int StartPeriod { get; set; }
+    public decimal Limit { get; set; }
+    public int? NumberPhases { get; set; }
+}
+
+public class ClearChargingProfileRequest
+{
+    public int? Id { get; set; }
+    public int? ConnectorId { get; set; }
+    public string? ChargingProfilePurpose { get; set; }
+    public int? StackLevel { get; set; }
+}
+
+public class SetPowerLimitRequest
+{
+    public int ConnectorId { get; set; }
+    public decimal MaxPowerKw { get; set; }
+}
+
+public class UpdateFirmwareRequest
+{
+    public string Location { get; set; } = string.Empty;
+    public DateTime RetrieveDate { get; set; }
+    public int? Retries { get; set; }
+    public int? RetryInterval { get; set; }
+}
+
+public class GetDiagnosticsRequest
+{
+    public string Location { get; set; } = string.Empty;
+    public DateTime? StartTime { get; set; }
+    public DateTime? StopTime { get; set; }
+    public int? Retries { get; set; }
+    public int? RetryInterval { get; set; }
+}
+
+public class LocalListVersionDto
+{
+    public bool Success { get; set; }
+    public int ListVersion { get; set; }
+}
+
+public class SendLocalListRequest
+{
+    public int ListVersion { get; set; }
+    public string UpdateType { get; set; } = "Full"; // Full or Differential
+    public List<LocalAuthEntryDto>? LocalAuthorizationList { get; set; }
+}
+
+public class LocalAuthEntryDto
+{
+    public string IdTag { get; set; } = string.Empty;
+    public IdTagInfoDto? IdTagInfo { get; set; }
+}
+
+public class IdTagInfoDto
+{
+    public string Status { get; set; } = "Accepted";
+    public string? ExpiryDate { get; set; }
+    public string? ParentIdTag { get; set; }
+}
+
+public class SyncLocalListResultDto
+{
+    public bool Success { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public int ListVersion { get; set; }
+    public int TagCount { get; set; }
 }
 
 #endregion

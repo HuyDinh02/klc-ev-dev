@@ -56,14 +56,20 @@ function getSeverityBadge(severity: number | string) {
 export default function FaultsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [cursorStack, setCursorStack] = useState<(string | null)[]>([]);
+  const pageSize = 20;
   const queryClient = useQueryClient();
 
+  const resetPagination = () => { setCursor(null); setCursorStack([]); };
+
   const { data: faultsData, isLoading } = useQuery({
-    queryKey: ["faults", statusFilter],
+    queryKey: ["faults", statusFilter, cursor],
     queryFn: async () => {
-      const params: Record<string, unknown> = { maxResultCount: 50 };
+      const params: Record<string, unknown> = { maxResultCount: pageSize };
       if (statusFilter !== "all") params.status = Number(statusFilter);
-      const { data } = await faultsApi.getAll(params as { skipCount?: number; maxResultCount?: number; status?: number });
+      if (cursor) params.cursor = cursor;
+      const { data } = await faultsApi.getAll(params as Parameters<typeof faultsApi.getAll>[0]);
       return data;
     },
   });
@@ -166,11 +172,11 @@ export default function FaultsPage() {
             />
           </div>
           <div className="flex items-center gap-2">
-            <Button variant={statusFilter === "all" ? "default" : "outline"} size="sm" onClick={() => setStatusFilter("all")}>All</Button>
-            <Button variant={statusFilter === "0" ? "default" : "outline"} size="sm" onClick={() => setStatusFilter("0")}>Open</Button>
-            <Button variant={statusFilter === "1" ? "default" : "outline"} size="sm" onClick={() => setStatusFilter("1")}>Investigating</Button>
-            <Button variant={statusFilter === "2" ? "default" : "outline"} size="sm" onClick={() => setStatusFilter("2")}>Resolved</Button>
-            <Button variant={statusFilter === "3" ? "default" : "outline"} size="sm" onClick={() => setStatusFilter("3")}>Closed</Button>
+            <Button variant={statusFilter === "all" ? "default" : "outline"} size="sm" onClick={() => { setStatusFilter("all"); resetPagination(); }}>All</Button>
+            <Button variant={statusFilter === "0" ? "default" : "outline"} size="sm" onClick={() => { setStatusFilter("0"); resetPagination(); }}>Open</Button>
+            <Button variant={statusFilter === "1" ? "default" : "outline"} size="sm" onClick={() => { setStatusFilter("1"); resetPagination(); }}>Investigating</Button>
+            <Button variant={statusFilter === "2" ? "default" : "outline"} size="sm" onClick={() => { setStatusFilter("2"); resetPagination(); }}>Resolved</Button>
+            <Button variant={statusFilter === "3" ? "default" : "outline"} size="sm" onClick={() => { setStatusFilter("3"); resetPagination(); }}>Closed</Button>
           </div>
         </div>
 
@@ -225,6 +231,38 @@ export default function FaultsPage() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {!isLoading && ((faultsData?.totalCount ?? 0) > pageSize || cursorStack.length > 0) && (
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              {faultsData?.totalCount ?? 0} total faults
+            </p>
+            <div className="flex items-center gap-2">
+              {cursorStack.length > 0 && (
+                <Button variant="outline" size="sm" onClick={() => {
+                  const prev = [...cursorStack];
+                  const prevCursor = prev.pop()!;
+                  setCursorStack(prev);
+                  setCursor(prevCursor);
+                }}>
+                  Previous
+                </Button>
+              )}
+              {faults.length === pageSize && (
+                <Button variant="outline" size="sm" onClick={() => {
+                  const lastId = faults[faults.length - 1]?.id;
+                  if (lastId) {
+                    setCursorStack([...cursorStack, cursor]);
+                    setCursor(lastId);
+                  }
+                }}>
+                  Next
+                </Button>
+              )}
+            </div>
           </div>
         )}
 

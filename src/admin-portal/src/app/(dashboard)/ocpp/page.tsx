@@ -23,6 +23,10 @@ import {
   ToggleLeft,
   Settings,
   Zap,
+  Gauge,
+  Download,
+  FileSearch,
+  ShieldCheck,
 } from "lucide-react";
 
 interface OcppConnection {
@@ -88,11 +92,17 @@ export default function OcppManagementPage() {
   const [showConfig, setShowConfig] = useState(false);
   const [showChangeConfig, setShowChangeConfig] = useState(false);
   const [showTrigger, setShowTrigger] = useState(false);
+  const [showPowerLimit, setShowPowerLimit] = useState(false);
+  const [showUpdateFirmware, setShowUpdateFirmware] = useState(false);
+  const [showGetDiagnostics, setShowGetDiagnostics] = useState(false);
   const [resetForm, setResetForm] = useState({ type: "Soft" });
   const [unlockForm, setUnlockForm] = useState({ connectorId: 1 });
   const [availabilityForm, setAvailabilityForm] = useState({ connectorId: 0, type: "Operative" });
   const [changeConfigForm, setChangeConfigForm] = useState({ key: "", value: "" });
   const [triggerForm, setTriggerForm] = useState({ requestedMessage: "StatusNotification", connectorId: undefined as number | undefined });
+  const [powerLimitForm, setPowerLimitForm] = useState({ connectorId: 1, maxPowerKw: 22 });
+  const [updateFirmwareForm, setUpdateFirmwareForm] = useState({ location: "", retrieveDate: "", retries: undefined as number | undefined, retryInterval: undefined as number | undefined });
+  const [getDiagnosticsForm, setGetDiagnosticsForm] = useState({ location: "", startTime: "", stopTime: "" });
   const [configData, setConfigData] = useState<{ key: string; value: string | null; readonly: boolean }[] | null>(null);
   const [commandResult, setCommandResult] = useState<{ success: boolean; message: string } | null>(null);
 
@@ -167,6 +177,39 @@ export default function OcppManagementPage() {
   const triggerMutation = useMutation({
     mutationFn: async () => (await api.post(`/ocpp/connections/${selectedCp}/trigger`, triggerForm)).data,
     onSuccess: (data) => { setShowTrigger(false); setCommandResult(data); },
+  });
+
+  const powerLimitMutation = useMutation({
+    mutationFn: async () => (await api.post(`/ocpp/connections/${selectedCp}/set-power-limit`, powerLimitForm)).data,
+    onSuccess: (data) => { setShowPowerLimit(false); setCommandResult(data); },
+  });
+
+  const updateFirmwareMutation = useMutation({
+    mutationFn: async () => {
+      const payload: Record<string, unknown> = {
+        location: updateFirmwareForm.location,
+        retrieveDate: new Date(updateFirmwareForm.retrieveDate).toISOString(),
+      };
+      if (updateFirmwareForm.retries != null) payload.retries = updateFirmwareForm.retries;
+      if (updateFirmwareForm.retryInterval != null) payload.retryInterval = updateFirmwareForm.retryInterval;
+      return (await api.post(`/ocpp/connections/${selectedCp}/update-firmware`, payload)).data;
+    },
+    onSuccess: (data) => { setShowUpdateFirmware(false); setCommandResult(data); },
+  });
+
+  const getDiagnosticsMutation = useMutation({
+    mutationFn: async () => {
+      const payload: Record<string, unknown> = { location: getDiagnosticsForm.location };
+      if (getDiagnosticsForm.startTime) payload.startTime = new Date(getDiagnosticsForm.startTime).toISOString();
+      if (getDiagnosticsForm.stopTime) payload.stopTime = new Date(getDiagnosticsForm.stopTime).toISOString();
+      return (await api.post(`/ocpp/connections/${selectedCp}/get-diagnostics`, payload)).data;
+    },
+    onSuccess: (data) => { setShowGetDiagnostics(false); setCommandResult(data); },
+  });
+
+  const syncLocalListMutation = useMutation({
+    mutationFn: async () => (await api.post(`/ocpp/connections/${selectedCp}/sync-local-list`)).data,
+    onSuccess: (data) => { setCommandResult(data); },
   });
 
   const formatTime = (ts: string | null) => {
@@ -405,6 +448,31 @@ export default function OcppManagementPage() {
                       <Button size="sm" variant="outline" className="col-span-2" onClick={() => getConfigMutation.mutate()}>
                         <Settings className="mr-1 h-3 w-3" />
                         {getConfigMutation.isPending ? "Loading..." : "Get Configuration"}
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setShowPowerLimit(true)}>
+                        <Gauge className="mr-1 h-3 w-3" />
+                        Power Limit
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setShowUpdateFirmware(true)}>
+                        <Download className="mr-1 h-3 w-3" />
+                        Firmware
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setShowGetDiagnostics(true)}>
+                        <FileSearch className="mr-1 h-3 w-3" />
+                        Diagnostics
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          if (confirm("Sync local authorization list to this charger?")) {
+                            syncLocalListMutation.mutate();
+                          }
+                        }}
+                        disabled={syncLocalListMutation.isPending}
+                      >
+                        <ShieldCheck className="mr-1 h-3 w-3" />
+                        {syncLocalListMutation.isPending ? "Syncing..." : "Sync Auth"}
                       </Button>
                     </div>
                   </div>
@@ -754,6 +822,163 @@ export default function OcppManagementPage() {
                 disabled={changeConfigMutation.isPending || !changeConfigForm.key}
               >
                 {changeConfigMutation.isPending ? "Sending..." : "Save"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Set Power Limit Dialog */}
+      {showPowerLimit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-background rounded-lg p-6 w-96 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold">Set Power Limit</h3>
+              <Button variant="ghost" size="icon" onClick={() => setShowPowerLimit(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Charger: <strong>{selectedCp}</strong>
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium">Connector ID</label>
+                <Input
+                  type="number"
+                  value={powerLimitForm.connectorId}
+                  onChange={(e) => setPowerLimitForm({ ...powerLimitForm, connectorId: parseInt(e.target.value) || 1 })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Max Power (kW)</label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  value={powerLimitForm.maxPowerKw}
+                  onChange={(e) => setPowerLimitForm({ ...powerLimitForm, maxPowerKw: parseFloat(e.target.value) || 0 })}
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setShowPowerLimit(false)}>Cancel</Button>
+              <Button
+                onClick={() => powerLimitMutation.mutate()}
+                disabled={powerLimitMutation.isPending || powerLimitForm.maxPowerKw <= 0}
+              >
+                {powerLimitMutation.isPending ? "Sending..." : "Set Limit"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Update Firmware Dialog */}
+      {showUpdateFirmware && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-background rounded-lg p-6 w-96 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold">Update Firmware</h3>
+              <Button variant="ghost" size="icon" onClick={() => setShowUpdateFirmware(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Charger: <strong>{selectedCp}</strong>
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium">Download URL</label>
+                <Input
+                  placeholder="https://example.com/firmware.bin"
+                  value={updateFirmwareForm.location}
+                  onChange={(e) => setUpdateFirmwareForm({ ...updateFirmwareForm, location: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Retrieve Date</label>
+                <Input
+                  type="datetime-local"
+                  value={updateFirmwareForm.retrieveDate}
+                  onChange={(e) => setUpdateFirmwareForm({ ...updateFirmwareForm, retrieveDate: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Retries (optional)</label>
+                <Input
+                  type="number"
+                  placeholder="Leave empty for default"
+                  onChange={(e) => setUpdateFirmwareForm({ ...updateFirmwareForm, retries: e.target.value ? parseInt(e.target.value) : undefined })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Retry Interval (seconds, optional)</label>
+                <Input
+                  type="number"
+                  placeholder="Leave empty for default"
+                  onChange={(e) => setUpdateFirmwareForm({ ...updateFirmwareForm, retryInterval: e.target.value ? parseInt(e.target.value) : undefined })}
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setShowUpdateFirmware(false)}>Cancel</Button>
+              <Button
+                onClick={() => updateFirmwareMutation.mutate()}
+                disabled={updateFirmwareMutation.isPending || !updateFirmwareForm.location || !updateFirmwareForm.retrieveDate}
+              >
+                {updateFirmwareMutation.isPending ? "Sending..." : "Update Firmware"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Get Diagnostics Dialog */}
+      {showGetDiagnostics && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-background rounded-lg p-6 w-96 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold">Get Diagnostics</h3>
+              <Button variant="ghost" size="icon" onClick={() => setShowGetDiagnostics(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Charger: <strong>{selectedCp}</strong>
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium">Upload URL</label>
+                <Input
+                  placeholder="https://example.com/upload"
+                  value={getDiagnosticsForm.location}
+                  onChange={(e) => setGetDiagnosticsForm({ ...getDiagnosticsForm, location: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Start Time (optional)</label>
+                <Input
+                  type="datetime-local"
+                  value={getDiagnosticsForm.startTime}
+                  onChange={(e) => setGetDiagnosticsForm({ ...getDiagnosticsForm, startTime: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Stop Time (optional)</label>
+                <Input
+                  type="datetime-local"
+                  value={getDiagnosticsForm.stopTime}
+                  onChange={(e) => setGetDiagnosticsForm({ ...getDiagnosticsForm, stopTime: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setShowGetDiagnostics(false)}>Cancel</Button>
+              <Button
+                onClick={() => getDiagnosticsMutation.mutate()}
+                disabled={getDiagnosticsMutation.isPending || !getDiagnosticsForm.location}
+              >
+                {getDiagnosticsMutation.isPending ? "Sending..." : "Get Diagnostics"}
               </Button>
             </div>
           </div>

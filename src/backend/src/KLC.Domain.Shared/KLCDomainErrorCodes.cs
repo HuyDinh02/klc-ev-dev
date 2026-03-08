@@ -43,6 +43,8 @@ public static class KLCDomainErrorCodes
         public const string MethodNotOwned = "KLC:Payment:MethodNotOwned";
         public const string InvalidRefund = "KLC:Payment:InvalidRefund";
         public const string CannotCancel = "KLC:Payment:CannotCancel";
+        public const string InvalidSignature = "KLC:Payment:InvalidSignature";
+        public const string GatewayNotSupported = "KLC:Payment:GatewayNotSupported";
     }
 
     public static class Vehicle

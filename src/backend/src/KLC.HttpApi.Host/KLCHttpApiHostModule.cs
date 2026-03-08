@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Extensions.DependencyInjection;
@@ -93,6 +95,24 @@ public class KLCHttpApiHostModule : AbpModule
         ConfigureSignalR(context);
         ConfigureExceptionHttpStatusCodes();
         ConfigureHealthChecks(context, configuration);
+        ConfigureRateLimiting(context);
+    }
+
+    private static void ConfigureRateLimiting(ServiceConfigurationContext context)
+    {
+        context.Services.AddRateLimiter(options =>
+        {
+            options.RejectionStatusCode = 429;
+            // Global: 100 requests per minute per IP
+            options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 100,
+                        Window = TimeSpan.FromMinutes(1)
+                    }));
+        });
     }
 
     private void ConfigureExceptionHttpStatusCodes()
@@ -160,6 +180,7 @@ public class KLCHttpApiHostModule : AbpModule
             options.Map(KLCDomainErrorCodes.Payment.MethodNotOwned, HttpStatusCode.Forbidden);
             options.Map(KLCDomainErrorCodes.Vehicle.NotOwned, HttpStatusCode.Forbidden);
             options.Map(KLCDomainErrorCodes.Session.NotOwned, HttpStatusCode.Forbidden);
+            options.Map(KLCDomainErrorCodes.Payment.InvalidSignature, HttpStatusCode.Forbidden);
         });
     }
 
@@ -325,6 +346,7 @@ public class KLCHttpApiHostModule : AbpModule
 
         app.UseRouting();
         app.UseCors();
+        app.UseRateLimiter();
         app.UseAuthentication();
         app.UseAbpOpenIddictValidation();
 

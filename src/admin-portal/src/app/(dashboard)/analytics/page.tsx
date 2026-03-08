@@ -28,6 +28,9 @@ import {
   Activity,
   ArrowUpRight,
   ArrowDownRight,
+  ArrowUpDown,
+  Wrench,
+  Sun,
 } from "lucide-react";
 
 interface DailyStats {
@@ -44,6 +47,7 @@ interface StationUtilization {
   totalEnergyKwh: number;
   totalRevenue: number;
   utilizationPercent: number;
+  onlinePercent: number;
 }
 
 interface AnalyticsData {
@@ -54,7 +58,13 @@ interface AnalyticsData {
   totalSessions: number;
   averageSessionDurationMinutes: number;
   uptimePercent: number;
+  mtbfHours: number;
+  peakHourUtc: number | null;
+  peakHourSessionCount: number;
 }
+
+type SortKey = "stationName" | "totalSessions" | "totalEnergyKwh" | "totalRevenue" | "utilizationPercent" | "onlinePercent";
+type SortDir = "asc" | "desc";
 
 type DateRange = "7d" | "30d" | "90d";
 
@@ -95,8 +105,24 @@ function formatVnd(value: number): string {
   return value.toString();
 }
 
+function formatPeakHour(hourUtc: number | null): string {
+  if (hourUtc === null) return "N/A";
+  // Convert UTC hour to UTC+7 (Vietnam)
+  const vn = (hourUtc + 7) % 24;
+  const next = (vn + 1) % 24;
+  return `${vn.toString().padStart(2, "0")}:00–${next.toString().padStart(2, "0")}:00`;
+}
+
+function uptimeColorClass(pct: number): string {
+  if (pct >= 95) return "text-green-600";
+  if (pct >= 90) return "text-yellow-600";
+  return "text-red-600";
+}
+
 export default function AnalyticsPage() {
   const [range, setRange] = useState<DateRange>("30d");
+  const [sortKey, setSortKey] = useState<SortKey>("totalSessions");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const { fromDate, toDate } = getDateRange(range);
 
@@ -116,7 +142,28 @@ export default function AnalyticsPage() {
     totalSessions: 0,
     averageSessionDurationMinutes: 0,
     uptimePercent: 0,
+    mtbfHours: 0,
+    peakHourUtc: null,
+    peakHourSessionCount: 0,
   };
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir(sortDir === "asc" ? "desc" : "asc");
+    } else {
+      setSortKey(key);
+      setSortDir("desc");
+    }
+  };
+
+  const sortedUtilization = [...data.stationUtilization].sort((a, b) => {
+    const aVal = a[sortKey];
+    const bVal = b[sortKey];
+    if (typeof aVal === "string" && typeof bVal === "string") {
+      return sortDir === "asc" ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+    }
+    return sortDir === "asc" ? (aVal as number) - (bVal as number) : (bVal as number) - (aVal as number);
+  });
 
   // Compute averages for daily comparison
   const dailyAvgRevenue =
@@ -214,11 +261,11 @@ export default function AnalyticsPage() {
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className={`text-2xl font-bold ${uptimeColorClass(data.uptimePercent)}`}>
               {data.uptimePercent.toFixed(1)}%
             </div>
             <p className="text-xs text-muted-foreground">
-              Current station availability
+              {data.uptimePercent >= 95 ? "Healthy" : data.uptimePercent >= 90 ? "Degraded" : "Critical"} availability
             </p>
           </CardContent>
         </Card>
@@ -237,6 +284,53 @@ export default function AnalyticsPage() {
                 : "0đ"}
             </div>
             <p className="text-xs text-muted-foreground">Effective rate</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Operational Metrics */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Mean Time Between Faults (MTBF)
+            </CardTitle>
+            <Wrench className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {data.mtbfHours > 0 ? (
+                data.mtbfHours >= 24
+                  ? `${(data.mtbfHours / 24).toFixed(1)} days`
+                  : `${data.mtbfHours.toFixed(1)} hrs`
+              ) : (
+                "No faults"
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {data.mtbfHours > 0
+                ? "Avg interval between fault occurrences"
+                : "No faults recorded in this period"}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Peak Charging Hour
+            </CardTitle>
+            <Sun className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatPeakHour(data.peakHourUtc)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {data.peakHourSessionCount > 0
+                ? `${data.peakHourSessionCount} sessions started during this hour (UTC+7)`
+                : "No sessions in this period"}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -416,15 +510,64 @@ export default function AnalyticsPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="px-4 py-3 text-left font-medium">Station</th>
-                      <th className="px-4 py-3 text-right font-medium">Sessions</th>
-                      <th className="px-4 py-3 text-right font-medium">Energy</th>
-                      <th className="px-4 py-3 text-right font-medium">Revenue</th>
-                      <th className="px-4 py-3 text-right font-medium">Utilization</th>
+                      <th
+                        className="px-4 py-3 text-left font-medium cursor-pointer select-none hover:bg-muted/80"
+                        onClick={() => toggleSort("stationName")}
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          Station
+                          <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                        </span>
+                      </th>
+                      <th
+                        className="px-4 py-3 text-right font-medium cursor-pointer select-none hover:bg-muted/80"
+                        onClick={() => toggleSort("totalSessions")}
+                      >
+                        <span className="inline-flex items-center justify-end gap-1">
+                          Sessions
+                          <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                        </span>
+                      </th>
+                      <th
+                        className="px-4 py-3 text-right font-medium cursor-pointer select-none hover:bg-muted/80"
+                        onClick={() => toggleSort("totalEnergyKwh")}
+                      >
+                        <span className="inline-flex items-center justify-end gap-1">
+                          Energy
+                          <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                        </span>
+                      </th>
+                      <th
+                        className="px-4 py-3 text-right font-medium cursor-pointer select-none hover:bg-muted/80"
+                        onClick={() => toggleSort("totalRevenue")}
+                      >
+                        <span className="inline-flex items-center justify-end gap-1">
+                          Revenue
+                          <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                        </span>
+                      </th>
+                      <th
+                        className="px-4 py-3 text-right font-medium cursor-pointer select-none hover:bg-muted/80"
+                        onClick={() => toggleSort("utilizationPercent")}
+                      >
+                        <span className="inline-flex items-center justify-end gap-1">
+                          Utilization
+                          <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                        </span>
+                      </th>
+                      <th
+                        className="px-4 py-3 text-right font-medium cursor-pointer select-none hover:bg-muted/80"
+                        onClick={() => toggleSort("onlinePercent")}
+                      >
+                        <span className="inline-flex items-center justify-end gap-1">
+                          Online
+                          <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                        </span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {data.stationUtilization.map((station) => (
+                    {sortedUtilization.map((station) => (
                       <tr key={station.stationId} className="border-b last:border-0">
                         <td className="px-4 py-3 font-medium">{station.stationName}</td>
                         <td className="px-4 py-3 text-right">{station.totalSessions}</td>
@@ -445,6 +588,19 @@ export default function AnalyticsPage() {
                             }
                           >
                             {station.utilizationPercent.toFixed(1)}%
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Badge
+                            variant={
+                              station.onlinePercent >= 95
+                                ? "success"
+                                : station.onlinePercent >= 90
+                                ? "warning"
+                                : "destructive"
+                            }
+                          >
+                            {station.onlinePercent.toFixed(1)}%
                           </Badge>
                         </td>
                       </tr>

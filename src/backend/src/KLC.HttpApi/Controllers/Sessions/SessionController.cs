@@ -70,6 +70,7 @@ public class SessionController : KLCController
 
 [ApiController]
 [Route("api/v1/admin/sessions")]
+[Authorize(KLCPermissions.Sessions.Default)]
 public class AdminSessionController : KLCController
 {
     private readonly ISessionAppService _sessionAppService;

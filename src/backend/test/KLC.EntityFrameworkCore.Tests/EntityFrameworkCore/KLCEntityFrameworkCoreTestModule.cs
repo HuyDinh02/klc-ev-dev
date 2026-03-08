@@ -1,7 +1,9 @@
-﻿using Microsoft.Data.Sqlite;
+﻿using System.Collections.Generic;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Volo.Abp;
 using Volo.Abp.EntityFrameworkCore;
@@ -41,6 +43,15 @@ public class KLCEntityFrameworkCoreTestModule : AbpModule
             options.IsDynamicSettingStoreEnabled = false;
         });
         context.Services.AddAlwaysDisableUnitOfWorkTransaction();
+
+        // Provide IConfiguration for domain services (e.g., OcppService uses Ocpp:AllowTestIdTags)
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                { "Ocpp:AllowTestIdTags", "true" }
+            })
+            .Build();
+        context.Services.AddSingleton<IConfiguration>(configuration);
 
         ConfigureInMemorySqlite(context.Services);
     }

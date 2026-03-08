@@ -332,7 +332,8 @@ public class AuthBffService : IAuthBffService
 
     private string GenerateAccessToken(AppUser user)
     {
-        var key = _configuration["Jwt:SecretKey"] ?? "KLC_DEFAULT_JWT_SECRET_KEY_FOR_DEVELOPMENT_ONLY_2026";
+        var key = _configuration["Jwt:SecretKey"]
+            ?? throw new InvalidOperationException("Jwt:SecretKey is not configured.");
         var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 

@@ -55,24 +55,26 @@ export default function PaymentsPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [cursorStack, setCursorStack] = useState<(string | null)[]>([]);
   const [refundTarget, setRefundTarget] = useState<Payment | null>(null);
   const [refundReason, setRefundReason] = useState("");
   const pageSize = 20;
   const queryClient = useQueryClient();
 
+  const resetPagination = () => { setCursor(null); setCursorStack([]); };
+
   // Fetch payments
   const { data: paymentsData, isLoading } = useQuery({
-    queryKey: ["payments", statusFilter, dateFrom, dateTo, searchQuery, currentPage],
+    queryKey: ["payments", statusFilter, dateFrom, dateTo, searchQuery, cursor],
     queryFn: async () => {
       const params: Record<string, string | number> = {
-        skipCount: (currentPage - 1) * pageSize,
         maxResultCount: pageSize,
       };
-      if (statusFilter !== "all") params.status = statusFilter;
+      if (statusFilter !== "all") params.status = Number(statusFilter);
       if (dateFrom) params.fromDate = dateFrom;
       if (dateTo) params.toDate = dateTo;
-      if (searchQuery) params.search = searchQuery;
+      if (cursor) params.cursor = cursor;
 
       const res = await api.get("/payments/history", { params });
       return res.data;
@@ -81,7 +83,6 @@ export default function PaymentsPage() {
 
   const payments: Payment[] = paymentsData?.items || [];
   const totalCount = paymentsData?.totalCount || 0;
-  const totalPages = Math.ceil(totalCount / pageSize);
 
   // Compute stats from fetched data
   const stats: PaymentStats = {
@@ -219,7 +220,7 @@ export default function PaymentsPage() {
             </div>
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => { setStatusFilter(e.target.value); resetPagination(); }}
               className="rounded-md border px-3 py-2"
             >
               <option value="all">All Status</option>
@@ -359,29 +360,41 @@ export default function PaymentsPage() {
           </div>
 
           {/* Pagination */}
-          {totalPages > 1 && (
+          {(totalCount > pageSize || cursorStack.length > 0) && (
             <div className="flex items-center justify-between border-t px-4 py-3">
               <div className="text-sm text-muted-foreground">
-                Showing {(currentPage - 1) * pageSize + 1} -{" "}
-                {Math.min(currentPage * pageSize, totalCount)} of {totalCount}
+                {totalCount} total payments
               </div>
               <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+                {cursorStack.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const prev = [...cursorStack];
+                      const prevCursor = prev.pop()!;
+                      setCursorStack(prev);
+                      setCursor(prevCursor);
+                    }}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                )}
+                {payments.length === pageSize && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const lastId = payments[payments.length - 1]?.id;
+                      if (lastId) {
+                        setCursorStack([...cursorStack, cursor]);
+                        setCursor(lastId);
+                      }
+                    }}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             </div>
           )}

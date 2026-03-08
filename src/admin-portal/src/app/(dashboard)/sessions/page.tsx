@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Search, Zap, Clock, Battery, DollarSign } from "lucide-react";
 import { Header } from "@/components/layout/header";
@@ -43,23 +44,25 @@ function getStatusBadge(status: number | string) {
 }
 
 export default function SessionsPage() {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [cursorStack, setCursorStack] = useState<(string | null)[]>([]);
   const pageSize = 20;
 
   const { data: sessionsData, isLoading } = useQuery({
-    queryKey: ["sessions", statusFilter, currentPage],
+    queryKey: ["sessions", statusFilter, cursor],
     queryFn: async () => {
       const params: Record<string, unknown> = {
-        skipCount: (currentPage - 1) * pageSize,
         maxResultCount: pageSize,
       };
-      if (statusFilter !== "all") params.status = statusFilter;
-      const { data } = await sessionsApi.getAll(params as { skip?: number; maxResultCount?: number; stationId?: string });
+      if (statusFilter !== "all") params.status = Number(statusFilter);
+      if (cursor) params.cursor = cursor;
+      const { data } = await sessionsApi.getAll(params as Parameters<typeof sessionsApi.getAll>[0]);
       return data;
     },
-    refetchInterval: 10000, // Auto-refresh every 10 seconds
+    refetchInterval: 10000,
   });
 
   const sessions = sessionsData?.items || [];
@@ -164,21 +167,21 @@ export default function SessionsPage() {
             <Button
               variant={statusFilter === "all" ? "default" : "outline"}
               size="sm"
-              onClick={() => setStatusFilter("all")}
+              onClick={() => { setStatusFilter("all"); setCursor(null); setCursorStack([]); }}
             >
               All
             </Button>
             <Button
               variant={statusFilter === "2" ? "default" : "outline"}
               size="sm"
-              onClick={() => setStatusFilter("2")}
+              onClick={() => { setStatusFilter("2"); setCursor(null); setCursorStack([]); }}
             >
               Active
             </Button>
             <Button
               variant={statusFilter === "5" ? "default" : "outline"}
               size="sm"
-              onClick={() => setStatusFilter("5")}
+              onClick={() => { setStatusFilter("5"); setCursor(null); setCursorStack([]); }}
             >
               Completed
             </Button>
@@ -208,7 +211,7 @@ export default function SessionsPage() {
                     </tr>
                   ) : filteredSessions.length > 0 ? (
                     filteredSessions.map((session: { id: string; stationName?: string; connectorNumber?: number; userName?: string; status: number | string; startTime: string; endTime?: string | null; totalEnergyKwh?: number; energyDeliveredKwh?: number; totalCost?: number; cost?: number }) => (
-                      <tr key={session.id} className="border-b hover:bg-muted/50">
+                      <tr key={session.id} className="border-b hover:bg-muted/50 cursor-pointer" onClick={() => router.push(`/sessions/${session.id}`)}>
                         <td className="px-4 py-3">
                           <div>
                             <p className="font-medium">{session.stationName || "—"}</p>
@@ -247,31 +250,41 @@ export default function SessionsPage() {
             </div>
 
             {/* Pagination */}
-            {(sessionsData?.totalCount ?? 0) > pageSize && (
+            {((sessionsData?.totalCount ?? 0) > pageSize || cursorStack.length > 0) && (
               <div className="flex items-center justify-between border-t px-4 py-3">
                 <p className="text-sm text-muted-foreground">
-                  Showing {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, sessionsData?.totalCount ?? 0)} of {sessionsData?.totalCount ?? 0}
+                  {sessionsData?.totalCount ?? 0} total sessions
                 </p>
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                  >
-                    Previous
-                  </Button>
-                  <span className="text-sm text-muted-foreground">
-                    Page {currentPage} of {Math.ceil((sessionsData?.totalCount ?? 0) / pageSize)}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage((p) => p + 1)}
-                    disabled={currentPage * pageSize >= (sessionsData?.totalCount ?? 0)}
-                  >
-                    Next
-                  </Button>
+                  {cursorStack.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const prev = [...cursorStack];
+                        const prevCursor = prev.pop()!;
+                        setCursorStack(prev);
+                        setCursor(prevCursor);
+                      }}
+                    >
+                      Previous
+                    </Button>
+                  )}
+                  {sessions.length === pageSize && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const lastId = sessions[sessions.length - 1]?.id;
+                        if (lastId) {
+                          setCursorStack([...cursorStack, cursor]);
+                          setCursor(lastId);
+                        }
+                      }}
+                    >
+                      Next
+                    </Button>
+                  )}
                 </div>
               </div>
             )}

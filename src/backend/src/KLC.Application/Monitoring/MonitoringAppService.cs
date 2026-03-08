@@ -221,6 +221,18 @@ public class MonitoringAppService : KLCAppService, IMonitoringAppService
         var stations = await _stationRepository.GetListAsync();
         var connectors = await _connectorRepository.GetListAsync();
 
+        // Status change logs for the period (for per-station online %)
+        var statusLogQuery = await _statusLogRepository.GetQueryableAsync();
+        var statusLogs = await AsyncExecuter.ToListAsync(
+            statusLogQuery.Where(l => l.ConnectorNumber == null && l.Timestamp >= fromDate && l.Timestamp <= toDate)
+                .OrderBy(l => l.Timestamp));
+
+        // Faults for MTBF calculation
+        var faultQuery = await _faultRepository.GetQueryableAsync();
+        var faults = await AsyncExecuter.ToListAsync(
+            faultQuery.Where(f => f.DetectedAt >= fromDate && f.DetectedAt <= toDate)
+                .OrderBy(f => f.DetectedAt));
+
         // Daily stats
         var dailyStats = sessions
             .GroupBy(s => s.CreationTime.Date)
@@ -236,6 +248,8 @@ public class MonitoringAppService : KLCAppService, IMonitoringAppService
 
         // Station utilization: sessions per station / total hours in period
         var totalHours = (toDate - fromDate).TotalHours;
+        var statusLogsByStation = statusLogs.GroupBy(l => l.StationId).ToDictionary(g => g.Key, g => g.ToList());
+
         var stationUtilization = stations.Select(station =>
         {
             var stationSessions = sessions.Where(s => s.StationId == station.Id).ToList();
@@ -246,6 +260,10 @@ public class MonitoringAppService : KLCAppService, IMonitoringAppService
             var maxCapacityHours = stationConnectorCount * totalHours;
             var utilization = maxCapacityHours > 0 ? (decimal)(chargingHours / maxCapacityHours * 100) : 0;
 
+            // Per-station online % from status change logs
+            var onlinePercent = CalculateStationOnlinePercent(
+                station, statusLogsByStation.GetValueOrDefault(station.Id), fromDate, toDate);
+
             return new StationUtilizationDto
             {
                 StationId = station.Id,
@@ -253,7 +271,8 @@ public class MonitoringAppService : KLCAppService, IMonitoringAppService
                 TotalSessions = stationSessions.Count,
                 TotalEnergyKwh = Math.Round(stationSessions.Sum(s => s.TotalEnergyKwh), 2),
                 TotalRevenue = Math.Round(stationSessions.Sum(s => s.TotalCost), 0),
-                UtilizationPercent = Math.Round(utilization, 1)
+                UtilizationPercent = Math.Round(utilization, 1),
+                OnlinePercent = onlinePercent
             };
         })
         .OrderByDescending(s => s.TotalSessions)
@@ -268,6 +287,25 @@ public class MonitoringAppService : KLCAppService, IMonitoringAppService
             .Where(s => s.StartTime.HasValue && s.EndTime.HasValue)
             .Sum(s => (s.EndTime!.Value - s.StartTime!.Value).TotalMinutes);
 
+        // MTBF: total station-hours in period / number of faults
+        var totalStationHours = (decimal)(activeStations * totalHours);
+        var faultCount = faults.Count;
+        var mtbfHours = faultCount > 0 ? Math.Round(totalStationHours / faultCount, 1) : 0;
+
+        // Peak hour: hour of day (UTC) with the most session starts
+        int? peakHourUtc = null;
+        var peakHourSessionCount = 0;
+        var sessionsWithStart = sessions.Where(s => s.StartTime.HasValue).ToList();
+        if (sessionsWithStart.Count > 0)
+        {
+            var hourGroups = sessionsWithStart
+                .GroupBy(s => s.StartTime!.Value.Hour)
+                .OrderByDescending(g => g.Count())
+                .First();
+            peakHourUtc = hourGroups.Key;
+            peakHourSessionCount = hourGroups.Count();
+        }
+
         return new AnalyticsDto
         {
             DailyStats = dailyStats,
@@ -276,7 +314,64 @@ public class MonitoringAppService : KLCAppService, IMonitoringAppService
             TotalEnergyKwh = Math.Round(sessions.Sum(s => s.TotalEnergyKwh), 2),
             TotalSessions = sessions.Count,
             AverageSessionDurationMinutes = sessions.Count > 0 ? Math.Round((decimal)(totalDuration / sessions.Count), 1) : 0,
-            UptimePercent = uptimePercent
+            UptimePercent = uptimePercent,
+            MtbfHours = mtbfHours,
+            PeakHourUtc = peakHourUtc,
+            PeakHourSessionCount = peakHourSessionCount
         };
+    }
+
+    /// <summary>
+    /// Calculates the percentage of time a station was online (not Offline/Faulted)
+    /// within the given period, based on status change logs.
+    /// Falls back to current status snapshot when no logs exist.
+    /// </summary>
+    private static decimal CalculateStationOnlinePercent(
+        ChargingStation station,
+        List<StatusChangeLog>? logs,
+        DateTime fromDate,
+        DateTime toDate)
+    {
+        var totalSeconds = (toDate - fromDate).TotalSeconds;
+        if (totalSeconds <= 0) return 0;
+
+        if (logs == null || logs.Count == 0)
+        {
+            // No logs in period — use current status as best estimate
+            var isOnline = station.Status == StationStatus.Available || station.Status == StationStatus.Occupied;
+            return isOnline ? 100m : 0m;
+        }
+
+        // Walk through status transitions to accumulate online time
+        var onlineStatuses = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            nameof(StationStatus.Available),
+            nameof(StationStatus.Occupied)
+        };
+
+        double onlineSeconds = 0;
+
+        // Determine initial status at fromDate from the first log's PreviousStatus
+        var firstLog = logs[0];
+        var wasOnline = onlineStatuses.Contains(firstLog.PreviousStatus);
+        var lastTimestamp = fromDate;
+
+        foreach (var log in logs)
+        {
+            if (wasOnline)
+            {
+                onlineSeconds += (log.Timestamp - lastTimestamp).TotalSeconds;
+            }
+            wasOnline = onlineStatuses.Contains(log.NewStatus);
+            lastTimestamp = log.Timestamp;
+        }
+
+        // Account for time from last log to end of period
+        if (wasOnline)
+        {
+            onlineSeconds += (toDate - lastTimestamp).TotalSeconds;
+        }
+
+        return Math.Round((decimal)(onlineSeconds / totalSeconds * 100), 1);
     }
 }

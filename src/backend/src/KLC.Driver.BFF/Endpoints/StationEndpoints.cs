@@ -29,6 +29,24 @@ public static class StationEndpoints
         .WithSummary("Find nearby charging stations")
         .Produces<object>(200);
 
+        // GET /api/v1/stations/search?q=...&limit=...
+        // Public endpoint - no auth required (station discovery)
+        group.MapGet("/search", async (
+            [FromQuery] string q,
+            [FromQuery] int limit = 20,
+            IStationBffService stationService = null!) =>
+        {
+            if (string.IsNullOrWhiteSpace(q))
+                return Results.Ok(new { data = Array.Empty<NearbyStationDto>() });
+            if (limit <= 0 || limit > 100) limit = 20;
+
+            var stations = await stationService.SearchStationsAsync(q, limit);
+            return Results.Ok(new { data = stations });
+        })
+        .WithName("SearchStations")
+        .WithSummary("Search stations by name, address, or code")
+        .Produces<object>(200);
+
         // GET /api/v1/stations/{id}
         // Public endpoint - no auth required (station discovery)
         group.MapGet("/{id:guid}", async (

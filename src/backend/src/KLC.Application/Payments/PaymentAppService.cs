@@ -8,6 +8,7 @@ using KLC.Sessions;
 using KLC.Stations;
 using KLC.Users;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Logging;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Domain.Repositories;
@@ -330,8 +331,30 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
                 .WithData("referenceCode", callback.ReferenceCode);
         }
 
-        // Gateway signature validation is handled by individual IPaymentGatewayService.VerifyCallbackAsync()
-        // when real gateway integrations are configured with production API keys.
+        // Verify callback signature via the appropriate gateway service
+        var gatewayService = _gateways.FirstOrDefault(g => g.Gateway == payment.Gateway);
+        if (gatewayService != null)
+        {
+            var rawData = callback.RawData
+                ?? $"{callback.ReferenceCode}{callback.Status}{callback.TransactionId}";
+
+            var verifyResult = await gatewayService.VerifyCallbackAsync(rawData, callback.Signature);
+            if (!verifyResult.IsValid)
+            {
+                Logger.LogWarning(
+                    "Payment callback signature verification failed: Gateway={Gateway}, Ref={ReferenceCode}, Error={Error}",
+                    payment.Gateway, callback.ReferenceCode, verifyResult.ErrorMessage);
+
+                throw new BusinessException(KLCDomainErrorCodes.Payment.InvalidSignature)
+                    .WithData("gateway", payment.Gateway.ToString());
+            }
+        }
+        else
+        {
+            Logger.LogWarning(
+                "No gateway service found for {Gateway}, skipping signature verification for Ref={ReferenceCode}",
+                payment.Gateway, callback.ReferenceCode);
+        }
 
         if (callback.Status == "success" || callback.Status == "completed")
         {

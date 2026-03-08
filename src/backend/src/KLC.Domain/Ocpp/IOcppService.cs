@@ -119,4 +119,14 @@ public interface IOcppService
     /// Handles station disconnect - marks orphaned sessions as failed.
     /// </summary>
     Task HandleStationDisconnectAsync(string chargePointId);
+
+    /// <summary>
+    /// Handles FirmwareStatusNotification - updates station firmware update status.
+    /// </summary>
+    Task HandleFirmwareStatusAsync(string chargePointId, string status);
+
+    /// <summary>
+    /// Handles DiagnosticsStatusNotification - updates station diagnostics upload status.
+    /// </summary>
+    Task HandleDiagnosticsStatusAsync(string chargePointId, string status);
 }

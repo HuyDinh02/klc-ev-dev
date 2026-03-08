@@ -9,25 +9,13 @@ export const api = axios.create({
   },
 });
 
-// Auth API - uses different content type and endpoint
+// Auth API - token exchange via server-side API route (keeps client_secret off the browser)
 export const authApi = {
   login: async (username: string, password: string) => {
-    const response = await axios.post(
-      `${API_BASE_URL}/connect/token`,
-      new URLSearchParams({
-        grant_type: "password",
-        username,
-        password,
-        client_id: "KLC_Api",
-        client_secret: "1q2w3e*",
-        scope: "KLC",
-      }),
-      {
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-      }
-    );
+    const response = await axios.post("/api/auth/token", {
+      username,
+      password,
+    });
     return response.data;
   },
 
@@ -96,7 +84,7 @@ export const connectorsApi = {
 };
 
 export const sessionsApi = {
-  getAll: (params?: { skipCount?: number; maxResultCount?: number; stationId?: string; status?: number }) =>
+  getAll: (params?: { maxResultCount?: number; stationId?: string; status?: number; cursor?: string }) =>
     api.get("/admin/sessions", { params }),
   getById: (id: string) => api.get(`/sessions/${id}`),
   getMeterValues: (id: string) => api.get(`/sessions/${id}/meter-values`),
@@ -114,7 +102,7 @@ export const tariffsApi = {
 };
 
 export const faultsApi = {
-  getAll: (params?: { skipCount?: number; maxResultCount?: number; status?: number }) =>
+  getAll: (params?: { maxResultCount?: number; status?: number; cursor?: string }) =>
     api.get("/faults", { params }),
   getById: (id: string) => api.get(`/faults/${id}`),
   updateStatus: (id: string, status: number, resolutionNotes?: string) =>
