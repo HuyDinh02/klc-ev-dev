@@ -40,10 +40,16 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Add Redis caching
+// Add Redis caching (lazy connection — allows startup even if Redis is temporarily unavailable)
 var redisConnection = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
-builder.Services.AddSingleton<IConnectionMultiplexer>(
-    ConnectionMultiplexer.Connect(redisConnection));
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+{
+    var config = ConfigurationOptions.Parse(redisConnection);
+    config.AbortOnConnectFail = false;
+    config.ConnectRetry = 3;
+    config.ConnectTimeout = 5000;
+    return ConnectionMultiplexer.Connect(config);
+});
 builder.Services.AddSingleton<ICacheService, RedisCacheService>();
 
 // Add BFF services
@@ -120,8 +126,10 @@ builder.Services.AddRateLimiter(options =>
 
 // Health checks
 builder.Services.AddHealthChecks()
-    .AddNpgSql(builder.Configuration.GetConnectionString("Default")!)
-    .AddRedis(redisConnection);
+    .AddNpgSql(builder.Configuration.GetConnectionString("Default")!,
+        tags: ["db"], failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded)
+    .AddRedis(redisConnection,
+        tags: ["cache"], failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded);
 
 var app = builder.Build();
 
