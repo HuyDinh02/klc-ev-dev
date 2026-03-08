@@ -2,9 +2,14 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatCard } from "@/components/ui/stat-card";
+import { Dialog, DialogHeader, DialogContent, DialogFooter } from "@/components/ui/dialog";
+import { EmptyState } from "@/components/ui/empty-state";
+import { SkeletonCard } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
 import {
   Bell,
@@ -14,8 +19,6 @@ import {
   CheckCircle2,
   Clock,
   MapPin,
-  Zap,
-  X,
   Eye,
   ChevronLeft,
   ChevronRight,
@@ -153,97 +156,54 @@ export default function AlertsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Alerts</h1>
-          <p className="text-muted-foreground">
-            System alerts and notifications
-          </p>
-        </div>
+      <PageHeader title="Alerts" description="System alerts and notifications">
         <Badge variant="secondary" className="text-sm">
           {stats?.unacknowledgedCount || 0} unacknowledged
         </Badge>
-      </div>
+      </PageHeader>
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card
-          className={`cursor-pointer ${
-            typeFilter === "critical" ? "ring-2 ring-red-500" : ""
-          }`}
+        <StatCard
+          label="Critical"
+          value={stats?.criticalCount || 0}
+          icon={AlertCircle}
+          iconColor="bg-red-50 text-red-600"
+          className={typeFilter === "critical" ? "ring-2 ring-red-500" : ""}
           onClick={() =>
             setTypeFilter(typeFilter === "critical" ? "all" : "critical")
           }
-        >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Critical</CardTitle>
-            <AlertCircle className="h-4 w-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {stats?.criticalCount || 0}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card
-          className={`cursor-pointer ${
-            typeFilter === "warning" ? "ring-2 ring-yellow-500" : ""
-          }`}
+        />
+        <StatCard
+          label="Warning"
+          value={stats?.warningCount || 0}
+          icon={AlertTriangle}
+          iconColor="bg-amber-50 text-amber-600"
+          className={typeFilter === "warning" ? "ring-2 ring-amber-500" : ""}
           onClick={() =>
             setTypeFilter(typeFilter === "warning" ? "all" : "warning")
           }
-        >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Warning</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-yellow-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">
-              {stats?.warningCount || 0}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card
-          className={`cursor-pointer ${
-            typeFilter === "info" ? "ring-2 ring-blue-500" : ""
-          }`}
+        />
+        <StatCard
+          label="Info"
+          value={stats?.infoCount || 0}
+          icon={Info}
+          iconColor="bg-blue-50 text-blue-600"
+          className={typeFilter === "info" ? "ring-2 ring-blue-500" : ""}
           onClick={() => setTypeFilter(typeFilter === "info" ? "all" : "info")}
-        >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Info</CardTitle>
-            <Info className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              {stats?.infoCount || 0}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card
-          className={`cursor-pointer ${
-            acknowledgedFilter === "unacknowledged"
-              ? "ring-2 ring-primary"
-              : ""
-          }`}
+        />
+        <StatCard
+          label="Unacknowledged"
+          value={stats?.unacknowledgedCount || 0}
+          icon={Bell}
+          iconColor="bg-primary/10 text-primary"
+          className={acknowledgedFilter === "unacknowledged" ? "ring-2 ring-primary" : ""}
           onClick={() =>
             setAcknowledgedFilter(
               acknowledgedFilter === "unacknowledged" ? "all" : "unacknowledged"
             )
           }
-        >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Unacknowledged</CardTitle>
-            <Bell className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {stats?.unacknowledgedCount || 0}
-            </div>
-          </CardContent>
-        </Card>
+        />
       </div>
 
       {/* Filters */}
@@ -253,7 +213,7 @@ export default function AlertsPage() {
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
-              className="rounded-md border px-3 py-2"
+              className="rounded-lg border bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50 focus:border-primary"
             >
               <option value="all">All Severity</option>
               <option value="critical">Critical</option>
@@ -263,7 +223,7 @@ export default function AlertsPage() {
             <select
               value={acknowledgedFilter}
               onChange={(e) => setAcknowledgedFilter(e.target.value)}
-              className="rounded-md border px-3 py-2"
+              className="rounded-lg border bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50 focus:border-primary"
             >
               <option value="all">All Status</option>
               <option value="0">New</option>
@@ -277,7 +237,11 @@ export default function AlertsPage() {
       {/* Alerts List */}
       <div className="space-y-3">
         {isLoading ? (
-          <div className="text-center py-8">Loading...</div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
         ) : alerts.length > 0 ? (
           alerts
             .filter((alert) => {
@@ -362,12 +326,11 @@ export default function AlertsPage() {
               );
             })
         ) : (
-          <Card>
-            <CardContent className="py-8 text-center text-muted-foreground">
-              <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No alerts found</p>
-            </CardContent>
-          </Card>
+          <EmptyState
+            icon={Bell}
+            title="No alerts found"
+            description="There are no alerts matching your current filters."
+          />
         )}
       </div>
 
@@ -412,23 +375,16 @@ export default function AlertsPage() {
       )}
 
       {/* Detail Modal */}
-      {selectedAlert && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <Card className="w-full max-w-lg m-4">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div className="flex items-center gap-2">
-                {getTypeIcon(selectedAlert.type)}
-                <CardTitle>Alert Details</CardTitle>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSelectedAlert(null)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-4">
+      <Dialog open={!!selectedAlert} onClose={() => setSelectedAlert(null)}>
+        <DialogHeader onClose={() => setSelectedAlert(null)}>
+          <div className="flex items-center gap-2">
+            {selectedAlert && getTypeIcon(selectedAlert.type)}
+            Alert Details
+          </div>
+        </DialogHeader>
+        <DialogContent className="space-y-4">
+          {selectedAlert && (
+            <>
               <div>
                 <p className="text-sm text-muted-foreground">Title</p>
                 <p className="font-medium">{selectedAlert.title}</p>
@@ -476,23 +432,24 @@ export default function AlertsPage() {
                   </p>
                 </div>
               )}
-
-              {selectedAlert.status === 0 && (
-                <Button
-                  className="w-full"
-                  onClick={() => {
-                    acknowledgeMutation.mutate(selectedAlert.id);
-                    setSelectedAlert(null);
-                  }}
-                >
-                  <CheckCircle2 className="mr-2 h-4 w-4" />
-                  Acknowledge Alert
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
+            </>
+          )}
+        </DialogContent>
+        {selectedAlert && selectedAlert.status === 0 && (
+          <DialogFooter>
+            <Button
+              className="w-full"
+              onClick={() => {
+                acknowledgeMutation.mutate(selectedAlert.id);
+                setSelectedAlert(null);
+              }}
+            >
+              <CheckCircle2 className="mr-2 h-4 w-4" />
+              Acknowledge Alert
+            </Button>
+          </DialogFooter>
+        )}
+      </Dialog>
     </div>
   );
 }

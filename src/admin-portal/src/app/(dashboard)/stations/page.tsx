@@ -12,44 +12,15 @@ import {
   Edit,
 } from "lucide-react";
 import Link from "next/link";
-import { Header } from "@/components/layout/header";
+import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { SkeletonCard } from "@/components/ui/skeleton";
 import { stationsApi } from "@/lib/api";
 import { formatDateTime } from "@/lib/utils";
-
-const StationStatusLabels: Record<number, string> = {
-  0: "Offline",
-  1: "Available",
-  2: "Occupied",
-  3: "Unavailable",
-  4: "Faulted",
-  5: "Decommissioned",
-};
-
-function getStatusBadge(status: number | string, isEnabled: boolean) {
-  if (!isEnabled) {
-    return <Badge variant="secondary">Disabled</Badge>;
-  }
-  const label = typeof status === "number" ? (StationStatusLabels[status] || "Unknown") : status;
-  switch (label) {
-    case "Available":
-      return <Badge variant="success">Available</Badge>;
-    case "Occupied":
-      return <Badge variant="default">Occupied</Badge>;
-    case "Offline":
-      return <Badge variant="destructive">Offline</Badge>;
-    case "Unavailable":
-      return <Badge variant="secondary">Unavailable</Badge>;
-    case "Faulted":
-      return <Badge variant="warning">Faulted</Badge>;
-    case "Decommissioned":
-      return <Badge variant="secondary">Decommissioned</Badge>;
-    default:
-      return <Badge variant="secondary">{label}</Badge>;
-  }
-}
 
 export default function StationsPage() {
   const [search, setSearch] = useState("");
@@ -77,14 +48,10 @@ export default function StationsPage() {
 
   return (
     <div className="flex flex-col">
-      <Header
-        title="Station Management"
-        description="Manage charging stations and connectors"
-      />
-
-      <div className="flex-1 space-y-6 p-6">
-        {/* Actions Bar */}
-        <div className="flex items-center justify-between">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <PageHeader title="Station Management" description="Manage charging stations and connectors" />
+        <div className="flex items-center gap-3">
           <div className="relative w-72">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
@@ -92,7 +59,7 @@ export default function StationsPage() {
               placeholder="Search stations..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-10 w-full rounded-md border bg-background pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="h-10 w-full rounded-md border bg-background pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
             />
           </div>
           <Link href="/stations/new">
@@ -102,10 +69,22 @@ export default function StationsPage() {
             </Button>
           </Link>
         </div>
+      </div>
 
+      <div className="flex-1 space-y-6 p-6">
         {/* Stations Grid */}
         {isLoading ? (
-          <div className="text-center py-8">Loading...</div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
+        ) : stations.length === 0 ? (
+          <EmptyState
+            icon={MapPin}
+            title="No stations found"
+            description={search ? "Try a different search term" : "Get started by adding a new station"}
+          />
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {stations.map((station: { id: string; stationCode: string; name: string; address: string; status: number; isEnabled: boolean; connectorCount?: number; lastHeartbeat?: string }) => (
@@ -120,14 +99,18 @@ export default function StationsPage() {
                         <span className="line-clamp-1">{station.address}</span>
                       </div>
                     </div>
-                    {getStatusBadge(station.status, station.isEnabled)}
+                    {!station.isEnabled ? (
+                      <Badge variant="secondary">Disabled</Badge>
+                    ) : (
+                      <StatusBadge type="station" value={station.status} />
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-2 text-center">
                       <div className="rounded-md bg-muted p-2">
-                        <div className="text-lg font-semibold">{station.connectorCount || 0}</div>
+                        <div className="text-lg font-semibold tabular-nums">{station.connectorCount || 0}</div>
                         <div className="text-xs text-muted-foreground">Connectors</div>
                       </div>
                       <div className="rounded-md bg-muted p-2">
@@ -177,16 +160,6 @@ export default function StationsPage() {
                 </CardContent>
               </Card>
             ))}
-          </div>
-        )}
-
-        {!isLoading && stations.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <MapPin className="h-12 w-12 text-muted-foreground" />
-            <h3 className="mt-4 text-lg font-semibold">No stations found</h3>
-            <p className="text-muted-foreground">
-              {search ? "Try a different search term" : "Get started by adding a new station"}
-            </p>
           </div>
         )}
       </div>
