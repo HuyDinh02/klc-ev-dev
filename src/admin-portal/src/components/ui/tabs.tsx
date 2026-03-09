@@ -24,6 +24,7 @@ export function Tabs({ tabs, value, onChange, className }: TabsProps) {
           key={tab.value}
           role="tab"
           aria-selected={value === tab.value}
+          tabIndex={value === tab.value ? 0 : -1}
           onClick={() => onChange(tab.value)}
           className={cn(
             "relative px-4 py-2.5 text-sm font-medium transition-colors",

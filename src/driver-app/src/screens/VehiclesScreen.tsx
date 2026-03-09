@@ -181,7 +181,7 @@ export function VehiclesScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+        <ActivityIndicator size="large" color={Colors.primary} accessibilityLabel="Loading" />
       </View>
     );
   }
@@ -189,7 +189,7 @@ export function VehiclesScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Vehicles</Text>
+        <Text style={styles.headerTitle} accessibilityRole="header">My Vehicles</Text>
       </View>
 
       <ScrollView
@@ -240,6 +240,8 @@ export function VehiclesScreen() {
                 key={vehicle.id}
                 activeOpacity={0.7}
                 onPress={() => handleSetDefault(vehicle)}
+                accessibilityRole="button"
+                accessibilityLabel={`${vehicle.make} ${vehicle.model}, ${vehicle.year}, ${vehicle.licensePlate}${vehicle.isDefault ? ', Default vehicle' : ''}`}
               >
                 <Card
                   style={{
@@ -284,6 +286,8 @@ export function VehiclesScreen() {
                       <TouchableOpacity
                         style={styles.actionButton}
                         onPress={() => handleSetDefault(vehicle)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Set ${vehicle.make} ${vehicle.model} as default`}
                       >
                         <Text style={styles.actionButtonText}>Set as Default</Text>
                       </TouchableOpacity>
@@ -291,6 +295,8 @@ export function VehiclesScreen() {
                     <TouchableOpacity
                       style={[styles.actionButton, styles.deleteAction]}
                       onPress={() => handleDelete(vehicle)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Delete ${vehicle.make} ${vehicle.model}`}
                     >
                       <Text style={styles.deleteActionText}>Delete</Text>
                     </TouchableOpacity>
@@ -308,6 +314,8 @@ export function VehiclesScreen() {
             style={styles.fab}
             onPress={openAddModal}
             activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Add vehicle"
           >
             <Text style={styles.fabText}>+</Text>
           </TouchableOpacity>
@@ -326,10 +334,10 @@ export function VehiclesScreen() {
             style={styles.modalInner}
           >
             <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
+              <TouchableOpacity onPress={() => setModalVisible(false)} accessibilityRole="button" accessibilityLabel="Cancel">
                 <Text style={styles.modalCancel}>Cancel</Text>
               </TouchableOpacity>
-              <Text style={styles.modalTitle}>Add Vehicle</Text>
+              <Text style={styles.modalTitle} accessibilityRole="header">Add Vehicle</Text>
               <View style={styles.modalHeaderSpacer} />
             </View>
 
@@ -347,6 +355,7 @@ export function VehiclesScreen() {
                   value={form.make}
                   onChangeText={(text) => updateForm('make', text)}
                   autoCapitalize="words"
+                  accessibilityLabel="Make"
                 />
                 {formErrors.make && (
                   <Text style={styles.formError}>{formErrors.make}</Text>
@@ -362,6 +371,7 @@ export function VehiclesScreen() {
                   value={form.model}
                   onChangeText={(text) => updateForm('model', text)}
                   autoCapitalize="words"
+                  accessibilityLabel="Model"
                 />
                 {formErrors.model && (
                   <Text style={styles.formError}>{formErrors.model}</Text>
@@ -381,6 +391,7 @@ export function VehiclesScreen() {
                   }}
                   keyboardType="number-pad"
                   maxLength={4}
+                  accessibilityLabel="Year"
                 />
                 {formErrors.year && (
                   <Text style={styles.formError}>{formErrors.year}</Text>
@@ -399,6 +410,7 @@ export function VehiclesScreen() {
                   value={form.licensePlate}
                   onChangeText={(text) => updateForm('licensePlate', text)}
                   autoCapitalize="characters"
+                  accessibilityLabel="License plate"
                 />
                 {formErrors.licensePlate && (
                   <Text style={styles.formError}>{formErrors.licensePlate}</Text>
@@ -420,6 +432,7 @@ export function VehiclesScreen() {
                     updateForm('batteryCapacityKwh', isNaN(num) ? 0 : num);
                   }}
                   keyboardType="decimal-pad"
+                  accessibilityLabel="Battery capacity in kilowatt hours"
                 />
                 {formErrors.batteryCapacityKwh && (
                   <Text style={styles.formError}>{formErrors.batteryCapacityKwh}</Text>
@@ -438,6 +451,9 @@ export function VehiclesScreen() {
                           styles.connectorOptionSelected,
                       ]}
                       onPress={() => updateForm('connectorType', option.value)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Connector type ${option.label}`}
+                      accessibilityState={{ selected: form.connectorType === option.value }}
                     >
                       <Text
                         style={[

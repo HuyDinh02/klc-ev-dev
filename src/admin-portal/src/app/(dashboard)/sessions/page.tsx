@@ -82,9 +82,9 @@ export default function SessionsPage() {
           >
             {hubStatus === "connected" && (
               <div className="flex items-center gap-1.5 text-green-600">
-                <Wifi className="h-3.5 w-3.5" />
+                <Wifi className="h-3.5 w-3.5" aria-hidden="true" />
                 <span className="text-xs font-medium">{t("monitoring.live")}</span>
-                <span className="flex h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                <span className="flex h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" aria-hidden="true" />
               </div>
             )}
           </PageHeader>
@@ -93,10 +93,11 @@ export default function SessionsPage() {
         {/* Filters */}
         <div className="flex items-center gap-4 px-6 pb-4">
           <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
             <input
               type="search"
               placeholder={t("sessions.searchPlaceholder")}
+              aria-label={t("sessions.searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-10 w-full rounded-md border bg-background pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"

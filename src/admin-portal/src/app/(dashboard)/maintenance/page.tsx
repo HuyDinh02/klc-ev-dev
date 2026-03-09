@@ -209,7 +209,7 @@ export default function MaintenancePage() {
       <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <PageHeader title={t("maintenance.title")} description={t("maintenance.description")}>
           <Button onClick={() => setIsCreating(true)} disabled={isCreating}>
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
             {t("maintenance.newTask")}
           </Button>
         </PageHeader>
@@ -367,6 +367,7 @@ export default function MaintenancePage() {
                 value={statusFilter}
                 onChange={(e) => { setStatusFilter(e.target.value); resetPagination(); }}
                 className="rounded-md border px-3 py-2"
+                aria-label={t("maintenance.filterByStatus")}
               >
                 <option value="all">{t("maintenance.allStatus")}</option>
                 <option value="0">{t("maintenance.planned")}</option>
@@ -378,6 +379,7 @@ export default function MaintenancePage() {
                 value={typeFilter}
                 onChange={(e) => { setTypeFilter(e.target.value); resetPagination(); }}
                 className="rounded-md border px-3 py-2"
+                aria-label={t("maintenance.filterByType")}
               >
                 <option value="all">{t("maintenance.allTypes")}</option>
                 <option value="0">{t("maintenance.scheduled")}</option>
@@ -403,7 +405,7 @@ export default function MaintenancePage() {
                 <CardContent className="py-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-4">
-                      <Wrench className="h-5 w-5 text-muted-foreground mt-1" />
+                      <Wrench className="h-5 w-5 text-muted-foreground mt-1" aria-hidden="true" />
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <h3 className="font-semibold">{task.title}</h3>
@@ -419,20 +421,20 @@ export default function MaintenancePage() {
                         )}
                         <div className="flex items-center gap-4 text-sm text-muted-foreground">
                           <span className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />
+                            <MapPin className="h-3 w-3" aria-hidden="true" />
                             {task.stationName}
                           </span>
                           <span className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
+                            <Calendar className="h-3 w-3" aria-hidden="true" />
                             {formatDate(task.scheduledDate)}
                           </span>
                           <span className="flex items-center gap-1">
-                            <User className="h-3 w-3" />
+                            <User className="h-3 w-3" aria-hidden="true" />
                             {task.assignedTo}
                           </span>
                           {task.completedAt && (
                             <span className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
+                              <Clock className="h-3 w-3" aria-hidden="true" />
                               {t("maintenance.done")} {formatDate(task.completedAt)}
                             </span>
                           )}
@@ -452,6 +454,7 @@ export default function MaintenancePage() {
                           onClick={() => startMutation.mutate(task.id)}
                           disabled={startMutation.isPending}
                           title={t("maintenance.start")}
+                          aria-label={t("maintenance.start")}
                         >
                           <Play className="h-4 w-4" />
                         </Button>
@@ -463,6 +466,7 @@ export default function MaintenancePage() {
                           onClick={() => completeMutation.mutate(task.id)}
                           disabled={completeMutation.isPending}
                           title={t("maintenance.complete")}
+                          aria-label={t("maintenance.complete")}
                         >
                           <CheckCircle2 className="h-4 w-4" />
                         </Button>
@@ -478,6 +482,7 @@ export default function MaintenancePage() {
                           }}
                           disabled={cancelMutation.isPending}
                           title={t("common.cancel")}
+                          aria-label={t("common.cancel")}
                         >
                           <X className="h-4 w-4 text-destructive" />
                         </Button>
@@ -511,6 +516,7 @@ export default function MaintenancePage() {
                 <Button
                   variant="outline"
                   size="sm"
+                  aria-label={t("common.previous")}
                   onClick={() => {
                     const prev = [...cursorStack];
                     const prevCursor = prev.pop()!;
@@ -525,6 +531,7 @@ export default function MaintenancePage() {
                 <Button
                   variant="outline"
                   size="sm"
+                  aria-label={t("common.next")}
                   onClick={() => {
                     const lastId = tasks[tasks.length - 1]?.id;
                     if (lastId) {

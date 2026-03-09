@@ -172,6 +172,11 @@ export function NotificationsScreen() {
         ]}
         onPress={() => handleNotificationPress(item)}
         activeOpacity={0.7}
+        accessible={true}
+        accessibilityRole="button"
+        accessibilityLabel={`${item.title}, ${item.message}, ${formatTimeAgo(item.createdAt)}${!item.isRead ? ', unread' : ''}`}
+        accessibilityState={{ selected: !item.isRead }}
+        accessibilityHint={!item.isRead ? 'Double tap to mark as read' : undefined}
       >
         <View style={[styles.iconContainer, { backgroundColor: iconConfig.backgroundColor }]}>
           <Text style={[styles.iconText, { color: iconConfig.color }]}>
@@ -199,7 +204,12 @@ export function NotificationsScreen() {
 
   if (loading && notifications.length === 0) {
     return (
-      <View style={styles.loadingContainer}>
+      <View
+        style={styles.loadingContainer}
+        accessible={true}
+        accessibilityLabel="Loading notifications"
+        accessibilityState={{ busy: true }}
+      >
         <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
@@ -209,13 +219,17 @@ export function NotificationsScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <Text style={styles.title}>Notifications</Text>
+          <Text style={styles.title} accessibilityRole="header">Notifications</Text>
           {unreadCount > 0 && (
             <TouchableOpacity
               style={styles.markAllButton}
               onPress={handleMarkAllAsRead}
               disabled={markingAllRead}
               activeOpacity={0.7}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={`Mark all ${unreadCount} notifications as read`}
+              accessibilityState={{ disabled: markingAllRead, busy: markingAllRead }}
             >
               {markingAllRead ? (
                 <ActivityIndicator size="small" color={Colors.primary} />

@@ -5,22 +5,23 @@ interface SkeletonProps {
 }
 
 export function Skeleton({ className }: SkeletonProps) {
-  return <div className={cn("skeleton", className)} />;
+  return <div aria-hidden="true" className={cn("skeleton", className)} />;
 }
 
 export function SkeletonCard() {
   return (
-    <div className="rounded-lg border bg-card p-5 space-y-3">
+    <div role="status" aria-label="Loading" className="rounded-lg border bg-card p-5 space-y-3">
       <Skeleton className="h-3 w-24" />
       <Skeleton className="h-7 w-20" />
       <Skeleton className="h-3 w-16" />
+      <span className="sr-only">Loading...</span>
     </div>
   );
 }
 
 export function SkeletonTable({ rows = 5, cols = 4 }: { rows?: number; cols?: number }) {
   return (
-    <div className="rounded-lg border bg-card">
+    <div role="status" aria-label="Loading table" className="rounded-lg border bg-card">
       <div className="flex gap-4 border-b px-4 py-3">
         {Array.from({ length: cols }).map((_, i) => (
           <Skeleton key={i} className="h-4 flex-1" />
@@ -33,15 +34,17 @@ export function SkeletonTable({ rows = 5, cols = 4 }: { rows?: number; cols?: nu
           ))}
         </div>
       ))}
+      <span className="sr-only">Loading table data...</span>
     </div>
   );
 }
 
 export function SkeletonChart() {
   return (
-    <div className="rounded-lg border bg-card p-6 space-y-4">
+    <div role="status" aria-label="Loading chart" className="rounded-lg border bg-card p-6 space-y-4">
       <Skeleton className="h-4 w-32" />
       <Skeleton className="h-48 w-full" />
+      <span className="sr-only">Loading chart...</span>
     </div>
   );
 }

@@ -126,12 +126,14 @@ export default function SettingsPage() {
 
       <div className="flex gap-6">
         {/* Sidebar */}
-        <div className="w-64 space-y-1">
+        <nav className="w-64 space-y-1" role="tablist" aria-label={t("settings.title")}>
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
               <button
                 key={tab.id}
+                role="tab"
+                aria-selected={activeTab === tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
                   activeTab === tab.id
@@ -139,12 +141,12 @@ export default function SettingsPage() {
                     : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                 }`}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-4 w-4" aria-hidden="true" />
                 {tab.label}
               </button>
             );
           })}
-        </div>
+        </nav>
 
         {/* Content */}
         <div className="flex-1">
@@ -153,7 +155,7 @@ export default function SettingsPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-5 w-5" />
+                  <Settings className="h-5 w-5" aria-hidden="true" />
                   {t("settings.generalSettings")}
                 </CardTitle>
               </CardHeader>
@@ -225,7 +227,7 @@ export default function SettingsPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Bell className="h-5 w-5" />
+                  <Bell className="h-5 w-5" aria-hidden="true" />
                   {t("settings.notificationSettings")}
                 </CardTitle>
               </CardHeader>
@@ -248,6 +250,7 @@ export default function SettingsPage() {
                           })
                         }
                         className="peer sr-only"
+                        aria-label={t("settings.emailNotifications")}
                       />
                       <div className="h-6 w-11 rounded-full bg-muted border border-border after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full"></div>
                     </label>
@@ -270,6 +273,7 @@ export default function SettingsPage() {
                           })
                         }
                         className="peer sr-only"
+                        aria-label={t("settings.smsNotifications")}
                       />
                       <div className="h-6 w-11 rounded-full bg-muted border border-border after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full"></div>
                     </label>
@@ -292,6 +296,7 @@ export default function SettingsPage() {
                           })
                         }
                         className="peer sr-only"
+                        aria-label={t("settings.pushNotifications")}
                       />
                       <div className="h-6 w-11 rounded-full bg-muted border border-border after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full"></div>
                     </label>
@@ -319,7 +324,7 @@ export default function SettingsPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Zap className="h-5 w-5" />
+                  <Zap className="h-5 w-5" aria-hidden="true" />
                   {t("settings.ocppSettings")}
                 </CardTitle>
               </CardHeader>
@@ -383,7 +388,7 @@ export default function SettingsPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5" />
+                  <CreditCard className="h-5 w-5" aria-hidden="true" />
                   {t("settings.paymentSettings")}
                 </CardTitle>
               </CardHeader>
@@ -444,6 +449,7 @@ export default function SettingsPage() {
                         })
                       }
                       className="peer sr-only"
+                      aria-label={t("settings.autoInvoiceGeneration")}
                     />
                     <div className="h-6 w-11 rounded-full bg-muted border border-border after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full"></div>
                   </label>
@@ -457,7 +463,7 @@ export default function SettingsPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Lock className="h-5 w-5" />
+                  <Lock className="h-5 w-5" aria-hidden="true" />
                   {t("settings.securitySettings")}
                 </CardTitle>
               </CardHeader>
@@ -514,6 +520,7 @@ export default function SettingsPage() {
                         })
                       }
                       className="peer sr-only"
+                      aria-label={t("settings.requireMfa")}
                     />
                     <div className="h-6 w-11 rounded-full bg-muted border border-border after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full"></div>
                   </label>

@@ -58,9 +58,10 @@ export function StatusBadge({ type, value, showIcon = false, showDot = true, cla
         <span
           className="status-dot flex-shrink-0"
           style={{ backgroundColor: config.dotColor }}
+          aria-hidden="true"
         />
       )}
-      {showIcon && <Icon className="h-3 w-3 flex-shrink-0" />}
+      {showIcon && <Icon className="h-3 w-3 flex-shrink-0" aria-hidden="true" />}
       {config.label}
     </Badge>
   );
@@ -82,6 +83,8 @@ export function StatusDot({ type, value, pulse = false, className }: StatusDotPr
       className={cn("status-dot", pulse && "status-dot-pulse", className)}
       style={{ backgroundColor: config.dotColor }}
       title={config.label}
+      role="img"
+      aria-label={config.label}
     />
   );
 }

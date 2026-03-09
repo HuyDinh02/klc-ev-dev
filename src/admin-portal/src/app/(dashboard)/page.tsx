@@ -111,18 +111,18 @@ export default function DashboardPage() {
         >
           {hubStatus === "connected" && (
             <div className="flex items-center gap-1.5 text-green-600">
-              <Wifi className="h-3.5 w-3.5" />
+              <Wifi className="h-3.5 w-3.5" aria-hidden="true" />
               <span className="text-xs font-medium">{t("monitoring.live")}</span>
-              <span className="flex h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+              <span className="flex h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" aria-hidden="true" />
             </div>
           )}
         </PageHeader>
       </div>
 
-      <div className="flex-1 space-y-6 p-6">
+      <div className="flex-1 space-y-6 p-6" aria-live="polite">
         {/* KPI Cards */}
         {isLoading ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4" role="status" aria-label="Loading dashboard">
             <SkeletonCard />
             <SkeletonCard />
             <SkeletonCard />
@@ -163,13 +163,13 @@ export default function DashboardPage() {
           <Card className="col-span-4">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                <Activity className="h-4 w-4 text-muted-foreground" />
+                <Activity className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 {t("dashboard.connectorStatus")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <div className="skeleton h-[300px] w-full" />
+                <div className="skeleton h-[300px] w-full" role="status" aria-label="Loading chart" />
               ) : (
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={connectorStatusData} layout="vertical">
@@ -199,7 +199,7 @@ export default function DashboardPage() {
           <Card className="col-span-3">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                <TrendingUp className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 {t("dashboard.stationOverview")}
               </CardTitle>
             </CardHeader>
@@ -225,7 +225,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
-              <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+              <AlertTriangle className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               {t("dashboard.recentAlerts")}
             </CardTitle>
             <a href="/alerts" className="text-sm font-medium text-primary hover:underline">

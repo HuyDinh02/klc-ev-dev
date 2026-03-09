@@ -141,6 +141,8 @@ export function FavoritesScreen() {
         onPress={() => navigation.navigate('StationDetail', { stationId: station.id })}
         onLongPress={() => handleRemoveFavorite(station)}
         activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel={`${station.name}, ${station.isOnline ? 'Online' : 'Offline'}, ${availableCount} of ${totalCount} connectors available`}
       >
         <Card style={styles.stationCard}>
           <View style={styles.stationHeader}>
@@ -191,6 +193,8 @@ export function FavoritesScreen() {
             style={styles.removeButton}
             onPress={() => handleRemoveFavorite(station)}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel={`Remove ${station.name} from favorites`}
           >
             <Text style={styles.removeButtonText}>Remove</Text>
           </TouchableOpacity>
@@ -202,7 +206,7 @@ export function FavoritesScreen() {
   if (loading && favorites.length === 0) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+        <ActivityIndicator size="large" color={Colors.primary} accessibilityLabel="Loading" />
         <Text style={styles.loadingText}>Loading favorites...</Text>
       </View>
     );
@@ -211,7 +215,7 @@ export function FavoritesScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.title}>Favorites</Text>
+        <Text style={styles.title} accessibilityRole="header">Favorites</Text>
         <Text style={styles.subtitle}>
           {favorites.length} {favorites.length === 1 ? 'station' : 'stations'}
         </Text>

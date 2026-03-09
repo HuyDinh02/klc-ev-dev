@@ -165,7 +165,11 @@ export function WalletScreen() {
     const iconColor = TRANSACTION_COLORS[item.type];
 
     return (
-      <View style={styles.transactionItem}>
+      <View
+        style={styles.transactionItem}
+        accessible={true}
+        accessibilityLabel={`${item.description}, ${amountPrefix}${formatCurrency(Math.abs(item.amount))}, ${formatDate(item.createdAt)}`}
+      >
         <View style={[styles.transactionIcon, { backgroundColor: iconColor + '20' }]}>
           <Text style={[styles.transactionIconText, { color: iconColor }]}>
             {TRANSACTION_ICONS[item.type]}
@@ -193,11 +197,22 @@ export function WalletScreen() {
     <View>
       <Card style={styles.balanceCard}>
         <Text style={styles.balanceLabel}>Wallet Balance</Text>
-        <Text style={styles.balanceAmount}>{formatCurrency(balance)}</Text>
+        <Text
+          style={styles.balanceAmount}
+          accessible={true}
+          accessibilityLabel={`Wallet balance: ${formatCurrency(balance)}`}
+          accessibilityRole="text"
+        >
+          {formatCurrency(balance)}
+        </Text>
         <TouchableOpacity
           style={[styles.topUpButton, topUpLoading && styles.topUpButtonDisabled]}
           onPress={() => handleTopUp(100_000)}
           disabled={topUpLoading}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={`Top up ${formatCurrency(100_000)}`}
+          accessibilityState={{ disabled: topUpLoading, busy: topUpLoading }}
         >
           {topUpLoading ? (
             <ActivityIndicator size="small" color={Colors.background} />
@@ -216,6 +231,10 @@ export function WalletScreen() {
               style={styles.quickAmountButton}
               onPress={() => handleTopUp(amount)}
               disabled={topUpLoading}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={`Top up ${formatCurrency(amount)}`}
+              accessibilityState={{ disabled: topUpLoading }}
             >
               <Text style={styles.quickAmountText}>{formatCurrency(amount)}</Text>
             </TouchableOpacity>
@@ -250,7 +269,12 @@ export function WalletScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View
+        style={styles.loadingContainer}
+        accessible={true}
+        accessibilityLabel="Loading wallet"
+        accessibilityState={{ busy: true }}
+      >
         <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
@@ -259,7 +283,7 @@ export function WalletScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.screenHeader}>
-        <Text style={styles.screenTitle}>Wallet</Text>
+        <Text style={styles.screenTitle} accessibilityRole="header">Wallet</Text>
       </View>
       <FlatList
         data={transactions}

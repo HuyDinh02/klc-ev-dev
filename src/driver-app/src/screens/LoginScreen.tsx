@@ -57,15 +57,15 @@ export function LoginScreen() {
         style={styles.content}
       >
         <View style={styles.header}>
-          <View style={styles.logoContainer}>
+          <View style={styles.logoContainer} accessible={false}>
             <Text style={styles.logoText}>K</Text>
           </View>
-          <Text style={styles.title}>KLC</Text>
+          <Text style={styles.title} accessibilityRole="header">KLC</Text>
           <Text style={styles.subtitle}>EV Charging Made Simple</Text>
         </View>
 
         <Card style={styles.formCard}>
-          <Text style={styles.formTitle}>Sign In</Text>
+          <Text style={styles.formTitle} accessibilityRole="header">Sign In</Text>
 
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Email</Text>
@@ -78,6 +78,7 @@ export function LoginScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
+              accessibilityLabel="Email"
             />
           </View>
 
@@ -90,10 +91,11 @@ export function LoginScreen() {
               placeholder="Enter your password"
               placeholderTextColor={Colors.textLight}
               secureTextEntry
+              accessibilityLabel="Password"
             />
           </View>
 
-          <TouchableOpacity style={styles.forgotPassword}>
+          <TouchableOpacity style={styles.forgotPassword} accessibilityRole="button" accessibilityLabel="Forgot Password">
             <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
           </TouchableOpacity>
 
@@ -107,7 +109,7 @@ export function LoginScreen() {
 
           <View style={styles.registerContainer}>
             <Text style={styles.registerText}>Don't have an account? </Text>
-            <TouchableOpacity>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Sign Up">
               <Text style={styles.registerLink}>Sign Up</Text>
             </TouchableOpacity>
           </View>

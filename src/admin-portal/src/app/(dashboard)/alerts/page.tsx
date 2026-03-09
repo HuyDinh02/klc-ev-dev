@@ -173,10 +173,10 @@ export default function AlertsPage() {
       {/* Header */}
       <PageHeader title={t("alerts.title")} description={t("alerts.description")}>
         {hubStatus === "connected" && (
-          <div className="flex items-center gap-1.5 text-green-600">
-            <Wifi className="h-3.5 w-3.5" />
+          <div className="flex items-center gap-1.5 text-green-600" role="status">
+            <Wifi className="h-3.5 w-3.5" aria-hidden="true" />
             <span className="text-xs font-medium">{t("monitoring.live")}</span>
-            <span className="flex h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+            <span className="flex h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" aria-hidden="true" />
           </div>
         )}
         <Badge variant="secondary" className="text-sm">
@@ -236,6 +236,7 @@ export default function AlertsPage() {
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
               className="rounded-lg border bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50 focus:border-primary"
+              aria-label={t("alerts.filterBySeverity")}
             >
               <option value="all">{t("alerts.allSeverity")}</option>
               <option value="critical">{t("alerts.critical")}</option>
@@ -246,6 +247,7 @@ export default function AlertsPage() {
               value={acknowledgedFilter}
               onChange={(e) => setAcknowledgedFilter(e.target.value)}
               className="rounded-lg border bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50 focus:border-primary"
+              aria-label={t("alerts.filterByStatus")}
             >
               <option value="all">{t("alerts.allStatus")}</option>
               <option value="0">{t("alerts.new")}</option>
@@ -307,12 +309,12 @@ export default function AlertsPage() {
                         </p>
                         <div className="flex items-center gap-4 text-sm text-muted-foreground">
                           <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
+                            <Clock className="h-3 w-3" aria-hidden="true" />
                             {getTimeAgo(alert.createdAt)}
                           </span>
                           {alert.stationName && (
                             <span className="flex items-center gap-1">
-                              <MapPin className="h-3 w-3" />
+                              <MapPin className="h-3 w-3" aria-hidden="true" />
                               {alert.stationName}
                             </span>
                           )}
@@ -329,6 +331,7 @@ export default function AlertsPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => setSelectedAlert(alert)}
+                        aria-label={t("alerts.viewDetails")}
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
@@ -337,6 +340,7 @@ export default function AlertsPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => acknowledgeMutation.mutate(alert.id)}
+                          aria-label={t("alerts.acknowledgeAlert")}
                         >
                           <CheckCircle2 className="h-4 w-4" />
                         </Button>
@@ -367,6 +371,7 @@ export default function AlertsPage() {
               <Button
                 variant="outline"
                 size="sm"
+                aria-label={t("common.previous")}
                 onClick={() => {
                   const prev = [...cursorStack];
                   const prevCursor = prev.pop()!;
@@ -381,6 +386,7 @@ export default function AlertsPage() {
               <Button
                 variant="outline"
                 size="sm"
+                aria-label={t("common.next")}
                 onClick={() => {
                   const lastId = alerts[alerts.length - 1]?.id;
                   if (lastId) {
@@ -437,7 +443,7 @@ export default function AlertsPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">{t("alerts.stationLabel")}</p>
                   <p className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
+                    <MapPin className="h-4 w-4" aria-hidden="true" />
                     {selectedAlert.stationName}
                   </p>
                 </div>
@@ -466,7 +472,7 @@ export default function AlertsPage() {
                 setSelectedAlert(null);
               }}
             >
-              <CheckCircle2 className="mr-2 h-4 w-4" />
+              <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden="true" />
               {t("alerts.acknowledgeAlert")}
             </Button>
           </DialogFooter>

@@ -142,7 +142,7 @@ export default function AuditLogsPage() {
       <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <PageHeader title={t("auditLogs.title")} description={t("auditLogs.description")}>
           <Button variant="outline" onClick={handleExport}>
-            <Download className="mr-2 h-4 w-4" />
+            <Download className="mr-2 h-4 w-4" aria-hidden="true" />
             {t("auditLogs.exportCsv")}
           </Button>
         </PageHeader>
@@ -154,13 +154,14 @@ export default function AuditLogsPage() {
           <div className="flex flex-wrap gap-4">
             <div className="flex-1 min-w-[200px]">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                 <input
                   type="text"
                   placeholder={t("auditLogs.searchByUrl")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full rounded-md border pl-10 pr-3 py-2"
+                  aria-label={t("auditLogs.searchByUrl")}
                 />
               </div>
             </div>
@@ -168,6 +169,7 @@ export default function AuditLogsPage() {
               value={httpMethod}
               onChange={(e) => setHttpMethod(e.target.value)}
               className="rounded-md border px-3 py-2"
+              aria-label={t("auditLogs.filterByMethod")}
             >
               <option value="all">{t("auditLogs.allMethods")}</option>
               <option value="GET">GET</option>
@@ -176,12 +178,13 @@ export default function AuditLogsPage() {
               <option value="DELETE">DELETE</option>
             </select>
             <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <Calendar className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               <input
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
                 className="rounded-md border px-3 py-2"
+                aria-label={t("auditLogs.dateFrom")}
               />
               <span>{t("auditLogs.to")}</span>
               <input
@@ -189,6 +192,7 @@ export default function AuditLogsPage() {
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
                 className="rounded-md border px-3 py-2"
+                aria-label={t("auditLogs.dateTo")}
               />
             </div>
           </div>
@@ -215,28 +219,28 @@ export default function AuditLogsPage() {
               <table className="w-full">
                 <thead className="border-b bg-muted/50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium">
                       {t("auditLogs.time")}
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium">
                       {t("auditLogs.user")}
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium">
                       {t("auditLogs.method")}
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium">
                       {t("auditLogs.url")}
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium">
                       {t("auditLogs.statusCode")}
                     </th>
-                    <th className="px-4 py-3 text-right text-sm font-medium">
+                    <th scope="col" className="px-4 py-3 text-right text-sm font-medium">
                       {t("auditLogs.duration")}
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium">
                       {t("auditLogs.ip")}
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium">
                       {t("common.actions")}
                     </th>
                   </tr>
@@ -246,13 +250,13 @@ export default function AuditLogsPage() {
                     <tr key={log.id} className="border-b hover:bg-muted/50">
                       <td className="px-4 py-3 text-sm">
                         <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-muted-foreground" />
+                          <Clock className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                           {formatDate(log.executionTime)}
                         </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-muted-foreground" />
+                          <User className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                           <span>{log.userName || t("auditLogs.system")}</span>
                         </div>
                       </td>
@@ -282,6 +286,7 @@ export default function AuditLogsPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => setSelectedLog(log)}
+                          aria-label={t("auditLogs.viewDetails")}
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -303,6 +308,7 @@ export default function AuditLogsPage() {
                     <Button
                       variant="outline"
                       size="sm"
+                      aria-label={t("common.previous")}
                       onClick={() => {
                         const prev = [...cursorStack];
                         const prevCursor = prev.pop()!;
@@ -317,6 +323,7 @@ export default function AuditLogsPage() {
                     <Button
                       variant="outline"
                       size="sm"
+                      aria-label={t("common.next")}
                       onClick={() => {
                         const lastId = logs[logs.length - 1]?.id;
                         if (lastId) {

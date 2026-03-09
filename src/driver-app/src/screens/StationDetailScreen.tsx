@@ -108,10 +108,10 @@ export function StationDetailScreen() {
   };
 
   const renderConnector = (connector: Connector) => (
-    <Card key={connector.id} style={styles.connectorCard}>
+    <Card key={connector.id} style={styles.connectorCard} accessibilityLabel={`Connector ${connector.connectorId}, ${connector.type}, ${connector.powerKw} kilowatts, ${connector.status}`}>
       <View style={styles.connectorHeader}>
         <View style={styles.connectorIdContainer}>
-          <View style={[styles.statusDot, { backgroundColor: getStatusColor(connector.status) }]} />
+          <View style={[styles.statusDot, { backgroundColor: getStatusColor(connector.status) }]} accessible={false} />
           <Text style={styles.connectorId}>#{connector.connectorId}</Text>
         </View>
         <Badge label={connector.status} variant={getStatusVariant(connector.status)} />
@@ -139,7 +139,7 @@ export function StationDetailScreen() {
 
       {connector.status === 'Charging' && connector.currentSessionId && (
         <View style={styles.inUseContainer}>
-          <Text style={styles.inUseText}>In use</Text>
+          <Text style={styles.inUseText} accessibilityRole="text">In use</Text>
         </View>
       )}
     </Card>
@@ -148,7 +148,7 @@ export function StationDetailScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+        <ActivityIndicator size="large" color={Colors.primary} accessibilityLabel="Loading" />
       </View>
     );
   }
@@ -165,8 +165,8 @@ export function StationDetailScreen() {
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView>
         <View style={styles.header}>
-          <Text style={styles.stationName}>{station.name}</Text>
-          <Text style={styles.stationAddress}>{station.address}</Text>
+          <Text style={styles.stationName} accessibilityRole="header">{station.name}</Text>
+          <Text style={styles.stationAddress} accessibilityRole="text">{station.address}</Text>
           <Badge
             label={station.isOnline ? 'Online' : 'Offline'}
             variant={station.isOnline ? 'success' : 'neutral'}
@@ -175,13 +175,15 @@ export function StationDetailScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Connectors</Text>
+          <Text style={styles.sectionTitle} accessibilityRole="header">Connectors</Text>
           {station.connectors.map(renderConnector)}
         </View>
 
         <TouchableOpacity
           style={styles.qrButton}
           onPress={() => navigation.navigate('QRScanner')}
+          accessibilityRole="button"
+          accessibilityLabel="Scan QR code to start charging"
         >
           <Text style={styles.qrButtonText}>Scan QR Code to Start</Text>
         </TouchableOpacity>

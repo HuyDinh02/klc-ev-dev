@@ -71,18 +71,19 @@ export default function StationsPage() {
         <PageHeader title={t("stations.title")} description={t("stations.description")}>
           {hubStatus === "connected" && (
             <div className="flex items-center gap-1.5 text-green-600">
-              <Wifi className="h-3.5 w-3.5" />
+              <Wifi className="h-3.5 w-3.5" aria-hidden="true" />
               <span className="text-xs font-medium">{t("monitoring.live")}</span>
-              <span className="flex h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+              <span className="flex h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" aria-hidden="true" />
             </div>
           )}
         </PageHeader>
         <div className="flex items-center gap-3">
           <div className="relative w-72">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
             <input
               type="search"
               placeholder={t("stations.searchPlaceholder")}
+              aria-label={t("stations.searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-10 w-full rounded-md border bg-background pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
@@ -90,17 +91,17 @@ export default function StationsPage() {
           </div>
           <Link href="/stations/new">
             <Button>
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
               {t("stations.addStation")}
             </Button>
           </Link>
         </div>
       </div>
 
-      <div className="flex-1 space-y-6 p-6">
+      <div className="flex-1 space-y-6 p-6" aria-live="polite">
         {/* Stations Grid */}
         {isLoading ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" role="status" aria-label="Loading stations">
             {Array.from({ length: 6 }).map((_, i) => (
               <SkeletonCard key={i} />
             ))}
@@ -121,7 +122,7 @@ export default function StationsPage() {
                       <CardTitle className="text-lg">{station.name}</CardTitle>
                       <p className="text-xs font-mono text-muted-foreground">{station.stationCode}</p>
                       <div className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
-                        <MapPin className="h-3 w-3" />
+                        <MapPin className="h-3 w-3" aria-hidden="true" />
                         <span className="line-clamp-1">{station.address}</span>
                       </div>
                     </div>
@@ -153,12 +154,12 @@ export default function StationsPage() {
                     <div className="flex items-center gap-2">
                       <Link href={`/stations/${station.id}`} className="flex-1">
                         <Button variant="outline" size="sm" className="w-full">
-                          <Eye className="mr-2 h-4 w-4" />
+                          <Eye className="mr-2 h-4 w-4" aria-hidden="true" />
                           {t("stations.view")}
                         </Button>
                       </Link>
                       <Link href={`/stations/${station.id}/edit`}>
-                        <Button variant="outline" size="icon">
+                        <Button variant="outline" size="icon" aria-label={t("common.edit")}>
                           <Edit className="h-4 w-4" />
                         </Button>
                       </Link>
@@ -166,6 +167,7 @@ export default function StationsPage() {
                         <Button
                           variant="outline"
                           size="icon"
+                          aria-label={t("stations.disabled")}
                           onClick={() => disableMutation.mutate(station.id)}
                           disabled={disableMutation.isPending}
                         >
@@ -175,6 +177,7 @@ export default function StationsPage() {
                         <Button
                           variant="outline"
                           size="icon"
+                          aria-label={t("stations.enable")}
                           onClick={() => enableMutation.mutate(station.id)}
                           disabled={enableMutation.isPending}
                         >

@@ -83,6 +83,10 @@ export function HomeScreen() {
       <TouchableOpacity
         onPress={() => navigation.navigate('StationDetail', { stationId: station.id })}
         activeOpacity={0.8}
+        accessible={true}
+        accessibilityRole="button"
+        accessibilityLabel={`${station.name}, ${availableCount} of ${totalCount} connectors available${station.distance ? `, ${station.distance.toFixed(1)} kilometers away` : ''}`}
+        accessibilityHint="Double tap to view station details"
       >
         <Card style={styles.stationCard}>
           <View style={styles.stationHeader}>
@@ -122,7 +126,12 @@ export function HomeScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View
+        style={styles.loadingContainer}
+        accessible={true}
+        accessibilityLabel="Loading nearby stations"
+        accessibilityState={{ busy: true }}
+      >
         <ActivityIndicator size="large" color={Colors.primary} />
         <Text style={styles.loadingText}>Finding nearby stations...</Text>
       </View>
@@ -132,7 +141,7 @@ export function HomeScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.title}>Nearby Stations</Text>
+        <Text style={styles.title} accessibilityRole="header">Nearby Stations</Text>
         <Text style={styles.subtitle}>
           {stations.length} stations within 10km
         </Text>
@@ -142,6 +151,10 @@ export function HomeScreen() {
         <TouchableOpacity
           style={styles.activeSessionBanner}
           onPress={() => navigation.navigate('Session')}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={`Active charging session, ${activeSession.energyKwh.toFixed(2)} kilowatt hours delivered`}
+          accessibilityHint="Double tap to view session details"
         >
           <View style={styles.sessionInfo}>
             <Text style={styles.sessionLabel}>Active Session</Text>

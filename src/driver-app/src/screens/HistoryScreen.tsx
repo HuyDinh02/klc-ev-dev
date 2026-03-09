@@ -108,7 +108,7 @@ export function HistoryScreen() {
   };
 
   const renderSession = ({ item: session }: { item: ChargingSession }) => (
-    <Card style={styles.sessionCard}>
+    <Card style={styles.sessionCard} accessibilityLabel={`${session.stationName}, ${formatDate(session.startTime)}, ${session.status}, ${session.energyKwh.toFixed(2)} kilowatt hours, ${formatDuration(session.durationMinutes)}`}>
       <View style={styles.sessionHeader}>
         <View>
           <Text style={styles.stationName}>{session.stationName}</Text>
@@ -147,7 +147,7 @@ export function HistoryScreen() {
   if (loading && sessions.length === 0) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+        <ActivityIndicator size="large" color={Colors.primary} accessibilityLabel="Loading" />
       </View>
     );
   }
@@ -155,7 +155,7 @@ export function HistoryScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.title}>Charging History</Text>
+        <Text style={styles.title} accessibilityRole="header">Charging History</Text>
         <Text style={styles.subtitle}>{sessions.length} sessions</Text>
       </View>
 
@@ -175,7 +175,7 @@ export function HistoryScreen() {
         onEndReachedThreshold={0.5}
         ListFooterComponent={
           hasMore && !refreshing ? (
-            <ActivityIndicator size="small" color={Colors.primary} style={styles.loadMore} />
+            <ActivityIndicator size="small" color={Colors.primary} style={styles.loadMore} accessibilityLabel="Loading more sessions" />
           ) : null
         }
         ListEmptyComponent={

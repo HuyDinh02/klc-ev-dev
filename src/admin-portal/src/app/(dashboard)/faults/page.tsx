@@ -108,21 +108,22 @@ export default function FaultsPage() {
         {/* Filters */}
         <div className="flex items-center gap-4">
           <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
             <input
               type="search"
               placeholder={t("faults.searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-10 w-full rounded-md border bg-background pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              aria-label={t("faults.searchPlaceholder")}
             />
           </div>
           <div className="flex items-center gap-2">
-            <Button variant={statusFilter === "all" ? "default" : "outline"} size="sm" onClick={() => { setStatusFilter("all"); resetPagination(); }}>{t("common.all")}</Button>
-            <Button variant={statusFilter === "0" ? "default" : "outline"} size="sm" onClick={() => { setStatusFilter("0"); resetPagination(); }}>{t("faults.open")}</Button>
-            <Button variant={statusFilter === "1" ? "default" : "outline"} size="sm" onClick={() => { setStatusFilter("1"); resetPagination(); }}>{t("faults.investigating")}</Button>
-            <Button variant={statusFilter === "2" ? "default" : "outline"} size="sm" onClick={() => { setStatusFilter("2"); resetPagination(); }}>{t("faults.resolved")}</Button>
-            <Button variant={statusFilter === "3" ? "default" : "outline"} size="sm" onClick={() => { setStatusFilter("3"); resetPagination(); }}>{t("faults.closed")}</Button>
+            <Button variant={statusFilter === "all" ? "default" : "outline"} size="sm" aria-pressed={statusFilter === "all"} onClick={() => { setStatusFilter("all"); resetPagination(); }}>{t("common.all")}</Button>
+            <Button variant={statusFilter === "0" ? "default" : "outline"} size="sm" aria-pressed={statusFilter === "0"} onClick={() => { setStatusFilter("0"); resetPagination(); }}>{t("faults.open")}</Button>
+            <Button variant={statusFilter === "1" ? "default" : "outline"} size="sm" aria-pressed={statusFilter === "1"} onClick={() => { setStatusFilter("1"); resetPagination(); }}>{t("faults.investigating")}</Button>
+            <Button variant={statusFilter === "2" ? "default" : "outline"} size="sm" aria-pressed={statusFilter === "2"} onClick={() => { setStatusFilter("2"); resetPagination(); }}>{t("faults.resolved")}</Button>
+            <Button variant={statusFilter === "3" ? "default" : "outline"} size="sm" aria-pressed={statusFilter === "3"} onClick={() => { setStatusFilter("3"); resetPagination(); }}>{t("faults.closed")}</Button>
           </div>
         </div>
 
@@ -174,7 +175,7 @@ export default function FaultsPage() {
                             onClick={(e) => { e.stopPropagation(); updateStatusMutation.mutate({ id: fault.id, status: 1 }); }}
                             disabled={updateStatusMutation.isPending}
                           >
-                            <Wrench className="mr-2 h-4 w-4" />
+                            <Wrench className="mr-2 h-4 w-4" aria-hidden="true" />
                             {t("faults.investigate")}
                           </Button>
                         )}
@@ -185,7 +186,7 @@ export default function FaultsPage() {
                             onClick={(e) => { e.stopPropagation(); updateStatusMutation.mutate({ id: fault.id, status: 2 }); }}
                             disabled={updateStatusMutation.isPending}
                           >
-                            <CheckCircle className="mr-2 h-4 w-4" />
+                            <CheckCircle className="mr-2 h-4 w-4" aria-hidden="true" />
                             {t("faults.markResolved")}
                           </Button>
                         )}

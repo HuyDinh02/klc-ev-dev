@@ -122,7 +122,7 @@ export default function PaymentsPage() {
         className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 -mx-1 px-1 py-2"
       >
         <Button variant="outline">
-          <Download className="mr-2 h-4 w-4" />
+          <Download className="mr-2 h-4 w-4" aria-hidden="true" />
           {t("common.export")}
         </Button>
       </PageHeader>
@@ -161,13 +161,14 @@ export default function PaymentsPage() {
           <div className="flex flex-wrap gap-4">
             <div className="flex-1 min-w-[200px]">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                 <input
                   type="text"
                   placeholder={t("payments.searchPlaceholder")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full rounded-md border pl-10 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  aria-label={t("payments.searchPlaceholder")}
                 />
               </div>
             </div>
@@ -175,6 +176,7 @@ export default function PaymentsPage() {
               value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value); resetPagination(); }}
               className="rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              aria-label={t("payments.filterByStatus")}
             >
               <option value="all">{t("payments.allStatus")}</option>
               {Object.entries(PAYMENT_STATUS).map(([key, config]) => (
@@ -182,12 +184,13 @@ export default function PaymentsPage() {
               ))}
             </select>
             <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <Calendar className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               <input
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
                 className="rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                aria-label={t("payments.dateFrom")}
               />
               <span>{t("payments.to")}</span>
               <input
@@ -195,6 +198,7 @@ export default function PaymentsPage() {
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
                 className="rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                aria-label={t("payments.dateTo")}
               />
             </div>
           </div>
@@ -221,24 +225,24 @@ export default function PaymentsPage() {
               <table className="w-full">
                 <thead className="border-b bg-muted/50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium">
                       {t("payments.transaction")}
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">{t("payments.station")}</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium">{t("payments.station")}</th>
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium">
                       {t("payments.session")}
                     </th>
-                    <th className="px-4 py-3 text-right text-sm font-medium">
+                    <th scope="col" className="px-4 py-3 text-right text-sm font-medium">
                       {t("payments.amount")}
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium">
                       {t("payments.method")}
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium">
                       {t("common.status")}
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">{t("payments.date")}</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium">{t("payments.date")}</th>
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium">
                       {t("common.actions")}
                     </th>
                   </tr>
@@ -253,13 +257,13 @@ export default function PaymentsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-muted-foreground" />
+                          <MapPin className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                           <span>{payment.stationName || "—"}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <Zap className="h-4 w-4 text-yellow-500" />
+                          <Zap className="h-4 w-4 text-yellow-500" aria-hidden="true" />
                           <span className="font-mono text-sm">
                             {payment.sessionId?.slice(0, 8) || "—"}
                           </span>
@@ -270,7 +274,7 @@ export default function PaymentsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <CreditCard className="h-4 w-4 text-muted-foreground" />
+                          <CreditCard className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                           <span>{PAYMENT_GATEWAY_LABELS[payment.gateway] ?? "—"}</span>
                         </div>
                       </td>
@@ -282,7 +286,7 @@ export default function PaymentsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="sm" title={t("payments.viewDetails")} onClick={() => router.push(`/payments/${payment.id}`)}>
+                          <Button variant="ghost" size="sm" title={t("payments.viewDetails")} aria-label={t("payments.viewDetails")} onClick={() => router.push(`/payments/${payment.id}`)}>
                             <FileText className="h-4 w-4" />
                           </Button>
                           {payment.status === 2 && (
@@ -290,6 +294,7 @@ export default function PaymentsPage() {
                               variant="ghost"
                               size="sm"
                               title={t("payments.refund")}
+                              aria-label={t("payments.refund")}
                               onClick={() => setRefundTarget(payment)}
                             >
                               <RotateCcw className="h-4 w-4 text-orange-500" />
@@ -314,6 +319,7 @@ export default function PaymentsPage() {
                     <Button
                       variant="outline"
                       size="sm"
+                      aria-label={t("common.previous")}
                       onClick={() => {
                         const prev = [...cursorStack];
                         const prevCursor = prev.pop()!;
@@ -328,6 +334,7 @@ export default function PaymentsPage() {
                     <Button
                       variant="outline"
                       size="sm"
+                      aria-label={t("common.next")}
                       onClick={() => {
                         const lastId = payments[payments.length - 1]?.id;
                         if (lastId) {

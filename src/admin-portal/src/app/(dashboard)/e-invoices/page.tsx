@@ -189,13 +189,14 @@ export default function EInvoicesPage() {
           <div className="flex flex-wrap gap-4">
             <div className="flex-1 min-w-[200px]">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                 <input
                   type="text"
                   placeholder={t("eInvoices.searchPlaceholder")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full rounded-md border pl-10 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  aria-label={t("eInvoices.searchPlaceholder")}
                 />
               </div>
             </div>
@@ -203,6 +204,7 @@ export default function EInvoicesPage() {
               value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value); resetPagination(); }}
               className="rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              aria-label={t("eInvoices.filterByStatus")}
             >
               <option value="all">{t("eInvoices.allStatus")}</option>
               {Object.entries(EINVOICE_STATUS).map(([key, config]) => (
@@ -213,6 +215,7 @@ export default function EInvoicesPage() {
               value={providerFilter}
               onChange={(e) => { setProviderFilter(e.target.value); resetPagination(); }}
               className="rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              aria-label={t("eInvoices.filterByProvider")}
             >
               <option value="all">{t("eInvoices.allProviders")}</option>
               {Object.entries(EINVOICE_PROVIDER_LABELS).map(([key, label]) => (
@@ -220,12 +223,13 @@ export default function EInvoicesPage() {
               ))}
             </select>
             <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <Calendar className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               <input
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
                 className="rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                aria-label={t("eInvoices.dateFrom")}
               />
               <span>{t("eInvoices.to")}</span>
               <input
@@ -233,6 +237,7 @@ export default function EInvoicesPage() {
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
                 className="rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                aria-label={t("eInvoices.dateTo")}
               />
             </div>
           </div>
@@ -259,28 +264,28 @@ export default function EInvoicesPage() {
               <table className="w-full">
                 <thead className="border-b bg-muted/50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium">
                       {t("eInvoices.invoiceNumber")}
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium">
                       {t("eInvoices.station")}
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium">
                       {t("eInvoices.provider")}
                     </th>
-                    <th className="px-4 py-3 text-right text-sm font-medium">
+                    <th scope="col" className="px-4 py-3 text-right text-sm font-medium">
                       {t("eInvoices.amount")}
                     </th>
-                    <th className="px-4 py-3 text-right text-sm font-medium">
+                    <th scope="col" className="px-4 py-3 text-right text-sm font-medium">
                       {t("eInvoices.retries")}
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium">
                       {t("common.status")}
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium">
                       {t("eInvoices.date")}
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium">
                       {t("common.actions")}
                     </th>
                   </tr>
@@ -290,7 +295,7 @@ export default function EInvoicesPage() {
                     <tr key={invoice.id} className="border-b hover:bg-muted/50">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <Receipt className="h-4 w-4 text-muted-foreground" />
+                          <Receipt className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                           <div>
                             <p className="font-mono font-medium">
                               {invoice.invoiceNumber}
@@ -329,6 +334,7 @@ export default function EInvoicesPage() {
                               size="sm"
                               onClick={() => handleDownloadPdf(invoice.id)}
                               title={t("eInvoices.downloadPdf")}
+                              aria-label={t("eInvoices.downloadPdf")}
                             >
                               <Download className="h-4 w-4" />
                             </Button>
@@ -339,6 +345,7 @@ export default function EInvoicesPage() {
                               size="sm"
                               onClick={() => retryMutation.mutate(invoice.id)}
                               title={t("eInvoices.retry")}
+                              aria-label={t("eInvoices.retry")}
                             >
                               <RefreshCw className="h-4 w-4" />
                             </Button>
@@ -349,6 +356,7 @@ export default function EInvoicesPage() {
                               size="sm"
                               onClick={() => setCancelTarget(invoice.id)}
                               title={t("common.cancel")}
+                              aria-label={t("common.cancel")}
                             >
                               <XCircle className="h-4 w-4 text-destructive" />
                             </Button>
@@ -372,6 +380,7 @@ export default function EInvoicesPage() {
                     <Button
                       variant="outline"
                       size="sm"
+                      aria-label={t("common.previous")}
                       onClick={() => {
                         const prev = [...cursorStack];
                         const prevCursor = prev.pop()!;
@@ -386,6 +395,7 @@ export default function EInvoicesPage() {
                     <Button
                       variant="outline"
                       size="sm"
+                      aria-label={t("common.next")}
                       onClick={() => {
                         const lastId = invoices[invoices.length - 1]?.id;
                         if (lastId) {

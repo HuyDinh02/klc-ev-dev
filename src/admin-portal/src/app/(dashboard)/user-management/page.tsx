@@ -109,12 +109,13 @@ function UsersTab() {
       {/* Search + Create */}
       <div className="flex items-center justify-between mb-4">
         <div className="relative w-72">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <input type="search" placeholder={t("userManagement.searchPlaceholder")} value={search}
             onChange={(e) => { setSearch(e.target.value); setPageIndex(0); }}
-            className="h-10 w-full rounded-md border bg-background pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+            className="h-10 w-full rounded-md border bg-background pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            aria-label={t("userManagement.searchPlaceholder")} />
         </div>
-        <Button onClick={() => { resetForm(); setShowCreateModal(true); }}><Plus className="mr-2 h-4 w-4" /> {t("userManagement.addUser")}</Button>
+        <Button onClick={() => { resetForm(); setShowCreateModal(true); }}><Plus className="mr-2 h-4 w-4" aria-hidden="true" /> {t("userManagement.addUser")}</Button>
       </div>
 
       {/* Users Table */}
@@ -137,13 +138,13 @@ function UsersTab() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead><tr className="border-b bg-muted/50">
-                  <th className="px-4 py-3 text-left text-sm font-medium">{t("userManagement.username")}</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">{t("userManagement.email")}</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">{t("userManagement.name")}</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">{t("userManagement.roles")}</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">{t("common.status")}</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">{t("userManagement.created")}</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">{t("common.actions")}</th>
+                  <th scope="col" className="px-4 py-3 text-left text-sm font-medium">{t("userManagement.username")}</th>
+                  <th scope="col" className="px-4 py-3 text-left text-sm font-medium">{t("userManagement.email")}</th>
+                  <th scope="col" className="px-4 py-3 text-left text-sm font-medium">{t("userManagement.name")}</th>
+                  <th scope="col" className="px-4 py-3 text-left text-sm font-medium">{t("userManagement.roles")}</th>
+                  <th scope="col" className="px-4 py-3 text-left text-sm font-medium">{t("common.status")}</th>
+                  <th scope="col" className="px-4 py-3 text-left text-sm font-medium">{t("userManagement.created")}</th>
+                  <th scope="col" className="px-4 py-3 text-left text-sm font-medium">{t("common.actions")}</th>
                 </tr></thead>
                 <tbody>
                   {users.map((user: Record<string, unknown>) => (
@@ -167,22 +168,22 @@ function UsersTab() {
                       <td className="px-4 py-3 text-sm text-muted-foreground">{user.creationTime ? formatDateTime(user.creationTime as string) : ""}</td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="sm" title={t("common.edit")} onClick={() => {
+                          <Button variant="ghost" size="sm" title={t("common.edit")} aria-label={t("common.edit")} onClick={() => {
                             setEditingUser(user);
                             setUserForm({ userName: user.userName as string, email: user.email as string, password: "", name: (user.name as string) || "", surname: (user.surname as string) || "", phoneNumber: (user.phoneNumber as string) || "", isActive: user.isActive as boolean, roleNames: (user.roles as string[]) || [] });
                           }}><Edit className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="sm" title={t("userManagement.assignRoles")} onClick={() => { setRoleModalUser(user); setSelectedRoles((user.roles as string[]) || []); }}>
+                          <Button variant="ghost" size="sm" title={t("userManagement.assignRoles")} aria-label={t("userManagement.assignRoles")} onClick={() => { setRoleModalUser(user); setSelectedRoles((user.roles as string[]) || []); }}>
                             <Shield className="h-4 w-4" />
                           </Button>
                           {!!user.isLockedOut ? (
-                            <Button variant="ghost" size="sm" title={t("userManagement.unlock")} onClick={() => unlockMutation.mutate(user.id as string)}><Unlock className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="sm" title={t("userManagement.unlock")} aria-label={t("userManagement.unlock")} onClick={() => unlockMutation.mutate(user.id as string)}><Unlock className="h-4 w-4" /></Button>
                           ) : (
-                            <Button variant="ghost" size="sm" title={t("userManagement.lock")} onClick={() => lockMutation.mutate(user.id as string)}><Lock className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="sm" title={t("userManagement.lock")} aria-label={t("userManagement.lock")} onClick={() => lockMutation.mutate(user.id as string)}><Lock className="h-4 w-4" /></Button>
                           )}
-                          <Button variant="ghost" size="sm" title={t("userManagement.resetPassword")} onClick={() => { setResetPwUser(user); setNewPassword(""); }}>
+                          <Button variant="ghost" size="sm" title={t("userManagement.resetPassword")} aria-label={t("userManagement.resetPassword")} onClick={() => { setResetPwUser(user); setNewPassword(""); }}>
                             <Key className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" title={t("common.delete")} onClick={() => { if (confirm(`${t("userManagement.deleteUserConfirm")} ${user.userName}?`)) deleteMutation.mutate(user.id as string); }}>
+                          <Button variant="ghost" size="sm" title={t("common.delete")} aria-label={t("common.delete")} onClick={() => { if (confirm(`${t("userManagement.deleteUserConfirm")} ${user.userName}?`)) deleteMutation.mutate(user.id as string); }}>
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
@@ -197,10 +198,10 @@ function UsersTab() {
                 <div className="text-sm tabular-nums text-muted-foreground">{totalCount} {t("userManagement.totalUsers")}</div>
                 <div className="flex gap-2">
                   {pageIndex > 0 && (
-                    <Button variant="outline" size="sm" onClick={() => setPageIndex((p) => p - 1)}><ChevronLeft className="h-4 w-4" /></Button>
+                    <Button variant="outline" size="sm" aria-label={t("common.previous")} onClick={() => setPageIndex((p) => p - 1)}><ChevronLeft className="h-4 w-4" /></Button>
                   )}
                   {users.length === pageSize && (
-                    <Button variant="outline" size="sm" onClick={() => setPageIndex((p) => p + 1)}><ChevronRight className="h-4 w-4" /></Button>
+                    <Button variant="outline" size="sm" aria-label={t("common.next")} onClick={() => setPageIndex((p) => p + 1)}><ChevronRight className="h-4 w-4" /></Button>
                   )}
                 </div>
               </div>
@@ -379,7 +380,7 @@ function RolesTab() {
       <div className="flex items-center justify-between mb-4">
         <div />
         <Button onClick={() => { setRoleForm({ name: "", isDefault: false, isPublic: true }); setShowCreateModal(true); }}>
-          <Plus className="mr-2 h-4 w-4" /> {t("userManagement.addRole")}
+          <Plus className="mr-2 h-4 w-4" aria-hidden="true" /> {t("userManagement.addRole")}
         </Button>
       </div>
 
@@ -402,10 +403,10 @@ function RolesTab() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead><tr className="border-b bg-muted/50">
-                  <th className="px-4 py-3 text-left text-sm font-medium">{t("userManagement.roleName")}</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">{t("userManagement.default")}</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">{t("userManagement.static")}</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">{t("common.actions")}</th>
+                  <th scope="col" className="px-4 py-3 text-left text-sm font-medium">{t("userManagement.roleName")}</th>
+                  <th scope="col" className="px-4 py-3 text-left text-sm font-medium">{t("userManagement.default")}</th>
+                  <th scope="col" className="px-4 py-3 text-left text-sm font-medium">{t("userManagement.static")}</th>
+                  <th scope="col" className="px-4 py-3 text-left text-sm font-medium">{t("common.actions")}</th>
                 </tr></thead>
                 <tbody>
                   {roles.map((role: Record<string, unknown>) => (
@@ -415,14 +416,14 @@ function RolesTab() {
                       <td className="px-4 py-3"><Badge variant={role.isStatic ? "default" : "secondary"}>{role.isStatic ? t("userManagement.yes") : t("userManagement.no")}</Badge></td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="sm" title={t("common.edit")} onClick={() => { setEditingRole(role); setRoleForm({ name: role.name as string, isDefault: role.isDefault as boolean, isPublic: (role.isPublic as boolean) ?? true }); }}>
+                          <Button variant="ghost" size="sm" title={t("common.edit")} aria-label={t("common.edit")} onClick={() => { setEditingRole(role); setRoleForm({ name: role.name as string, isDefault: role.isDefault as boolean, isPublic: (role.isPublic as boolean) ?? true }); }}>
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" title={t("userManagement.permissions")} onClick={() => { setPermissionsRole(role); setPermissionGrants({}); }}>
+                          <Button variant="ghost" size="sm" title={t("userManagement.permissions")} aria-label={t("userManagement.permissions")} onClick={() => { setPermissionsRole(role); setPermissionGrants({}); }}>
                             <Shield className="h-4 w-4" />
                           </Button>
                           {!role.isStatic && (
-                            <Button variant="ghost" size="sm" title={t("common.delete")} onClick={() => { if (confirm(`${t("userManagement.deleteRoleConfirm")} ${role.name}?`)) deleteMutation.mutate(role.id as string); }}>
+                            <Button variant="ghost" size="sm" title={t("common.delete")} aria-label={t("common.delete")} onClick={() => { if (confirm(`${t("userManagement.deleteRoleConfirm")} ${role.name}?`)) deleteMutation.mutate(role.id as string); }}>
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                           )}
@@ -515,18 +516,22 @@ export default function UserManagementPage() {
 
       <div className="flex-1 space-y-6 p-6">
         {/* Tabs */}
-        <div className="flex gap-2 border-b">
+        <div className="flex gap-2 border-b" role="tablist">
           <button
+            role="tab"
+            aria-selected={activeTab === "users"}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === "users" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
             onClick={() => setActiveTab("users")}
           >
-            <Users className="inline mr-2 h-4 w-4" />{t("userManagement.usersTab")}
+            <Users className="inline mr-2 h-4 w-4" aria-hidden="true" />{t("userManagement.usersTab")}
           </button>
           <button
+            role="tab"
+            aria-selected={activeTab === "roles"}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === "roles" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
             onClick={() => setActiveTab("roles")}
           >
-            <Shield className="inline mr-2 h-4 w-4" />{t("userManagement.rolesTab")}
+            <Shield className="inline mr-2 h-4 w-4" aria-hidden="true" />{t("userManagement.rolesTab")}
           </button>
         </div>
 

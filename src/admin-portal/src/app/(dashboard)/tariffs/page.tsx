@@ -226,7 +226,7 @@ export default function TariffsPage() {
       <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <PageHeader title={t("tariffs.title")} description={t("tariffs.description")}>
           <Button onClick={() => setIsCreating(true)} disabled={isCreating || !!editingId}>
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
             {t("tariffs.addTariff")}
           </Button>
         </PageHeader>
@@ -269,8 +269,8 @@ export default function TariffsPage() {
           <form onSubmit={handleSubmit}>
             <DialogContent className="space-y-4">
               {formError && (
-                <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive" role="alert">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
                   <span>{formError}</span>
                 </div>
               )}
@@ -372,7 +372,7 @@ export default function TariffsPage() {
                 {tariff.isDefault && (
                   <div className="absolute -top-2 -right-2">
                     <Badge variant="default" className="flex items-center gap-1">
-                      <Star className="h-3 w-3" />
+                      <Star className="h-3 w-3" aria-hidden="true" />
                       {t("tariffs.default")}
                     </Badge>
                   </div>
@@ -394,7 +394,7 @@ export default function TariffsPage() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="flex items-center gap-2 text-sm">
-                        <Zap className="h-4 w-4 text-amber-500" />
+                        <Zap className="h-4 w-4 text-amber-500" aria-hidden="true" />
                         {t("tariffs.baseRate")}
                       </span>
                       <span className="font-semibold tabular-nums text-right">
@@ -403,7 +403,7 @@ export default function TariffsPage() {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="flex items-center gap-2 text-sm">
-                        <DollarSign className="h-4 w-4 text-green-600" />
+                        <DollarSign className="h-4 w-4 text-green-600" aria-hidden="true" />
                         {t("tariffs.totalRate")}
                       </span>
                       <span className="font-semibold tabular-nums text-right">
@@ -412,7 +412,7 @@ export default function TariffsPage() {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="flex items-center gap-2 text-sm">
-                        <Percent className="h-4 w-4 text-blue-600" />
+                        <Percent className="h-4 w-4 text-blue-600" aria-hidden="true" />
                         {t("tariffs.taxRate")}
                       </span>
                       <span className="font-semibold tabular-nums text-right">
@@ -426,6 +426,7 @@ export default function TariffsPage() {
                       variant="outline"
                       size="sm"
                       onClick={() => handleEdit(tariff)}
+                      aria-label={t("common.edit")}
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
@@ -438,6 +439,7 @@ export default function TariffsPage() {
                           activate: !tariff.isActive,
                         })
                       }
+                      aria-label={tariff.isActive ? t("common.deactivate") : t("common.activate")}
                     >
                       {tariff.isActive ? (
                         <X className="h-4 w-4" />
@@ -450,6 +452,7 @@ export default function TariffsPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => setDefaultMutation.mutate(tariff.id)}
+                        aria-label={t("tariffs.setDefault")}
                       >
                         <Star className="h-4 w-4" />
                       </Button>
@@ -463,6 +466,7 @@ export default function TariffsPage() {
                             deleteMutation.mutate(tariff.id);
                           }
                         }}
+                        aria-label={t("common.delete")}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

@@ -96,14 +96,14 @@ export function SessionScreen() {
       <View style={styles.content}>
         <View style={styles.header}>
           <View style={styles.statusIndicator}>
-            <View style={styles.pulsingDot} />
-            <Text style={styles.statusText}>Charging</Text>
+            <View style={styles.pulsingDot} accessible={false} />
+            <Text style={styles.statusText} accessibilityRole="text">Charging</Text>
           </View>
-          <Text style={styles.stationName}>{activeSession.stationName}</Text>
+          <Text style={styles.stationName} accessibilityRole="header">{activeSession.stationName}</Text>
         </View>
 
         <Card style={styles.mainCard}>
-          <View style={styles.energyContainer}>
+          <View style={styles.energyContainer} accessibilityLabel={`Energy delivered: ${activeSession.energyKwh.toFixed(2)} kilowatt hours`}>
             <Text style={styles.energyValue}>
               {activeSession.energyKwh.toFixed(2)}
             </Text>
@@ -111,19 +111,19 @@ export function SessionScreen() {
           </View>
 
           <View style={styles.statsRow}>
-            <View style={styles.statItem}>
+            <View style={styles.statItem} accessibilityLabel={`Power: ${powerKw.toFixed(1)} kilowatts`}>
               <Text style={styles.statValue}>{powerKw.toFixed(1)}</Text>
               <Text style={styles.statLabel}>kW</Text>
             </View>
             <View style={styles.statDivider} />
-            <View style={styles.statItem}>
+            <View style={styles.statItem} accessibilityLabel={`Duration: ${formatDuration(activeSession.durationMinutes)}`}>
               <Text style={styles.statValue}>
                 {formatDuration(activeSession.durationMinutes)}
               </Text>
               <Text style={styles.statLabel}>Duration</Text>
             </View>
             <View style={styles.statDivider} />
-            <View style={styles.statItem}>
+            <View style={styles.statItem} accessibilityLabel={`State of charge: ${latestMeterValue?.soc ?? 'unknown'} percent`}>
               <Text style={styles.statValue}>
                 {latestMeterValue?.soc ?? '--'}%
               </Text>
@@ -133,9 +133,9 @@ export function SessionScreen() {
         </Card>
 
         <Card style={styles.costCard}>
-          <View style={styles.costRow}>
+          <View style={styles.costRow} accessibilityLabel={`Estimated cost: ${formatCurrency(activeSession.estimatedCost)}`}>
             <Text style={styles.costLabel}>Estimated Cost</Text>
-            <Text style={styles.costValue}>
+            <Text style={styles.costValue} accessibilityRole="text">
               {formatCurrency(activeSession.estimatedCost)}
             </Text>
           </View>

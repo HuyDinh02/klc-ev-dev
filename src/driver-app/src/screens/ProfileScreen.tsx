@@ -83,7 +83,7 @@ export function ProfileScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+        <ActivityIndicator size="large" color={Colors.primary} accessibilityLabel="Loading" />
       </View>
     );
   }
@@ -100,13 +100,13 @@ export function ProfileScreen() {
         }
       >
         <View style={styles.header}>
-          <View style={styles.avatarContainer}>
+          <View style={styles.avatarContainer} accessible={false}>
             <Text style={styles.avatarText}>
               {profile?.fullName?.charAt(0) ?? 'U'}
             </Text>
           </View>
-          <Text style={styles.name}>{profile?.fullName ?? 'User'}</Text>
-          <Text style={styles.email}>{profile?.email}</Text>
+          <Text style={styles.name} accessibilityRole="header">{profile?.fullName ?? 'User'}</Text>
+          <Text style={styles.email} accessibilityRole="text">{profile?.email}</Text>
         </View>
 
         <View style={styles.statsSection}>
@@ -142,6 +142,8 @@ export function ProfileScreen() {
           style={styles.section}
           onPress={() => navigation.navigate('Vehicles')}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="My Vehicles"
         >
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>My Vehicles</Text>
@@ -212,9 +214,9 @@ export function ProfileScreen() {
 
 function MenuItem({ title, onPress }: { title: string; onPress: () => void }) {
   return (
-    <TouchableOpacity style={styles.menuItem} onPress={onPress}>
+    <TouchableOpacity style={styles.menuItem} onPress={onPress} accessibilityRole="button" accessibilityLabel={title}>
       <Text style={styles.menuItemText}>{title}</Text>
-      <Text style={styles.menuItemArrow}>›</Text>
+      <Text style={styles.menuItemArrow} accessible={false}>›</Text>
     </TouchableOpacity>
   );
 }

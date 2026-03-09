@@ -237,7 +237,7 @@ export default function VouchersPage() {
           description={t("vouchers.description")}
         >
           <Button onClick={() => { setIsCreating(true); setEditingId(null); resetForm(); }} disabled={isCreating}>
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
             {t("vouchers.addVoucher")}
           </Button>
         </PageHeader>
@@ -256,8 +256,8 @@ export default function VouchersPage() {
           <form onSubmit={handleSubmit}>
             <DialogContent className="space-y-4">
               {formError && (
-                <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive" role="alert">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
                   <span>{formError}</span>
                 </div>
               )}
@@ -402,10 +402,10 @@ export default function VouchersPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="px-4 py-3 text-left text-sm font-medium">{t("vouchers.userId")}</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">{t("common.status")}</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">{t("vouchers.usedAt")}</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">{t("vouchers.claimedAt")}</th>
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium">{t("vouchers.userId")}</th>
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium">{t("common.status")}</th>
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium">{t("vouchers.usedAt")}</th>
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium">{t("vouchers.claimedAt")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -441,10 +441,11 @@ export default function VouchersPage() {
 
         {/* Filter */}
         <div className="flex items-center gap-2">
-          <Ticket className="h-4 w-4 text-muted-foreground" />
+          <Ticket className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           <Button
             variant={activeFilter === "all" ? "default" : "outline"}
             size="sm"
+            aria-pressed={activeFilter === "all"}
             onClick={() => setActiveFilter("all")}
           >
             {t("common.all")}
@@ -452,6 +453,7 @@ export default function VouchersPage() {
           <Button
             variant={activeFilter === "active" ? "default" : "outline"}
             size="sm"
+            aria-pressed={activeFilter === "active"}
             onClick={() => setActiveFilter("active")}
           >
             {t("common.active")}
@@ -459,6 +461,7 @@ export default function VouchersPage() {
           <Button
             variant={activeFilter === "inactive" ? "default" : "outline"}
             size="sm"
+            aria-pressed={activeFilter === "inactive"}
             onClick={() => setActiveFilter("inactive")}
           >
             {t("common.inactive")}
@@ -475,13 +478,13 @@ export default function VouchersPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="px-4 py-3 text-left text-sm font-medium">{t("vouchers.code")}</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium">{t("vouchers.type")}</th>
-                      <th className="px-4 py-3 text-right text-sm font-medium">{t("vouchers.value")}</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium">{t("vouchers.expiryDate")}</th>
-                      <th className="px-4 py-3 text-right text-sm font-medium">{t("vouchers.quantity")}</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium">{t("common.status")}</th>
-                      <th className="px-4 py-3 text-right text-sm font-medium">{t("common.actions")}</th>
+                      <th scope="col" className="px-4 py-3 text-left text-sm font-medium">{t("vouchers.code")}</th>
+                      <th scope="col" className="px-4 py-3 text-left text-sm font-medium">{t("vouchers.type")}</th>
+                      <th scope="col" className="px-4 py-3 text-right text-sm font-medium">{t("vouchers.value")}</th>
+                      <th scope="col" className="px-4 py-3 text-left text-sm font-medium">{t("vouchers.expiryDate")}</th>
+                      <th scope="col" className="px-4 py-3 text-right text-sm font-medium">{t("vouchers.quantity")}</th>
+                      <th scope="col" className="px-4 py-3 text-left text-sm font-medium">{t("common.status")}</th>
+                      <th scope="col" className="px-4 py-3 text-right text-sm font-medium">{t("common.actions")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -514,6 +517,7 @@ export default function VouchersPage() {
                               size="sm"
                               onClick={() => setViewingUsageId(voucher.id)}
                               title={t("vouchers.viewUsage")}
+                              aria-label={t("vouchers.viewUsage")}
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
@@ -522,6 +526,7 @@ export default function VouchersPage() {
                               size="sm"
                               onClick={() => handleEdit(voucher)}
                               title={t("common.edit")}
+                              aria-label={t("common.edit")}
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -534,6 +539,7 @@ export default function VouchersPage() {
                                 }
                               }}
                               title={t("common.delete")}
+                              aria-label={t("common.delete")}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>

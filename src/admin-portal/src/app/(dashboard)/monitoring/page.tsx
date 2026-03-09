@@ -72,24 +72,24 @@ function ConnectionIndicator({ status }: { status: ConnectionStatus }) {
   const { t } = useTranslation();
   if (status === "connected") {
     return (
-      <div className="flex items-center gap-1.5 text-green-600">
-        <Wifi className="h-4 w-4" />
+      <div className="flex items-center gap-1.5 text-green-600" role="status">
+        <Wifi className="h-4 w-4" aria-hidden="true" />
         <span className="text-xs font-medium">{t("monitoring.live")}</span>
-        <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+        <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" aria-hidden="true" />
       </div>
     );
   }
   if (status === "connecting") {
     return (
-      <div className="flex items-center gap-1.5 text-amber-600">
-        <Wifi className="h-4 w-4" />
+      <div className="flex items-center gap-1.5 text-amber-600" role="status">
+        <Wifi className="h-4 w-4" aria-hidden="true" />
         <span className="text-xs font-medium">{t("monitoring.connecting")}</span>
       </div>
     );
   }
   return (
-    <div className="flex items-center gap-1.5 text-muted-foreground">
-      <WifiOff className="h-4 w-4" />
+    <div className="flex items-center gap-1.5 text-muted-foreground" role="status">
+      <WifiOff className="h-4 w-4" aria-hidden="true" />
       <span className="text-xs font-medium">{t("monitoring.polling")}</span>
     </div>
   );
@@ -195,7 +195,7 @@ export default function MonitoringPage() {
           <ConnectionIndicator status={hubStatus} />
           {lastEvent && (
             <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <Clock className="h-4 w-4" />
+              <Clock className="h-4 w-4" aria-hidden="true" />
               <span>{t("monitoring.lastEvent")} {lastEvent.toLocaleTimeString()}</span>
             </div>
           )}
@@ -220,11 +220,11 @@ export default function MonitoringPage() {
             >
               <div className="mt-2 flex gap-2">
                 <Badge variant="success" className="text-xs">
-                  <CheckCircle2 className="mr-1 h-3 w-3" />
+                  <CheckCircle2 className="mr-1 h-3 w-3" aria-hidden="true" />
                   <span className="tabular-nums">{stats.onlineStations}</span>&nbsp;{t("common.online")}
                 </Badge>
                 <Badge variant="destructive" className="text-xs">
-                  <XCircle className="mr-1 h-3 w-3" />
+                  <XCircle className="mr-1 h-3 w-3" aria-hidden="true" />
                   <span className="tabular-nums">{stats.offlineStations}</span>&nbsp;{t("common.offline")}
                 </Badge>
               </div>
@@ -404,7 +404,7 @@ export default function MonitoringPage() {
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-yellow-500" />
+              <AlertTriangle className="h-5 w-5 text-yellow-500" aria-hidden="true" />
               <CardTitle>{t("monitoring.recentAlerts")}</CardTitle>
             </div>
           </CardHeader>
@@ -416,7 +416,7 @@ export default function MonitoringPage() {
                     key={alert.alertId}
                     className="flex items-center gap-3 rounded-lg bg-amber-50 p-3 text-amber-800"
                   >
-                    <AlertTriangle className="h-5 w-5 shrink-0" />
+                    <AlertTriangle className="h-5 w-5 shrink-0" aria-hidden="true" />
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">
                         [{alert.alertType}] {alert.stationName || t("monitoring.system")}
@@ -429,8 +429,8 @@ export default function MonitoringPage() {
                   </div>
                 ))
               ) : stats.faultedConnectors > 0 ? (
-                <div className="flex items-center gap-3 rounded-lg bg-red-50 p-3 text-red-700">
-                  <XCircle className="h-5 w-5" />
+                <div className="flex items-center gap-3 rounded-lg bg-red-50 p-3 text-red-700" role="alert">
+                  <XCircle className="h-5 w-5" aria-hidden="true" />
                   <div>
                     <p className="font-medium">
                       <span className="tabular-nums">{stats.faultedConnectors}</span> {t("monitoring.connectorsReportingFaults")}
@@ -439,8 +439,8 @@ export default function MonitoringPage() {
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-3 rounded-lg bg-green-50 p-3 text-green-700">
-                  <CheckCircle2 className="h-5 w-5" />
+                <div className="flex items-center gap-3 rounded-lg bg-green-50 p-3 text-green-700" role="status">
+                  <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
                   <p className="font-medium">{t("monitoring.allSystemsNormal")}</p>
                 </div>
               )}
