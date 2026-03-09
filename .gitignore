@@ -66,6 +66,13 @@ publish/
 test-results/
 playwright-report/
 
+# Backups
+backups/
+
+# Secret/key files
+*.pem
+*.key
+
 # Claude Code
 .claude/
 bin\\Debug/
