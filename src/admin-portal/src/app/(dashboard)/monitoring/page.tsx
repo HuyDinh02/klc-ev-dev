@@ -31,6 +31,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonCard } from "@/components/ui/skeleton";
 import { CONNECTOR_STATUS } from "@/lib/constants";
+import { useTranslation } from "@/lib/i18n";
 
 interface DashboardStats {
   totalStations: number;
@@ -68,11 +69,12 @@ interface RealtimeAlert {
 }
 
 function ConnectionIndicator({ status }: { status: ConnectionStatus }) {
+  const { t } = useTranslation();
   if (status === "connected") {
     return (
       <div className="flex items-center gap-1.5 text-green-600">
         <Wifi className="h-4 w-4" />
-        <span className="text-xs font-medium">Live</span>
+        <span className="text-xs font-medium">{t("monitoring.live")}</span>
         <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
       </div>
     );
@@ -81,19 +83,20 @@ function ConnectionIndicator({ status }: { status: ConnectionStatus }) {
     return (
       <div className="flex items-center gap-1.5 text-amber-600">
         <Wifi className="h-4 w-4" />
-        <span className="text-xs font-medium">Connecting...</span>
+        <span className="text-xs font-medium">{t("monitoring.connecting")}</span>
       </div>
     );
   }
   return (
     <div className="flex items-center gap-1.5 text-muted-foreground">
       <WifiOff className="h-4 w-4" />
-      <span className="text-xs font-medium">Polling (10s)</span>
+      <span className="text-xs font-medium">{t("monitoring.polling")}</span>
     </div>
   );
 }
 
 export default function MonitoringPage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [realtimeAlerts, setRealtimeAlerts] = useState<RealtimeAlert[]>([]);
   const [lastEvent, setLastEvent] = useState<Date | null>(null);
@@ -186,14 +189,14 @@ export default function MonitoringPage() {
       {/* Sticky Header */}
       <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <PageHeader
-          title="Real-time Monitoring"
-          description="Live system status and performance metrics"
+          title={t("monitoring.title")}
+          description={t("monitoring.description")}
         >
           <ConnectionIndicator status={hubStatus} />
           {lastEvent && (
             <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
               <Clock className="h-4 w-4" />
-              <span>Last event: {lastEvent.toLocaleTimeString()}</span>
+              <span>{t("monitoring.lastEvent")} {lastEvent.toLocaleTimeString()}</span>
             </div>
           )}
         </PageHeader>
@@ -210,7 +213,7 @@ export default function MonitoringPage() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <StatCard
-              label="Station Status"
+              label={t("monitoring.stationStatus")}
               value={`${stats.onlineStations} / ${stats.totalStations}`}
               icon={Activity}
               iconColor="bg-green-100 text-green-600"
@@ -218,53 +221,53 @@ export default function MonitoringPage() {
               <div className="mt-2 flex gap-2">
                 <Badge variant="success" className="text-xs">
                   <CheckCircle2 className="mr-1 h-3 w-3" />
-                  <span className="tabular-nums">{stats.onlineStations}</span>&nbsp;Online
+                  <span className="tabular-nums">{stats.onlineStations}</span>&nbsp;{t("common.online")}
                 </Badge>
                 <Badge variant="destructive" className="text-xs">
                   <XCircle className="mr-1 h-3 w-3" />
-                  <span className="tabular-nums">{stats.offlineStations}</span>&nbsp;Offline
+                  <span className="tabular-nums">{stats.offlineStations}</span>&nbsp;{t("common.offline")}
                 </Badge>
               </div>
             </StatCard>
 
             <StatCard
-              label="Connector Status"
+              label={t("monitoring.connectorStatus")}
               value={`${stats.chargingConnectors} / ${stats.totalConnectors}`}
               icon={Battery}
               iconColor="bg-blue-100 text-blue-600"
             >
               <div className="mt-2 flex flex-wrap gap-1">
                 <Badge variant="success" className="text-xs">
-                  <span className="tabular-nums">{stats.availableConnectors}</span>&nbsp;Available
+                  <span className="tabular-nums">{stats.availableConnectors}</span>&nbsp;{t("status.available")}
                 </Badge>
                 <Badge variant="info" className="text-xs">
-                  <span className="tabular-nums">{stats.chargingConnectors}</span>&nbsp;Charging
+                  <span className="tabular-nums">{stats.chargingConnectors}</span>&nbsp;{t("status.charging")}
                 </Badge>
                 <Badge variant="destructive" className="text-xs">
-                  <span className="tabular-nums">{stats.faultedConnectors}</span>&nbsp;Faulted
+                  <span className="tabular-nums">{stats.faultedConnectors}</span>&nbsp;{t("status.faulted")}
                 </Badge>
               </div>
             </StatCard>
 
             <StatCard
-              label="Active Sessions"
+              label={t("monitoring.activeSessions")}
               value={stats.activeSessions}
               icon={Zap}
               iconColor="bg-amber-100 text-amber-600"
             >
               <p className="mt-1 text-xs text-muted-foreground">
-                Sessions currently in progress
+                {t("monitoring.sessionsInProgress")}
               </p>
             </StatCard>
 
             <StatCard
-              label="Today's Energy"
+              label={t("monitoring.todaysEnergy")}
               value={`${stats.todayEnergyKwh.toFixed(1)} kWh`}
               icon={TrendingUp}
               iconColor="bg-purple-100 text-purple-600"
             >
               <p className="mt-1 text-xs text-muted-foreground">
-                Revenue: <span className="tabular-nums">{stats.todayRevenue.toLocaleString("vi-VN")}</span>đ
+                {t("monitoring.revenue")} <span className="tabular-nums">{stats.todayRevenue.toLocaleString("vi-VN")}</span>đ
               </p>
             </StatCard>
           </div>
@@ -273,7 +276,7 @@ export default function MonitoringPage() {
         {/* Station Grid */}
         <Card>
           <CardHeader>
-            <CardTitle>Station Overview</CardTitle>
+            <CardTitle>{t("monitoring.stationOverview")}</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -285,8 +288,8 @@ export default function MonitoringPage() {
             ) : (!stations || stations.length === 0) ? (
               <EmptyState
                 icon={Activity}
-                title="No stations found"
-                description="Add stations to see monitoring data."
+                title={t("monitoring.noStationsFound")}
+                description={t("monitoring.addStationsDescription")}
               />
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -369,24 +372,24 @@ export default function MonitoringPage() {
                                         className="inline-block h-2 w-2 rounded-full mr-1"
                                         style={{ backgroundColor: unavailableDot }}
                                       />
-                                      Other
+                                      {t("monitoring.other")}
                                     </div>
                                   )
                                 )}
                             </>
                           ) : (
                             <div className="flex-1 h-8 rounded bg-gray-100 flex items-center justify-center text-xs text-gray-500">
-                              No connectors
+                              {t("monitoring.noConnectors")}
                             </div>
                           )}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          Last heartbeat:{" "}
+                          {t("monitoring.lastHeartbeat")}{" "}
                           {station.lastHeartbeat
                             ? new Date(
                                 station.lastHeartbeat
                               ).toLocaleTimeString()
-                            : "N/A"}
+                            : t("common.na")}
                         </div>
                       </div>
                     </div>
@@ -402,7 +405,7 @@ export default function MonitoringPage() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-yellow-500" />
-              <CardTitle>Recent Alerts</CardTitle>
+              <CardTitle>{t("monitoring.recentAlerts")}</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
@@ -416,7 +419,7 @@ export default function MonitoringPage() {
                     <AlertTriangle className="h-5 w-5 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">
-                        [{alert.alertType}] {alert.stationName || "System"}
+                        [{alert.alertType}] {alert.stationName || t("monitoring.system")}
                       </p>
                       <p className="text-sm truncate">{alert.message}</p>
                     </div>
@@ -430,15 +433,15 @@ export default function MonitoringPage() {
                   <XCircle className="h-5 w-5" />
                   <div>
                     <p className="font-medium">
-                      <span className="tabular-nums">{stats.faultedConnectors}</span> connector(s) reporting faults
+                      <span className="tabular-nums">{stats.faultedConnectors}</span> {t("monitoring.connectorsReportingFaults")}
                     </p>
-                    <p className="text-sm">Check Faults page for details</p>
+                    <p className="text-sm">{t("monitoring.checkFaultsPage")}</p>
                   </div>
                 </div>
               ) : (
                 <div className="flex items-center gap-3 rounded-lg bg-green-50 p-3 text-green-700">
                   <CheckCircle2 className="h-5 w-5" />
-                  <p className="font-medium">All systems operating normally</p>
+                  <p className="font-medium">{t("monitoring.allSystemsNormal")}</p>
                 </div>
               )}
             </div>

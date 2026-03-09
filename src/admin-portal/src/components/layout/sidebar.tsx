@@ -95,6 +95,7 @@ export function Sidebar() {
 
   return (
     <aside
+      aria-label="Main navigation"
       className={cn(
         "fixed left-0 top-0 z-40 h-screen border-r bg-card transition-all duration-300",
         isCollapsed ? "w-16" : "w-64"
@@ -120,7 +121,7 @@ export function Sidebar() {
             </div>
           )}
           {!isCollapsed && (
-            <Button variant="ghost" size="icon" onClick={toggle} className="h-7 w-7">
+            <Button variant="ghost" size="icon" onClick={toggle} className="h-7 w-7" aria-label="Collapse sidebar">
               <ChevronLeft className="h-4 w-4" />
             </Button>
           )}
@@ -129,7 +130,7 @@ export function Sidebar() {
         {/* Expand button when collapsed */}
         {isCollapsed && (
           <div className="flex justify-center py-2">
-            <Button variant="ghost" size="icon" onClick={toggle} className="h-7 w-7">
+            <Button variant="ghost" size="icon" onClick={toggle} className="h-7 w-7" aria-label="Expand sidebar">
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>

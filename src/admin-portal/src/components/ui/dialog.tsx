@@ -11,6 +11,7 @@ interface DialogProps {
   children: React.ReactNode;
   size?: "sm" | "md" | "lg" | "xl";
   className?: string;
+  title?: string;
 }
 
 const sizeClasses = {
@@ -20,7 +21,7 @@ const sizeClasses = {
   xl: "max-w-xl",
 };
 
-export function Dialog({ open, onClose, children, size = "lg", className }: DialogProps) {
+export function Dialog({ open, onClose, children, size = "lg", className, title }: DialogProps) {
   React.useEffect(() => {
     if (open) {
       document.body.style.overflow = "hidden";
@@ -41,8 +42,8 @@ export function Dialog({ open, onClose, children, size = "lg", className }: Dial
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true">
-      <div className="fixed inset-0 bg-black/50 transition-opacity" onClick={onClose} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-label={title}>
+      <div className="fixed inset-0 bg-black/50 transition-opacity" onClick={onClose} aria-hidden="true" />
       <div className={cn(
         "relative z-50 w-full m-4 rounded-lg border bg-card shadow-lg",
         sizeClasses[size],
@@ -59,7 +60,7 @@ export function DialogHeader({ children, onClose, className }: { children: React
     <div className={cn("flex items-center justify-between border-b px-6 py-4", className)}>
       <div className="text-lg font-semibold">{children}</div>
       {onClose && (
-        <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
+        <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8" aria-label="Close">
           <X className="h-4 w-4" />
         </Button>
       )}

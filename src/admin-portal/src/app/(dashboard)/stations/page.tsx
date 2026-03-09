@@ -21,8 +21,10 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonCard } from "@/components/ui/skeleton";
 import { stationsApi } from "@/lib/api";
 import { formatDateTime } from "@/lib/utils";
+import { useTranslation } from "@/lib/i18n";
 
 export default function StationsPage() {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const queryClient = useQueryClient();
 
@@ -50,13 +52,13 @@ export default function StationsPage() {
     <div className="flex flex-col">
       {/* Sticky Header */}
       <div className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <PageHeader title="Station Management" description="Manage charging stations and connectors" />
+        <PageHeader title={t("stations.title")} description={t("stations.description")} />
         <div className="flex items-center gap-3">
           <div className="relative w-72">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               type="search"
-              placeholder="Search stations..."
+              placeholder={t("stations.searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-10 w-full rounded-md border bg-background pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
@@ -65,7 +67,7 @@ export default function StationsPage() {
           <Link href="/stations/new">
             <Button>
               <Plus className="mr-2 h-4 w-4" />
-              Add Station
+              {t("stations.addStation")}
             </Button>
           </Link>
         </div>
@@ -82,8 +84,8 @@ export default function StationsPage() {
         ) : stations.length === 0 ? (
           <EmptyState
             icon={MapPin}
-            title="No stations found"
-            description={search ? "Try a different search term" : "Get started by adding a new station"}
+            title={t("stations.noStationsFound")}
+            description={search ? t("stations.tryDifferentSearch") : t("stations.getStarted")}
           />
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -100,7 +102,7 @@ export default function StationsPage() {
                       </div>
                     </div>
                     {!station.isEnabled ? (
-                      <Badge variant="secondary">Disabled</Badge>
+                      <Badge variant="secondary">{t("stations.disabled")}</Badge>
                     ) : (
                       <StatusBadge type="station" value={station.status} />
                     )}
@@ -111,15 +113,15 @@ export default function StationsPage() {
                     <div className="grid grid-cols-2 gap-2 text-center">
                       <div className="rounded-md bg-muted p-2">
                         <div className="text-lg font-semibold tabular-nums">{station.connectorCount || 0}</div>
-                        <div className="text-xs text-muted-foreground">Connectors</div>
+                        <div className="text-xs text-muted-foreground">{t("stations.connectors")}</div>
                       </div>
                       <div className="rounded-md bg-muted p-2">
                         <div className="text-xs font-medium">
                           {station.lastHeartbeat
                             ? formatDateTime(station.lastHeartbeat)
-                            : "Never"}
+                            : t("stations.never")}
                         </div>
-                        <div className="text-xs text-muted-foreground">Last Heartbeat</div>
+                        <div className="text-xs text-muted-foreground">{t("stations.lastHeartbeat")}</div>
                       </div>
                     </div>
 
@@ -128,7 +130,7 @@ export default function StationsPage() {
                       <Link href={`/stations/${station.id}`} className="flex-1">
                         <Button variant="outline" size="sm" className="w-full">
                           <Eye className="mr-2 h-4 w-4" />
-                          View
+                          {t("stations.view")}
                         </Button>
                       </Link>
                       <Link href={`/stations/${station.id}/edit`}>

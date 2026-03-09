@@ -13,8 +13,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { sessionsApi } from "@/lib/api";
 import { formatCurrency, formatDateTime, formatEnergy, formatDuration } from "@/lib/utils";
+import { useTranslation } from "@/lib/i18n";
 
 export default function SessionsPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -64,8 +66,8 @@ export default function SessionsPage() {
       <div className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="p-6 pb-4">
           <PageHeader
-            title="Charging Sessions"
-            description="Monitor active and historical charging sessions"
+            title={t("sessions.title")}
+            description={t("sessions.description")}
           />
         </div>
 
@@ -75,7 +77,7 @@ export default function SessionsPage() {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               type="search"
-              placeholder="Search sessions..."
+              placeholder={t("sessions.searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-10 w-full rounded-md border bg-background pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
@@ -87,21 +89,21 @@ export default function SessionsPage() {
               size="sm"
               onClick={() => { setStatusFilter("all"); setCursor(null); setCursorStack([]); }}
             >
-              All
+              {t("common.all")}
             </Button>
             <Button
               variant={statusFilter === "2" ? "default" : "outline"}
               size="sm"
               onClick={() => { setStatusFilter("2"); setCursor(null); setCursorStack([]); }}
             >
-              Active
+              {t("common.active")}
             </Button>
             <Button
               variant={statusFilter === "5" ? "default" : "outline"}
               size="sm"
               onClick={() => { setStatusFilter("5"); setCursor(null); setCursorStack([]); }}
             >
-              Completed
+              {t("sessions.completed")}
             </Button>
           </div>
         </div>
@@ -111,25 +113,25 @@ export default function SessionsPage() {
         {/* Stats */}
         <div className="grid gap-4 md:grid-cols-4">
           <StatCard
-            label="Active Sessions"
+            label={t("sessions.activeSessions")}
             value={activeSessions}
             icon={Zap}
             iconColor="bg-blue-50 text-blue-600"
           />
           <StatCard
-            label="Energy Delivered"
+            label={t("sessions.energyDelivered")}
             value={formatEnergy(totalEnergy)}
             icon={Battery}
             iconColor="bg-[var(--color-brand-orange)]/10 text-[var(--color-brand-orange-dark)]"
           />
           <StatCard
-            label="Total Revenue"
+            label={t("sessions.totalRevenue")}
             value={formatCurrency(totalRevenue)}
             icon={DollarSign}
             iconColor="bg-green-50 text-green-600"
           />
           <StatCard
-            label="Total Sessions"
+            label={t("sessions.totalSessions")}
             value={sessionsData?.totalCount || sessions.length}
             icon={Clock}
             iconColor="bg-purple-50 text-purple-600"
@@ -147,13 +149,13 @@ export default function SessionsPage() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b bg-muted/50">
-                        <th className="px-4 py-3 text-left text-sm font-medium">Station</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium">User</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium">Start Time</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium">Duration</th>
-                        <th className="px-4 py-3 text-right text-sm font-medium">Energy</th>
-                        <th className="px-4 py-3 text-right text-sm font-medium">Cost</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium">{t("sessions.station")}</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium">{t("sessions.user")}</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium">{t("common.status")}</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium">{t("sessions.startTime")}</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium">{t("sessions.duration")}</th>
+                        <th className="px-4 py-3 text-right text-sm font-medium">{t("sessions.energy")}</th>
+                        <th className="px-4 py-3 text-right text-sm font-medium">{t("sessions.cost")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -164,7 +166,7 @@ export default function SessionsPage() {
                               <p className="font-medium">{session.stationName || "—"}</p>
                               {session.connectorNumber && (
                                 <p className="text-xs text-muted-foreground">
-                                  Connector #{session.connectorNumber}
+                                  {t("sessions.connector")} #{session.connectorNumber}
                                 </p>
                               )}
                             </div>
@@ -193,8 +195,8 @@ export default function SessionsPage() {
               ) : (
                 <EmptyState
                   icon={Zap}
-                  title="No sessions found"
-                  description="There are no charging sessions matching your filters."
+                  title={t("sessions.noSessionsFound")}
+                  description={t("sessions.noSessionsDescription")}
                 />
               )}
 
@@ -202,7 +204,7 @@ export default function SessionsPage() {
               {((sessionsData?.totalCount ?? 0) > pageSize || cursorStack.length > 0) && (
                 <div className="flex items-center justify-between border-t px-4 py-3">
                   <p className="text-sm text-muted-foreground">
-                    {sessionsData?.totalCount ?? 0} total sessions
+                    {sessionsData?.totalCount ?? 0} {t("sessions.totalSessionsCount")}
                   </p>
                   <div className="flex items-center gap-2">
                     {cursorStack.length > 0 && (
@@ -216,7 +218,7 @@ export default function SessionsPage() {
                           setCursor(prevCursor);
                         }}
                       >
-                        Previous
+                        {t("common.previous")}
                       </Button>
                     )}
                     {sessions.length === pageSize && (
@@ -231,7 +233,7 @@ export default function SessionsPage() {
                           }
                         }}
                       >
-                        Next
+                        {t("common.next")}
                       </Button>
                     )}
                   </div>

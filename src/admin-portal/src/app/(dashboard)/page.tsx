@@ -21,6 +21,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { CHART_COLORS } from "@/lib/constants";
 import { monitoringApi, alertsApi } from "@/lib/api";
 import { formatCurrency, formatEnergy } from "@/lib/utils";
+import { useTranslation } from "@/lib/i18n";
 import {
   BarChart,
   Bar,
@@ -33,6 +34,7 @@ import {
 } from "recharts";
 
 export default function DashboardPage() {
+  const { t } = useTranslation();
   const { data: dashboardData, isLoading } = useQuery({
     queryKey: ["dashboard"],
     queryFn: async () => {
@@ -79,8 +81,8 @@ export default function DashboardPage() {
     <div className="flex flex-col">
       <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <PageHeader
-          title="Dashboard"
-          description="Real-time overview of your charging network"
+          title={t("dashboard.title")}
+          description={t("dashboard.description")}
         />
       </div>
 
@@ -96,25 +98,25 @@ export default function DashboardPage() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <StatCard
-              label="Active Sessions"
+              label={t("dashboard.activeSessions")}
               value={data.activeSessions}
               icon={Zap}
               iconColor="bg-blue-50 text-blue-600"
             />
             <StatCard
-              label="Network Availability"
+              label={t("dashboard.networkAvailability")}
               value={`${networkAvailability}%`}
               icon={Gauge}
               iconColor="bg-primary/10 text-primary"
             />
             <StatCard
-              label="Energy Today"
+              label={t("dashboard.energyToday")}
               value={formatEnergy(data.todayEnergyKwh || 0)}
               icon={BatteryCharging}
               iconColor="bg-[var(--color-brand-orange)]/10 text-[var(--color-brand-orange-dark)]"
             />
             <StatCard
-              label="Revenue Today"
+              label={t("dashboard.revenueToday")}
               value={formatCurrency(data.todayRevenue || 0)}
               icon={DollarSign}
               iconColor="bg-green-50 text-green-600"
@@ -129,7 +131,7 @@ export default function DashboardPage() {
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base font-semibold">
                 <Activity className="h-4 w-4 text-muted-foreground" />
-                Connector Status
+                {t("dashboard.connectorStatus")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -165,20 +167,20 @@ export default function DashboardPage() {
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base font-semibold">
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                Station Overview
+                {t("dashboard.stationOverview")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                <OverviewRow label="Online" value={data.onlineStations} dotType="station" dotValue={1} />
-                <OverviewRow label="Offline" value={data.offlineStations || 0} dotType="station" dotValue={0} />
-                <OverviewRow label="Faulted" value={data.faultedStations || 0} dotType="station" dotValue={4} />
+                <OverviewRow label={t("stations.online")} value={data.onlineStations} dotType="station" dotValue={1} />
+                <OverviewRow label={t("stations.offline")} value={data.offlineStations || 0} dotType="station" dotValue={0} />
+                <OverviewRow label={t("stations.faulted")} value={data.faultedStations || 0} dotType="station" dotValue={4} />
                 <div className="border-t pt-3">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Connectors</p>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("stations.connectors")}</p>
                   <div className="space-y-3">
-                    <OverviewRow label="Total" value={data.totalConnectors} />
-                    <OverviewRow label="Available" value={data.availableConnectors} dotType="connector" dotValue={0} />
-                    <OverviewRow label="Charging" value={data.chargingConnectors} dotType="connector" dotValue={2} />
+                    <OverviewRow label={t("common.total")} value={data.totalConnectors} />
+                    <OverviewRow label={t("stations.available")} value={data.availableConnectors} dotType="connector" dotValue={0} />
+                    <OverviewRow label={t("stations.charging")} value={data.chargingConnectors} dotType="connector" dotValue={2} />
                   </div>
                 </div>
               </div>
@@ -191,10 +193,10 @@ export default function DashboardPage() {
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
               <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-              Recent Alerts
+              {t("dashboard.recentAlerts")}
             </CardTitle>
             <a href="/alerts" className="text-sm font-medium text-primary hover:underline">
-              View all
+              {t("common.viewAll")}
             </a>
           </CardHeader>
           <CardContent>
@@ -226,8 +228,8 @@ export default function DashboardPage() {
             ) : (
               <EmptyState
                 icon={AlertTriangle}
-                title="No recent alerts"
-                description="Your charging network is running smoothly"
+                title={t("dashboard.noAlerts")}
+                description={t("dashboard.networkSmooth")}
                 className="py-8"
               />
             )}
