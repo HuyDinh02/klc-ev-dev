@@ -1,0 +1,175 @@
+{
+  "common": {
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "delete": "Xóa",
+    "edit": "Sửa",
+    "create": "Tạo mới",
+    "search": "Tìm kiếm",
+    "filter": "Lọc",
+    "export": "Xuất",
+    "import": "Nhập",
+    "refresh": "Làm mới",
+    "close": "Đóng",
+    "confirm": "Xác nhận",
+    "back": "Quay lại",
+    "next": "Tiếp theo",
+    "previous": "Trước",
+    "loading": "Đang tải...",
+    "noData": "Không có dữ liệu",
+    "all": "Tất cả",
+    "active": "Hoạt động",
+    "inactive": "Không hoạt động",
+    "status": "Trạng thái",
+    "actions": "Hành động",
+    "details": "Chi tiết",
+    "total": "Tổng",
+    "showing": "Hiển thị",
+    "of": "của",
+    "items": "mục",
+    "viewAll": "Xem tất cả",
+    "tryAgain": "Thử lại",
+    "poweredBy": "Phát triển bởi KLC Energy"
+  },
+  "auth": {
+    "signIn": "Đăng nhập",
+    "signOut": "Đăng xuất",
+    "signingIn": "Đang đăng nhập...",
+    "username": "Tên đăng nhập",
+    "password": "Mật khẩu",
+    "enterUsername": "Nhập tên đăng nhập",
+    "enterPassword": "Nhập mật khẩu",
+    "networkManagement": "Quản lý mạng sạc",
+    "demoCredentials": "Tài khoản demo",
+    "admin": "Quản trị viên",
+    "operator": "Vận hành viên",
+    "viewer": "Người xem"
+  },
+  "nav": {
+    "operations": "Vận hành",
+    "incidents": "Sự cố",
+    "business": "Kinh doanh",
+    "users": "Người dùng",
+    "system": "Hệ thống",
+    "dashboard": "Tổng quan",
+    "stations": "Trạm sạc",
+    "monitoring": "Giám sát",
+    "sessions": "Phiên sạc",
+    "faults": "Lỗi & Cảnh báo",
+    "maintenance": "Bảo trì",
+    "tariffs": "Biểu phí",
+    "payments": "Thanh toán",
+    "marketing": "Marketing",
+    "userManagement": "Quản lý người dùng",
+    "reports": "Báo cáo",
+    "auditLogs": "Nhật ký",
+    "alerts": "Thông báo",
+    "settings": "Cài đặt",
+    "logout": "Đăng xuất"
+  },
+  "dashboard": {
+    "title": "Tổng quan",
+    "description": "Tổng quan thời gian thực mạng lưới sạc",
+    "activeSessions": "Phiên sạc đang hoạt động",
+    "networkAvailability": "Tình trạng mạng lưới",
+    "energyToday": "Năng lượng hôm nay",
+    "revenueToday": "Doanh thu hôm nay",
+    "connectorStatus": "Trạng thái đầu sạc",
+    "stationOverview": "Tổng quan trạm sạc",
+    "recentAlerts": "Cảnh báo gần đây",
+    "noAlerts": "Không có cảnh báo",
+    "networkSmooth": "Mạng lưới sạc đang hoạt động ổn định"
+  },
+  "stations": {
+    "title": "Trạm sạc",
+    "description": "Quản lý trạm sạc và đầu sạc",
+    "addStation": "Thêm trạm sạc",
+    "online": "Trực tuyến",
+    "offline": "Ngoại tuyến",
+    "faulted": "Lỗi",
+    "connectors": "Đầu sạc",
+    "available": "Sẵn sàng",
+    "charging": "Đang sạc"
+  },
+  "sessions": {
+    "title": "Phiên sạc",
+    "description": "Theo dõi lịch sử phiên sạc",
+    "activeSessions": "Phiên đang sạc",
+    "todaysSessions": "Phiên hôm nay",
+    "totalEnergy": "Tổng năng lượng",
+    "totalRevenue": "Tổng doanh thu"
+  },
+  "monitoring": {
+    "title": "Giám sát",
+    "description": "Giám sát thời gian thực trạng thái trạm sạc",
+    "totalStations": "Tổng số trạm",
+    "onlineStations": "Trạm trực tuyến",
+    "activeCharging": "Đang sạc",
+    "faultedStations": "Trạm lỗi"
+  },
+  "payments": {
+    "title": "Thanh toán",
+    "description": "Quản lý giao dịch thanh toán"
+  },
+  "tariffs": {
+    "title": "Biểu phí",
+    "description": "Quản lý biểu phí sạc"
+  },
+  "faults": {
+    "title": "Lỗi & Cảnh báo",
+    "description": "Quản lý lỗi và cảnh báo hệ thống"
+  },
+  "maintenance": {
+    "title": "Bảo trì",
+    "description": "Quản lý lịch bảo trì trạm sạc"
+  },
+  "analytics": {
+    "title": "Báo cáo",
+    "description": "Phân tích và báo cáo hoạt động"
+  },
+  "auditLogs": {
+    "title": "Nhật ký hệ thống",
+    "description": "Theo dõi hoạt động hệ thống"
+  },
+  "userManagement": {
+    "title": "Quản lý người dùng",
+    "description": "Quản lý tài khoản và phân quyền"
+  },
+  "settings": {
+    "title": "Cài đặt",
+    "description": "Cấu hình hệ thống",
+    "general": "Tổng quát",
+    "notifications": "Thông báo",
+    "security": "Bảo mật",
+    "charging": "Sạc",
+    "billing": "Thanh toán",
+    "language": "Ngôn ngữ",
+    "selectLanguage": "Chọn ngôn ngữ",
+    "vietnamese": "Tiếng Việt",
+    "english": "English"
+  },
+  "status": {
+    "available": "Sẵn sàng",
+    "charging": "Đang sạc",
+    "occupied": "Đang sử dụng",
+    "reserved": "Đã đặt trước",
+    "faulted": "Lỗi",
+    "unavailable": "Không khả dụng",
+    "online": "Trực tuyến",
+    "offline": "Ngoại tuyến",
+    "pending": "Chờ xử lý",
+    "completed": "Hoàn thành",
+    "failed": "Thất bại",
+    "cancelled": "Đã hủy",
+    "active": "Hoạt động",
+    "inactive": "Ngừng hoạt động"
+  },
+  "errors": {
+    "pageNotFound": "Không tìm thấy trang",
+    "pageNotFoundDesc": "Trang bạn đang tìm không tồn tại hoặc đã được chuyển.",
+    "somethingWrong": "Đã xảy ra lỗi",
+    "somethingWrongDesc": "Đã xảy ra lỗi không mong muốn. Vui lòng thử lại hoặc liên hệ hỗ trợ.",
+    "backToDashboard": "Quay về tổng quan",
+    "errorId": "Mã lỗi"
+  }
+}

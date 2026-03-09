@@ -17,11 +17,13 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { settingsApi, type SystemSettings } from "@/lib/api";
+import { useTranslation, type Locale } from "@/lib/i18n";
 
 export default function SettingsPage() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("general");
   const [localSettings, setLocalSettings] = useState<SystemSettings | null>(null);
+  const { setLocale } = useTranslation();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["settings"],
@@ -203,9 +205,10 @@ export default function SettingsPage() {
                     <label className="text-sm font-medium">Language</label>
                     <select
                       value={settings.language}
-                      onChange={(e) =>
-                        updateSettings({ language: e.target.value })
-                      }
+                      onChange={(e) => {
+                        updateSettings({ language: e.target.value });
+                        setLocale(e.target.value as Locale);
+                      }}
                       className="mt-1 w-full rounded-md border px-3 py-2"
                     >
                       <option value="vi">Tiếng Việt</option>

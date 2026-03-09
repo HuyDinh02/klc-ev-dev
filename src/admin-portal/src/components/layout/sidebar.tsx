@@ -26,55 +26,56 @@ import {
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useSidebarStore, useAuthStore, useAlertsStore } from "@/lib/store";
+import { useTranslation } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 
 interface NavItem {
   href: string;
-  label: string;
+  labelKey: string;
   icon: LucideIcon;
 }
 
 interface NavSection {
-  title: string;
+  titleKey: string;
   items: NavItem[];
 }
 
 const navigation: NavSection[] = [
   {
-    title: "Operations",
+    titleKey: "nav.operations",
     items: [
-      { href: "/", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/stations", label: "Stations", icon: MapPin },
-      { href: "/monitoring", label: "Monitoring", icon: Activity },
-      { href: "/sessions", label: "Sessions", icon: Zap },
+      { href: "/", labelKey: "nav.dashboard", icon: LayoutDashboard },
+      { href: "/stations", labelKey: "nav.stations", icon: MapPin },
+      { href: "/monitoring", labelKey: "nav.monitoring", icon: Activity },
+      { href: "/sessions", labelKey: "nav.sessions", icon: Zap },
     ],
   },
   {
-    title: "Incidents",
+    titleKey: "nav.incidents",
     items: [
-      { href: "/faults", label: "Faults & Alerts", icon: AlertTriangle },
-      { href: "/maintenance", label: "Maintenance", icon: Wrench },
+      { href: "/faults", labelKey: "nav.faults", icon: AlertTriangle },
+      { href: "/maintenance", labelKey: "nav.maintenance", icon: Wrench },
     ],
   },
   {
-    title: "Business",
+    titleKey: "nav.business",
     items: [
-      { href: "/tariffs", label: "Tariffs", icon: DollarSign },
-      { href: "/payments", label: "Payments", icon: CreditCard },
-      { href: "/vouchers", label: "Marketing", icon: Ticket },
+      { href: "/tariffs", labelKey: "nav.tariffs", icon: DollarSign },
+      { href: "/payments", labelKey: "nav.payments", icon: CreditCard },
+      { href: "/vouchers", labelKey: "nav.marketing", icon: Ticket },
     ],
   },
   {
-    title: "Users",
+    titleKey: "nav.users",
     items: [
-      { href: "/user-management", label: "Users", icon: Users },
+      { href: "/user-management", labelKey: "nav.userManagement", icon: Users },
     ],
   },
   {
-    title: "System",
+    titleKey: "nav.system",
     items: [
-      { href: "/analytics", label: "Reports", icon: BarChart3 },
-      { href: "/audit-logs", label: "Audit Logs", icon: FileText },
+      { href: "/analytics", labelKey: "nav.reports", icon: BarChart3 },
+      { href: "/audit-logs", labelKey: "nav.auditLogs", icon: FileText },
     ],
   },
 ];
@@ -85,6 +86,7 @@ export function Sidebar() {
   const { isCollapsed, toggle } = useSidebarStore();
   const { logout, user } = useAuthStore();
   const { unreadCount } = useAlertsStore();
+  const { t } = useTranslation();
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
@@ -136,10 +138,10 @@ export function Sidebar() {
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto px-2 py-1">
           {navigation.map((section) => (
-            <div key={section.title} className="mb-1">
+            <div key={section.titleKey} className="mb-1">
               {!isCollapsed && (
                 <p className="mb-1 px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {section.title}
+                  {t(section.titleKey)}
                 </p>
               )}
               {isCollapsed && <div className="my-1 mx-2 border-t" />}
@@ -147,11 +149,12 @@ export function Sidebar() {
                 {section.items.map((item) => {
                   const active = isActive(item.href);
                   const Icon = item.icon;
+                  const label = t(item.labelKey);
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
-                      title={isCollapsed ? item.label : undefined}
+                      title={isCollapsed ? label : undefined}
                       className={cn(
                         "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                         active
@@ -160,7 +163,7 @@ export function Sidebar() {
                       )}
                     >
                       <Icon className="h-[18px] w-[18px] flex-shrink-0" />
-                      {!isCollapsed && <span>{item.label}</span>}
+                      {!isCollapsed && <span>{label}</span>}
                     </Link>
                   );
                 })}
@@ -188,7 +191,7 @@ export function Sidebar() {
                 </span>
               )}
             </div>
-            {!isCollapsed && <span>Alerts</span>}
+            {!isCollapsed && <span>{t("nav.alerts")}</span>}
           </Link>
         </div>
 
@@ -211,14 +214,14 @@ export function Sidebar() {
               )}
             >
               <Settings className="h-[18px] w-[18px] flex-shrink-0" />
-              {!isCollapsed && <span>Settings</span>}
+              {!isCollapsed && <span>{t("nav.settings")}</span>}
             </Link>
             <button
               onClick={() => { logout(); router.push("/login"); }}
               className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
             >
               <LogOut className="h-[18px] w-[18px] flex-shrink-0" />
-              {!isCollapsed && <span>Logout</span>}
+              {!isCollapsed && <span>{t("nav.logout")}</span>}
             </button>
           </div>
         </div>

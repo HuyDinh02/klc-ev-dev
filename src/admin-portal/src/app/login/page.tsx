@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuthStore } from "@/lib/store";
 import { authApi } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n";
 
 export default function LoginPage() {
   return (
@@ -21,6 +22,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const returnUrl = searchParams.get("returnUrl") || "/";
   const { login, isAuthenticated } = useAuthStore();
+  const { t } = useTranslation();
   const [hydrated, setHydrated] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -110,7 +112,7 @@ function LoginForm() {
             </div>
             <h1 className="text-xl font-bold tracking-tight text-foreground">K-Charge</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Charging Network Management
+              {t("auth.networkManagement")}
             </p>
           </div>
 
@@ -124,14 +126,14 @@ function LoginForm() {
 
             <div className="space-y-1.5">
               <label htmlFor="email" className="text-sm font-medium">
-                Username
+                {t("auth.username")}
               </label>
               <input
                 id="email"
                 type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your username"
+                placeholder={t("auth.enterUsername")}
                 required
                 autoComplete="username"
                 className="h-10 w-full rounded-lg border bg-background px-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
@@ -140,7 +142,7 @@ function LoginForm() {
 
             <div className="space-y-1.5">
               <label htmlFor="password" className="text-sm font-medium">
-                Password
+                {t("auth.password")}
               </label>
               <div className="relative">
                 <input
@@ -148,7 +150,7 @@ function LoginForm() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
+                  placeholder={t("auth.enterPassword")}
                   required
                   autoComplete="current-password"
                   className="h-10 w-full rounded-lg border bg-background px-3 pr-10 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
@@ -167,27 +169,27 @@ function LoginForm() {
               {isLoading ? (
                 <span className="flex items-center gap-2">
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  Signing in...
+                  {t("auth.signingIn")}
                 </span>
               ) : (
-                "Sign In"
+                t("auth.signIn")
               )}
             </Button>
           </form>
 
           {/* Demo credentials */}
           <div className="mt-6 rounded-lg border border-dashed p-4 text-sm">
-            <p className="font-medium text-foreground mb-2">Demo Credentials</p>
+            <p className="font-medium text-foreground mb-2">{t("auth.demoCredentials")}</p>
             <div className="space-y-1 text-muted-foreground text-xs">
-              <p><span className="font-medium text-foreground">Admin:</span> admin / Admin@123</p>
-              <p><span className="font-medium text-foreground">Operator:</span> operator / Admin@123</p>
-              <p><span className="font-medium text-foreground">Viewer:</span> viewer / Admin@123</p>
+              <p><span className="font-medium text-foreground">{t("auth.admin")}:</span> admin / Admin@123</p>
+              <p><span className="font-medium text-foreground">{t("auth.operator")}:</span> operator / Admin@123</p>
+              <p><span className="font-medium text-foreground">{t("auth.viewer")}:</span> viewer / Admin@123</p>
             </div>
           </div>
 
           {/* Footer */}
           <p className="mt-6 text-center text-xs text-muted-foreground">
-            Powered by KLC Energy
+            {t("common.poweredBy")}
           </p>
         </CardContent>
       </Card>
