@@ -11,6 +11,7 @@ import { SkeletonTable } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Dialog, DialogHeader, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n";
 import { Plus, Edit, Trash2, AlertCircle, Ticket, Eye } from "lucide-react";
 
 interface Voucher {
@@ -50,12 +51,6 @@ interface VoucherUsage {
   }>;
 }
 
-const VoucherTypeLabels: Record<number, string> = {
-  0: "Giảm cố định",
-  1: "Giảm %",
-  2: "Miễn phí sạc",
-};
-
 const VoucherTypeBadgeVariants: Record<number, "default" | "warning" | "success" | "secondary"> = {
   0: "default",
   1: "warning",
@@ -64,6 +59,13 @@ const VoucherTypeBadgeVariants: Record<number, "default" | "warning" | "success"
 
 export default function VouchersPage() {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
+
+  const VoucherTypeLabels: Record<number, string> = {
+    0: t("vouchers.typeFixed"),
+    1: t("vouchers.typePercent"),
+    2: t("vouchers.typeFreeCharge"),
+  };
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewingUsageId, setViewingUsageId] = useState<string | null>(null);
@@ -166,10 +168,10 @@ export default function VouchersPage() {
       } else if (apiError?.message) {
         setFormError(apiError.message);
       } else {
-        setFormError("Failed to save voucher. Please check your input.");
+        setFormError(t("vouchers.saveFailed"));
       }
     } else {
-      setFormError("Unable to connect to server. Please try again.");
+      setFormError(t("vouchers.connectionFailed"));
     }
   };
 
@@ -231,12 +233,12 @@ export default function VouchersPage() {
       {/* Sticky Header */}
       <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <PageHeader
-          title="Voucher Management"
-          description="Create and manage discount vouchers for charging sessions"
+          title={t("vouchers.title")}
+          description={t("vouchers.description")}
         >
           <Button onClick={() => { setIsCreating(true); setEditingId(null); resetForm(); }} disabled={isCreating}>
             <Plus className="mr-2 h-4 w-4" />
-            Add Voucher
+            {t("vouchers.addVoucher")}
           </Button>
         </PageHeader>
       </div>
@@ -249,7 +251,7 @@ export default function VouchersPage() {
           size="xl"
         >
           <DialogHeader onClose={() => { setIsCreating(false); setEditingId(null); resetForm(); }}>
-            {editingId ? "Edit Voucher" : "New Voucher"}
+            {editingId ? t("vouchers.editVoucher") : t("vouchers.newVoucher")}
           </DialogHeader>
           <form onSubmit={handleSubmit}>
             <DialogContent className="space-y-4">
@@ -261,19 +263,19 @@ export default function VouchersPage() {
               )}
               <div className="grid gap-4 md:grid-cols-2">
                 <Input
-                  label="Code"
+                  label={t("vouchers.code")}
                   type="text"
                   value={formData.code}
                   onChange={(e) =>
                     setFormData({ ...formData, code: e.target.value.toUpperCase() })
                   }
-                  placeholder="e.g., SUMMER2026"
+                  placeholder={t("vouchers.codePlaceholder")}
                   maxLength={50}
                   required
                   disabled={!!editingId}
                 />
                 <div className="space-y-1">
-                  <label className="text-sm font-medium">Type</label>
+                  <label className="text-sm font-medium">{t("vouchers.type")}</label>
                   <select
                     value={formData.type}
                     onChange={(e) =>
@@ -282,15 +284,15 @@ export default function VouchersPage() {
                     className="h-10 w-full rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                     required
                   >
-                    <option value={0}>Giảm cố định</option>
-                    <option value={1}>Giảm %</option>
-                    <option value={2}>Miễn phí sạc</option>
+                    <option value={0}>{t("vouchers.typeFixed")}</option>
+                    <option value={1}>{t("vouchers.typePercent")}</option>
+                    <option value={2}>{t("vouchers.typeFreeCharge")}</option>
                   </select>
                 </div>
               </div>
               <div className="grid gap-4 md:grid-cols-3">
                 <Input
-                  label="Value"
+                  label={t("vouchers.value")}
                   type="number"
                   value={formData.value}
                   onChange={(e) =>
@@ -303,7 +305,7 @@ export default function VouchersPage() {
                   disabled={formData.type === 2}
                 />
                 <Input
-                  label="Expiry Date"
+                  label={t("vouchers.expiryDate")}
                   type="date"
                   value={formData.expiryDate}
                   onChange={(e) =>
@@ -312,7 +314,7 @@ export default function VouchersPage() {
                   required
                 />
                 <Input
-                  label="Total Quantity"
+                  label={t("vouchers.totalQuantity")}
                   type="number"
                   value={formData.totalQuantity}
                   onChange={(e) =>
@@ -324,7 +326,7 @@ export default function VouchersPage() {
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <Input
-                  label="Min Order Amount"
+                  label={t("vouchers.minOrderAmount")}
                   type="number"
                   value={formData.minOrderAmount ?? ""}
                   onChange={(e) =>
@@ -336,10 +338,10 @@ export default function VouchersPage() {
                   min={0}
                   step={1000}
                   suffix="đ"
-                  hint="Optional"
+                  hint={t("vouchers.optional")}
                 />
                 <Input
-                  label="Max Discount Amount"
+                  label={t("vouchers.maxDiscountAmount")}
                   type="number"
                   value={formData.maxDiscountAmount ?? ""}
                   onChange={(e) =>
@@ -351,17 +353,17 @@ export default function VouchersPage() {
                   min={0}
                   step={1000}
                   suffix="đ"
-                  hint="Optional"
+                  hint={t("vouchers.optional")}
                 />
               </div>
               <Input
-                label="Description"
+                label={t("vouchers.description")}
                 type="text"
                 value={formData.description ?? ""}
                 onChange={(e) =>
                   setFormData({ ...formData, description: e.target.value })
                 }
-                placeholder="e.g., Summer promotion - 20% off all charging sessions"
+                placeholder={t("vouchers.descriptionPlaceholder")}
               />
             </DialogContent>
             <DialogFooter>
@@ -374,13 +376,13 @@ export default function VouchersPage() {
                   resetForm();
                 }}
               >
-                Cancel
+                {t("common.cancel")}
               </Button>
               <Button
                 type="submit"
                 disabled={createMutation.isPending || updateMutation.isPending}
               >
-                {editingId ? "Update" : "Create"} Voucher
+                {editingId ? t("vouchers.updateVoucher") : t("vouchers.createVoucher")}
               </Button>
             </DialogFooter>
           </form>
@@ -393,17 +395,17 @@ export default function VouchersPage() {
           size="lg"
         >
           <DialogHeader onClose={() => setViewingUsageId(null)}>
-            Voucher Usage ({usageData?.usedQuantity ?? 0}/{usageData?.totalQuantity ?? 0})
+            {t("vouchers.voucherUsage")} ({usageData?.usedQuantity ?? 0}/{usageData?.totalQuantity ?? 0})
           </DialogHeader>
           <DialogContent className="p-0">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="px-4 py-3 text-left text-sm font-medium">User ID</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Used At</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Claimed At</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t("vouchers.userId")}</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t("common.status")}</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t("vouchers.usedAt")}</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t("vouchers.claimedAt")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -413,7 +415,7 @@ export default function VouchersPage() {
                         <td className="px-4 py-3 font-mono text-xs">{usage.userId.substring(0, 8)}...</td>
                         <td className="px-4 py-3 text-sm">
                           <Badge variant={usage.isUsed ? "success" : "secondary"}>
-                            {usage.isUsed ? "Used" : "Claimed"}
+                            {usage.isUsed ? t("vouchers.used") : t("vouchers.claimed")}
                           </Badge>
                         </td>
                         <td className="px-4 py-3 text-sm">{usage.usedAt ? formatDate(usage.usedAt) : "—"}</td>
@@ -425,8 +427,8 @@ export default function VouchersPage() {
                       <td colSpan={4}>
                         <EmptyState
                           icon={Ticket}
-                          title="No usage records"
-                          description="No one has claimed or used this voucher yet."
+                          title={t("vouchers.noUsageRecords")}
+                          description={t("vouchers.noUsageDescription")}
                         />
                       </td>
                     </tr>
@@ -445,21 +447,21 @@ export default function VouchersPage() {
             size="sm"
             onClick={() => setActiveFilter("all")}
           >
-            All
+            {t("common.all")}
           </Button>
           <Button
             variant={activeFilter === "active" ? "default" : "outline"}
             size="sm"
             onClick={() => setActiveFilter("active")}
           >
-            Active
+            {t("common.active")}
           </Button>
           <Button
             variant={activeFilter === "inactive" ? "default" : "outline"}
             size="sm"
             onClick={() => setActiveFilter("inactive")}
           >
-            Inactive
+            {t("common.inactive")}
           </Button>
         </div>
 
@@ -473,13 +475,13 @@ export default function VouchersPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="px-4 py-3 text-left text-sm font-medium">Code</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium">Type</th>
-                      <th className="px-4 py-3 text-right text-sm font-medium">Value</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium">Expiry Date</th>
-                      <th className="px-4 py-3 text-right text-sm font-medium">Quantity</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
-                      <th className="px-4 py-3 text-right text-sm font-medium">Actions</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">{t("vouchers.code")}</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">{t("vouchers.type")}</th>
+                      <th className="px-4 py-3 text-right text-sm font-medium">{t("vouchers.value")}</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">{t("vouchers.expiryDate")}</th>
+                      <th className="px-4 py-3 text-right text-sm font-medium">{t("vouchers.quantity")}</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">{t("common.status")}</th>
+                      <th className="px-4 py-3 text-right text-sm font-medium">{t("common.actions")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -490,7 +492,7 @@ export default function VouchersPage() {
                         </td>
                         <td className="px-4 py-3">
                           <Badge variant={VoucherTypeBadgeVariants[voucher.type] ?? "secondary"}>
-                            {VoucherTypeLabels[voucher.type] ?? "Unknown"}
+                            {VoucherTypeLabels[voucher.type] ?? t("common.na")}
                           </Badge>
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums font-medium">
@@ -502,7 +504,7 @@ export default function VouchersPage() {
                         </td>
                         <td className="px-4 py-3">
                           <Badge variant={voucher.isActive ? "success" : "secondary"}>
-                            {voucher.isActive ? "Active" : "Inactive"}
+                            {voucher.isActive ? t("common.active") : t("common.inactive")}
                           </Badge>
                         </td>
                         <td className="px-4 py-3">
@@ -511,7 +513,7 @@ export default function VouchersPage() {
                               variant="outline"
                               size="sm"
                               onClick={() => setViewingUsageId(voucher.id)}
-                              title="View usage"
+                              title={t("vouchers.viewUsage")}
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
@@ -519,7 +521,7 @@ export default function VouchersPage() {
                               variant="outline"
                               size="sm"
                               onClick={() => handleEdit(voucher)}
-                              title="Edit"
+                              title={t("common.edit")}
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -527,11 +529,11 @@ export default function VouchersPage() {
                               variant="destructive"
                               size="sm"
                               onClick={() => {
-                                if (confirm("Delete this voucher?")) {
+                                if (confirm(t("vouchers.deleteConfirm"))) {
                                   deleteMutation.mutate(voucher.id);
                                 }
                               }}
-                              title="Delete"
+                              title={t("common.delete")}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -549,10 +551,10 @@ export default function VouchersPage() {
             <CardContent className="p-0">
               <EmptyState
                 icon={Ticket}
-                title="No vouchers found"
-                description="Create your first voucher to get started."
+                title={t("vouchers.noVouchersFound")}
+                description={t("vouchers.noVouchersDescription")}
                 action={{
-                  label: "Add Voucher",
+                  label: t("vouchers.addVoucher"),
                   onClick: () => { setIsCreating(true); setEditingId(null); resetForm(); },
                 }}
               />

@@ -23,7 +23,7 @@ export default function SettingsPage() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("general");
   const [localSettings, setLocalSettings] = useState<SystemSettings | null>(null);
-  const { setLocale } = useTranslation();
+  const { t, setLocale } = useTranslation();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["settings"],
@@ -56,18 +56,18 @@ export default function SettingsPage() {
   const isDirty = localSettings !== null;
 
   const tabs = [
-    { id: "general", label: "General", icon: Settings },
-    { id: "notifications", label: "Notifications", icon: Bell },
-    { id: "ocpp", label: "OCPP", icon: Zap },
-    { id: "payments", label: "Payments", icon: CreditCard },
-    { id: "security", label: "Security", icon: Lock },
+    { id: "general", label: t("settings.general"), icon: Settings },
+    { id: "notifications", label: t("settings.notifications"), icon: Bell },
+    { id: "ocpp", label: t("settings.ocpp"), icon: Zap },
+    { id: "payments", label: t("settings.payments"), icon: CreditCard },
+    { id: "security", label: t("settings.security"), icon: Lock },
   ];
 
   if (isLoading) {
     return (
       <div className="space-y-6">
         <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <PageHeader title="Settings" description="Configure system settings and preferences" />
+          <PageHeader title={t("settings.title")} description={t("settings.description")} />
         </div>
         <div className="flex gap-6 px-6">
           <div className="w-64 space-y-2">
@@ -95,11 +95,11 @@ export default function SettingsPage() {
     return (
       <div className="space-y-6">
         <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <PageHeader title="Settings" description="Configure system settings and preferences" />
+          <PageHeader title={t("settings.title")} description={t("settings.description")} />
         </div>
         <div className="flex items-center justify-center h-64 text-destructive">
           <AlertCircle className="mr-2 h-5 w-5" />
-          Failed to load settings
+          {t("settings.failedToLoad")}
         </div>
       </div>
     );
@@ -109,9 +109,9 @@ export default function SettingsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <PageHeader title="Settings" description="Configure system settings and preferences">
+        <PageHeader title={t("settings.title")} description={t("settings.description")}>
           {saveMutation.isError && (
-            <span className="text-sm text-destructive">Save failed</span>
+            <span className="text-sm text-destructive">{t("settings.saveFailed")}</span>
           )}
           <Button onClick={handleSave} disabled={saveMutation.isPending || !isDirty}>
             {saveMutation.isPending ? (
@@ -119,7 +119,7 @@ export default function SettingsPage() {
             ) : (
               <Save className="mr-2 h-4 w-4" />
             )}
-            Save Changes
+            {t("settings.saveChanges")}
           </Button>
         </PageHeader>
       </div>
@@ -154,13 +154,13 @@ export default function SettingsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Settings className="h-5 w-5" />
-                  General Settings
+                  {t("settings.generalSettings")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
-                    <label className="text-sm font-medium">Site Name</label>
+                    <label className="text-sm font-medium">{t("settings.siteName")}</label>
                     <input
                       type="text"
                       value={settings.siteName}
@@ -171,7 +171,7 @@ export default function SettingsPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium">Timezone</label>
+                    <label className="text-sm font-medium">{t("settings.timezone")}</label>
                     <select
                       value={settings.timezone}
                       onChange={(e) =>
@@ -189,7 +189,7 @@ export default function SettingsPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="text-sm font-medium">Currency</label>
+                    <label className="text-sm font-medium">{t("settings.currency")}</label>
                     <select
                       value={settings.currency}
                       onChange={(e) =>
@@ -202,7 +202,7 @@ export default function SettingsPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="text-sm font-medium">Language</label>
+                    <label className="text-sm font-medium">{t("settings.language")}</label>
                     <select
                       value={settings.language}
                       onChange={(e) => {
@@ -226,16 +226,16 @@ export default function SettingsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Bell className="h-5 w-5" />
-                  Notification Settings
+                  {t("settings.notificationSettings")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium">Email Notifications</p>
+                      <p className="font-medium">{t("settings.emailNotifications")}</p>
                       <p className="text-sm text-muted-foreground">
-                        Receive alerts via email
+                        {t("settings.emailNotificationsDesc")}
                       </p>
                     </div>
                     <label className="relative inline-flex cursor-pointer items-center">
@@ -255,9 +255,9 @@ export default function SettingsPage() {
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium">SMS Notifications</p>
+                      <p className="font-medium">{t("settings.smsNotifications")}</p>
                       <p className="text-sm text-muted-foreground">
-                        Receive critical alerts via SMS
+                        {t("settings.smsNotificationsDesc")}
                       </p>
                     </div>
                     <label className="relative inline-flex cursor-pointer items-center">
@@ -277,9 +277,9 @@ export default function SettingsPage() {
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium">Push Notifications</p>
+                      <p className="font-medium">{t("settings.pushNotifications")}</p>
                       <p className="text-sm text-muted-foreground">
-                        Browser push notifications
+                        {t("settings.pushNotificationsDesc")}
                       </p>
                     </div>
                     <label className="relative inline-flex cursor-pointer items-center">
@@ -299,7 +299,7 @@ export default function SettingsPage() {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium">Alert Email</label>
+                  <label className="text-sm font-medium">{t("settings.alertEmail")}</label>
                   <input
                     type="email"
                     value={settings.alertEmail}
@@ -320,13 +320,13 @@ export default function SettingsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Zap className="h-5 w-5" />
-                  OCPP Settings
+                  {t("settings.ocppSettings")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
-                    <label className="text-sm font-medium">WebSocket Port</label>
+                    <label className="text-sm font-medium">{t("settings.webSocketPort")}</label>
                     <input
                       type="number"
                       value={settings.ocppWebSocketPort}
@@ -340,7 +340,7 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <label className="text-sm font-medium">
-                      Heartbeat Interval (seconds)
+                      {t("settings.heartbeatInterval")}
                     </label>
                     <input
                       type="number"
@@ -355,7 +355,7 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <label className="text-sm font-medium">
-                      Meter Value Interval (seconds)
+                      {t("settings.meterValueInterval")}
                     </label>
                     <input
                       type="number"
@@ -371,8 +371,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="rounded-lg border p-4 bg-muted/30">
                   <p className="text-sm text-muted-foreground">
-                    <strong>Note:</strong> Changing OCPP settings may require
-                    restarting connected charging stations to take effect.
+                    <strong>Note:</strong> {t("settings.ocppNote")}
                   </p>
                 </div>
               </CardContent>
@@ -385,14 +384,14 @@ export default function SettingsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <CreditCard className="h-5 w-5" />
-                  Payment Settings
+                  {t("settings.paymentSettings")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <label className="text-sm font-medium">
-                      Default Payment Gateway
+                      {t("settings.defaultPaymentGateway")}
                     </label>
                     <select
                       value={settings.defaultPaymentGateway}
@@ -410,7 +409,7 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <label className="text-sm font-medium">
-                      E-Invoice Provider
+                      {t("settings.eInvoiceProvider")}
                     </label>
                     <select
                       value={settings.eInvoiceProvider}
@@ -430,9 +429,9 @@ export default function SettingsPage() {
 
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium">Auto Invoice Generation</p>
+                    <p className="font-medium">{t("settings.autoInvoiceGeneration")}</p>
                     <p className="text-sm text-muted-foreground">
-                      Automatically generate invoices after payment
+                      {t("settings.autoInvoiceGenerationDesc")}
                     </p>
                   </div>
                   <label className="relative inline-flex cursor-pointer items-center">
@@ -459,14 +458,14 @@ export default function SettingsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Lock className="h-5 w-5" />
-                  Security Settings
+                  {t("settings.securitySettings")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <label className="text-sm font-medium">
-                      Session Timeout (minutes)
+                      {t("settings.sessionTimeout")}
                     </label>
                     <input
                       type="number"
@@ -481,7 +480,7 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <label className="text-sm font-medium">
-                      Minimum Password Length
+                      {t("settings.minPasswordLength")}
                     </label>
                     <input
                       type="number"
@@ -500,9 +499,9 @@ export default function SettingsPage() {
 
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium">Require MFA</p>
+                    <p className="font-medium">{t("settings.requireMfa")}</p>
                     <p className="text-sm text-muted-foreground">
-                      Require multi-factor authentication for admin users
+                      {t("settings.requireMfaDesc")}
                     </p>
                   </div>
                   <label className="relative inline-flex cursor-pointer items-center">

@@ -10,6 +10,7 @@ import { Dialog, DialogHeader, DialogContent } from "@/components/ui/dialog";
 import { SkeletonTable } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { api } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n";
 import {
   FileText,
   Search,
@@ -71,6 +72,7 @@ const CHANGE_TYPE_VARIANT: Record<string, "success" | "destructive" | "warning">
 };
 
 export default function AuditLogsPage() {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const [httpMethod, setHttpMethod] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
@@ -138,10 +140,10 @@ export default function AuditLogsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <PageHeader title="Audit Logs" description="Track all system activities and changes">
+        <PageHeader title={t("auditLogs.title")} description={t("auditLogs.description")}>
           <Button variant="outline" onClick={handleExport}>
             <Download className="mr-2 h-4 w-4" />
-            Export CSV
+            {t("auditLogs.exportCsv")}
           </Button>
         </PageHeader>
       </div>
@@ -155,7 +157,7 @@ export default function AuditLogsPage() {
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <input
                   type="text"
-                  placeholder="Search by URL..."
+                  placeholder={t("auditLogs.searchByUrl")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full rounded-md border pl-10 pr-3 py-2"
@@ -167,7 +169,7 @@ export default function AuditLogsPage() {
               onChange={(e) => setHttpMethod(e.target.value)}
               className="rounded-md border px-3 py-2"
             >
-              <option value="all">All Methods</option>
+              <option value="all">{t("auditLogs.allMethods")}</option>
               <option value="GET">GET</option>
               <option value="POST">POST</option>
               <option value="PUT">PUT</option>
@@ -181,7 +183,7 @@ export default function AuditLogsPage() {
                 onChange={(e) => setDateFrom(e.target.value)}
                 className="rounded-md border px-3 py-2"
               />
-              <span>to</span>
+              <span>{t("auditLogs.to")}</span>
               <input
                 type="date"
                 value={dateTo}
@@ -201,8 +203,8 @@ export default function AuditLogsPage() {
           <CardContent className="p-0">
             <EmptyState
               icon={FileText}
-              title="No audit logs found"
-              description="Try adjusting your filters or check back later."
+              title={t("auditLogs.noLogsFound")}
+              description={t("auditLogs.noLogsDescription")}
             />
           </CardContent>
         </Card>
@@ -214,28 +216,28 @@ export default function AuditLogsPage() {
                 <thead className="border-b bg-muted/50">
                   <tr>
                     <th className="px-4 py-3 text-left text-sm font-medium">
-                      Time
+                      {t("auditLogs.time")}
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium">
-                      User
+                      {t("auditLogs.user")}
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium">
-                      Method
+                      {t("auditLogs.method")}
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium">
-                      URL
+                      {t("auditLogs.url")}
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium">
-                      Status
+                      {t("auditLogs.statusCode")}
                     </th>
                     <th className="px-4 py-3 text-right text-sm font-medium">
-                      Duration
+                      {t("auditLogs.duration")}
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium">
-                      IP
+                      {t("auditLogs.ip")}
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium">
-                      Actions
+                      {t("common.actions")}
                     </th>
                   </tr>
                 </thead>
@@ -251,7 +253,7 @@ export default function AuditLogsPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-muted-foreground" />
-                          <span>{log.userName || "System"}</span>
+                          <span>{log.userName || t("auditLogs.system")}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3">
@@ -294,7 +296,7 @@ export default function AuditLogsPage() {
             {(totalCount > pageSize || cursorStack.length > 0) && (
               <div className="flex items-center justify-between border-t px-4 py-3">
                 <div className="text-sm text-muted-foreground">
-                  {totalCount} total audit logs
+                  {totalCount} {t("auditLogs.totalLogs")}
                 </div>
                 <div className="flex gap-2">
                   {cursorStack.length > 0 && (
@@ -336,50 +338,50 @@ export default function AuditLogsPage() {
       {/* Detail Dialog */}
       <Dialog open={!!selectedLog} onClose={() => setSelectedLog(null)} size="xl">
         <DialogHeader onClose={() => setSelectedLog(null)}>
-          Audit Log Details
+          {t("auditLogs.logDetails")}
         </DialogHeader>
         <DialogContent className="max-h-[60vh] overflow-y-auto space-y-4">
           {selectedLog && (
             <>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <p className="text-sm text-muted-foreground">Time</p>
+                  <p className="text-sm text-muted-foreground">{t("auditLogs.time")}</p>
                   <p className="font-medium">
                     {formatDate(selectedLog.executionTime)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">User</p>
-                  <p className="font-medium">{selectedLog.userName || "System"}</p>
+                  <p className="text-sm text-muted-foreground">{t("auditLogs.user")}</p>
+                  <p className="font-medium">{selectedLog.userName || t("auditLogs.system")}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Method</p>
+                  <p className="text-sm text-muted-foreground">{t("auditLogs.method")}</p>
                   <Badge variant={METHOD_VARIANT[selectedLog.httpMethod] ?? "secondary"}>
                     {selectedLog.httpMethod}
                   </Badge>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Status</p>
+                  <p className="text-sm text-muted-foreground">{t("auditLogs.statusCode")}</p>
                   <Badge variant={getHttpStatusVariant(selectedLog.httpStatusCode)}>
                     {selectedLog.httpStatusCode}
                   </Badge>
                 </div>
                 <div className="col-span-2">
-                  <p className="text-sm text-muted-foreground">URL</p>
+                  <p className="text-sm text-muted-foreground">{t("auditLogs.url")}</p>
                   <p className="font-mono text-sm break-all">{selectedLog.url}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Duration</p>
+                  <p className="text-sm text-muted-foreground">{t("auditLogs.duration")}</p>
                   <p className="font-medium tabular-nums">
                     {formatDuration(selectedLog.executionDuration)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">IP Address</p>
+                  <p className="text-sm text-muted-foreground">{t("auditLogs.ipAddress")}</p>
                   <p className="font-mono">{selectedLog.clientIpAddress}</p>
                 </div>
                 <div className="col-span-2">
-                  <p className="text-sm text-muted-foreground">Browser</p>
+                  <p className="text-sm text-muted-foreground">{t("auditLogs.browser")}</p>
                   <p className="text-sm truncate">{selectedLog.browserInfo}</p>
                 </div>
               </div>
@@ -387,7 +389,7 @@ export default function AuditLogsPage() {
               {/* Entity Changes */}
               {selectedLog.entityChanges && selectedLog.entityChanges.length > 0 && (
                 <div className="border-t pt-4">
-                  <h4 className="font-medium mb-2">Entity Changes</h4>
+                  <h4 className="font-medium mb-2">{t("auditLogs.entityChanges")}</h4>
                   <div className="space-y-3">
                     {selectedLog.entityChanges.map((change) => (
                       <div

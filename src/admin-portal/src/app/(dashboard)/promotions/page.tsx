@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { PROMOTION_TYPE } from "@/lib/constants";
 import { api } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n";
 import {
   Plus,
   Edit,
@@ -57,6 +58,7 @@ type FilterTab = "all" | "active" | "inactive";
 
 export default function PromotionsPage() {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formError, setFormError] = useState("");
@@ -164,10 +166,10 @@ export default function PromotionsPage() {
       } else if (apiError?.message) {
         setFormError(apiError.message);
       } else {
-        setFormError("Failed to save promotion. Please check your input.");
+        setFormError(t("promotions.saveFailed"));
       }
     } else {
-      setFormError("Unable to connect to server. Please try again.");
+      setFormError(t("promotions.connectionFailed"));
     }
   };
 
@@ -209,13 +211,13 @@ export default function PromotionsPage() {
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      setFormError("Image must be less than 5MB");
+      setFormError(t("promotions.imageSizeError"));
       return;
     }
 
     const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
     if (!allowedTypes.includes(file.type)) {
-      setFormError("Only JPEG, PNG, GIF, and WebP images are allowed");
+      setFormError(t("promotions.imageTypeError"));
       return;
     }
 
@@ -236,7 +238,7 @@ export default function PromotionsPage() {
       setFormData((prev) => ({ ...prev, imageUrl: url }));
       setImagePreview(url);
     } catch {
-      setFormError("Failed to upload image. Please try again.");
+      setFormError(t("promotions.imageUploadFailed"));
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -252,11 +254,11 @@ export default function PromotionsPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.title.length > 200) {
-      setFormError("Title must be 200 characters or less.");
+      setFormError(t("promotions.titleMaxLength"));
       return;
     }
     if (formData.description.length > 2000) {
-      setFormError("Description must be 2000 characters or less.");
+      setFormError(t("promotions.descriptionMaxLength"));
       return;
     }
     if (editingId) {
@@ -281,10 +283,10 @@ export default function PromotionsPage() {
     <div className="flex flex-col">
       {/* Sticky Header */}
       <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <PageHeader title="Promotions" description="Manage promotional campaigns for drivers">
+        <PageHeader title={t("promotions.title")} description={t("promotions.description")}>
           <Button onClick={() => setIsCreating(true)}>
             <Plus className="mr-2 h-4 w-4" />
-            Add Promotion
+            {t("promotions.addPromotion")}
           </Button>
         </PageHeader>
       </div>
@@ -299,7 +301,7 @@ export default function PromotionsPage() {
               size="sm"
               onClick={() => setFilter(tab)}
             >
-              {tab === "all" ? "All" : tab === "active" ? "Active" : "Inactive"}
+              {tab === "all" ? t("common.all") : tab === "active" ? t("common.active") : t("common.inactive")}
             </Button>
           ))}
         </div>
@@ -307,7 +309,7 @@ export default function PromotionsPage() {
         {/* Create/Edit Dialog */}
         <Dialog open={!!isFormOpen} onClose={closeForm} size="xl">
           <DialogHeader onClose={closeForm}>
-            {editingId ? "Edit Promotion" : "New Promotion"}
+            {editingId ? t("promotions.editPromotion") : t("promotions.newPromotion")}
           </DialogHeader>
           <DialogContent>
             <form id="promotion-form" onSubmit={handleSubmit} className="space-y-4">
@@ -320,19 +322,19 @@ export default function PromotionsPage() {
 
               <div className="grid gap-4 md:grid-cols-2">
                 <Input
-                  label="Title"
+                  label={t("promotions.titleLabel")}
                   type="text"
                   value={formData.title}
                   onChange={(e) =>
                     setFormData({ ...formData, title: e.target.value })
                   }
-                  placeholder="e.g., Summer Charging Discount"
+                  placeholder={t("promotions.titlePlaceholder")}
                   maxLength={200}
                   required
                 />
                 <div className="space-y-1">
                   <label htmlFor="type" className="text-sm font-medium">
-                    Type
+                    {t("promotions.type")}
                   </label>
                   <select
                     id="type"
@@ -356,7 +358,7 @@ export default function PromotionsPage() {
 
               <div className="space-y-1">
                 <label htmlFor="description" className="text-sm font-medium">
-                  Description
+                  {t("promotions.descriptionLabel")}
                 </label>
                 <textarea
                   id="description"
@@ -364,7 +366,7 @@ export default function PromotionsPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, description: e.target.value })
                   }
-                  placeholder="Describe the promotion..."
+                  placeholder={t("promotions.descriptionPlaceholder")}
                   maxLength={2000}
                   rows={3}
                   className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
@@ -373,7 +375,7 @@ export default function PromotionsPage() {
 
               {/* Image Upload */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Promotion Image</label>
+                <label className="text-sm font-medium">{t("promotions.promotionImage")}</label>
                 {imagePreview ? (
                   <div className="relative inline-block">
                     <img
@@ -398,17 +400,17 @@ export default function PromotionsPage() {
                       <>
                         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                         <span className="text-sm text-muted-foreground">
-                          Uploading...
+                          {t("promotions.uploading")}
                         </span>
                       </>
                     ) : (
                       <>
                         <Upload className="h-8 w-8 text-muted-foreground" />
                         <span className="text-sm text-muted-foreground">
-                          Click to upload image
+                          {t("promotions.clickToUpload")}
                         </span>
                         <span className="text-xs text-muted-foreground">
-                          JPEG, PNG, GIF, WebP (max 5MB)
+                          {t("promotions.imageFormats")}
                         </span>
                       </>
                     )}
@@ -425,7 +427,7 @@ export default function PromotionsPage() {
 
               <div className="grid gap-4 md:grid-cols-2">
                 <Input
-                  label="Start Date"
+                  label={t("promotions.startDate")}
                   type="date"
                   value={formData.startDate}
                   onChange={(e) =>
@@ -434,7 +436,7 @@ export default function PromotionsPage() {
                   required
                 />
                 <Input
-                  label="End Date"
+                  label={t("promotions.endDate")}
                   type="date"
                   value={formData.endDate}
                   onChange={(e) =>
@@ -455,7 +457,7 @@ export default function PromotionsPage() {
                   className="h-4 w-4 rounded border"
                 />
                 <label htmlFor="isActive" className="text-sm font-medium">
-                  Active
+                  {t("common.active")}
                 </label>
               </div>
             </form>
@@ -466,7 +468,7 @@ export default function PromotionsPage() {
               variant="outline"
               onClick={closeForm}
             >
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button
               type="submit"
@@ -480,7 +482,7 @@ export default function PromotionsPage() {
               {createMutation.isPending || updateMutation.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : null}
-              {editingId ? "Update" : "Create"} Promotion
+              {editingId ? t("promotions.updatePromotion") : t("promotions.createPromotion")}
             </Button>
           </DialogFooter>
         </Dialog>
@@ -523,7 +525,7 @@ export default function PromotionsPage() {
                         variant={promo.isActive ? "success" : "secondary"}
                         className="shadow-sm"
                       >
-                        {promo.isActive ? "Active" : "Inactive"}
+                        {promo.isActive ? t("common.active") : t("common.inactive")}
                       </Badge>
                     </div>
                     {/* Type badge overlay */}
@@ -532,7 +534,7 @@ export default function PromotionsPage() {
                         variant={typeConfig?.badgeVariant || "secondary"}
                         className="shadow-sm"
                       >
-                        {typeConfig?.label || "Unknown"}
+                        {typeConfig?.label || t("common.na")}
                       </Badge>
                     </div>
                   </div>
@@ -562,13 +564,13 @@ export default function PromotionsPage() {
                         onClick={() => handleEdit(promo)}
                       >
                         <Edit className="mr-1.5 h-3.5 w-3.5" />
-                        Edit
+                        {t("common.edit")}
                       </Button>
                       <Button
                         variant="destructive"
                         size="sm"
                         onClick={() => {
-                          if (confirm("Delete this promotion?")) {
+                          if (confirm(t("promotions.deleteConfirm"))) {
                             deleteMutation.mutate(promo.id);
                           }
                         }}
@@ -584,10 +586,10 @@ export default function PromotionsPage() {
         ) : (
           <EmptyState
             icon={Megaphone}
-            title="No promotions found"
-            description="Create your first promotion to get started."
+            title={t("promotions.noPromotionsFound")}
+            description={t("promotions.noPromotionsDescription")}
             action={{
-              label: "Add Promotion",
+              label: t("promotions.addPromotion"),
               onClick: () => setIsCreating(true),
             }}
           />

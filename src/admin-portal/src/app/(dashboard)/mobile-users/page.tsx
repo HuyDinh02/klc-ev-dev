@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonTable, SkeletonCard } from "@/components/ui/skeleton";
 import { Tabs } from "@/components/ui/tabs";
 import { api } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n";
 import {
   Search,
   UserX,
@@ -112,6 +113,7 @@ const formatDateTime = (date?: string | null) => {
 };
 
 export default function MobileUsersPage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [cursor, setCursor] = useState<string | undefined>(undefined);
@@ -206,9 +208,9 @@ export default function MobileUsersPage() {
   };
 
   const detailTabs = [
-    { value: "profile", label: "Profile" },
-    { value: "wallet", label: "Wallet" },
-    { value: "sessions", label: "Sessions" },
+    { value: "profile", label: t("mobileUsers.profile") },
+    { value: "wallet", label: t("mobileUsers.wallet") },
+    { value: "sessions", label: t("mobileUsers.sessions") },
   ];
 
   return (
@@ -216,8 +218,8 @@ export default function MobileUsersPage() {
       {/* Header */}
       <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <PageHeader
-          title="Mobile Users"
-          description="Manage mobile app users, view activity, and handle account status"
+          title={t("mobileUsers.title")}
+          description={t("mobileUsers.description")}
         />
       </div>
 
@@ -226,7 +228,7 @@ export default function MobileUsersPage() {
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           type="search"
-          placeholder="Search by name, phone, or email..."
+          placeholder={t("mobileUsers.searchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9"
@@ -240,14 +242,14 @@ export default function MobileUsersPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="px-4 py-3 text-left text-sm font-medium">Name</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Phone</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Email</th>
-                  <th className="px-4 py-3 text-right text-sm font-medium">Wallet Balance</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Membership</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Last Login</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Actions</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">{t("mobileUsers.name")}</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">{t("mobileUsers.phone")}</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">{t("mobileUsers.email")}</th>
+                  <th className="px-4 py-3 text-right text-sm font-medium">{t("mobileUsers.walletBalance")}</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">{t("mobileUsers.membership")}</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">{t("common.status")}</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">{t("mobileUsers.lastLogin")}</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">{t("common.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -294,7 +296,7 @@ export default function MobileUsersPage() {
                         </td>
                         <td className="px-4 py-3">
                           <Badge variant={user.isActive ? "success" : "destructive"}>
-                            {user.isActive ? "Active" : "Suspended"}
+                            {user.isActive ? t("common.active") : t("mobileUsers.suspended")}
                           </Badge>
                         </td>
                         <td className="px-4 py-3 text-sm">
@@ -310,14 +312,14 @@ export default function MobileUsersPage() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => {
-                                  if (confirm("Suspend this user? They will not be able to use the app.")) {
+                                  if (confirm(t("mobileUsers.suspendConfirm"))) {
                                     suspendMutation.mutate(user.id);
                                   }
                                 }}
                                 disabled={suspendMutation.isPending}
                               >
                                 <UserX className="mr-1 h-4 w-4" />
-                                Suspend
+                                {t("mobileUsers.suspend")}
                               </Button>
                             ) : (
                               <Button
@@ -327,7 +329,7 @@ export default function MobileUsersPage() {
                                 disabled={unsuspendMutation.isPending}
                               >
                                 <UserCheck className="mr-1 h-4 w-4" />
-                                Unsuspend
+                                {t("mobileUsers.unsuspend")}
                               </Button>
                             )}
                           </div>
@@ -360,24 +362,24 @@ export default function MobileUsersPage() {
                                       <Card>
                                         <CardHeader className="pb-2">
                                           <CardTitle className="text-sm font-medium text-muted-foreground">
-                                            Account Info
+                                            {t("mobileUsers.accountInfo")}
                                           </CardTitle>
                                         </CardHeader>
                                         <CardContent className="space-y-2 text-sm">
                                           <div className="flex justify-between">
-                                            <span className="text-muted-foreground">Name</span>
+                                            <span className="text-muted-foreground">{t("mobileUsers.name")}</span>
                                             <span className="font-medium">{getFullName(userDetail)}</span>
                                           </div>
                                           <div className="flex justify-between">
-                                            <span className="text-muted-foreground">Phone</span>
+                                            <span className="text-muted-foreground">{t("mobileUsers.phone")}</span>
                                             <span className="font-medium">{userDetail.phoneNumber || "—"}</span>
                                           </div>
                                           <div className="flex justify-between">
-                                            <span className="text-muted-foreground">Email</span>
+                                            <span className="text-muted-foreground">{t("mobileUsers.email")}</span>
                                             <span className="font-medium">{userDetail.email || "—"}</span>
                                           </div>
                                           <div className="flex justify-between">
-                                            <span className="text-muted-foreground">Registered</span>
+                                            <span className="text-muted-foreground">{t("mobileUsers.registered")}</span>
                                             <span className="font-medium">{formatDate(userDetail.createdAt)}</span>
                                           </div>
                                         </CardContent>
@@ -386,24 +388,24 @@ export default function MobileUsersPage() {
                                       <Card>
                                         <CardHeader className="pb-2">
                                           <CardTitle className="text-sm font-medium text-muted-foreground">
-                                            Membership
+                                            {t("mobileUsers.membershipCard")}
                                           </CardTitle>
                                         </CardHeader>
                                         <CardContent className="space-y-2 text-sm">
                                           <div className="flex justify-between">
-                                            <span className="text-muted-foreground">Tier</span>
+                                            <span className="text-muted-foreground">{t("mobileUsers.tier")}</span>
                                             <Badge variant={MembershipTierVariant[userDetail.membershipTier] || "secondary"}>
                                               {MembershipTierLabels[userDetail.membershipTier] || "Standard"}
                                             </Badge>
                                           </div>
                                           <div className="flex justify-between">
-                                            <span className="text-muted-foreground">Status</span>
+                                            <span className="text-muted-foreground">{t("common.status")}</span>
                                             <Badge variant={userDetail.isActive ? "success" : "destructive"}>
-                                              {userDetail.isActive ? "Active" : "Suspended"}
+                                              {userDetail.isActive ? t("common.active") : t("mobileUsers.suspended")}
                                             </Badge>
                                           </div>
                                           <div className="flex justify-between">
-                                            <span className="text-muted-foreground">Last Login</span>
+                                            <span className="text-muted-foreground">{t("mobileUsers.lastLogin")}</span>
                                             <span className="font-medium">{formatDateTime(userDetail.lastLoginAt)}</span>
                                           </div>
                                         </CardContent>
@@ -412,16 +414,16 @@ export default function MobileUsersPage() {
                                       <Card>
                                         <CardHeader className="pb-2">
                                           <CardTitle className="text-sm font-medium text-muted-foreground">
-                                            Activity Summary
+                                            {t("mobileUsers.activitySummary")}
                                           </CardTitle>
                                         </CardHeader>
                                         <CardContent className="space-y-2 text-sm">
                                           <div className="flex justify-between">
-                                            <span className="text-muted-foreground">Total Sessions</span>
+                                            <span className="text-muted-foreground">{t("mobileUsers.totalSessions")}</span>
                                             <span className="font-medium">{userDetail.sessionCount ?? 0}</span>
                                           </div>
                                           <div className="flex justify-between">
-                                            <span className="text-muted-foreground">Total Spent</span>
+                                            <span className="text-muted-foreground">{t("mobileUsers.totalSpent")}</span>
                                             <span className="font-medium">{formatCurrency(userDetail.totalSpent)}</span>
                                           </div>
                                         </CardContent>
@@ -430,7 +432,7 @@ export default function MobileUsersPage() {
                                   ) : (
                                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                       <AlertCircle className="h-4 w-4" />
-                                      <span>Unable to load user profile.</span>
+                                      <span>{t("mobileUsers.unableToLoadProfile")}</span>
                                     </div>
                                   )}
                                 </div>
@@ -441,19 +443,19 @@ export default function MobileUsersPage() {
                                 <div className="space-y-4">
                                   <div className="grid gap-4 md:grid-cols-3">
                                     <StatCard
-                                      label="Wallet Balance"
+                                      label={t("mobileUsers.walletBalance")}
                                       value={formatCurrency(userDetail?.walletBalance)}
                                       icon={Wallet}
                                       iconColor="bg-emerald-500/10 text-emerald-600"
                                     />
                                     <StatCard
-                                      label="Total Sessions"
+                                      label={t("mobileUsers.totalSessions")}
                                       value={userDetail?.sessionCount ?? 0}
                                       icon={Zap}
                                       iconColor="bg-blue-500/10 text-blue-600"
                                     />
                                     <StatCard
-                                      label="Total Spent"
+                                      label={t("mobileUsers.totalSpent")}
                                       value={formatCurrency(userDetail?.totalSpent)}
                                       icon={Receipt}
                                       iconColor="bg-amber-500/10 text-amber-600"
@@ -461,16 +463,16 @@ export default function MobileUsersPage() {
                                   </div>
 
                                   <div>
-                                    <h4 className="mb-2 text-sm font-medium">Recent Transactions</h4>
+                                    <h4 className="mb-2 text-sm font-medium">{t("mobileUsers.recentTransactions")}</h4>
                                     {userTransactions.length > 0 ? (
                                       <div className="overflow-x-auto rounded-md border">
                                         <table className="w-full">
                                           <thead>
                                             <tr className="border-b bg-muted/50">
-                                              <th className="px-3 py-2 text-left text-xs font-medium">Type</th>
-                                              <th className="px-3 py-2 text-right text-xs font-medium">Amount</th>
-                                              <th className="px-3 py-2 text-left text-xs font-medium">Description</th>
-                                              <th className="px-3 py-2 text-left text-xs font-medium">Date</th>
+                                              <th className="px-3 py-2 text-left text-xs font-medium">{t("mobileUsers.type")}</th>
+                                              <th className="px-3 py-2 text-right text-xs font-medium">{t("mobileUsers.amount")}</th>
+                                              <th className="px-3 py-2 text-left text-xs font-medium">{t("mobileUsers.description")}</th>
+                                              <th className="px-3 py-2 text-left text-xs font-medium">{t("mobileUsers.date")}</th>
                                             </tr>
                                           </thead>
                                           <tbody>
@@ -500,8 +502,8 @@ export default function MobileUsersPage() {
                                     ) : (
                                       <EmptyState
                                         icon={Wallet}
-                                        title="No recent transactions"
-                                        description="This user has no wallet transactions yet."
+                                        title={t("mobileUsers.noRecentTransactions")}
+                                        description={t("mobileUsers.noTransactionsDescription")}
                                         className="py-8"
                                       />
                                     )}
@@ -512,18 +514,18 @@ export default function MobileUsersPage() {
                               {/* Sessions Tab */}
                               {detailTab === "sessions" && (
                                 <div>
-                                  <h4 className="mb-2 text-sm font-medium">Recent Sessions</h4>
+                                  <h4 className="mb-2 text-sm font-medium">{t("mobileUsers.recentSessions")}</h4>
                                   {userSessions.length > 0 ? (
                                     <div className="overflow-x-auto rounded-md border">
                                       <table className="w-full">
                                         <thead>
                                           <tr className="border-b bg-muted/50">
-                                            <th className="px-3 py-2 text-left text-xs font-medium">Station</th>
-                                            <th className="px-3 py-2 text-left text-xs font-medium">Status</th>
-                                            <th className="px-3 py-2 text-left text-xs font-medium">Start Time</th>
-                                            <th className="px-3 py-2 text-left text-xs font-medium">End Time</th>
-                                            <th className="px-3 py-2 text-right text-xs font-medium">Energy</th>
-                                            <th className="px-3 py-2 text-right text-xs font-medium">Cost</th>
+                                            <th className="px-3 py-2 text-left text-xs font-medium">{t("mobileUsers.station")}</th>
+                                            <th className="px-3 py-2 text-left text-xs font-medium">{t("common.status")}</th>
+                                            <th className="px-3 py-2 text-left text-xs font-medium">{t("mobileUsers.startTime")}</th>
+                                            <th className="px-3 py-2 text-left text-xs font-medium">{t("mobileUsers.endTime")}</th>
+                                            <th className="px-3 py-2 text-right text-xs font-medium">{t("mobileUsers.energy")}</th>
+                                            <th className="px-3 py-2 text-right text-xs font-medium">{t("mobileUsers.cost")}</th>
                                           </tr>
                                         </thead>
                                         <tbody>
@@ -555,8 +557,8 @@ export default function MobileUsersPage() {
                                   ) : (
                                     <EmptyState
                                       icon={Zap}
-                                      title="No recent sessions"
-                                      description="This user has no charging sessions yet."
+                                      title={t("mobileUsers.noRecentSessions")}
+                                      description={t("mobileUsers.noSessionsDescription")}
                                       className="py-8"
                                     />
                                   )}
@@ -573,8 +575,8 @@ export default function MobileUsersPage() {
                     <td colSpan={8} className="p-0">
                       <EmptyState
                         icon={Users}
-                        title="No mobile users found"
-                        description={search ? "Try adjusting your search criteria." : "No registered mobile users yet."}
+                        title={t("mobileUsers.noUsersFound")}
+                        description={search ? t("mobileUsers.noUsersSearchDescription") : t("mobileUsers.noUsersDescription")}
                       />
                     </td>
                   </tr>
@@ -587,7 +589,7 @@ export default function MobileUsersPage() {
           {(hasMore || cursor) && (
             <div className="flex items-center justify-between border-t px-4 py-3">
               <p className="text-sm text-muted-foreground">
-                Showing {users.length} users
+                {t("mobileUsers.showingUsers").replace("{count}", String(users.length))}
               </p>
               <div className="flex items-center gap-2">
                 {cursor && (
@@ -596,7 +598,7 @@ export default function MobileUsersPage() {
                     size="sm"
                     onClick={() => setCursor(undefined)}
                   >
-                    First Page
+                    {t("mobileUsers.firstPage")}
                   </Button>
                 )}
                 {hasMore && (
@@ -605,7 +607,7 @@ export default function MobileUsersPage() {
                     size="sm"
                     onClick={() => setCursor(usersData?.pagination?.nextCursor)}
                   >
-                    Next
+                    {t("common.next")}
                   </Button>
                 )}
               </div>

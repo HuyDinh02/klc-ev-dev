@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PAYMENT_STATUS, PAYMENT_GATEWAY_LABELS } from "@/lib/constants";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { api } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n";
 import {
   CreditCard,
   DollarSign,
@@ -50,6 +51,7 @@ interface PaymentStats {
 }
 
 export default function PaymentsPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState("");
@@ -115,38 +117,38 @@ export default function PaymentsPage() {
     <div className="space-y-6">
       {/* Header */}
       <PageHeader
-        title="Payments"
-        description="View and manage payment transactions"
+        title={t("payments.title")}
+        description={t("payments.description")}
         className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 -mx-1 px-1 py-2"
       >
         <Button variant="outline">
           <Download className="mr-2 h-4 w-4" />
-          Export
+          {t("common.export")}
         </Button>
       </PageHeader>
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          label="Today's Revenue"
+          label={t("payments.todaysRevenue")}
           value={formatCurrency(stats?.todayTotal || 0)}
           icon={DollarSign}
           iconColor="bg-green-50 text-green-600"
         />
         <StatCard
-          label="Monthly Revenue"
+          label={t("payments.monthlyRevenue")}
           value={formatCurrency(stats?.monthTotal || 0)}
           icon={TrendingUp}
           iconColor="bg-blue-50 text-blue-600"
         />
         <StatCard
-          label="Pending"
+          label={t("payments.pending")}
           value={stats?.pendingCount || 0}
           icon={CreditCard}
           iconColor="bg-amber-50 text-amber-600"
         />
         <StatCard
-          label="Failed"
+          label={t("payments.failed")}
           value={stats?.failedCount || 0}
           icon={CreditCard}
           iconColor="bg-red-50 text-red-600"
@@ -162,7 +164,7 @@ export default function PaymentsPage() {
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <input
                   type="text"
-                  placeholder="Search by transaction ID or user..."
+                  placeholder={t("payments.searchPlaceholder")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full rounded-md border pl-10 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
@@ -174,7 +176,7 @@ export default function PaymentsPage() {
               onChange={(e) => { setStatusFilter(e.target.value); resetPagination(); }}
               className="rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
             >
-              <option value="all">All Status</option>
+              <option value="all">{t("payments.allStatus")}</option>
               {Object.entries(PAYMENT_STATUS).map(([key, config]) => (
                 <option key={key} value={key}>{config.label}</option>
               ))}
@@ -187,7 +189,7 @@ export default function PaymentsPage() {
                 onChange={(e) => setDateFrom(e.target.value)}
                 className="rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
               />
-              <span>to</span>
+              <span>{t("payments.to")}</span>
               <input
                 type="date"
                 value={dateTo}
@@ -207,8 +209,8 @@ export default function PaymentsPage() {
           <CardContent className="p-0">
             <EmptyState
               icon={CreditCard}
-              title="No payments found"
-              description="Try adjusting your filters or search query."
+              title={t("payments.noPaymentsFound")}
+              description={t("payments.noPaymentsDescription")}
             />
           </CardContent>
         </Card>
@@ -220,24 +222,24 @@ export default function PaymentsPage() {
                 <thead className="border-b bg-muted/50">
                   <tr>
                     <th className="px-4 py-3 text-left text-sm font-medium">
-                      Transaction
+                      {t("payments.transaction")}
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Station</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t("payments.station")}</th>
                     <th className="px-4 py-3 text-left text-sm font-medium">
-                      Session
+                      {t("payments.session")}
                     </th>
                     <th className="px-4 py-3 text-right text-sm font-medium">
-                      Amount
+                      {t("payments.amount")}
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium">
-                      Method
+                      {t("payments.method")}
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium">
-                      Status
+                      {t("common.status")}
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Date</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t("payments.date")}</th>
                     <th className="px-4 py-3 text-left text-sm font-medium">
-                      Actions
+                      {t("common.actions")}
                     </th>
                   </tr>
                 </thead>
@@ -280,14 +282,14 @@ export default function PaymentsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="sm" title="View details" onClick={() => router.push(`/payments/${payment.id}`)}>
+                          <Button variant="ghost" size="sm" title={t("payments.viewDetails")} onClick={() => router.push(`/payments/${payment.id}`)}>
                             <FileText className="h-4 w-4" />
                           </Button>
                           {payment.status === 2 && (
                             <Button
                               variant="ghost"
                               size="sm"
-                              title="Refund"
+                              title={t("payments.refund")}
                               onClick={() => setRefundTarget(payment)}
                             >
                               <RotateCcw className="h-4 w-4 text-orange-500" />
@@ -305,7 +307,7 @@ export default function PaymentsPage() {
             {(totalCount > pageSize || cursorStack.length > 0) && (
               <div className="flex items-center justify-between border-t px-4 py-3">
                 <div className="text-sm text-muted-foreground">
-                  {totalCount} total payments
+                  {totalCount} {t("payments.totalPayments")}
                 </div>
                 <div className="flex gap-2">
                   {cursorStack.length > 0 && (
@@ -346,41 +348,41 @@ export default function PaymentsPage() {
 
       {/* Refund Confirmation Dialog */}
       <Dialog open={!!refundTarget} onClose={closeRefundDialog}>
-        <DialogHeader onClose={closeRefundDialog}>Confirm Refund</DialogHeader>
+        <DialogHeader onClose={closeRefundDialog}>{t("payments.confirmRefund")}</DialogHeader>
         <DialogContent>
           <p className="text-sm text-muted-foreground mb-2">
-            Refund <span className="font-semibold">{formatCurrency(refundTarget?.amount)}</span> for
-            transaction <span className="font-mono text-sm">{refundTarget?.referenceCode || refundTarget?.id.slice(0, 8)}</span>?
+            {t("payments.refund")} <span className="font-semibold">{formatCurrency(refundTarget?.amount)}</span>{" "}
+            {t("payments.transaction").toLowerCase()} <span className="font-mono text-sm">{refundTarget?.referenceCode || refundTarget?.id.slice(0, 8)}</span>?
           </p>
           <p className="text-sm text-muted-foreground mb-4">
-            This will credit the amount back to the user&apos;s wallet.
+            {t("payments.refundWalletNote")}
           </p>
           <div>
-            <label className="text-sm font-medium mb-1 block">Reason (optional)</label>
+            <label className="text-sm font-medium mb-1 block">{t("payments.refundReason")}</label>
             <input
               type="text"
               value={refundReason}
               onChange={(e) => setRefundReason(e.target.value)}
-              placeholder="e.g. Customer request, billing error..."
+              placeholder={t("payments.refundReasonPlaceholder")}
               className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
             />
           </div>
           {refundMutation.isError && (
             <p className="text-sm text-red-600 mt-3">
-              {(refundMutation.error as Error)?.message || "Refund failed. Please try again."}
+              {(refundMutation.error as Error)?.message || t("payments.refundFailed")}
             </p>
           )}
         </DialogContent>
         <DialogFooter>
           <Button variant="outline" onClick={closeRefundDialog}>
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button
             variant="destructive"
             disabled={refundMutation.isPending}
             onClick={() => refundTarget && refundMutation.mutate({ id: refundTarget.id, reason: refundReason })}
           >
-            {refundMutation.isPending ? "Processing..." : "Refund"}
+            {refundMutation.isPending ? t("payments.processing") : t("payments.refund")}
           </Button>
         </DialogFooter>
       </Dialog>

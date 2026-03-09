@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { monitoringApi } from "@/lib/api";
 import { STATION_STATUS } from "@/lib/constants";
+import { useTranslation } from "@/lib/i18n";
 import { MapPin, WifiOff } from "lucide-react";
 
 interface StationSummary {
@@ -142,6 +143,7 @@ function StationMapInner({ stations }: { stations: StationSummary[] }) {
 }
 
 export default function StationMapPage() {
+  const { t } = useTranslation();
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -170,7 +172,7 @@ export default function StationMapPage() {
   return (
     <div className="space-y-6">
       <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <PageHeader title="Station Map" description="Geographic overview of all charging stations" />
+        <PageHeader title={t("map.title")} description={t("map.description")} />
       </div>
 
       {/* Legend & Stats */}
@@ -193,7 +195,7 @@ export default function StationMapPage() {
         </Badge>
         <div className="ml-auto text-sm text-muted-foreground flex items-center gap-1">
           <MapPin className="h-4 w-4" />
-          {validStations.length} / {stations.length} stations with coordinates
+          {t("map.stationsWithCoordinates").replace("{valid}", String(validStations.length)).replace("{total}", String(stations.length))}
         </div>
       </div>
 
@@ -219,7 +221,7 @@ export default function StationMapPage() {
       {/* Station List */}
       <Card>
         <CardHeader>
-          <CardTitle>Stations without coordinates</CardTitle>
+          <CardTitle>{t("map.stationsWithoutCoordinates")}</CardTitle>
         </CardHeader>
         <CardContent>
           {stations.filter((s) => !s.latitude || !s.longitude).length > 0 ? (
@@ -243,7 +245,7 @@ export default function StationMapPage() {
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              All stations have coordinates configured.
+              {t("map.allStationsHaveCoordinates")}
             </p>
           )}
         </CardContent>

@@ -17,6 +17,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { api, maintenanceApi } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n";
 import {
   Wrench,
   Plus,
@@ -56,14 +57,15 @@ interface MaintenanceStats {
   overdueCount: number;
 }
 
-const TypeLabels: Record<number, string> = {
-  0: "Scheduled",
-  1: "Inspection",
-  2: "Emergency",
-};
-
 export default function MaintenancePage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
+
+  const TypeLabels: Record<number, string> = {
+    0: t("maintenance.scheduled"),
+    1: t("maintenance.inspection"),
+    2: t("maintenance.emergency"),
+  };
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [cursor, setCursor] = useState<string | null>(null);
@@ -205,10 +207,10 @@ export default function MaintenancePage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <PageHeader title="Maintenance" description="Schedule and track maintenance tasks">
+        <PageHeader title={t("maintenance.title")} description={t("maintenance.description")}>
           <Button onClick={() => setIsCreating(true)} disabled={isCreating}>
             <Plus className="mr-2 h-4 w-4" />
-            New Task
+            {t("maintenance.newTask")}
           </Button>
         </PageHeader>
       </div>
@@ -217,7 +219,7 @@ export default function MaintenancePage() {
         {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-4">
           <StatCard
-            label="Planned"
+            label={t("maintenance.planned")}
             value={stats?.plannedCount || 0}
             icon={Calendar}
             iconColor="bg-primary/10 text-primary"
@@ -225,7 +227,7 @@ export default function MaintenancePage() {
             onClick={() => setStatusFilter(statusFilter === "0" ? "all" : "0")}
           />
           <StatCard
-            label="In Progress"
+            label={t("maintenance.inProgress")}
             value={stats?.inProgressCount || 0}
             icon={Wrench}
             iconColor="bg-blue-50 text-blue-600"
@@ -233,7 +235,7 @@ export default function MaintenancePage() {
             onClick={() => setStatusFilter(statusFilter === "1" ? "all" : "1")}
           />
           <StatCard
-            label="Completed"
+            label={t("maintenance.completed")}
             value={stats?.completedCount || 0}
             icon={CheckCircle2}
             iconColor="bg-green-50 text-green-600"
@@ -241,7 +243,7 @@ export default function MaintenancePage() {
             onClick={() => setStatusFilter(statusFilter === "2" ? "all" : "2")}
           />
           <StatCard
-            label="Overdue"
+            label={t("maintenance.overdue")}
             value={stats?.overdueCount || 0}
             icon={AlertTriangle}
             iconColor="bg-red-50 text-red-600"
@@ -250,13 +252,13 @@ export default function MaintenancePage() {
 
         {/* Create Task Dialog */}
         <Dialog open={isCreating} onClose={() => setIsCreating(false)} size="lg">
-          <DialogHeader onClose={() => setIsCreating(false)}>New Maintenance Task</DialogHeader>
+          <DialogHeader onClose={() => setIsCreating(false)}>{t("maintenance.newMaintenanceTask")}</DialogHeader>
           <form onSubmit={handleSubmit}>
             <DialogContent>
               <div className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
-                    <label className="text-sm font-medium">Station</label>
+                    <label className="text-sm font-medium">{t("maintenance.station")}</label>
                     <select
                       value={formData.stationId}
                       onChange={(e) =>
@@ -265,7 +267,7 @@ export default function MaintenancePage() {
                       className="mt-1 w-full rounded-md border px-3 py-2"
                       required
                     >
-                      <option value="">Select station...</option>
+                      <option value="">{t("maintenance.selectStation")}</option>
                       {(stations || []).map((station: { id: string; name: string }) => (
                         <option key={station.id} value={station.id}>
                           {station.name}
@@ -274,7 +276,7 @@ export default function MaintenancePage() {
                     </select>
                   </div>
                   <div>
-                    <label className="text-sm font-medium">Type</label>
+                    <label className="text-sm font-medium">{t("maintenance.type")}</label>
                     <select
                       value={formData.type}
                       onChange={(e) =>
@@ -282,14 +284,14 @@ export default function MaintenancePage() {
                       }
                       className="mt-1 w-full rounded-md border px-3 py-2"
                     >
-                      <option value="0">Scheduled</option>
-                      <option value="1">Inspection</option>
-                      <option value="2">Emergency</option>
+                      <option value="0">{t("maintenance.scheduled")}</option>
+                      <option value="1">{t("maintenance.inspection")}</option>
+                      <option value="2">{t("maintenance.emergency")}</option>
                     </select>
                   </div>
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Title</label>
+                  <label className="text-sm font-medium">{t("maintenance.titleField")}</label>
                   <input
                     type="text"
                     value={formData.title}
@@ -297,12 +299,12 @@ export default function MaintenancePage() {
                       setFormData({ ...formData, title: e.target.value })
                     }
                     className="mt-1 w-full rounded-md border px-3 py-2"
-                    placeholder="e.g., Quarterly inspection"
+                    placeholder={t("maintenance.titlePlaceholder")}
                     required
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Description</label>
+                  <label className="text-sm font-medium">{t("maintenance.descriptionField")}</label>
                   <textarea
                     value={formData.description}
                     onChange={(e) =>
@@ -310,12 +312,12 @@ export default function MaintenancePage() {
                     }
                     className="mt-1 w-full rounded-md border px-3 py-2"
                     rows={3}
-                    placeholder="Describe the maintenance task..."
+                    placeholder={t("maintenance.descriptionPlaceholder")}
                   />
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
-                    <label className="text-sm font-medium">Assigned To</label>
+                    <label className="text-sm font-medium">{t("maintenance.assignedTo")}</label>
                     <input
                       type="text"
                       value={formData.assignedTo}
@@ -323,12 +325,12 @@ export default function MaintenancePage() {
                         setFormData({ ...formData, assignedTo: e.target.value })
                       }
                       className="mt-1 w-full rounded-md border px-3 py-2"
-                      placeholder="Technician name"
+                      placeholder={t("maintenance.technicianPlaceholder")}
                       required
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium">Scheduled Date</label>
+                    <label className="text-sm font-medium">{t("maintenance.scheduledDate")}</label>
                     <input
                       type="date"
                       value={formData.scheduledDate}
@@ -348,10 +350,10 @@ export default function MaintenancePage() {
                 variant="outline"
                 onClick={() => setIsCreating(false)}
               >
-                Cancel
+                {t("common.cancel")}
               </Button>
               <Button type="submit" disabled={createMutation.isPending}>
-                {createMutation.isPending ? "Creating..." : "Create Task"}
+                {createMutation.isPending ? t("maintenance.creating") : t("maintenance.createTask")}
               </Button>
             </DialogFooter>
           </form>
@@ -366,21 +368,21 @@ export default function MaintenancePage() {
                 onChange={(e) => { setStatusFilter(e.target.value); resetPagination(); }}
                 className="rounded-md border px-3 py-2"
               >
-                <option value="all">All Status</option>
-                <option value="0">Planned</option>
-                <option value="1">In Progress</option>
-                <option value="2">Completed</option>
-                <option value="3">Cancelled</option>
+                <option value="all">{t("maintenance.allStatus")}</option>
+                <option value="0">{t("maintenance.planned")}</option>
+                <option value="1">{t("maintenance.inProgress")}</option>
+                <option value="2">{t("maintenance.completed")}</option>
+                <option value="3">{t("maintenance.cancelled")}</option>
               </select>
               <select
                 value={typeFilter}
                 onChange={(e) => { setTypeFilter(e.target.value); resetPagination(); }}
                 className="rounded-md border px-3 py-2"
               >
-                <option value="all">All Types</option>
-                <option value="0">Scheduled</option>
-                <option value="1">Inspection</option>
-                <option value="2">Emergency</option>
+                <option value="all">{t("maintenance.allTypes")}</option>
+                <option value="0">{t("maintenance.scheduled")}</option>
+                <option value="1">{t("maintenance.inspection")}</option>
+                <option value="2">{t("maintenance.emergency")}</option>
               </select>
             </div>
           </CardContent>
@@ -406,7 +408,7 @@ export default function MaintenancePage() {
                         <div className="flex items-center gap-2">
                           <h3 className="font-semibold">{task.title}</h3>
                           <Badge variant={getTypeColor(task.type)}>
-                            {TypeLabels[task.type] || "Unknown"}
+                            {TypeLabels[task.type] || t("maintenance.unknown")}
                           </Badge>
                           <StatusBadge type="maintenance" value={task.status} />
                         </div>
@@ -431,13 +433,13 @@ export default function MaintenancePage() {
                           {task.completedAt && (
                             <span className="flex items-center gap-1">
                               <Clock className="h-3 w-3" />
-                              Done: {formatDate(task.completedAt)}
+                              {t("maintenance.done")} {formatDate(task.completedAt)}
                             </span>
                           )}
                         </div>
                         {task.notes && (
                           <p className="text-xs text-muted-foreground italic">
-                            Notes: {task.notes}
+                            {t("maintenance.notes")} {task.notes}
                           </p>
                         )}
                       </div>
@@ -449,7 +451,7 @@ export default function MaintenancePage() {
                           size="sm"
                           onClick={() => startMutation.mutate(task.id)}
                           disabled={startMutation.isPending}
-                          title="Start"
+                          title={t("maintenance.start")}
                         >
                           <Play className="h-4 w-4" />
                         </Button>
@@ -460,7 +462,7 @@ export default function MaintenancePage() {
                           size="sm"
                           onClick={() => completeMutation.mutate(task.id)}
                           disabled={completeMutation.isPending}
-                          title="Complete"
+                          title={t("maintenance.complete")}
                         >
                           <CheckCircle2 className="h-4 w-4" />
                         </Button>
@@ -470,12 +472,12 @@ export default function MaintenancePage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => {
-                            if (confirm("Cancel this task?")) {
+                            if (confirm(t("maintenance.cancelConfirm"))) {
                               cancelMutation.mutate(task.id);
                             }
                           }}
                           disabled={cancelMutation.isPending}
-                          title="Cancel"
+                          title={t("common.cancel")}
                         >
                           <X className="h-4 w-4 text-destructive" />
                         </Button>
@@ -488,10 +490,10 @@ export default function MaintenancePage() {
           ) : (
             <EmptyState
               icon={Wrench}
-              title="No maintenance tasks found"
-              description="Create a new task to schedule maintenance"
+              title={t("maintenance.noTasksFound")}
+              description={t("maintenance.noTasksDescription")}
               action={{
-                label: "New Task",
+                label: t("maintenance.newTask"),
                 onClick: () => setIsCreating(true),
               }}
             />
@@ -502,7 +504,7 @@ export default function MaintenancePage() {
         {(totalCount > pageSize || cursorStack.length > 0) && (
           <div className="flex items-center justify-between">
             <div className="text-sm tabular-nums text-muted-foreground">
-              {totalCount} total tasks
+              {totalCount} {t("maintenance.totalTasks")}
             </div>
             <div className="flex gap-2">
               {cursorStack.length > 0 && (

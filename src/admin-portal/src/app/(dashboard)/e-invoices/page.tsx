@@ -13,6 +13,7 @@ import { SkeletonCard, SkeletonTable } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { EINVOICE_STATUS, EINVOICE_PROVIDER_LABELS } from "@/lib/constants";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
+import { useTranslation } from "@/lib/i18n";
 import { api } from "@/lib/api";
 import {
   Receipt,
@@ -44,6 +45,7 @@ interface EInvoice {
 }
 
 export default function EInvoicesPage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState("all");
   const [providerFilter, setProviderFilter] = useState("all");
@@ -134,8 +136,8 @@ export default function EInvoicesPage() {
     <div className="space-y-6">
       {/* Header */}
       <PageHeader
-        title="E-Invoices"
-        description="Manage electronic invoices (Hóa đơn điện tử)"
+        title={t("eInvoices.title")}
+        description={t("eInvoices.description")}
         className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 -mx-1 px-1 py-2"
       />
 
@@ -149,31 +151,31 @@ export default function EInvoicesPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
           <StatCard
-            label="Issued"
+            label={t("eInvoices.issued")}
             value={stats.totalIssued}
             icon={CheckCircle}
             iconColor="bg-green-50 text-green-600"
           />
           <StatCard
-            label="Pending"
+            label={t("eInvoices.pending")}
             value={stats.totalPending}
             icon={Clock}
             iconColor="bg-amber-50 text-amber-600"
           />
           <StatCard
-            label="Failed"
+            label={t("eInvoices.failed")}
             value={stats.totalFailed}
             icon={AlertTriangle}
             iconColor="bg-red-50 text-red-600"
           />
           <StatCard
-            label="Cancelled"
+            label={t("eInvoices.cancelled")}
             value={stats.totalCancelled}
             icon={XCircle}
             iconColor="bg-gray-50 text-gray-500"
           />
           <StatCard
-            label="Total Amount"
+            label={t("eInvoices.totalAmount")}
             value={formatCurrency(stats.totalAmount)}
             icon={DollarSign}
             iconColor="bg-primary/10 text-primary"
@@ -190,7 +192,7 @@ export default function EInvoicesPage() {
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <input
                   type="text"
-                  placeholder="Search by invoice number..."
+                  placeholder={t("eInvoices.searchPlaceholder")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full rounded-md border pl-10 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
@@ -202,7 +204,7 @@ export default function EInvoicesPage() {
               onChange={(e) => { setStatusFilter(e.target.value); resetPagination(); }}
               className="rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
             >
-              <option value="all">All Status</option>
+              <option value="all">{t("eInvoices.allStatus")}</option>
               {Object.entries(EINVOICE_STATUS).map(([key, config]) => (
                 <option key={key} value={key}>{config.label}</option>
               ))}
@@ -212,7 +214,7 @@ export default function EInvoicesPage() {
               onChange={(e) => { setProviderFilter(e.target.value); resetPagination(); }}
               className="rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
             >
-              <option value="all">All Providers</option>
+              <option value="all">{t("eInvoices.allProviders")}</option>
               {Object.entries(EINVOICE_PROVIDER_LABELS).map(([key, label]) => (
                 <option key={key} value={key}>{label}</option>
               ))}
@@ -225,7 +227,7 @@ export default function EInvoicesPage() {
                 onChange={(e) => setDateFrom(e.target.value)}
                 className="rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
               />
-              <span>to</span>
+              <span>{t("eInvoices.to")}</span>
               <input
                 type="date"
                 value={dateTo}
@@ -245,8 +247,8 @@ export default function EInvoicesPage() {
           <CardContent className="p-0">
             <EmptyState
               icon={Receipt}
-              title="No e-invoices found"
-              description="Try adjusting your filters or search query."
+              title={t("eInvoices.noInvoicesFound")}
+              description={t("eInvoices.noInvoicesDescription")}
             />
           </CardContent>
         </Card>
@@ -258,28 +260,28 @@ export default function EInvoicesPage() {
                 <thead className="border-b bg-muted/50">
                   <tr>
                     <th className="px-4 py-3 text-left text-sm font-medium">
-                      Invoice #
+                      {t("eInvoices.invoiceNumber")}
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium">
-                      Station
+                      {t("eInvoices.station")}
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium">
-                      Provider
+                      {t("eInvoices.provider")}
                     </th>
                     <th className="px-4 py-3 text-right text-sm font-medium">
-                      Amount
+                      {t("eInvoices.amount")}
                     </th>
                     <th className="px-4 py-3 text-right text-sm font-medium">
-                      Retries
+                      {t("eInvoices.retries")}
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium">
-                      Status
+                      {t("common.status")}
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium">
-                      Date
+                      {t("eInvoices.date")}
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium">
-                      Actions
+                      {t("common.actions")}
                     </th>
                   </tr>
                 </thead>
@@ -326,7 +328,7 @@ export default function EInvoicesPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleDownloadPdf(invoice.id)}
-                              title="Download PDF"
+                              title={t("eInvoices.downloadPdf")}
                             >
                               <Download className="h-4 w-4" />
                             </Button>
@@ -336,7 +338,7 @@ export default function EInvoicesPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => retryMutation.mutate(invoice.id)}
-                              title="Retry"
+                              title={t("eInvoices.retry")}
                             >
                               <RefreshCw className="h-4 w-4" />
                             </Button>
@@ -346,7 +348,7 @@ export default function EInvoicesPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => setCancelTarget(invoice.id)}
-                              title="Cancel"
+                              title={t("common.cancel")}
                             >
                               <XCircle className="h-4 w-4 text-destructive" />
                             </Button>
@@ -363,7 +365,7 @@ export default function EInvoicesPage() {
             {(totalCount > pageSize || cursorStack.length > 0) && (
               <div className="flex items-center justify-between border-t px-4 py-3">
                 <div className="text-sm text-muted-foreground">
-                  {totalCount} total e-invoices
+                  {totalCount} {t("eInvoices.totalEInvoices")}
                 </div>
                 <div className="flex gap-2">
                   {cursorStack.length > 0 && (
@@ -404,20 +406,20 @@ export default function EInvoicesPage() {
 
       {/* Cancel Confirmation Dialog */}
       <Dialog open={!!cancelTarget} onClose={() => setCancelTarget(null)}>
-        <DialogHeader onClose={() => setCancelTarget(null)}>Cancel E-Invoice</DialogHeader>
+        <DialogHeader onClose={() => setCancelTarget(null)}>{t("eInvoices.cancelEInvoice")}</DialogHeader>
         <DialogContent>
           <p className="text-sm text-muted-foreground">
-            Are you sure you want to cancel this e-invoice? This action cannot be undone.
+            {t("eInvoices.cancelConfirmation")}
           </p>
           {cancelMutation.isError && (
             <p className="text-sm text-destructive mt-3">
-              {(cancelMutation.error as Error)?.message || "Cancellation failed. Please try again."}
+              {(cancelMutation.error as Error)?.message || t("eInvoices.cancellationFailed")}
             </p>
           )}
         </DialogContent>
         <DialogFooter>
           <Button variant="outline" onClick={() => setCancelTarget(null)}>
-            No, Keep It
+            {t("eInvoices.noKeepIt")}
           </Button>
           <Button
             variant="destructive"
@@ -430,7 +432,7 @@ export default function EInvoicesPage() {
               }
             }}
           >
-            {cancelMutation.isPending ? "Cancelling..." : "Yes, Cancel"}
+            {cancelMutation.isPending ? t("eInvoices.cancelling") : t("eInvoices.yesCancel")}
           </Button>
         </DialogFooter>
       </Dialog>

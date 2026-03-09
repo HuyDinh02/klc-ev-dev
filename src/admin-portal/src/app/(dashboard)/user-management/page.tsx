@@ -11,6 +11,7 @@ import { SkeletonTable } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { usersApi, rolesApi } from "@/lib/api";
 import { formatDateTime } from "@/lib/utils";
+import { useTranslation } from "@/lib/i18n";
 import {
   Plus, Edit, Trash2, Lock, Unlock, Key, Shield, Search, Users, ChevronLeft, ChevronRight,
 } from "lucide-react";
@@ -19,6 +20,7 @@ type TabType = "users" | "roles";
 
 // ---- Users Tab ----
 function UsersTab() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [pageIndex, setPageIndex] = useState(0);
@@ -108,11 +110,11 @@ function UsersTab() {
       <div className="flex items-center justify-between mb-4">
         <div className="relative w-72">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input type="search" placeholder="Search users..." value={search}
+          <input type="search" placeholder={t("userManagement.searchPlaceholder")} value={search}
             onChange={(e) => { setSearch(e.target.value); setPageIndex(0); }}
             className="h-10 w-full rounded-md border bg-background pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
         </div>
-        <Button onClick={() => { resetForm(); setShowCreateModal(true); }}><Plus className="mr-2 h-4 w-4" /> Add User</Button>
+        <Button onClick={() => { resetForm(); setShowCreateModal(true); }}><Plus className="mr-2 h-4 w-4" /> {t("userManagement.addUser")}</Button>
       </div>
 
       {/* Users Table */}
@@ -123,9 +125,9 @@ function UsersTab() {
           <CardContent className="p-0">
             <EmptyState
               icon={Users}
-              title="No users found"
-              description={search ? "Try adjusting your search query" : "Get started by adding your first user"}
-              action={!search ? { label: "Add User", onClick: () => { resetForm(); setShowCreateModal(true); } } : undefined}
+              title={t("userManagement.noUsersFound")}
+              description={search ? t("userManagement.noUsersSearch") : t("userManagement.noUsersGetStarted")}
+              action={!search ? { label: t("userManagement.addUser"), onClick: () => { resetForm(); setShowCreateModal(true); } } : undefined}
             />
           </CardContent>
         </Card>
@@ -135,13 +137,13 @@ function UsersTab() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead><tr className="border-b bg-muted/50">
-                  <th className="px-4 py-3 text-left text-sm font-medium">Username</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Email</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Name</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Roles</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Created</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Actions</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">{t("userManagement.username")}</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">{t("userManagement.email")}</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">{t("userManagement.name")}</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">{t("userManagement.roles")}</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">{t("common.status")}</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">{t("userManagement.created")}</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">{t("common.actions")}</th>
                 </tr></thead>
                 <tbody>
                   {users.map((user: Record<string, unknown>) => (
@@ -158,29 +160,29 @@ function UsersTab() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
-                          <Badge variant={user.isActive ? "success" : "secondary"}>{user.isActive ? "Active" : "Inactive"}</Badge>
-                          {!!user.isLockedOut && <Badge variant="destructive">Locked</Badge>}
+                          <Badge variant={user.isActive ? "success" : "secondary"}>{user.isActive ? t("common.active") : t("common.inactive")}</Badge>
+                          {!!user.isLockedOut && <Badge variant="destructive">{t("userManagement.locked")}</Badge>}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">{user.creationTime ? formatDateTime(user.creationTime as string) : ""}</td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="sm" title="Edit" onClick={() => {
+                          <Button variant="ghost" size="sm" title={t("common.edit")} onClick={() => {
                             setEditingUser(user);
                             setUserForm({ userName: user.userName as string, email: user.email as string, password: "", name: (user.name as string) || "", surname: (user.surname as string) || "", phoneNumber: (user.phoneNumber as string) || "", isActive: user.isActive as boolean, roleNames: (user.roles as string[]) || [] });
                           }}><Edit className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="sm" title="Assign Roles" onClick={() => { setRoleModalUser(user); setSelectedRoles((user.roles as string[]) || []); }}>
+                          <Button variant="ghost" size="sm" title={t("userManagement.assignRoles")} onClick={() => { setRoleModalUser(user); setSelectedRoles((user.roles as string[]) || []); }}>
                             <Shield className="h-4 w-4" />
                           </Button>
                           {!!user.isLockedOut ? (
-                            <Button variant="ghost" size="sm" title="Unlock" onClick={() => unlockMutation.mutate(user.id as string)}><Unlock className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="sm" title={t("userManagement.unlock")} onClick={() => unlockMutation.mutate(user.id as string)}><Unlock className="h-4 w-4" /></Button>
                           ) : (
-                            <Button variant="ghost" size="sm" title="Lock" onClick={() => lockMutation.mutate(user.id as string)}><Lock className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="sm" title={t("userManagement.lock")} onClick={() => lockMutation.mutate(user.id as string)}><Lock className="h-4 w-4" /></Button>
                           )}
-                          <Button variant="ghost" size="sm" title="Reset Password" onClick={() => { setResetPwUser(user); setNewPassword(""); }}>
+                          <Button variant="ghost" size="sm" title={t("userManagement.resetPassword")} onClick={() => { setResetPwUser(user); setNewPassword(""); }}>
                             <Key className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" title="Delete" onClick={() => { if (confirm(`Delete user ${user.userName}?`)) deleteMutation.mutate(user.id as string); }}>
+                          <Button variant="ghost" size="sm" title={t("common.delete")} onClick={() => { if (confirm(`${t("userManagement.deleteUserConfirm")} ${user.userName}?`)) deleteMutation.mutate(user.id as string); }}>
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
@@ -192,7 +194,7 @@ function UsersTab() {
             </div>
             {(totalCount > pageSize || pageIndex > 0) && (
               <div className="flex items-center justify-between border-t px-4 py-3">
-                <div className="text-sm tabular-nums text-muted-foreground">{totalCount} total users</div>
+                <div className="text-sm tabular-nums text-muted-foreground">{totalCount} {t("userManagement.totalUsers")}</div>
                 <div className="flex gap-2">
                   {pageIndex > 0 && (
                     <Button variant="outline" size="sm" onClick={() => setPageIndex((p) => p - 1)}><ChevronLeft className="h-4 w-4" /></Button>
@@ -210,43 +212,43 @@ function UsersTab() {
       {/* Create/Edit User Dialog */}
       <Dialog open={showCreateModal || !!editingUser} onClose={() => { setShowCreateModal(false); setEditingUser(null); resetForm(); }} size="lg">
         <DialogHeader onClose={() => { setShowCreateModal(false); setEditingUser(null); resetForm(); }}>
-          {editingUser ? "Edit User" : "Create User"}
+          {editingUser ? t("userManagement.editUser") : t("userManagement.createUser")}
         </DialogHeader>
         <form onSubmit={(e) => { e.preventDefault(); editingUser ? updateMutation.mutate() : createMutation.mutate(); }}>
           <DialogContent className="space-y-3">
             <div className="grid gap-3 md:grid-cols-2">
-              <div><label className="text-sm font-medium">Username *</label>
+              <div><label className="text-sm font-medium">{t("userManagement.usernameLabel")}</label>
                 <input type="text" value={userForm.userName} onChange={(e) => setUserForm({ ...userForm, userName: e.target.value })}
                   className="mt-1 w-full rounded-md border px-3 py-2" required disabled={!!editingUser} /></div>
-              <div><label className="text-sm font-medium">Email *</label>
+              <div><label className="text-sm font-medium">{t("userManagement.emailLabel")}</label>
                 <input type="email" value={userForm.email} onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
                   className="mt-1 w-full rounded-md border px-3 py-2" required /></div>
             </div>
             {!editingUser && (
-              <div><label className="text-sm font-medium">Password *</label>
+              <div><label className="text-sm font-medium">{t("userManagement.passwordLabel")}</label>
                 <input type="password" value={userForm.password} onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
                   className="mt-1 w-full rounded-md border px-3 py-2" required minLength={6} /></div>
             )}
             <div className="grid gap-3 md:grid-cols-2">
-              <div><label className="text-sm font-medium">First Name</label>
+              <div><label className="text-sm font-medium">{t("userManagement.firstNameLabel")}</label>
                 <input type="text" value={userForm.name} onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
                   className="mt-1 w-full rounded-md border px-3 py-2" /></div>
-              <div><label className="text-sm font-medium">Last Name</label>
+              <div><label className="text-sm font-medium">{t("userManagement.lastNameLabel")}</label>
                 <input type="text" value={userForm.surname} onChange={(e) => setUserForm({ ...userForm, surname: e.target.value })}
                   className="mt-1 w-full rounded-md border px-3 py-2" /></div>
             </div>
-            <div><label className="text-sm font-medium">Phone</label>
+            <div><label className="text-sm font-medium">{t("userManagement.phoneLabel")}</label>
               <input type="tel" value={userForm.phoneNumber} onChange={(e) => setUserForm({ ...userForm, phoneNumber: e.target.value })}
                 className="mt-1 w-full rounded-md border px-3 py-2" /></div>
             <div className="flex items-center gap-2">
               <input type="checkbox" id="isActive" checked={userForm.isActive} onChange={(e) => setUserForm({ ...userForm, isActive: e.target.checked })} />
-              <label htmlFor="isActive" className="text-sm font-medium">Active</label>
+              <label htmlFor="isActive" className="text-sm font-medium">{t("userManagement.activeLabel")}</label>
             </div>
           </DialogContent>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => { setShowCreateModal(false); setEditingUser(null); resetForm(); }}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => { setShowCreateModal(false); setEditingUser(null); resetForm(); }}>{t("common.cancel")}</Button>
             <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
-              {editingUser ? "Save" : "Create"}
+              {editingUser ? t("common.save") : t("common.create")}
             </Button>
           </DialogFooter>
         </form>
@@ -255,7 +257,7 @@ function UsersTab() {
       {/* Assign Roles Dialog */}
       <Dialog open={!!roleModalUser} onClose={() => setRoleModalUser(null)} size="md">
         <DialogHeader onClose={() => setRoleModalUser(null)}>
-          Assign Roles — {roleModalUser?.userName as string}
+          {t("userManagement.assignRoles")} — {roleModalUser?.userName as string}
         </DialogHeader>
         <DialogContent className="space-y-3">
           {(allRoles || []).map((role: Record<string, unknown>) => (
@@ -266,31 +268,31 @@ function UsersTab() {
                   else setSelectedRoles(selectedRoles.filter((r) => r !== role.name));
                 }} />
               <span className="text-sm">{role.name as string}</span>
-              {!!role.isDefault && <Badge variant="secondary">Default</Badge>}
+              {!!role.isDefault && <Badge variant="secondary">{t("userManagement.defaultBadge")}</Badge>}
             </label>
           ))}
         </DialogContent>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setRoleModalUser(null)}>Cancel</Button>
+          <Button variant="outline" onClick={() => setRoleModalUser(null)}>{t("common.cancel")}</Button>
           <Button onClick={() => updateRolesMutation.mutate({ id: roleModalUser!.id as string, roleNames: selectedRoles })}
-            disabled={updateRolesMutation.isPending}>Save Roles</Button>
+            disabled={updateRolesMutation.isPending}>{t("userManagement.saveRoles")}</Button>
         </DialogFooter>
       </Dialog>
 
       {/* Reset Password Dialog */}
       <Dialog open={!!resetPwUser} onClose={() => setResetPwUser(null)} size="sm">
         <DialogHeader onClose={() => setResetPwUser(null)}>
-          Reset Password — {resetPwUser?.userName as string}
+          {t("userManagement.resetPassword")} — {resetPwUser?.userName as string}
         </DialogHeader>
         <form onSubmit={(e) => { e.preventDefault(); resetPasswordMutation.mutate({ id: resetPwUser!.id as string, password: newPassword }); }}>
           <DialogContent>
-            <div><label className="text-sm font-medium">New Password *</label>
+            <div><label className="text-sm font-medium">{t("userManagement.newPasswordLabel")}</label>
               <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
                 className="mt-1 w-full rounded-md border px-3 py-2" required minLength={6} /></div>
           </DialogContent>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setResetPwUser(null)}>Cancel</Button>
-            <Button type="submit" disabled={resetPasswordMutation.isPending}>Reset</Button>
+            <Button type="button" variant="outline" onClick={() => setResetPwUser(null)}>{t("common.cancel")}</Button>
+            <Button type="submit" disabled={resetPasswordMutation.isPending}>{t("userManagement.reset")}</Button>
           </DialogFooter>
         </form>
       </Dialog>
@@ -300,6 +302,7 @@ function UsersTab() {
 
 // ---- Roles Tab ----
 function RolesTab() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingRole, setEditingRole] = useState<Record<string, unknown> | null>(null);
@@ -376,7 +379,7 @@ function RolesTab() {
       <div className="flex items-center justify-between mb-4">
         <div />
         <Button onClick={() => { setRoleForm({ name: "", isDefault: false, isPublic: true }); setShowCreateModal(true); }}>
-          <Plus className="mr-2 h-4 w-4" /> Add Role
+          <Plus className="mr-2 h-4 w-4" /> {t("userManagement.addRole")}
         </Button>
       </div>
 
@@ -387,9 +390,9 @@ function RolesTab() {
           <CardContent className="p-0">
             <EmptyState
               icon={Shield}
-              title="No roles found"
-              description="Get started by adding your first role"
-              action={{ label: "Add Role", onClick: () => { setRoleForm({ name: "", isDefault: false, isPublic: true }); setShowCreateModal(true); } }}
+              title={t("userManagement.noRolesFound")}
+              description={t("userManagement.noRolesGetStarted")}
+              action={{ label: t("userManagement.addRole"), onClick: () => { setRoleForm({ name: "", isDefault: false, isPublic: true }); setShowCreateModal(true); } }}
             />
           </CardContent>
         </Card>
@@ -399,27 +402,27 @@ function RolesTab() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead><tr className="border-b bg-muted/50">
-                  <th className="px-4 py-3 text-left text-sm font-medium">Name</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Default</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Static</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Actions</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">{t("userManagement.roleName")}</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">{t("userManagement.default")}</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">{t("userManagement.static")}</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">{t("common.actions")}</th>
                 </tr></thead>
                 <tbody>
                   {roles.map((role: Record<string, unknown>) => (
                     <tr key={role.id as string} className="border-b hover:bg-muted/50">
                       <td className="px-4 py-3 font-medium">{role.name as string}</td>
-                      <td className="px-4 py-3"><Badge variant={role.isDefault ? "default" : "secondary"}>{role.isDefault ? "Yes" : "No"}</Badge></td>
-                      <td className="px-4 py-3"><Badge variant={role.isStatic ? "default" : "secondary"}>{role.isStatic ? "Yes" : "No"}</Badge></td>
+                      <td className="px-4 py-3"><Badge variant={role.isDefault ? "default" : "secondary"}>{role.isDefault ? t("userManagement.yes") : t("userManagement.no")}</Badge></td>
+                      <td className="px-4 py-3"><Badge variant={role.isStatic ? "default" : "secondary"}>{role.isStatic ? t("userManagement.yes") : t("userManagement.no")}</Badge></td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="sm" title="Edit" onClick={() => { setEditingRole(role); setRoleForm({ name: role.name as string, isDefault: role.isDefault as boolean, isPublic: (role.isPublic as boolean) ?? true }); }}>
+                          <Button variant="ghost" size="sm" title={t("common.edit")} onClick={() => { setEditingRole(role); setRoleForm({ name: role.name as string, isDefault: role.isDefault as boolean, isPublic: (role.isPublic as boolean) ?? true }); }}>
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" title="Permissions" onClick={() => { setPermissionsRole(role); setPermissionGrants({}); }}>
+                          <Button variant="ghost" size="sm" title={t("userManagement.permissions")} onClick={() => { setPermissionsRole(role); setPermissionGrants({}); }}>
                             <Shield className="h-4 w-4" />
                           </Button>
                           {!role.isStatic && (
-                            <Button variant="ghost" size="sm" title="Delete" onClick={() => { if (confirm(`Delete role ${role.name}?`)) deleteMutation.mutate(role.id as string); }}>
+                            <Button variant="ghost" size="sm" title={t("common.delete")} onClick={() => { if (confirm(`${t("userManagement.deleteRoleConfirm")} ${role.name}?`)) deleteMutation.mutate(role.id as string); }}>
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                           )}
@@ -437,24 +440,24 @@ function RolesTab() {
       {/* Create/Edit Role Dialog */}
       <Dialog open={showCreateModal || !!editingRole} onClose={() => { setShowCreateModal(false); setEditingRole(null); }} size="md">
         <DialogHeader onClose={() => { setShowCreateModal(false); setEditingRole(null); }}>
-          {editingRole ? "Edit Role" : "Create Role"}
+          {editingRole ? t("userManagement.editRole") : t("userManagement.createRole")}
         </DialogHeader>
         <form onSubmit={(e) => { e.preventDefault(); editingRole ? updateMutation.mutate() : createMutation.mutate(); }}>
           <DialogContent className="space-y-3">
-            <div><label className="text-sm font-medium">Role Name *</label>
+            <div><label className="text-sm font-medium">{t("userManagement.roleNameLabel")}</label>
               <input type="text" value={roleForm.name} onChange={(e) => setRoleForm({ ...roleForm, name: e.target.value })}
                 className="mt-1 w-full rounded-md border px-3 py-2" required /></div>
             <div className="flex items-center gap-4">
               <label className="flex items-center gap-2"><input type="checkbox" checked={roleForm.isDefault}
-                onChange={(e) => setRoleForm({ ...roleForm, isDefault: e.target.checked })} /><span className="text-sm">Default role</span></label>
+                onChange={(e) => setRoleForm({ ...roleForm, isDefault: e.target.checked })} /><span className="text-sm">{t("userManagement.defaultRole")}</span></label>
               <label className="flex items-center gap-2"><input type="checkbox" checked={roleForm.isPublic}
-                onChange={(e) => setRoleForm({ ...roleForm, isPublic: e.target.checked })} /><span className="text-sm">Public</span></label>
+                onChange={(e) => setRoleForm({ ...roleForm, isPublic: e.target.checked })} /><span className="text-sm">{t("userManagement.public")}</span></label>
             </div>
           </DialogContent>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => { setShowCreateModal(false); setEditingRole(null); }}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => { setShowCreateModal(false); setEditingRole(null); }}>{t("common.cancel")}</Button>
             <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
-              {editingRole ? "Save" : "Create"}
+              {editingRole ? t("common.save") : t("common.create")}
             </Button>
           </DialogFooter>
         </form>
@@ -463,7 +466,7 @@ function RolesTab() {
       {/* Permissions Dialog */}
       <Dialog open={!!permissionsRole} onClose={() => setPermissionsRole(null)} size="xl" className="max-h-[80vh] flex flex-col">
         <DialogHeader onClose={() => setPermissionsRole(null)}>
-          Permissions — {permissionsRole?.name as string}
+          {t("userManagement.permissions")} — {permissionsRole?.name as string}
         </DialogHeader>
         <DialogContent className="space-y-4 overflow-y-auto flex-1">
           {permissionGroups.length > 0 ? (
@@ -490,8 +493,8 @@ function RolesTab() {
         </DialogContent>
         {permissionGroups.length > 0 && (
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPermissionsRole(null)}>Cancel</Button>
-            <Button onClick={() => updatePermissionsMutation.mutate()} disabled={updatePermissionsMutation.isPending}>Save Permissions</Button>
+            <Button variant="outline" onClick={() => setPermissionsRole(null)}>{t("common.cancel")}</Button>
+            <Button onClick={() => updatePermissionsMutation.mutate()} disabled={updatePermissionsMutation.isPending}>{t("userManagement.savePermissions")}</Button>
           </DialogFooter>
         )}
       </Dialog>
@@ -501,12 +504,13 @@ function RolesTab() {
 
 // ---- Main Page ----
 export default function UserManagementPage() {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabType>("users");
 
   return (
     <div className="flex flex-col">
       <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <PageHeader title="User Management" description="Manage users, roles, and permissions" />
+        <PageHeader title={t("userManagement.title")} description={t("userManagement.description")} />
       </div>
 
       <div className="flex-1 space-y-6 p-6">
@@ -516,13 +520,13 @@ export default function UserManagementPage() {
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === "users" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
             onClick={() => setActiveTab("users")}
           >
-            <Users className="inline mr-2 h-4 w-4" />Users
+            <Users className="inline mr-2 h-4 w-4" />{t("userManagement.usersTab")}
           </button>
           <button
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === "roles" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
             onClick={() => setActiveTab("roles")}
           >
-            <Shield className="inline mr-2 h-4 w-4" />Roles
+            <Shield className="inline mr-2 h-4 w-4" />{t("userManagement.rolesTab")}
           </button>
         </div>
 

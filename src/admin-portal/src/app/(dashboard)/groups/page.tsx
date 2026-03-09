@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonCard } from "@/components/ui/skeleton";
 import { Dialog, DialogHeader, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { api, stationGroupsApi } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n";
 import {
   Plus,
   Edit,
@@ -83,11 +84,11 @@ interface Station {
 
 // --- Constants ---
 
-const GroupTypeLabels: Record<number, string> = {
-  0: "Geographic",
-  1: "Operational",
-  2: "Business",
-  3: "Custom",
+const GROUP_TYPE_KEYS: Record<number, string> = {
+  0: "groups.geographic",
+  1: "groups.operational",
+  2: "groups.business",
+  3: "groups.custom",
 };
 
 const GroupTypeIcons: Record<number, typeof MapPin> = {
@@ -136,6 +137,7 @@ function GroupForm({
   onCancel: () => void;
   isLoading: boolean;
 }) {
+  const { t } = useTranslation();
   const [form, setForm] = useState({
     name: initialData?.name || "",
     description: initialData?.description || "",
@@ -148,7 +150,7 @@ function GroupForm({
   return (
     <Dialog open onClose={onCancel} size="xl">
       <DialogHeader onClose={onCancel}>
-        {initialData ? "Edit Group" : "New Group"}
+        {initialData ? t("groups.editGroup") : t("groups.newGroup")}
       </DialogHeader>
       <DialogContent>
         <form
@@ -164,56 +166,56 @@ function GroupForm({
         >
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <div>
-              <label className="text-sm font-medium">Group Name *</label>
+              <label className="text-sm font-medium">{t("groups.groupName")} *</label>
               <input
                 type="text"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-                placeholder="e.g., Khu vuc Ha Noi"
+                placeholder={t("groups.groupNamePlaceholder")}
                 required
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Region</label>
+              <label className="text-sm font-medium">{t("groups.region")}</label>
               <input
                 type="text"
                 value={form.region}
                 onChange={(e) => setForm({ ...form, region: e.target.value })}
                 className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-                placeholder="e.g., North, Central, South"
+                placeholder={t("groups.regionPlaceholder")}
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Type</label>
+              <label className="text-sm font-medium">{t("groups.type")}</label>
               <select
                 value={form.groupType}
                 onChange={(e) => setForm({ ...form, groupType: Number(e.target.value) })}
                 className="mt-1 w-full rounded-md border px-3 py-2 text-sm bg-white"
               >
-                {Object.entries(GroupTypeLabels).map(([val, label]) => (
-                  <option key={val} value={val}>{label}</option>
+                {Object.entries(GROUP_TYPE_KEYS).map(([val, key]) => (
+                  <option key={val} value={val}>{t(key)}</option>
                 ))}
               </select>
             </div>
             <div className="md:col-span-2">
-              <label className="text-sm font-medium">Description</label>
+              <label className="text-sm font-medium">{t("groups.descriptionLabel")}</label>
               <input
                 type="text"
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-                placeholder="Optional description"
+                placeholder={t("groups.descriptionPlaceholder")}
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Parent Group</label>
+              <label className="text-sm font-medium">{t("groups.parentGroup")}</label>
               <select
                 value={form.parentGroupId}
                 onChange={(e) => setForm({ ...form, parentGroupId: e.target.value })}
                 className="mt-1 w-full rounded-md border px-3 py-2 text-sm bg-white"
               >
-                <option value="">None (Top Level)</option>
+                <option value="">{t("groups.noneTopLevel")}</option>
                 {parentGroups.map((g) => (
                   <option key={g.id} value={g.id}>{g.name}</option>
                 ))}
@@ -228,17 +230,17 @@ function GroupForm({
                 onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
                 className="rounded"
               />
-              Active
+              {t("common.active")}
             </label>
           )}
         </form>
       </DialogContent>
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
+          {t("common.cancel")}
         </Button>
         <Button type="submit" form="group-form" disabled={isLoading}>
-          {initialData ? "Update" : "Create"} Group
+          {initialData ? t("groups.updateGroup") : t("groups.createGroup")}
         </Button>
       </DialogFooter>
     </Dialog>
@@ -258,6 +260,7 @@ function GroupCard({
   onAssignStation: (groupId: string) => void;
   level?: number;
 }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
   const [showAssign, setShowAssign] = useState(false);
@@ -334,7 +337,7 @@ function GroupCard({
                 <div className="flex items-center gap-2">
                   <CardTitle className="text-base truncate">{group.name}</CardTitle>
                   {!group.isActive && (
-                    <Badge variant="outline" className="text-xs shrink-0">Inactive</Badge>
+                    <Badge variant="outline" className="text-xs shrink-0">{t("common.inactive")}</Badge>
                   )}
                 </div>
                 {group.description && (
@@ -351,7 +354,7 @@ function GroupCard({
             <div className="flex items-center gap-2 shrink-0 ml-4">
               <Badge variant="secondary" className="text-xs">
                 <TypeIcon className="h-3 w-3 mr-1" />
-                {GroupTypeLabels[group.groupType]}
+                {t(GROUP_TYPE_KEYS[group.groupType])}
               </Badge>
               {group.region && (
                 <Badge variant="outline" className="text-xs">
@@ -360,12 +363,12 @@ function GroupCard({
                 </Badge>
               )}
               <Badge className="bg-primary/10 text-primary text-xs">
-                {group.stationCount} station{group.stationCount !== 1 ? "s" : ""}
+                {group.stationCount} {group.stationCount !== 1 ? t("groups.stationPlural") : t("groups.station")}
               </Badge>
               {group.childGroupCount > 0 && (
                 <Badge variant="outline" className="text-xs">
                   <Layers className="h-3 w-3 mr-1" />
-                  {group.childGroupCount} sub
+                  {group.childGroupCount} {t("groups.sub")}
                 </Badge>
               )}
               <Button variant="outline" size="sm" onClick={() => setShowAssign(!showAssign)}>
@@ -378,7 +381,7 @@ function GroupCard({
                 variant="destructive"
                 size="sm"
                 onClick={() => {
-                  if (confirm(`Delete "${group.name}"? Stations will be unassigned, child groups moved up.`))
+                  if (confirm(t("groups.deleteConfirm").replace("{name}", group.name)))
                     onDelete(group.id);
                 }}
               >
@@ -392,7 +395,7 @@ function GroupCard({
         {showAssign && (
           <CardContent className="pt-0 pb-2">
             <div className="border rounded-lg p-3 bg-muted/30">
-              <p className="text-sm font-medium mb-2">Add station to this group:</p>
+              <p className="text-sm font-medium mb-2">{t("groups.addStationToGroup")}</p>
               <div className="flex flex-wrap gap-2">
                 {unassignedStations && unassignedStations.length > 0 ? (
                   unassignedStations.map((station) => (
@@ -408,7 +411,7 @@ function GroupCard({
                     </Button>
                   ))
                 ) : (
-                  <p className="text-sm text-muted-foreground">No unassigned stations available</p>
+                  <p className="text-sm text-muted-foreground">{t("groups.noUnassignedStations")}</p>
                 )}
               </div>
             </div>
@@ -429,13 +432,13 @@ function GroupCard({
                 {/* Stats row */}
                 {stats && stats.totalStations > 0 && (
                   <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
-                    <StatCard icon={Building2} label="Stations" value={stats.totalStations} iconColor="bg-muted text-muted-foreground" />
-                    <StatCard icon={Zap} label="Connectors" value={stats.totalConnectors} iconColor="bg-muted text-muted-foreground" />
-                    <StatCard icon={Zap} label="Available" value={stats.availableConnectors} iconColor="bg-green-100 text-green-700" />
-                    <StatCard icon={Zap} label="Occupied" value={stats.occupiedConnectors} iconColor="bg-blue-100 text-blue-700" />
-                    <StatCard icon={AlertTriangle} label="Faulted" value={stats.faultedConnectors} iconColor={stats.faultedConnectors > 0 ? "bg-red-100 text-red-700" : "bg-muted text-muted-foreground"} />
-                    <StatCard icon={WifiOff} label="Offline" value={stats.offlineStations} iconColor={stats.offlineStations > 0 ? "bg-muted text-muted-foreground" : "bg-muted text-muted-foreground"} />
-                    <StatCard icon={BarChart3} label="Capacity" value={`${stats.totalCapacityKw.toFixed(0)} kW`} iconColor="bg-muted text-muted-foreground" />
+                    <StatCard icon={Building2} label={t("groups.stations")} value={stats.totalStations} iconColor="bg-muted text-muted-foreground" />
+                    <StatCard icon={Zap} label={t("groups.connectors")} value={stats.totalConnectors} iconColor="bg-muted text-muted-foreground" />
+                    <StatCard icon={Zap} label={t("groups.available")} value={stats.availableConnectors} iconColor="bg-green-100 text-green-700" />
+                    <StatCard icon={Zap} label={t("groups.occupied")} value={stats.occupiedConnectors} iconColor="bg-blue-100 text-blue-700" />
+                    <StatCard icon={AlertTriangle} label={t("groups.faulted")} value={stats.faultedConnectors} iconColor={stats.faultedConnectors > 0 ? "bg-red-100 text-red-700" : "bg-muted text-muted-foreground"} />
+                    <StatCard icon={WifiOff} label={t("groups.offline")} value={stats.offlineStations} iconColor={stats.offlineStations > 0 ? "bg-muted text-muted-foreground" : "bg-muted text-muted-foreground"} />
+                    <StatCard icon={BarChart3} label={t("groups.capacity")} value={`${stats.totalCapacityKw.toFixed(0)} kW`} iconColor="bg-muted text-muted-foreground" />
                   </div>
                 )}
 
@@ -443,7 +446,7 @@ function GroupCard({
                 {detail.childGroups && detail.childGroups.length > 0 && (
                   <div>
                     <h4 className="text-sm font-medium mb-2 flex items-center gap-1">
-                      <Layers className="h-4 w-4" /> Sub-Groups
+                      <Layers className="h-4 w-4" /> {t("groups.subGroups")}
                     </h4>
                     <div className="space-y-2">
                       {detail.childGroups.map((child) => (
@@ -464,7 +467,7 @@ function GroupCard({
                 {detail.stations && detail.stations.length > 0 ? (
                   <div>
                     <h4 className="text-sm font-medium mb-2 flex items-center gap-1">
-                      <MapPin className="h-4 w-4" /> Stations
+                      <MapPin className="h-4 w-4" /> {t("groups.stations")}
                     </h4>
                     <div className="space-y-2">
                       {detail.stations.map((station) => {
@@ -488,7 +491,7 @@ function GroupCard({
                                 <Badge variant="secondary" className="text-xs">{station.status}</Badge>
                               )}
                               <span className="text-xs text-muted-foreground">
-                                {station.availableConnectors}/{station.connectorCount} avail
+                                {station.availableConnectors}/{station.connectorCount} {t("groups.avail")}
                               </span>
                               <Button
                                 variant="ghost"
@@ -508,8 +511,8 @@ function GroupCard({
                 ) : (
                   <EmptyState
                     icon={MapPin}
-                    title="No stations assigned"
-                    description="Click + to add stations to this group."
+                    title={t("groups.noStationsAssigned")}
+                    description={t("groups.noStationsAssignedDesc")}
                     className="py-6"
                   />
                 )}
@@ -525,6 +528,7 @@ function GroupCard({
 // --- Main Page ---
 
 export default function StationGroupsPage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [isCreating, setIsCreating] = useState(false);
   const [editingGroup, setEditingGroup] = useState<StationGroupList | null>(null);
@@ -596,12 +600,12 @@ export default function StationGroupsPage() {
       {/* Sticky Header */}
       <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <PageHeader
-          title="Station Groups"
-          description="Organize stations by geography, operations, or business units"
+          title={t("groups.title")}
+          description={t("groups.description")}
         >
           <Button onClick={() => { setIsCreating(true); setEditingGroup(null); }} disabled={isCreating}>
             <Plus className="mr-2 h-4 w-4" />
-            Add Group
+            {t("groups.addGroup")}
           </Button>
         </PageHeader>
       </div>
@@ -610,14 +614,14 @@ export default function StationGroupsPage() {
         {/* Summary cards */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <StatCard
-            label="All Groups"
+            label={t("groups.allGroups")}
             value={allGroups.length}
             icon={FolderTree}
             iconColor="bg-primary/10 text-primary"
             onClick={() => setFilterType(null)}
             className={filterType === null ? "ring-2 ring-primary" : ""}
           />
-          {Object.entries(GroupTypeLabels).map(([val, label]) => {
+          {Object.entries(GROUP_TYPE_KEYS).map(([val, key]) => {
             const type = Number(val);
             const Icon = GroupTypeIcons[type];
             const style = GROUP_TYPE_STYLES[type];
@@ -625,7 +629,7 @@ export default function StationGroupsPage() {
             return (
               <StatCard
                 key={val}
-                label={label}
+                label={t(key)}
                 value={typeCounts[type] || 0}
                 icon={Icon}
                 iconColor={style?.iconColor}
@@ -638,7 +642,7 @@ export default function StationGroupsPage() {
 
         {/* Quick stats bar */}
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <span>{totalStations} total stations assigned</span>
+          <span>{totalStations} {t("groups.totalStationsAssigned")}</span>
           <span className="text-muted-foreground/30">|</span>
           <label className="flex items-center gap-1.5 cursor-pointer">
             <input
@@ -647,7 +651,7 @@ export default function StationGroupsPage() {
               onChange={(e) => setShowTopLevelOnly(e.target.checked)}
               className="rounded"
             />
-            Top-level only
+            {t("groups.topLevelOnly")}
           </label>
         </div>
 
@@ -698,14 +702,14 @@ export default function StationGroupsPage() {
           ) : (
             <EmptyState
               icon={FolderTree}
-              title="No groups found"
+              title={t("groups.noGroupsFound")}
               description={
                 filterType !== null
-                  ? `No ${GroupTypeLabels[filterType]} groups yet. Create one to get started.`
-                  : "Create your first group to organize charging stations."
+                  ? t("groups.noGroupsDesc").replace("{type}", t(GROUP_TYPE_KEYS[filterType]))
+                  : t("groups.noGroupsDesc")
               }
               action={{
-                label: "Create Group",
+                label: t("groups.createGroup"),
                 onClick: () => setIsCreating(true),
               }}
             />

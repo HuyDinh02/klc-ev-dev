@@ -17,6 +17,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n";
 import {
   Plus,
   Edit,
@@ -55,6 +56,7 @@ interface TariffFormData {
 }
 
 export default function TariffsPage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -127,10 +129,10 @@ export default function TariffsPage() {
       } else if (apiError?.message) {
         setFormError(apiError.message);
       } else {
-        setFormError("Failed to save tariff. Please check your input.");
+        setFormError(t("tariffs.saveFailed"));
       }
     } else {
-      setFormError("Unable to connect to server. Please try again.");
+      setFormError(t("tariffs.connectionError"));
     }
   };
 
@@ -222,10 +224,10 @@ export default function TariffsPage() {
     <div className="flex flex-col">
       {/* Sticky Header */}
       <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <PageHeader title="Tariff Management" description="Configure pricing plans for charging sessions">
+        <PageHeader title={t("tariffs.title")} description={t("tariffs.description")}>
           <Button onClick={() => setIsCreating(true)} disabled={isCreating || !!editingId}>
             <Plus className="mr-2 h-4 w-4" />
-            Add Tariff
+            {t("tariffs.addTariff")}
           </Button>
         </PageHeader>
       </div>
@@ -234,26 +236,26 @@ export default function TariffsPage() {
         {/* KPI Stats */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
-            label="Total Tariffs"
+            label={t("tariffs.totalTariffs")}
             value={totalTariffs}
             icon={Receipt}
             iconColor="bg-primary/10 text-primary"
           />
           <StatCard
-            label="Active"
+            label={t("tariffs.active")}
             value={activeTariffs}
             icon={Check}
             iconColor="bg-green-500/10 text-green-600"
           />
           <StatCard
-            label="Avg Rate/kWh"
+            label={t("tariffs.avgRatePerKwh")}
             value={formatCurrency(Math.round(avgRate))}
             icon={BarChart3}
             iconColor="bg-blue-500/10 text-blue-600"
           />
           <StatCard
-            label="Default Plan"
-            value={defaultTariff?.name ?? "None"}
+            label={t("tariffs.defaultPlan")}
+            value={defaultTariff?.name ?? t("tariffs.none")}
             icon={Star}
             iconColor="bg-amber-500/10 text-amber-600"
           />
@@ -262,7 +264,7 @@ export default function TariffsPage() {
         {/* Create/Edit Dialog */}
         <Dialog open={isCreating || !!editingId} onClose={handleCloseDialog} size="lg">
           <DialogHeader onClose={handleCloseDialog}>
-            {editingId ? "Edit Tariff" : "New Tariff"}
+            {editingId ? t("tariffs.editTariff") : t("tariffs.newTariff")}
           </DialogHeader>
           <form onSubmit={handleSubmit}>
             <DialogContent className="space-y-4">
@@ -274,27 +276,27 @@ export default function TariffsPage() {
               )}
               <div className="grid gap-4 md:grid-cols-2">
                 <Input
-                  label="Name"
+                  label={t("tariffs.name")}
                   type="text"
                   value={formData.name}
                   onChange={(e) =>
                     setFormData({ ...formData, name: e.target.value })
                   }
-                  placeholder="e.g., Standard Rate"
+                  placeholder={t("tariffs.namePlaceholder")}
                   required
                 />
                 <Input
-                  label="Description"
+                  label={t("tariffs.descriptionLabel")}
                   type="text"
                   value={formData.description}
                   onChange={(e) =>
                     setFormData({ ...formData, description: e.target.value })
                   }
-                  placeholder="e.g., Default pricing for all stations"
+                  placeholder={t("tariffs.descriptionPlaceholder")}
                 />
               </div>
               <Input
-                label="Effective From"
+                label={t("tariffs.effectiveFrom")}
                 type="date"
                 value={formData.effectiveFrom}
                 onChange={(e) =>
@@ -304,7 +306,7 @@ export default function TariffsPage() {
               />
               <div className="grid gap-4 md:grid-cols-2">
                 <Input
-                  label="Base Rate per kWh"
+                  label={t("tariffs.baseRatePerKwh")}
                   type="number"
                   value={formData.baseRatePerKwh}
                   onChange={(e) =>
@@ -317,11 +319,11 @@ export default function TariffsPage() {
                   max={1000000}
                   step={100}
                   suffix="đ/kWh"
-                  hint="Max 1,000,000"
+                  hint={t("tariffs.maxRate")}
                   required
                 />
                 <Input
-                  label="Tax Rate"
+                  label={t("tariffs.taxRate")}
                   type="number"
                   value={formData.taxRatePercent}
                   onChange={(e) =>
@@ -343,13 +345,13 @@ export default function TariffsPage() {
                 variant="outline"
                 onClick={handleCloseDialog}
               >
-                Cancel
+                {t("common.cancel")}
               </Button>
               <Button
                 type="submit"
                 disabled={createMutation.isPending || updateMutation.isPending}
               >
-                {editingId ? "Update" : "Create"} Tariff
+                {editingId ? t("tariffs.updateTariff") : t("tariffs.createTariff")}
               </Button>
             </DialogFooter>
           </form>
@@ -371,7 +373,7 @@ export default function TariffsPage() {
                   <div className="absolute -top-2 -right-2">
                     <Badge variant="default" className="flex items-center gap-1">
                       <Star className="h-3 w-3" />
-                      Default
+                      {t("tariffs.default")}
                     </Badge>
                   </div>
                 )}
@@ -379,7 +381,7 @@ export default function TariffsPage() {
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">{tariff.name}</CardTitle>
                     <Badge variant={tariff.isActive ? "success" : "secondary"}>
-                      {tariff.isActive ? "Active" : "Inactive"}
+                      {tariff.isActive ? t("common.active") : t("common.inactive")}
                     </Badge>
                   </div>
                   {tariff.description && (
@@ -393,7 +395,7 @@ export default function TariffsPage() {
                     <div className="flex items-center justify-between">
                       <span className="flex items-center gap-2 text-sm">
                         <Zap className="h-4 w-4 text-amber-500" />
-                        Base Rate/kWh
+                        {t("tariffs.baseRate")}
                       </span>
                       <span className="font-semibold tabular-nums text-right">
                         {formatCurrency(tariff.baseRatePerKwh)}
@@ -402,7 +404,7 @@ export default function TariffsPage() {
                     <div className="flex items-center justify-between">
                       <span className="flex items-center gap-2 text-sm">
                         <DollarSign className="h-4 w-4 text-green-600" />
-                        Total Rate/kWh
+                        {t("tariffs.totalRate")}
                       </span>
                       <span className="font-semibold tabular-nums text-right">
                         {formatCurrency(tariff.totalRatePerKwh)}
@@ -411,7 +413,7 @@ export default function TariffsPage() {
                     <div className="flex items-center justify-between">
                       <span className="flex items-center gap-2 text-sm">
                         <Percent className="h-4 w-4 text-blue-600" />
-                        Tax Rate
+                        {t("tariffs.taxRate")}
                       </span>
                       <span className="font-semibold tabular-nums text-right">
                         {tariff.taxRatePercent}%
@@ -457,7 +459,7 @@ export default function TariffsPage() {
                         variant="destructive"
                         size="sm"
                         onClick={() => {
-                          if (confirm("Delete this tariff?")) {
+                          if (confirm(t("tariffs.deleteConfirm"))) {
                             deleteMutation.mutate(tariff.id);
                           }
                         }}
@@ -473,10 +475,10 @@ export default function TariffsPage() {
             <div className="col-span-full">
               <EmptyState
                 icon={Receipt}
-                title="No tariffs found"
-                description="Create your first tariff to get started."
+                title={t("tariffs.noTariffsFound")}
+                description={t("tariffs.noTariffsDescription")}
                 action={{
-                  label: "Add Tariff",
+                  label: t("tariffs.addTariff"),
                   onClick: () => setIsCreating(true),
                 }}
               />

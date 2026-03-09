@@ -9,6 +9,7 @@ import { StatCard } from "@/components/ui/stat-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonCard, SkeletonTable } from "@/components/ui/skeleton";
 import { vehiclesApi } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n";
 import { Car, Battery, Plug, Star, Search } from "lucide-react";
 
 interface Vehicle {
@@ -36,6 +37,7 @@ const connectorTypeLabels: Record<number, string> = {
 };
 
 export default function VehiclesPage() {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
 
   const { data, isLoading } = useQuery({
@@ -65,11 +67,11 @@ export default function VehiclesPage() {
       <div className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="p-6 pb-4">
           <PageHeader
-            title="Vehicles"
-            description="Registered EV vehicles across all users"
+            title={t("vehicles.title")}
+            description={t("vehicles.description")}
           >
             <Badge variant="secondary" className="text-sm">
-              {vehicles.length} total
+              {vehicles.length} {t("common.total").toLowerCase()}
             </Badge>
           </PageHeader>
         </div>
@@ -80,7 +82,7 @@ export default function VehiclesPage() {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               type="search"
-              placeholder="Search by make, model, plate..."
+              placeholder={t("vehicles.searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-10 w-full rounded-md border bg-background pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
@@ -101,25 +103,25 @@ export default function VehiclesPage() {
         ) : (
           <div className="grid gap-4 md:grid-cols-4">
             <StatCard
-              label="Total Vehicles"
+              label={t("vehicles.totalVehicles")}
               value={vehicles.length}
               icon={Car}
               iconColor="bg-blue-50 text-blue-600"
             />
             <StatCard
-              label="Active"
+              label={t("common.active")}
               value={vehicles.filter((v) => v.isActive).length}
               icon={Battery}
               iconColor="bg-green-50 text-green-600"
             />
             <StatCard
-              label="With CCS2"
+              label={t("vehicles.withCCS2")}
               value={vehicles.filter((v) => v.preferredConnectorType === 1).length}
               icon={Plug}
               iconColor="bg-purple-50 text-purple-600"
             />
             <StatCard
-              label="Default Set"
+              label={t("vehicles.defaultSet")}
               value={vehicles.filter((v) => v.isDefault).length}
               icon={Star}
               iconColor="bg-[var(--color-warning-light)] text-[var(--color-warning)]"
@@ -136,11 +138,11 @@ export default function VehiclesPage() {
               {filtered.length === 0 ? (
                 <EmptyState
                   icon={search ? Search : Car}
-                  title={search ? "No vehicles match your search" : "No vehicles registered yet"}
+                  title={search ? t("vehicles.noVehiclesMatch") : t("vehicles.noVehiclesYet")}
                   description={
                     search
-                      ? "Try adjusting your search terms."
-                      : "Vehicles will appear here once users register them in the mobile app."
+                      ? t("vehicles.noVehiclesMatchDesc")
+                      : t("vehicles.noVehiclesYetDesc")
                   }
                 />
               ) : (
@@ -148,12 +150,12 @@ export default function VehiclesPage() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b bg-muted/50">
-                        <th className="px-4 py-3 text-left text-sm font-medium">Vehicle</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium">License Plate</th>
-                        <th className="px-4 py-3 text-right text-sm font-medium">Battery</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium">Connector</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium">Registered</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium">{t("vehicles.vehicle")}</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium">{t("vehicles.licensePlate")}</th>
+                        <th className="px-4 py-3 text-right text-sm font-medium">{t("vehicles.battery")}</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium">{t("vehicles.connector")}</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium">{t("common.status")}</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium">{t("vehicles.registered")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -204,7 +206,7 @@ export default function VehiclesPage() {
                             <Badge
                               variant={vehicle.isActive ? "success" : "secondary"}
                             >
-                              {vehicle.isActive ? "Active" : "Inactive"}
+                              {vehicle.isActive ? t("common.active") : t("common.inactive")}
                             </Badge>
                           </td>
                           <td className="px-4 py-3 text-muted-foreground">

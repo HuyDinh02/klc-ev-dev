@@ -10,6 +10,7 @@ import { StatCard } from "@/components/ui/stat-card";
 import { Dialog, DialogHeader, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonCard } from "@/components/ui/skeleton";
+import { useTranslation } from "@/lib/i18n";
 import { api } from "@/lib/api";
 import {
   Bell,
@@ -39,13 +40,13 @@ interface Alert {
 
 // AlertType: 0=StationOffline, 1=ConnectorFault, 2=LowUtilization, 3=HighUtilization,
 // 4=FirmwareUpdate, 5=PaymentFailure, 6=EInvoiceFailure, 7=HeartbeatTimeout
-const AlertTypeLabels: Record<number, string> = {
-  0: "Station Offline", 1: "Connector Fault", 2: "Low Utilization", 3: "High Utilization",
-  4: "Firmware Update", 5: "Payment Failure", 6: "E-Invoice Failure", 7: "Heartbeat Timeout",
+const AlertTypeKeys: Record<number, string> = {
+  0: "alerts.stationOffline", 1: "alerts.connectorFault", 2: "alerts.lowUtilization", 3: "alerts.highUtilization",
+  4: "alerts.firmwareUpdate", 5: "alerts.paymentFailure", 6: "alerts.eInvoiceFailure", 7: "alerts.heartbeatTimeout",
 };
 
-const AlertStatusLabels: Record<number, string> = {
-  0: "New", 1: "Acknowledged", 2: "Resolved",
+const AlertStatusKeys: Record<number, string> = {
+  0: "alerts.new", 1: "alerts.acknowledged", 2: "alerts.resolved",
 };
 
 // Critical types: StationOffline, ConnectorFault, PaymentFailure, HeartbeatTimeout
@@ -60,6 +61,7 @@ interface AlertStats {
 }
 
 export default function AlertsPage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [typeFilter, setTypeFilter] = useState("all");
   const [acknowledgedFilter, setAcknowledgedFilter] = useState("all");
@@ -147,25 +149,25 @@ export default function AlertsPage() {
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
 
-    if (days > 0) return `${days}d ago`;
-    if (hours > 0) return `${hours}h ago`;
-    if (minutes > 0) return `${minutes}m ago`;
-    return "Just now";
+    if (days > 0) return `${days}${t("alerts.daysAgo")}`;
+    if (hours > 0) return `${hours}${t("alerts.hoursAgo")}`;
+    if (minutes > 0) return `${minutes}${t("alerts.minutesAgo")}`;
+    return t("alerts.justNow");
   };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <PageHeader title="Alerts" description="System alerts and notifications">
+      <PageHeader title={t("alerts.title")} description={t("alerts.description")}>
         <Badge variant="secondary" className="text-sm">
-          {stats?.unacknowledgedCount || 0} unacknowledged
+          {stats?.unacknowledgedCount || 0} {t("alerts.unacknowledged")}
         </Badge>
       </PageHeader>
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4">
         <StatCard
-          label="Critical"
+          label={t("alerts.critical")}
           value={stats?.criticalCount || 0}
           icon={AlertCircle}
           iconColor="bg-red-50 text-red-600"
@@ -175,7 +177,7 @@ export default function AlertsPage() {
           }
         />
         <StatCard
-          label="Warning"
+          label={t("alerts.warning")}
           value={stats?.warningCount || 0}
           icon={AlertTriangle}
           iconColor="bg-amber-50 text-amber-600"
@@ -185,7 +187,7 @@ export default function AlertsPage() {
           }
         />
         <StatCard
-          label="Info"
+          label={t("alerts.info")}
           value={stats?.infoCount || 0}
           icon={Info}
           iconColor="bg-blue-50 text-blue-600"
@@ -193,7 +195,7 @@ export default function AlertsPage() {
           onClick={() => setTypeFilter(typeFilter === "info" ? "all" : "info")}
         />
         <StatCard
-          label="Unacknowledged"
+          label={t("alerts.unacknowledged")}
           value={stats?.unacknowledgedCount || 0}
           icon={Bell}
           iconColor="bg-primary/10 text-primary"
@@ -215,20 +217,20 @@ export default function AlertsPage() {
               onChange={(e) => setTypeFilter(e.target.value)}
               className="rounded-lg border bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50 focus:border-primary"
             >
-              <option value="all">All Severity</option>
-              <option value="critical">Critical</option>
-              <option value="warning">Warning</option>
-              <option value="info">Info</option>
+              <option value="all">{t("alerts.allSeverity")}</option>
+              <option value="critical">{t("alerts.critical")}</option>
+              <option value="warning">{t("alerts.warning")}</option>
+              <option value="info">{t("alerts.info")}</option>
             </select>
             <select
               value={acknowledgedFilter}
               onChange={(e) => setAcknowledgedFilter(e.target.value)}
               className="rounded-lg border bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50 focus:border-primary"
             >
-              <option value="all">All Status</option>
-              <option value="0">New</option>
-              <option value="1">Acknowledged</option>
-              <option value="2">Resolved</option>
+              <option value="all">{t("alerts.allStatus")}</option>
+              <option value="0">{t("alerts.new")}</option>
+              <option value="1">{t("alerts.acknowledged")}</option>
+              <option value="2">{t("alerts.resolved")}</option>
             </select>
           </div>
         </CardContent>
@@ -272,11 +274,11 @@ export default function AlertsPage() {
                         <div className="flex items-center gap-2">
                           <h3 className="font-semibold">{alert.title}</h3>
                           <Badge variant={getTypeColor(alert.type)}>
-                            {AlertTypeLabels[alert.type] || "Alert"}
+                            {AlertTypeKeys[alert.type] ? t(AlertTypeKeys[alert.type]) : t("alerts.alert")}
                           </Badge>
                           {alert.status > 0 && (
                             <Badge variant="secondary">
-                              {AlertStatusLabels[alert.status]}
+                              {AlertStatusKeys[alert.status] ? t(AlertStatusKeys[alert.status]) : ""}
                             </Badge>
                           )}
                         </div>
@@ -297,7 +299,7 @@ export default function AlertsPage() {
                         </div>
                         {alert.status >= 1 && alert.acknowledgedBy && (
                           <p className="text-xs text-muted-foreground">
-                            Acknowledged by {alert.acknowledgedBy}{alert.acknowledgedAt ? ` at ${formatDate(alert.acknowledgedAt)}` : ""}
+                            {t("alerts.acknowledgedBy")} {alert.acknowledgedBy}{alert.acknowledgedAt ? ` ${t("alerts.at")} ${formatDate(alert.acknowledgedAt)}` : ""}
                           </p>
                         )}
                       </div>
@@ -328,8 +330,8 @@ export default function AlertsPage() {
         ) : (
           <EmptyState
             icon={Bell}
-            title="No alerts found"
-            description="There are no alerts matching your current filters."
+            title={t("alerts.noAlertsFound")}
+            description={t("alerts.noAlertsDescription")}
           />
         )}
       </div>
@@ -338,7 +340,7 @@ export default function AlertsPage() {
       {(totalCount > pageSize || cursorStack.length > 0) && (
         <div className="flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
-            {totalCount} total alerts
+            {totalCount} {t("alerts.totalAlerts")}
           </div>
           <div className="flex gap-2">
             {cursorStack.length > 0 && (
@@ -379,41 +381,41 @@ export default function AlertsPage() {
         <DialogHeader onClose={() => setSelectedAlert(null)}>
           <div className="flex items-center gap-2">
             {selectedAlert && getTypeIcon(selectedAlert.type)}
-            Alert Details
+            {t("alerts.alertDetails")}
           </div>
         </DialogHeader>
         <DialogContent className="space-y-4">
           {selectedAlert && (
             <>
               <div>
-                <p className="text-sm text-muted-foreground">Title</p>
+                <p className="text-sm text-muted-foreground">{t("alerts.titleLabel")}</p>
                 <p className="font-medium">{selectedAlert.title}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Message</p>
+                <p className="text-sm text-muted-foreground">{t("alerts.messageLabel")}</p>
                 <p>{selectedAlert.message}</p>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <p className="text-sm text-muted-foreground">Type</p>
+                  <p className="text-sm text-muted-foreground">{t("alerts.typeLabel")}</p>
                   <Badge variant={getTypeColor(selectedAlert.type)}>
-                    {AlertTypeLabels[selectedAlert.type] || "Alert"}
+                    {AlertTypeKeys[selectedAlert.type] ? t(AlertTypeKeys[selectedAlert.type]) : t("alerts.alert")}
                   </Badge>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Status</p>
+                  <p className="text-sm text-muted-foreground">{t("alerts.statusLabel")}</p>
                   <Badge
                     variant={
                       selectedAlert.status > 0 ? "secondary" : "default"
                     }
                   >
-                    {AlertStatusLabels[selectedAlert.status] || "New"}
+                    {AlertStatusKeys[selectedAlert.status] ? t(AlertStatusKeys[selectedAlert.status]) : t("alerts.new")}
                   </Badge>
                 </div>
               </div>
               {selectedAlert.stationName && (
                 <div>
-                  <p className="text-sm text-muted-foreground">Station</p>
+                  <p className="text-sm text-muted-foreground">{t("alerts.stationLabel")}</p>
                   <p className="flex items-center gap-2">
                     <MapPin className="h-4 w-4" />
                     {selectedAlert.stationName}
@@ -421,14 +423,14 @@ export default function AlertsPage() {
                 </div>
               )}
               <div>
-                <p className="text-sm text-muted-foreground">Created</p>
+                <p className="text-sm text-muted-foreground">{t("alerts.createdLabel")}</p>
                 <p>{formatDate(selectedAlert.createdAt)}</p>
               </div>
               {selectedAlert.status >= 1 && selectedAlert.acknowledgedBy && (
                 <div>
-                  <p className="text-sm text-muted-foreground">Acknowledged</p>
+                  <p className="text-sm text-muted-foreground">{t("alerts.acknowledgedLabel")}</p>
                   <p>
-                    {selectedAlert.acknowledgedBy}{selectedAlert.acknowledgedAt ? ` at ${formatDate(selectedAlert.acknowledgedAt)}` : ""}
+                    {selectedAlert.acknowledgedBy}{selectedAlert.acknowledgedAt ? ` ${t("alerts.at")} ${formatDate(selectedAlert.acknowledgedAt)}` : ""}
                   </p>
                 </div>
               )}
@@ -445,7 +447,7 @@ export default function AlertsPage() {
               }}
             >
               <CheckCircle2 className="mr-2 h-4 w-4" />
-              Acknowledge Alert
+              {t("alerts.acknowledgeAlert")}
             </Button>
           </DialogFooter>
         )}

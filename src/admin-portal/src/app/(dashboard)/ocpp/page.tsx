@@ -11,6 +11,7 @@ import { Dialog, DialogHeader, DialogContent, DialogFooter } from "@/components/
 import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonTable } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n";
 import {
   Plug,
   Wifi,
@@ -81,6 +82,7 @@ const vendorProfileVariant = (vp: number): "info" | "warning" | "secondary" => {
 };
 
 export default function OcppManagementPage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [selectedCp, setSelectedCp] = useState<string | null>(null);
   const [showRemoteStart, setShowRemoteStart] = useState(false);
@@ -230,8 +232,8 @@ export default function OcppManagementPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="OCPP Management"
-        description={`Connected chargers: ${connections.length}`}
+        title={t("ocpp.title")}
+        description={t("ocpp.connectedChargers").replace("{count}", String(connections.length))}
         className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 pb-4"
       >
         <Button
@@ -240,7 +242,7 @@ export default function OcppManagementPage() {
           onClick={() => queryClient.invalidateQueries({ queryKey: ["ocpp-connections"] })}
         >
           <RefreshCw className="mr-2 h-4 w-4" />
-          Refresh
+          {t("common.refresh")}
         </Button>
       </PageHeader>
 
@@ -251,7 +253,7 @@ export default function OcppManagementPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Plug className="h-5 w-5" />
-                Connected Chargers
+                {t("ocpp.connectedChargersCard")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -260,8 +262,8 @@ export default function OcppManagementPage() {
               ) : connections.length === 0 ? (
                 <EmptyState
                   icon={Plug}
-                  title="No chargers connected"
-                  description="No chargers are currently connected via OCPP"
+                  title={t("ocpp.noChargersConnected")}
+                  description={t("ocpp.noChargersDescription")}
                 />
               ) : (
                 <div className="space-y-2">
@@ -280,7 +282,7 @@ export default function OcppManagementPage() {
                         <div>
                           <div className="font-medium">{conn.chargePointId}</div>
                           <div className="text-xs text-muted-foreground">
-                            Last heartbeat: {timeSince(conn.lastHeartbeat)}
+                            {t("ocpp.lastHeartbeat")}: {timeSince(conn.lastHeartbeat)}
                           </div>
                         </div>
                       </div>
@@ -289,7 +291,7 @@ export default function OcppManagementPage() {
                           {VendorProfileMap[conn.vendorProfile] || "Unknown"}
                         </Badge>
                         <Badge variant={conn.isRegistered ? "success" : "warning"}>
-                          {conn.isRegistered ? "Registered" : "Pending"}
+                          {conn.isRegistered ? t("ocpp.registered") : t("ocpp.pending")}
                         </Badge>
                       </div>
                     </div>
@@ -305,10 +307,10 @@ export default function OcppManagementPage() {
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="h-5 w-5" />
-                  OCPP Event Log
+                  {t("ocpp.eventLog")}
                 </CardTitle>
                 <Input
-                  placeholder="Filter by cpId..."
+                  placeholder={t("ocpp.filterByCpId")}
                   value={eventFilter}
                   onChange={(e) => setEventFilter(e.target.value)}
                   className="w-48"
@@ -321,19 +323,19 @@ export default function OcppManagementPage() {
               ) : events.length === 0 ? (
                 <EmptyState
                   icon={FileText}
-                  title="No events recorded"
-                  description="OCPP events will appear here when chargers communicate"
+                  title={t("ocpp.noEventsRecorded")}
+                  description={t("ocpp.noEventsDescription")}
                 />
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b text-left text-muted-foreground">
-                        <th className="pb-2">Time</th>
-                        <th className="pb-2">Charger</th>
-                        <th className="pb-2">Action</th>
-                        <th className="pb-2">Profile</th>
-                        <th className="pb-2 text-right">Latency</th>
+                        <th className="pb-2">{t("ocpp.time")}</th>
+                        <th className="pb-2">{t("ocpp.charger")}</th>
+                        <th className="pb-2">{t("ocpp.action")}</th>
+                        <th className="pb-2">{t("ocpp.profile")}</th>
+                        <th className="pb-2 text-right">{t("ocpp.latency")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -382,99 +384,99 @@ export default function OcppManagementPage() {
                     <WifiOff className="h-4 w-4 text-red-500" />
                   )}
                   <Badge variant={detail.isOnline ? "success" : "destructive"}>
-                    {detail.isOnline ? "Online" : "Offline"}
+                    {detail.isOnline ? t("common.online") : t("common.offline")}
                   </Badge>
                 </div>
 
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Vendor</span>
+                    <span className="text-muted-foreground">{t("ocpp.vendor")}</span>
                     <span>{detail.vendor || "-"}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Model</span>
+                    <span className="text-muted-foreground">{t("ocpp.model")}</span>
                     <span>{detail.model || "-"}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Firmware</span>
+                    <span className="text-muted-foreground">{t("ocpp.firmware")}</span>
                     <span>{detail.firmwareVersion || "-"}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Serial</span>
+                    <span className="text-muted-foreground">{t("ocpp.serial")}</span>
                     <span className="font-mono text-xs">{detail.serialNumber || "-"}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Profile</span>
+                    <span className="text-muted-foreground">{t("ocpp.profile")}</span>
                     <Badge variant={vendorProfileVariant(detail.vendorProfile)}>
                       {VendorProfileMap[detail.vendorProfile] || "Unknown"}
                     </Badge>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Connected</span>
+                    <span className="text-muted-foreground">{t("ocpp.connected")}</span>
                     <span className="text-xs">{formatTime(detail.connectedAt)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Last Heartbeat</span>
+                    <span className="text-muted-foreground">{t("ocpp.lastHeartbeat")}</span>
                     <span className="text-xs">{formatTime(detail.lastHeartbeat)}</span>
                   </div>
                 </div>
 
                 {detail.isOnline && (
                   <div className="space-y-2 pt-4 border-t">
-                    <h4 className="font-medium text-sm">Remote Commands</h4>
+                    <h4 className="font-medium text-sm">{t("ocpp.remoteCommands")}</h4>
                     <div className="grid grid-cols-2 gap-2">
                       <Button size="sm" onClick={() => setShowRemoteStart(true)}>
                         <Play className="mr-1 h-3 w-3" />
-                        Start
+                        {t("ocpp.start")}
                       </Button>
                       <Button size="sm" variant="destructive" onClick={() => setShowRemoteStop(true)}>
                         <Square className="mr-1 h-3 w-3" />
-                        Stop
+                        {t("ocpp.stop")}
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => setShowReset(true)}>
                         <RotateCcw className="mr-1 h-3 w-3" />
-                        Reset
+                        {t("ocpp.reset")}
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => setShowUnlock(true)}>
                         <Unlock className="mr-1 h-3 w-3" />
-                        Unlock
+                        {t("ocpp.unlock")}
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => setShowAvailability(true)}>
                         <ToggleLeft className="mr-1 h-3 w-3" />
-                        Availability
+                        {t("ocpp.availability")}
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => setShowTrigger(true)}>
                         <Zap className="mr-1 h-3 w-3" />
-                        Trigger
+                        {t("ocpp.trigger")}
                       </Button>
                       <Button size="sm" variant="outline" className="col-span-2" onClick={() => getConfigMutation.mutate()}>
                         <Settings className="mr-1 h-3 w-3" />
-                        {getConfigMutation.isPending ? "Loading..." : "Get Configuration"}
+                        {getConfigMutation.isPending ? t("common.loading") : t("ocpp.getConfiguration")}
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => setShowPowerLimit(true)}>
                         <Gauge className="mr-1 h-3 w-3" />
-                        Power Limit
+                        {t("ocpp.powerLimit")}
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => setShowUpdateFirmware(true)}>
                         <Download className="mr-1 h-3 w-3" />
-                        Firmware
+                        {t("ocpp.firmware")}
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => setShowGetDiagnostics(true)}>
                         <FileSearch className="mr-1 h-3 w-3" />
-                        Diagnostics
+                        {t("ocpp.diagnostics")}
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => {
-                          if (confirm("Sync local authorization list to this charger?")) {
+                          if (confirm(t("ocpp.syncLocalListConfirm"))) {
                             syncLocalListMutation.mutate();
                           }
                         }}
                         disabled={syncLocalListMutation.isPending}
                       >
                         <ShieldCheck className="mr-1 h-3 w-3" />
-                        {syncLocalListMutation.isPending ? "Syncing..." : "Sync Auth"}
+                        {syncLocalListMutation.isPending ? t("ocpp.syncing") : t("ocpp.syncAuth")}
                       </Button>
                     </div>
                   </div>
@@ -486,8 +488,8 @@ export default function OcppManagementPage() {
               <CardContent className="py-0">
                 <EmptyState
                   icon={Plug}
-                  title="Select a charger"
-                  description="Choose a charger from the list to view details and send commands"
+                  title={t("ocpp.selectCharger")}
+                  description={t("ocpp.selectChargerDescription")}
                 />
               </CardContent>
             </Card>
@@ -497,14 +499,14 @@ export default function OcppManagementPage() {
 
       {/* Remote Start Dialog */}
       <Dialog open={showRemoteStart} onClose={() => setShowRemoteStart(false)} size="sm">
-        <DialogHeader onClose={() => setShowRemoteStart(false)}>Remote Start Transaction</DialogHeader>
+        <DialogHeader onClose={() => setShowRemoteStart(false)}>{t("ocpp.remoteStartTransaction")}</DialogHeader>
         <DialogContent>
           <p className="text-sm text-muted-foreground mb-4">
-            Charger: <strong>{selectedCp}</strong>
+            {t("ocpp.charger")}: <strong>{selectedCp}</strong>
           </p>
           <div className="space-y-3">
             <div>
-              <label className="text-sm font-medium">Connector ID</label>
+              <label className="text-sm font-medium">{t("ocpp.connectorId")}</label>
               <Input
                 type="number"
                 value={remoteStartForm.connectorId}
@@ -514,9 +516,9 @@ export default function OcppManagementPage() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium">ID Tag</label>
+              <label className="text-sm font-medium">{t("ocpp.idTag")}</label>
               <Input
-                placeholder="User ID or RFID tag"
+                placeholder={t("ocpp.idTagPlaceholder")}
                 value={remoteStartForm.idTag}
                 onChange={(e) =>
                   setRemoteStartForm({ ...remoteStartForm, idTag: e.target.value })
@@ -527,26 +529,26 @@ export default function OcppManagementPage() {
         </DialogContent>
         <DialogFooter>
           <Button variant="outline" onClick={() => setShowRemoteStart(false)}>
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button
             onClick={() => remoteStartMutation.mutate()}
             disabled={remoteStartMutation.isPending || !remoteStartForm.idTag}
           >
-            {remoteStartMutation.isPending ? "Sending..." : "Send Start"}
+            {remoteStartMutation.isPending ? t("ocpp.sending") : t("ocpp.sendStart")}
           </Button>
         </DialogFooter>
       </Dialog>
 
       {/* Remote Stop Dialog */}
       <Dialog open={showRemoteStop} onClose={() => setShowRemoteStop(false)} size="sm">
-        <DialogHeader onClose={() => setShowRemoteStop(false)}>Remote Stop Transaction</DialogHeader>
+        <DialogHeader onClose={() => setShowRemoteStop(false)}>{t("ocpp.remoteStopTransaction")}</DialogHeader>
         <DialogContent>
           <p className="text-sm text-muted-foreground mb-4">
-            Charger: <strong>{selectedCp}</strong>
+            {t("ocpp.charger")}: <strong>{selectedCp}</strong>
           </p>
           <div>
-            <label className="text-sm font-medium">Transaction ID</label>
+            <label className="text-sm font-medium">{t("ocpp.transactionId")}</label>
             <Input
               type="number"
               value={remoteStopForm.transactionId}
@@ -558,58 +560,58 @@ export default function OcppManagementPage() {
         </DialogContent>
         <DialogFooter>
           <Button variant="outline" onClick={() => setShowRemoteStop(false)}>
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button
             variant="destructive"
             onClick={() => remoteStopMutation.mutate()}
             disabled={remoteStopMutation.isPending || !remoteStopForm.transactionId}
           >
-            {remoteStopMutation.isPending ? "Sending..." : "Send Stop"}
+            {remoteStopMutation.isPending ? t("ocpp.sending") : t("ocpp.sendStop")}
           </Button>
         </DialogFooter>
       </Dialog>
 
       {/* Reset Dialog */}
       <Dialog open={showReset} onClose={() => setShowReset(false)} size="sm">
-        <DialogHeader onClose={() => setShowReset(false)}>Reset Charger</DialogHeader>
+        <DialogHeader onClose={() => setShowReset(false)}>{t("ocpp.resetCharger")}</DialogHeader>
         <DialogContent>
           <p className="text-sm text-muted-foreground mb-4">
-            Charger: <strong>{selectedCp}</strong>
+            {t("ocpp.charger")}: <strong>{selectedCp}</strong>
           </p>
           <div>
-            <label className="text-sm font-medium">Reset Type</label>
+            <label className="text-sm font-medium">{t("ocpp.resetType")}</label>
             <select
               className="w-full mt-1 rounded-md border p-2 text-sm"
               value={resetForm.type}
               onChange={(e) => setResetForm({ type: e.target.value })}
             >
-              <option value="Soft">Soft (graceful restart)</option>
-              <option value="Hard">Hard (immediate restart)</option>
+              <option value="Soft">{t("ocpp.softReset")}</option>
+              <option value="Hard">{t("ocpp.hardReset")}</option>
             </select>
           </div>
         </DialogContent>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setShowReset(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => setShowReset(false)}>{t("common.cancel")}</Button>
           <Button
             variant="destructive"
             onClick={() => resetMutation.mutate()}
             disabled={resetMutation.isPending}
           >
-            {resetMutation.isPending ? "Sending..." : "Send Reset"}
+            {resetMutation.isPending ? t("ocpp.sending") : t("ocpp.sendReset")}
           </Button>
         </DialogFooter>
       </Dialog>
 
       {/* Unlock Connector Dialog */}
       <Dialog open={showUnlock} onClose={() => setShowUnlock(false)} size="sm">
-        <DialogHeader onClose={() => setShowUnlock(false)}>Unlock Connector</DialogHeader>
+        <DialogHeader onClose={() => setShowUnlock(false)}>{t("ocpp.unlockConnector")}</DialogHeader>
         <DialogContent>
           <p className="text-sm text-muted-foreground mb-4">
-            Charger: <strong>{selectedCp}</strong>
+            {t("ocpp.charger")}: <strong>{selectedCp}</strong>
           </p>
           <div>
-            <label className="text-sm font-medium">Connector ID</label>
+            <label className="text-sm font-medium">{t("ocpp.connectorId")}</label>
             <Input
               type="number"
               value={unlockForm.connectorId}
@@ -618,61 +620,61 @@ export default function OcppManagementPage() {
           </div>
         </DialogContent>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setShowUnlock(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => setShowUnlock(false)}>{t("common.cancel")}</Button>
           <Button onClick={() => unlockMutation.mutate()} disabled={unlockMutation.isPending}>
-            {unlockMutation.isPending ? "Sending..." : "Unlock"}
+            {unlockMutation.isPending ? t("ocpp.sending") : t("ocpp.unlock")}
           </Button>
         </DialogFooter>
       </Dialog>
 
       {/* Change Availability Dialog */}
       <Dialog open={showAvailability} onClose={() => setShowAvailability(false)} size="sm">
-        <DialogHeader onClose={() => setShowAvailability(false)}>Change Availability</DialogHeader>
+        <DialogHeader onClose={() => setShowAvailability(false)}>{t("ocpp.changeAvailability")}</DialogHeader>
         <DialogContent>
           <p className="text-sm text-muted-foreground mb-4">
-            Charger: <strong>{selectedCp}</strong>
+            {t("ocpp.charger")}: <strong>{selectedCp}</strong>
           </p>
           <div className="space-y-3">
             <div>
-              <label className="text-sm font-medium">Connector ID</label>
+              <label className="text-sm font-medium">{t("ocpp.connectorId")}</label>
               <Input
                 type="number"
                 value={availabilityForm.connectorId}
                 onChange={(e) => setAvailabilityForm({ ...availabilityForm, connectorId: parseInt(e.target.value) || 0 })}
               />
-              <p className="text-xs text-muted-foreground mt-1">0 = entire charger</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("ocpp.entireCharger")}</p>
             </div>
             <div>
-              <label className="text-sm font-medium">Availability</label>
+              <label className="text-sm font-medium">{t("ocpp.availability")}</label>
               <select
                 className="w-full mt-1 rounded-md border p-2 text-sm"
                 value={availabilityForm.type}
                 onChange={(e) => setAvailabilityForm({ ...availabilityForm, type: e.target.value })}
               >
-                <option value="Operative">Operative (available)</option>
-                <option value="Inoperative">Inoperative (disabled)</option>
+                <option value="Operative">{t("ocpp.operative")}</option>
+                <option value="Inoperative">{t("ocpp.inoperative")}</option>
               </select>
             </div>
           </div>
         </DialogContent>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setShowAvailability(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => setShowAvailability(false)}>{t("common.cancel")}</Button>
           <Button onClick={() => availabilityMutation.mutate()} disabled={availabilityMutation.isPending}>
-            {availabilityMutation.isPending ? "Sending..." : "Change"}
+            {availabilityMutation.isPending ? t("ocpp.sending") : t("ocpp.change")}
           </Button>
         </DialogFooter>
       </Dialog>
 
       {/* Trigger Message Dialog */}
       <Dialog open={showTrigger} onClose={() => setShowTrigger(false)} size="sm">
-        <DialogHeader onClose={() => setShowTrigger(false)}>Trigger Message</DialogHeader>
+        <DialogHeader onClose={() => setShowTrigger(false)}>{t("ocpp.triggerMessage")}</DialogHeader>
         <DialogContent>
           <p className="text-sm text-muted-foreground mb-4">
-            Charger: <strong>{selectedCp}</strong>
+            {t("ocpp.charger")}: <strong>{selectedCp}</strong>
           </p>
           <div className="space-y-3">
             <div>
-              <label className="text-sm font-medium">Message Type</label>
+              <label className="text-sm font-medium">{t("ocpp.messageType")}</label>
               <select
                 className="w-full mt-1 rounded-md border p-2 text-sm"
                 value={triggerForm.requestedMessage}
@@ -687,19 +689,19 @@ export default function OcppManagementPage() {
               </select>
             </div>
             <div>
-              <label className="text-sm font-medium">Connector ID (optional)</label>
+              <label className="text-sm font-medium">{t("ocpp.connectorIdOptional")}</label>
               <Input
                 type="number"
-                placeholder="Leave empty for all"
+                placeholder={t("ocpp.leaveEmptyForAll")}
                 onChange={(e) => setTriggerForm({ ...triggerForm, connectorId: e.target.value ? parseInt(e.target.value) : undefined })}
               />
             </div>
           </div>
         </DialogContent>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setShowTrigger(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => setShowTrigger(false)}>{t("common.cancel")}</Button>
           <Button onClick={() => triggerMutation.mutate()} disabled={triggerMutation.isPending}>
-            {triggerMutation.isPending ? "Sending..." : "Trigger"}
+            {triggerMutation.isPending ? t("ocpp.sending") : t("ocpp.trigger")}
           </Button>
         </DialogFooter>
       </Dialog>
@@ -708,9 +710,9 @@ export default function OcppManagementPage() {
       <Dialog open={showConfig} onClose={() => setShowConfig(false)} size="lg">
         <DialogHeader onClose={() => setShowConfig(false)}>
           <div className="flex items-center gap-2">
-            Charger Configuration
+            {t("ocpp.chargerConfiguration")}
             <Button size="sm" variant="outline" onClick={() => { setShowConfig(false); setShowChangeConfig(true); }}>
-              Edit Key
+              {t("ocpp.editKey")}
             </Button>
           </div>
         </DialogHeader>
@@ -719,9 +721,9 @@ export default function OcppManagementPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-muted-foreground">
-                  <th className="pb-2">Key</th>
-                  <th className="pb-2">Value</th>
-                  <th className="pb-2 text-center">RO</th>
+                  <th className="pb-2">{t("ocpp.key")}</th>
+                  <th className="pb-2">{t("ocpp.value")}</th>
+                  <th className="pb-2 text-center">{t("ocpp.readOnly")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -729,7 +731,7 @@ export default function OcppManagementPage() {
                   <tr key={entry.key} className="border-b">
                     <td className="py-1.5 font-mono text-xs">{entry.key}</td>
                     <td className="py-1.5 text-xs break-all">{entry.value ?? "-"}</td>
-                    <td className="py-1.5 text-center text-xs">{entry.readonly ? "Yes" : "No"}</td>
+                    <td className="py-1.5 text-center text-xs">{entry.readonly ? t("ocpp.yes") : t("ocpp.no")}</td>
                   </tr>
                 ))}
               </tbody>
@@ -737,8 +739,8 @@ export default function OcppManagementPage() {
           ) : (
             <EmptyState
               icon={Settings}
-              title="No configuration keys"
-              description="No configuration keys were returned from the charger"
+              title={t("ocpp.noConfigKeys")}
+              description={t("ocpp.noConfigKeysDescription")}
             />
           )}
         </DialogContent>
@@ -746,24 +748,24 @@ export default function OcppManagementPage() {
 
       {/* Change Configuration Dialog */}
       <Dialog open={showChangeConfig} onClose={() => setShowChangeConfig(false)} size="sm">
-        <DialogHeader onClose={() => setShowChangeConfig(false)}>Change Configuration</DialogHeader>
+        <DialogHeader onClose={() => setShowChangeConfig(false)}>{t("ocpp.changeConfiguration")}</DialogHeader>
         <DialogContent>
           <p className="text-sm text-muted-foreground mb-4">
-            Charger: <strong>{selectedCp}</strong>
+            {t("ocpp.charger")}: <strong>{selectedCp}</strong>
           </p>
           <div className="space-y-3">
             <div>
-              <label className="text-sm font-medium">Configuration Key</label>
+              <label className="text-sm font-medium">{t("ocpp.configKey")}</label>
               <Input
-                placeholder="e.g. MeterValueSampleInterval"
+                placeholder={t("ocpp.configKeyPlaceholder")}
                 value={changeConfigForm.key}
                 onChange={(e) => setChangeConfigForm({ ...changeConfigForm, key: e.target.value })}
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Value</label>
+              <label className="text-sm font-medium">{t("ocpp.value")}</label>
               <Input
-                placeholder="New value"
+                placeholder={t("ocpp.newValue")}
                 value={changeConfigForm.value}
                 onChange={(e) => setChangeConfigForm({ ...changeConfigForm, value: e.target.value })}
               />
@@ -771,26 +773,26 @@ export default function OcppManagementPage() {
           </div>
         </DialogContent>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setShowChangeConfig(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => setShowChangeConfig(false)}>{t("common.cancel")}</Button>
           <Button
             onClick={() => changeConfigMutation.mutate()}
             disabled={changeConfigMutation.isPending || !changeConfigForm.key}
           >
-            {changeConfigMutation.isPending ? "Sending..." : "Save"}
+            {changeConfigMutation.isPending ? t("ocpp.sending") : t("common.save")}
           </Button>
         </DialogFooter>
       </Dialog>
 
       {/* Set Power Limit Dialog */}
       <Dialog open={showPowerLimit} onClose={() => setShowPowerLimit(false)} size="sm">
-        <DialogHeader onClose={() => setShowPowerLimit(false)}>Set Power Limit</DialogHeader>
+        <DialogHeader onClose={() => setShowPowerLimit(false)}>{t("ocpp.setPowerLimit")}</DialogHeader>
         <DialogContent>
           <p className="text-sm text-muted-foreground mb-4">
-            Charger: <strong>{selectedCp}</strong>
+            {t("ocpp.charger")}: <strong>{selectedCp}</strong>
           </p>
           <div className="space-y-3">
             <div>
-              <label className="text-sm font-medium">Connector ID</label>
+              <label className="text-sm font-medium">{t("ocpp.connectorId")}</label>
               <Input
                 type="number"
                 value={powerLimitForm.connectorId}
@@ -798,7 +800,7 @@ export default function OcppManagementPage() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Max Power (kW)</label>
+              <label className="text-sm font-medium">{t("ocpp.maxPowerKw")}</label>
               <Input
                 type="number"
                 step="0.1"
@@ -809,26 +811,26 @@ export default function OcppManagementPage() {
           </div>
         </DialogContent>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setShowPowerLimit(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => setShowPowerLimit(false)}>{t("common.cancel")}</Button>
           <Button
             onClick={() => powerLimitMutation.mutate()}
             disabled={powerLimitMutation.isPending || powerLimitForm.maxPowerKw <= 0}
           >
-            {powerLimitMutation.isPending ? "Sending..." : "Set Limit"}
+            {powerLimitMutation.isPending ? t("ocpp.sending") : t("ocpp.setLimit")}
           </Button>
         </DialogFooter>
       </Dialog>
 
       {/* Update Firmware Dialog */}
       <Dialog open={showUpdateFirmware} onClose={() => setShowUpdateFirmware(false)} size="sm">
-        <DialogHeader onClose={() => setShowUpdateFirmware(false)}>Update Firmware</DialogHeader>
+        <DialogHeader onClose={() => setShowUpdateFirmware(false)}>{t("ocpp.updateFirmware")}</DialogHeader>
         <DialogContent>
           <p className="text-sm text-muted-foreground mb-4">
-            Charger: <strong>{selectedCp}</strong>
+            {t("ocpp.charger")}: <strong>{selectedCp}</strong>
           </p>
           <div className="space-y-3">
             <div>
-              <label className="text-sm font-medium">Download URL</label>
+              <label className="text-sm font-medium">{t("ocpp.downloadUrl")}</label>
               <Input
                 placeholder="https://example.com/firmware.bin"
                 value={updateFirmwareForm.location}
@@ -836,7 +838,7 @@ export default function OcppManagementPage() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Retrieve Date</label>
+              <label className="text-sm font-medium">{t("ocpp.retrieveDate")}</label>
               <Input
                 type="datetime-local"
                 value={updateFirmwareForm.retrieveDate}
@@ -844,44 +846,44 @@ export default function OcppManagementPage() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Retries (optional)</label>
+              <label className="text-sm font-medium">{t("ocpp.retries")}</label>
               <Input
                 type="number"
-                placeholder="Leave empty for default"
+                placeholder={t("ocpp.leaveEmptyForDefault")}
                 onChange={(e) => setUpdateFirmwareForm({ ...updateFirmwareForm, retries: e.target.value ? parseInt(e.target.value) : undefined })}
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Retry Interval (seconds, optional)</label>
+              <label className="text-sm font-medium">{t("ocpp.retryInterval")}</label>
               <Input
                 type="number"
-                placeholder="Leave empty for default"
+                placeholder={t("ocpp.leaveEmptyForDefault")}
                 onChange={(e) => setUpdateFirmwareForm({ ...updateFirmwareForm, retryInterval: e.target.value ? parseInt(e.target.value) : undefined })}
               />
             </div>
           </div>
         </DialogContent>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setShowUpdateFirmware(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => setShowUpdateFirmware(false)}>{t("common.cancel")}</Button>
           <Button
             onClick={() => updateFirmwareMutation.mutate()}
             disabled={updateFirmwareMutation.isPending || !updateFirmwareForm.location || !updateFirmwareForm.retrieveDate}
           >
-            {updateFirmwareMutation.isPending ? "Sending..." : "Update Firmware"}
+            {updateFirmwareMutation.isPending ? t("ocpp.sending") : t("ocpp.updateFirmware")}
           </Button>
         </DialogFooter>
       </Dialog>
 
       {/* Get Diagnostics Dialog */}
       <Dialog open={showGetDiagnostics} onClose={() => setShowGetDiagnostics(false)} size="sm">
-        <DialogHeader onClose={() => setShowGetDiagnostics(false)}>Get Diagnostics</DialogHeader>
+        <DialogHeader onClose={() => setShowGetDiagnostics(false)}>{t("ocpp.getDiagnostics")}</DialogHeader>
         <DialogContent>
           <p className="text-sm text-muted-foreground mb-4">
-            Charger: <strong>{selectedCp}</strong>
+            {t("ocpp.charger")}: <strong>{selectedCp}</strong>
           </p>
           <div className="space-y-3">
             <div>
-              <label className="text-sm font-medium">Upload URL</label>
+              <label className="text-sm font-medium">{t("ocpp.uploadUrl")}</label>
               <Input
                 placeholder="https://example.com/upload"
                 value={getDiagnosticsForm.location}
@@ -889,7 +891,7 @@ export default function OcppManagementPage() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Start Time (optional)</label>
+              <label className="text-sm font-medium">{t("ocpp.startTimeOptional")}</label>
               <Input
                 type="datetime-local"
                 value={getDiagnosticsForm.startTime}
@@ -897,7 +899,7 @@ export default function OcppManagementPage() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Stop Time (optional)</label>
+              <label className="text-sm font-medium">{t("ocpp.stopTimeOptional")}</label>
               <Input
                 type="datetime-local"
                 value={getDiagnosticsForm.stopTime}
@@ -907,12 +909,12 @@ export default function OcppManagementPage() {
           </div>
         </DialogContent>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setShowGetDiagnostics(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => setShowGetDiagnostics(false)}>{t("common.cancel")}</Button>
           <Button
             onClick={() => getDiagnosticsMutation.mutate()}
             disabled={getDiagnosticsMutation.isPending || !getDiagnosticsForm.location}
           >
-            {getDiagnosticsMutation.isPending ? "Sending..." : "Get Diagnostics"}
+            {getDiagnosticsMutation.isPending ? t("ocpp.sending") : t("ocpp.getDiagnostics")}
           </Button>
         </DialogFooter>
       </Dialog>
@@ -924,11 +926,11 @@ export default function OcppManagementPage() {
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
                 <Badge variant={commandResult.success ? "success" : "destructive"}>
-                  {commandResult.success ? "Success" : "Failed"}
+                  {commandResult.success ? t("ocpp.success") : t("ocpp.failed")}
                 </Badge>
                 <span className="text-sm">{commandResult.message}</span>
                 <Button variant="ghost" size="icon" className="h-6 w-6 ml-2" onClick={() => setCommandResult(null)}>
-                  <span className="sr-only">Dismiss</span>
+                  <span className="sr-only">{t("ocpp.dismiss")}</span>
                   <span className="text-xs">&times;</span>
                 </Button>
               </div>

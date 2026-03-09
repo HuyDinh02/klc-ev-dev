@@ -9,6 +9,7 @@ import { StatCard } from "@/components/ui/stat-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonCard, SkeletonChart } from "@/components/ui/skeleton";
 import { monitoringApi } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n";
 import { formatCurrency, formatEnergy } from "@/lib/utils";
 import { CHART_COLORS } from "@/lib/constants";
 import {
@@ -89,10 +90,10 @@ function getDateRange(range: DateRange): { fromDate: string; toDate: string } {
   };
 }
 
-const rangeLabels: Record<DateRange, string> = {
-  "7d": "Last 7 days",
-  "30d": "Last 30 days",
-  "90d": "Last 90 days",
+const rangeKeys: Record<DateRange, string> = {
+  "7d": "analytics.last7Days",
+  "30d": "analytics.last30Days",
+  "90d": "analytics.last90Days",
 };
 
 function formatDate(dateStr: string): string {
@@ -121,6 +122,7 @@ function uptimeColorClass(pct: number): string {
 }
 
 export default function AnalyticsPage() {
+  const { t } = useTranslation();
   const [range, setRange] = useState<DateRange>("30d");
   const [sortKey, setSortKey] = useState<SortKey>("totalSessions");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -180,7 +182,7 @@ export default function AnalyticsPage() {
     return (
       <div className="space-y-6">
         <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <PageHeader title="Analytics" description="Revenue trends, utilization rates, and performance KPIs" />
+          <PageHeader title={t("analytics.title")} description={t("analytics.description")} />
         </div>
         <div className="px-6 space-y-6">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
@@ -207,7 +209,7 @@ export default function AnalyticsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <PageHeader title="Analytics" description="Revenue trends, utilization rates, and performance KPIs">
+        <PageHeader title={t("analytics.title")} description={t("analytics.description")}>
           <div className="flex gap-1 rounded-lg border p-1">
             {(["7d", "30d", "90d"] as DateRange[]).map((r) => (
               <button
@@ -219,7 +221,7 @@ export default function AnalyticsPage() {
                     : "text-muted-foreground hover:bg-accent"
                 }`}
               >
-                {rangeLabels[r]}
+                {t(rangeKeys[r])}
               </button>
             ))}
           </div>
@@ -229,91 +231,91 @@ export default function AnalyticsPage() {
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <StatCard
-          label="Total Revenue"
+          label={t("analytics.totalRevenue")}
           value={formatCurrency(data.totalRevenue)}
           icon={DollarSign}
           iconColor="bg-green-100 text-green-700"
         >
           <p className="text-xs text-muted-foreground">
-            ~{formatCurrency(dailyAvgRevenue)}/day avg
+            ~{formatCurrency(dailyAvgRevenue)}{t("analytics.dayAvg")}
           </p>
         </StatCard>
 
         <StatCard
-          label="Energy Delivered"
+          label={t("analytics.energyDelivered")}
           value={formatEnergy(data.totalEnergyKwh)}
           icon={Zap}
           iconColor="bg-amber-100 text-amber-700"
         >
           <p className="text-xs text-muted-foreground">
-            {data.totalSessions} sessions
+            {data.totalSessions} {t("analytics.sessions")}
           </p>
         </StatCard>
 
         <StatCard
-          label="Avg Session Duration"
-          value={`${data.averageSessionDurationMinutes.toFixed(0)} min`}
+          label={t("analytics.avgSessionDuration")}
+          value={`${data.averageSessionDurationMinutes.toFixed(0)} ${t("analytics.min")}`}
           icon={Clock}
           iconColor="bg-blue-100 text-blue-700"
         >
           <p className="text-xs text-muted-foreground">
-            ~{dailyAvgSessions.toFixed(1)} sessions/day
+            ~{dailyAvgSessions.toFixed(1)} {t("analytics.sessionsPerDay")}
           </p>
         </StatCard>
 
         <StatCard
-          label="Network Uptime"
+          label={t("analytics.networkUptime")}
           value={`${data.uptimePercent.toFixed(1)}%`}
           icon={Activity}
           iconColor="bg-purple-100 text-purple-700"
           className={uptimeColorClass(data.uptimePercent)}
         >
           <p className="text-xs text-muted-foreground">
-            {data.uptimePercent >= 95 ? "Healthy" : data.uptimePercent >= 90 ? "Degraded" : "Critical"} availability
+            {data.uptimePercent >= 95 ? t("analytics.healthy") : data.uptimePercent >= 90 ? t("analytics.degraded") : t("analytics.critical")} {t("analytics.availability")}
           </p>
         </StatCard>
 
         <StatCard
-          label="Avg Revenue/kWh"
+          label={t("analytics.avgRevenuePerKwh")}
           value={data.totalEnergyKwh > 0 ? formatCurrency(data.totalRevenue / data.totalEnergyKwh) : "0\u0111"}
           icon={TrendingUp}
           iconColor="bg-teal-100 text-teal-700"
         >
-          <p className="text-xs text-muted-foreground">Effective rate</p>
+          <p className="text-xs text-muted-foreground">{t("analytics.effectiveRate")}</p>
         </StatCard>
       </div>
 
       {/* Operational Metrics */}
       <div className="grid gap-4 md:grid-cols-2">
         <StatCard
-          label="Mean Time Between Faults (MTBF)"
+          label={t("analytics.mtbf")}
           value={
             data.mtbfHours > 0
               ? data.mtbfHours >= 24
-                ? `${(data.mtbfHours / 24).toFixed(1)} days`
-                : `${data.mtbfHours.toFixed(1)} hrs`
-              : "No faults"
+                ? `${(data.mtbfHours / 24).toFixed(1)} ${t("analytics.days")}`
+                : `${data.mtbfHours.toFixed(1)} ${t("analytics.hrs")}`
+              : t("analytics.noFaults")
           }
           icon={Wrench}
           iconColor="bg-orange-100 text-orange-700"
         >
           <p className="text-xs text-muted-foreground">
             {data.mtbfHours > 0
-              ? "Avg interval between fault occurrences"
-              : "No faults recorded in this period"}
+              ? t("analytics.avgIntervalBetweenFaults")
+              : t("analytics.noFaultsRecorded")}
           </p>
         </StatCard>
 
         <StatCard
-          label="Peak Charging Hour"
+          label={t("analytics.peakChargingHour")}
           value={formatPeakHour(data.peakHourUtc)}
           icon={Sun}
           iconColor="bg-yellow-100 text-yellow-700"
         >
           <p className="text-xs text-muted-foreground">
             {data.peakHourSessionCount > 0
-              ? `${data.peakHourSessionCount} sessions started during this hour (UTC+7)`
-              : "No sessions in this period"}
+              ? `${data.peakHourSessionCount} ${t("analytics.sessionsStartedDuringHour")}`
+              : t("analytics.noSessionsInPeriod")}
           </p>
         </StatCard>
       </div>
@@ -323,7 +325,7 @@ export default function AnalyticsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <DollarSign className="h-5 w-5" />
-            Revenue Trend
+            {t("analytics.revenueTrend")}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -344,7 +346,7 @@ export default function AnalyticsPage() {
                 />
                 <YAxis tickFormatter={formatVnd} className="text-xs" />
                 <Tooltip
-                  formatter={(value) => [formatCurrency(value as number), "Revenue"]}
+                  formatter={(value) => [formatCurrency(value as number), t("analytics.revenue")]}
                   labelFormatter={(label) => new Date(label).toLocaleDateString("vi-VN")}
                   contentStyle={{
                     backgroundColor: "var(--card)",
@@ -363,8 +365,8 @@ export default function AnalyticsPage() {
           ) : (
             <EmptyState
               icon={BarChart3}
-              title="No revenue data"
-              description="No data available for the selected period"
+              title={t("analytics.noRevenueData")}
+              description={t("analytics.noDataForPeriod")}
               className="h-[300px] py-0"
             />
           )}
@@ -377,7 +379,7 @@ export default function AnalyticsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Zap className="h-5 w-5" />
-              Energy Delivered (kWh)
+              {t("analytics.energyDeliveredKwh")}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -394,7 +396,7 @@ export default function AnalyticsPage() {
                   <XAxis dataKey="date" tickFormatter={formatDate} className="text-xs" />
                   <YAxis className="text-xs" />
                   <Tooltip
-                    formatter={(value) => [`${(value as number).toFixed(2)} kWh`, "Energy"]}
+                    formatter={(value) => [`${(value as number).toFixed(2)} kWh`, t("analytics.energy")]}
                     labelFormatter={(label) => new Date(label).toLocaleDateString("vi-VN")}
                     contentStyle={{
                       backgroundColor: "var(--card)",
@@ -413,8 +415,8 @@ export default function AnalyticsPage() {
             ) : (
               <EmptyState
                 icon={Zap}
-                title="No energy data"
-                description="No data available for the selected period"
+                title={t("analytics.noEnergyData")}
+                description={t("analytics.noDataForPeriod")}
                 className="h-[250px] py-0"
               />
             )}
@@ -425,7 +427,7 @@ export default function AnalyticsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Activity className="h-5 w-5" />
-              Daily Sessions
+              {t("analytics.dailySessions")}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -436,7 +438,7 @@ export default function AnalyticsPage() {
                   <XAxis dataKey="date" tickFormatter={formatDate} className="text-xs" />
                   <YAxis className="text-xs" allowDecimals={false} />
                   <Tooltip
-                    formatter={(value) => [value as number, "Sessions"]}
+                    formatter={(value) => [value as number, t("analytics.sessionsLabel")]}
                     labelFormatter={(label) => new Date(label).toLocaleDateString("vi-VN")}
                     contentStyle={{
                       backgroundColor: "var(--card)",
@@ -449,8 +451,8 @@ export default function AnalyticsPage() {
             ) : (
               <EmptyState
                 icon={Activity}
-                title="No session data"
-                description="No data available for the selected period"
+                title={t("analytics.noSessionData")}
+                description={t("analytics.noDataForPeriod")}
                 className="h-[250px] py-0"
               />
             )}
@@ -461,7 +463,7 @@ export default function AnalyticsPage() {
       {/* Station Utilization */}
       <Card>
         <CardHeader>
-          <CardTitle>Station Utilization</CardTitle>
+          <CardTitle>{t("analytics.stationUtilization")}</CardTitle>
         </CardHeader>
         <CardContent>
           {data.stationUtilization.length > 0 ? (
@@ -483,7 +485,7 @@ export default function AnalyticsPage() {
                     tick={{ fontSize: 12 }}
                   />
                   <Tooltip
-                    formatter={(value) => [`${(value as number).toFixed(1)}%`, "Utilization"]}
+                    formatter={(value) => [`${(value as number).toFixed(1)}%`, t("analytics.utilization")]}
                     contentStyle={{
                       backgroundColor: "var(--card)",
                       border: "1px solid var(--border)",
@@ -507,7 +509,7 @@ export default function AnalyticsPage() {
                         onClick={() => toggleSort("stationName")}
                       >
                         <span className="inline-flex items-center gap-1">
-                          Station
+                          {t("analytics.stationColumn")}
                           <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
                         </span>
                       </th>
@@ -516,7 +518,7 @@ export default function AnalyticsPage() {
                         onClick={() => toggleSort("totalSessions")}
                       >
                         <span className="inline-flex items-center justify-end gap-1">
-                          Sessions
+                          {t("analytics.sessionsColumn")}
                           <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
                         </span>
                       </th>
@@ -525,7 +527,7 @@ export default function AnalyticsPage() {
                         onClick={() => toggleSort("totalEnergyKwh")}
                       >
                         <span className="inline-flex items-center justify-end gap-1">
-                          Energy
+                          {t("analytics.energyColumn")}
                           <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
                         </span>
                       </th>
@@ -534,7 +536,7 @@ export default function AnalyticsPage() {
                         onClick={() => toggleSort("totalRevenue")}
                       >
                         <span className="inline-flex items-center justify-end gap-1">
-                          Revenue
+                          {t("analytics.revenueColumn")}
                           <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
                         </span>
                       </th>
@@ -543,7 +545,7 @@ export default function AnalyticsPage() {
                         onClick={() => toggleSort("utilizationPercent")}
                       >
                         <span className="inline-flex items-center justify-end gap-1">
-                          Utilization
+                          {t("analytics.utilizationColumn")}
                           <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
                         </span>
                       </th>
@@ -552,7 +554,7 @@ export default function AnalyticsPage() {
                         onClick={() => toggleSort("onlinePercent")}
                       >
                         <span className="inline-flex items-center justify-end gap-1">
-                          Online
+                          {t("analytics.onlineColumn")}
                           <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
                         </span>
                       </th>
@@ -604,8 +606,8 @@ export default function AnalyticsPage() {
           ) : (
             <EmptyState
               icon={BarChart3}
-              title="No station data"
-              description="No utilization data available for the selected period"
+              title={t("analytics.noStationData")}
+              description={t("analytics.noUtilizationData")}
             />
           )}
         </CardContent>
