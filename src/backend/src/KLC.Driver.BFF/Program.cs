@@ -7,6 +7,15 @@ using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Add Sentry error tracking
+builder.WebHost.UseSentry(o =>
+{
+    o.Dsn = builder.Configuration["Sentry:Dsn"] ?? "";
+    o.Environment = builder.Environment.EnvironmentName;
+    o.TracesSampleRate = builder.Environment.IsProduction() ? 0.1 : 1.0;
+    o.SendDefaultPii = false;
+});
+
 // Add ABP with Autofac
 builder.Host.UseAutofac();
 builder.Services.AddApplication<DriverBffModule>();
@@ -71,6 +80,7 @@ builder.Services.AddScoped<IFeedbackBffService, FeedbackBffService>();
 // Register services from Application layer (not auto-registered since BFF doesn't depend on KLCApplicationModule)
 builder.Services.AddTransient<KLC.Notifications.ISmsService, KLC.Notifications.LogOnlySmsService>();
 builder.Services.AddTransient<KLC.Files.IFileUploadService, KLC.Files.GcsFileUploadService>();
+builder.Services.AddTransient<KLC.Auditing.IAuditEventLogger, KLC.Auditing.AuditEventLogger>();
 
 // Add SignalR for real-time updates
 builder.Services.AddSignalR();
@@ -153,6 +163,7 @@ if (enableApiDocs)
     });
 }
 
+app.UseSentryTracing();
 app.UseCors("MobileApp");
 app.UseRateLimiter();
 app.UseAuthentication();

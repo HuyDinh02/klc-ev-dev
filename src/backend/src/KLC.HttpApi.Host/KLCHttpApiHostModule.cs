@@ -386,6 +386,7 @@ public class KLCHttpApiHostModule : AbpModule
             app.UseDeveloperExceptionPage();
         }
 
+        app.UseSentryTracing();
         app.UseAbpRequestLocalization();
 
         // Don't use ABP error page — it redirects API 403/500 to /Error HTML page
@@ -417,15 +418,18 @@ public class KLCHttpApiHostModule : AbpModule
         app.UseDynamicClaims();
         app.UseAuthorization();
 
-        app.UseSwagger();
-        app.UseAbpSwaggerUI(c =>
+        if (env.IsDevelopment())
         {
-            c.SwaggerEndpoint("/swagger/v1/swagger.json", "KLC API");
+            app.UseSwagger();
+            app.UseAbpSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "KLC API");
 
-            var configuration = context.ServiceProvider.GetRequiredService<IConfiguration>();
-            c.OAuthClientId(configuration["AuthServer:SwaggerClientId"]);
-            c.OAuthScopes("KLC");
-        });
+                var configuration = context.ServiceProvider.GetRequiredService<IConfiguration>();
+                c.OAuthClientId(configuration["AuthServer:SwaggerClientId"]);
+                c.OAuthScopes("KLC");
+            });
+        }
 
         app.UseAuditing();
         app.UseAbpSerilogEnrichers();

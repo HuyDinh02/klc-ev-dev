@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using KLC.Auditing;
 using KLC.Enums;
 using KLC.Permissions;
 using KLC.Sessions;
@@ -28,6 +29,7 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
     private readonly IRepository<WalletTransaction, Guid> _walletTransactionRepository;
     private readonly IEnumerable<IPaymentGatewayService> _gateways;
     private readonly WalletDomainService _walletDomainService;
+    private readonly IAuditEventLogger _auditLogger;
 
     public PaymentAppService(
         IRepository<PaymentTransaction, Guid> paymentRepository,
@@ -38,7 +40,8 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
         IRepository<AppUser, Guid> appUserRepository,
         IRepository<WalletTransaction, Guid> walletTransactionRepository,
         IEnumerable<IPaymentGatewayService> gateways,
-        WalletDomainService walletDomainService)
+        WalletDomainService walletDomainService,
+        IAuditEventLogger auditLogger)
     {
         _paymentRepository = paymentRepository;
         _invoiceRepository = invoiceRepository;
@@ -49,6 +52,7 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
         _walletTransactionRepository = walletTransactionRepository;
         _gateways = gateways;
         _walletDomainService = walletDomainService;
+        _auditLogger = auditLogger;
     }
 
     public async Task<PaymentResultDto> ProcessPaymentAsync(ProcessPaymentDto input)
@@ -97,6 +101,8 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
         );
 
         await _paymentRepository.InsertAsync(payment);
+
+        _auditLogger.LogPaymentEvent("PaymentInitiated", payment.Id, session.TotalCost, input.Gateway.ToString(), userId.ToString());
 
         var gateway = _gateways.FirstOrDefault(g => g.Gateway == input.Gateway);
         string? redirectUrl = null;
@@ -360,6 +366,8 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
         {
             payment.MarkCompleted(callback.TransactionId ?? "");
 
+            _auditLogger.LogPaymentEvent("PaymentCompleted", payment.Id, payment.Amount, payment.Gateway.ToString(), payment.UserId.ToString());
+
             // Generate invoice
             var session = await _sessionRepository.GetAsync(payment.SessionId);
             var invoiceNumber = Invoice.GenerateInvoiceNumber(await GetNextInvoiceSequenceAsync());
@@ -377,6 +385,8 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
         else if (callback.Status == "failed" || callback.Status == "error")
         {
             payment.MarkFailed(callback.ErrorCode ?? "Payment failed");
+
+            _auditLogger.LogPaymentEvent("PaymentFailed", payment.Id, payment.Amount, payment.Gateway.ToString(), payment.UserId.ToString());
         }
 
         await _paymentRepository.UpdateAsync(payment);
@@ -403,6 +413,8 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
         await _walletTransactionRepository.InsertAsync(walletTransaction);
         await _appUserRepository.UpdateAsync(user);
         await _paymentRepository.UpdateAsync(payment);
+
+        _auditLogger.LogPaymentEvent("RefundProcessed", payment.Id, payment.Amount, payment.Gateway.ToString(), payment.UserId.ToString());
 
         return new RefundResultDto
         {

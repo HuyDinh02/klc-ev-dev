@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using KLC.Auditing;
 using KLC.EntityFrameworkCore;
 using KLC.Enums;
 using KLC.Users;
@@ -35,6 +36,7 @@ public class AuthBffService : IAuthBffService
     private readonly IConfiguration _configuration;
     private readonly ILogger<AuthBffService> _logger;
     private readonly KLC.Notifications.ISmsService _smsService;
+    private readonly IAuditEventLogger _auditLogger;
 
     private const int OtpLength = 6;
     private static readonly TimeSpan OtpTtl = TimeSpan.FromMinutes(5);
@@ -46,7 +48,8 @@ public class AuthBffService : IAuthBffService
         IConnectionMultiplexer redis,
         IConfiguration configuration,
         ILogger<AuthBffService> logger,
-        KLC.Notifications.ISmsService smsService)
+        KLC.Notifications.ISmsService smsService,
+        IAuditEventLogger auditLogger)
     {
         _dbContext = dbContext;
         _userManager = userManager;
@@ -54,6 +57,7 @@ public class AuthBffService : IAuthBffService
         _configuration = configuration;
         _logger = logger;
         _smsService = smsService;
+        _auditLogger = auditLogger;
     }
 
     public async Task<RegisterResultDto> RegisterAsync(RegisterRequest request)
@@ -155,11 +159,13 @@ public class AuthBffService : IAuthBffService
 
         if (appUser == null)
         {
+            _auditLogger.LogAuthEvent("LoginFailed", details: $"Phone={request.PhoneNumber}, Reason=UserNotFound");
             return new LoginResultDto { Success = false, Error = KLCDomainErrorCodes.Auth.InvalidCredentials };
         }
 
         if (!appUser.IsActive)
         {
+            _auditLogger.LogAuthEvent("LoginFailed", appUser.IdentityUserId.ToString(), details: "AccountSuspended");
             return new LoginResultDto { Success = false, Error = KLCDomainErrorCodes.Auth.AccountSuspended };
         }
 
@@ -167,12 +173,14 @@ public class AuthBffService : IAuthBffService
         var identityUser = await _userManager.FindByIdAsync(appUser.IdentityUserId.ToString());
         if (identityUser == null)
         {
+            _auditLogger.LogAuthEvent("LoginFailed", appUser.IdentityUserId.ToString(), details: "IdentityUserNotFound");
             return new LoginResultDto { Success = false, Error = KLCDomainErrorCodes.Auth.InvalidCredentials };
         }
 
         var passwordValid = await _userManager.CheckPasswordAsync(identityUser, request.Password);
         if (!passwordValid)
         {
+            _auditLogger.LogAuthEvent("LoginFailed", appUser.IdentityUserId.ToString(), details: "InvalidPassword");
             return new LoginResultDto { Success = false, Error = KLCDomainErrorCodes.Auth.InvalidCredentials };
         }
 
@@ -183,6 +191,8 @@ public class AuthBffService : IAuthBffService
         var accessToken = GenerateAccessToken(appUser);
         var refreshToken = GenerateRefreshToken();
         await StoreRefreshToken(appUser.IdentityUserId, refreshToken);
+
+        _auditLogger.LogAuthEvent("LoginSuccess", appUser.IdentityUserId.ToString());
 
         return new LoginResultDto
         {
@@ -200,6 +210,7 @@ public class AuthBffService : IAuthBffService
         var storedUserId = await _redis.StringGetAsync($"refresh:{request.RefreshToken}");
         if (storedUserId.IsNullOrEmpty)
         {
+            _auditLogger.LogAuthEvent("TokenRefreshFailed", details: "InvalidRefreshToken");
             return new LoginResultDto { Success = false, Error = KLCDomainErrorCodes.Auth.InvalidRefreshToken };
         }
 
@@ -209,6 +220,7 @@ public class AuthBffService : IAuthBffService
 
         if (appUser == null || !appUser.IsActive)
         {
+            _auditLogger.LogAuthEvent("TokenRefreshFailed", userId.ToString(), details: "AccountSuspendedOrNotFound");
             return new LoginResultDto { Success = false, Error = KLCDomainErrorCodes.Auth.AccountSuspended };
         }
 
@@ -217,6 +229,8 @@ public class AuthBffService : IAuthBffService
         var accessToken = GenerateAccessToken(appUser);
         var refreshToken = GenerateRefreshToken();
         await StoreRefreshToken(userId, refreshToken);
+
+        _auditLogger.LogAuthEvent("TokenRefreshSuccess", userId.ToString());
 
         return new LoginResultDto
         {
@@ -234,6 +248,8 @@ public class AuthBffService : IAuthBffService
         {
             await _redis.KeyDeleteAsync($"refresh:{refreshToken}");
         }
+
+        _auditLogger.LogAuthEvent("Logout", userId.ToString());
     }
 
     public async Task ForgotPasswordAsync(ForgotPasswordRequest request)

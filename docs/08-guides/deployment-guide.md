@@ -1,751 +1,730 @@
 # Deployment Guide
 
-> Status: PUBLISHED | Last Updated: 2026-03-01
+> Status: PUBLISHED | Last Updated: 2026-03-09
 
-Production deployment guide for EV Charging CSMS across multiple environments (Development, Staging, Production) on AWS infrastructure.
+Production deployment guide for EV Charging CSMS on Google Cloud Platform (GCP) using Cloud Run, Cloud SQL, and Memorystore Redis.
 
-## Deployment Architecture
+## 1. Overview
 
-### Phase 1: EC2 + RDS + ElastiCache (Current)
-Simple, cost-effective for MVP/early stage:
-
-```
-┌─────────────────────────────────────────────────┐
-│              AWS VPC (Private)                  │
-├─────────────────────────────────────────────────┤
-│                                                 │
-│  ┌──────────────────────────────────────────┐  │
-│  │  EC2 Instances (Auto Scaling Group)      │  │
-│  │  ├─ Admin API (5000)                     │  │
-│  │  └─ Driver BFF (5001)                    │  │
-│  │      OCPP WebSocket (5002)               │  │
-│  └──────────────────────────────────────────┘  │
-│                    ↑                            │
-│        Application Load Balancer               │
-│                    ↑                            │
-│  ┌──────────────────────────────────────────┐  │
-│  │  RDS PostgreSQL (Primary + Replicas)     │  │
-│  │  - Main database                         │  │
-│  │  - Read replicas for reporting           │  │
-│  └──────────────────────────────────────────┘  │
-│                                                 │
-│  ┌──────────────────────────────────────────┐  │
-│  │  ElastiCache Redis Cluster               │  │
-│  │  - Session cache                         │  │
-│  │  - Real-time data (OCPP status)          │  │
-│  └──────────────────────────────────────────┘  │
-│                                                 │
-└─────────────────────────────────────────────────┘
-        ↑
-   CloudFront CDN
-        ↑
-   Internet Users
-```
-
-### Phase 2: ECS/EKS (Future Scaling)
-For high-availability and auto-scaling:
+### Architecture
 
 ```
-┌──────────────────────────────────────┐
-│  EKS Cluster (Kubernetes)            │
-├──────────────────────────────────────┤
-│                                      │
-│  ┌────────────────────────────────┐  │
-│  │  Admin API Pod (Multi-replica) │  │
-│  └────────────────────────────────┘  │
-│                                      │
-│  ┌────────────────────────────────┐  │
-│  │  Driver BFF Pod (Multi-replica)│  │
-│  └────────────────────────────────┘  │
-│                                      │
-│  ┌────────────────────────────────┐  │
-│  │  Background Workers            │  │
-│  │  - OCPP handlers               │  │
-│  │  - Notification services       │  │
-│  └────────────────────────────────┘  │
-│                                      │
-└──────────────────────────────────────┘
-      ↑
-  AWS RDS + ElastiCache
+                        Internet
+                           |
+              ┌────────────┼────────────┐
+              |            |            |
+        ev.odcall.com  api.ev.odcall.com  bff.ev.odcall.com
+              |            |            |
+              v            v            v
+        ┌───────────┐ ┌───────────┐ ┌───────────┐
+        │  Admin     │ │  Admin    │ │  Driver   │
+        │  Portal    │ │  API      │ │  BFF      │
+        │ (Next.js)  │ │ (.NET 10) │ │ (.NET 10) │
+        │ port 3000  │ │ port 8080 │ │ port 8080 │
+        └───────────┘ └─────┬─────┘ └─────┬─────┘
+         Cloud Run      Cloud Run      Cloud Run
+                             |            |
+                      ┌──────┴────────────┘
+                      |        VPC Connector
+                      |        (klc-connector)
+                ┌─────┴─────┐       ┌──────────────┐
+                │ Cloud SQL │       │  Memorystore  │
+                │ PostgreSQL│       │  Redis 7      │
+                │ (PostGIS) │       │              │
+                └───────────┘       └──────────────┘
+               klc-postgres          klc-redis
+             34.177.104.51        10.239.176.251:6379
 ```
 
-## Docker Images
+### Services
 
-### Building Docker Images
+| Service | Cloud Run Name | Domain | Port | Description |
+|---------|---------------|--------|------|-------------|
+| Admin API | `klc-admin-api` | `api.ev.odcall.com` | 8080 | ABP Framework API + OCPP WebSocket + SignalR |
+| Driver BFF | `klc-driver-bff` | `bff.ev.odcall.com` | 8080 | Minimal API for mobile app |
+| Admin Portal | `klc-admin-portal` | `ev.odcall.com` | 3000 | Next.js frontend |
 
-**Dockerfile for Admin API** (`src/backend/src/KLC.HttpApi.Host/Dockerfile`):
-```dockerfile
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
-WORKDIR /src
+### Key Configuration
 
-# Copy solution and projects
-COPY ["EVCharging.sln", "."]
-COPY ["src/EVCharging.Admin.HttpApi.Host/", "src/EVCharging.Admin.HttpApi.Host/"]
-COPY ["src/EVCharging.Domain/", "src/EVCharging.Domain/"]
-COPY ["src/EVCharging.Application/", "src/EVCharging.Application/"]
-COPY ["src/EVCharging.EntityFrameworkCore/", "src/EVCharging.EntityFrameworkCore/"]
+| Property | Value |
+|----------|-------|
+| GCP Project | `klc-ev-charging` (493799105026) |
+| Region | `asia-southeast1` |
+| Artifact Registry | `asia-southeast1-docker.pkg.dev/klc-ev-charging/klc-backend` |
+| Cloud SQL Instance | `klc-ev-charging:asia-southeast1:klc-postgres` |
+| Database | `KLC` (user: `klc_app`, PostGIS enabled) |
+| Redis | `klc-redis` (`10.239.176.251:6379`) |
+| VPC Connector | `klc-connector` |
+| Deploy SA | `github-actions-deploy@klc-ev-charging.iam.gserviceaccount.com` |
+| Backend SA | `klc-backend@klc-ev-charging.iam.gserviceaccount.com` |
 
-# Restore and build
-RUN dotnet restore "EVCharging.sln"
-RUN dotnet build "src/EVCharging.Admin.HttpApi.Host/EVCharging.Admin.HttpApi.Host.csproj" -c Release
+## 2. Prerequisites
 
-# Publish
-FROM build AS publish
-RUN dotnet publish "src/EVCharging.Admin.HttpApi.Host/EVCharging.Admin.HttpApi.Host.csproj" \
-    -c Release \
-    -o /app/publish
+### Required Tools
 
-# Runtime
-FROM mcr.microsoft.com/dotnet/aspnet:10.0
-WORKDIR /app
-COPY --from=publish /app/publish .
+- [Google Cloud SDK (gcloud)](https://cloud.google.com/sdk/docs/install) v450+
+- Docker v24+
+- Git
+- Access to the `klc-ev-charging` GCP project with at minimum `roles/run.admin` and `roles/artifactregistry.writer`
 
-EXPOSE 5000
-ENV ASPNETCORE_URLS=http://+:5000
-ENV ASPNETCORE_ENVIRONMENT=Production
-
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:5000/health || exit 1
-
-ENTRYPOINT ["dotnet", "EVCharging.Admin.HttpApi.Host.dll"]
-```
-
-**Dockerfile for Driver BFF** (`src/backend/src/KLC.Driver.BFF/Dockerfile`):
-```dockerfile
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
-WORKDIR /src
-
-COPY ["EVCharging.sln", "."]
-COPY ["src/EVCharging.Driver.BFF/", "src/EVCharging.Driver.BFF/"]
-COPY ["src/EVCharging.Domain/", "src/EVCharging.Domain/"]
-COPY ["src/EVCharging.EntityFrameworkCore/", "src/EVCharging.EntityFrameworkCore/"]
-
-RUN dotnet restore "EVCharging.sln"
-RUN dotnet build "src/EVCharging.Driver.BFF/EVCharging.Driver.BFF.csproj" -c Release
-
-FROM build AS publish
-RUN dotnet publish "src/EVCharging.Driver.BFF/EVCharging.Driver.BFF.csproj" \
-    -c Release \
-    -o /app/publish
-
-FROM mcr.microsoft.com/dotnet/aspnet:10.0
-WORKDIR /app
-COPY --from=publish /app/publish .
-
-EXPOSE 5001 5002
-ENV ASPNETCORE_URLS=http://+:5001
-ENV ASPNETCORE_ENVIRONMENT=Production
-
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:5001/health || exit 1
-
-ENTRYPOINT ["dotnet", "EVCharging.Driver.BFF.dll"]
-```
-
-### Building Images
-```bash
-# Build Admin API
-docker build -t klc-admin:latest \
-  -f src/backend/src/KLC.HttpApi.Host/Dockerfile .
-
-# Build Driver BFF
-docker build -t klc-driver:latest \
-  -f src/backend/src/KLC.Driver.BFF/Dockerfile .
-
-# Tag for ECR
-docker tag ev-charging-admin:latest \
-  123456789.dkr.ecr.ap-southeast-1.amazonaws.com/ev-charging-admin:latest
-
-docker tag ev-charging-driver:latest \
-  123456789.dkr.ecr.ap-southeast-1.amazonaws.com/ev-charging-driver:latest
-
-# Push to ECR
-aws ecr get-login-password --region ap-southeast-1 | \
-  docker login --username AWS --password-stdin 123456789.dkr.ecr.ap-southeast-1.amazonaws.com
-
-docker push 123456789.dkr.ecr.ap-southeast-1.amazonaws.com/ev-charging-admin:latest
-docker push 123456789.dkr.ecr.ap-southeast-1.amazonaws.com/ev-charging-driver:latest
-```
-
-## Docker Compose for Production
-
-**Production docker-compose.yml**:
-```yaml
-version: '3.8'
-
-services:
-  admin-api:
-    image: ev-charging-admin:latest
-    container_name: admin-api
-    ports:
-      - "5000:5000"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__Default=Server=postgres;Port=5432;Database=EVCharging;User Id=postgres;Password=${DB_PASSWORD};
-      - Redis__Connection=redis:6379
-      - AuthServer__Authority=https://${DOMAIN}/
-      - Serilog__WriteTo__0__Args__connectionString=Server=postgres;Port=5432;Database=EVCharging_Logs;User Id=postgres;Password=${DB_PASSWORD};
-    depends_on:
-      - postgres
-      - redis
-    networks:
-      - ev-charging
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  driver-api:
-    image: ev-charging-driver:latest
-    container_name: driver-api
-    ports:
-      - "5001:5001"
-      - "5002:5002"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__Default=Server=postgres;Port=5432;Database=EVCharging;User Id=postgres;Password=${DB_PASSWORD};
-      - Redis__Connection=redis:6379
-      - AuthServer__Authority=https://${DOMAIN}/
-      - OCPP__WebSocketPort=5002
-    depends_on:
-      - postgres
-      - redis
-    networks:
-      - ev-charging
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  postgres:
-    image: postgres:16
-    container_name: postgres
-    environment:
-      - POSTGRES_DB=EVCharging
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    networks:
-      - ev-charging
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:7-alpine
-    container_name: redis
-    command: redis-server --requirepass ${REDIS_PASSWORD}
-    volumes:
-      - redis-data:/data
-    networks:
-      - ev-charging
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  nginx:
-    image: nginx:latest
-    container_name: nginx
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl/:/etc/nginx/ssl/:ro
-    depends_on:
-      - admin-api
-      - driver-api
-    networks:
-      - ev-charging
-    restart: unless-stopped
-
-volumes:
-  postgres-data:
-  redis-data:
-
-networks:
-  ev-charging:
-    driver: bridge
-```
-
-**nginx.conf** (Reverse Proxy):
-```nginx
-upstream admin_api {
-    server admin-api:5000;
-}
-
-upstream driver_api {
-    server driver-api:5001;
-}
-
-upstream websocket {
-    server driver-api:5002;
-}
-
-server {
-    listen 80;
-    server_name _;
-    return 301 https://$host$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name api.klc.vn;
-
-    ssl_certificate /etc/nginx/ssl/cert.pem;
-    ssl_certificate_key /etc/nginx/ssl/key.pem;
-
-    # Security headers
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-Frame-Options "DENY" always;
-
-    # Admin API
-    location /admin/ {
-        proxy_pass http://admin_api/;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # Driver BFF API
-    location /driver/ {
-        proxy_pass http://driver_api/;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # OCPP WebSocket
-    location /ocpp {
-        proxy_pass http://websocket;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_buffering off;
-    }
-}
-```
-
-**Start production environment:**
-```bash
-# Set environment variables
-export DB_PASSWORD="secure_password_here"
-export REDIS_PASSWORD="redis_secure_password"
-export DOMAIN="api.klc.vn"
-
-# Start containers
-docker compose -f docker-compose.prod.yml up -d
-
-# View logs
-docker compose logs -f admin-api
-docker compose logs -f driver-api
-```
-
-## AWS Deployment (Phase 1)
-
-### 1. RDS PostgreSQL Setup
-
-**AWS CLI:**
-```bash
-# Create RDS instance
-aws rds create-db-instance \
-    --db-instance-identifier ev-charging-prod \
-    --db-instance-class db.t4g.medium \
-    --engine postgres \
-    --engine-version 16.2 \
-    --master-username postgres \
-    --master-user-password SecurePassword123 \
-    --allocated-storage 100 \
-    --storage-type gp3 \
-    --vpc-security-group-ids sg-0123456789abcdef0 \
-    --db-subnet-group-name ev-charging-db-subnet \
-    --publicly-accessible false \
-    --backup-retention-period 30 \
-    --multi-az true \
-    --storage-encrypted true
-
-# Create read replica (for driver BFF reporting queries)
-aws rds create-db-instance-read-replica \
-    --db-instance-identifier ev-charging-read-replica \
-    --source-db-instance-identifier ev-charging-prod \
-    --db-instance-class db.t4g.medium
-```
-
-### 2. ElastiCache Redis Setup
+### Initial Setup
 
 ```bash
-# Create Redis cluster
-aws elasticache create-cache-cluster \
-    --cache-cluster-id ev-charging-redis \
-    --cache-node-type cache.t4g.medium \
-    --engine redis \
-    --engine-version 7.0 \
-    --num-cache-nodes 1 \
-    --cache-subnet-group-name ev-charging-redis-subnet \
-    --security-group-ids sg-0123456789abcdef1 \
-    --automatic-failover-enabled
+# Authenticate to GCP
+gcloud auth login
+gcloud config set project klc-ev-charging
+gcloud config set run/region asia-southeast1
 
-# Enable encryption at rest
-aws elasticache create-cache-cluster \
-    --cache-cluster-id ev-charging-redis \
-    --at-rest-encryption-enabled
+# Configure Docker for Artifact Registry
+gcloud auth configure-docker asia-southeast1-docker.pkg.dev --quiet
+
+# Verify access
+gcloud run services list --region asia-southeast1
 ```
 
-### 3. EC2 Auto Scaling Group Setup
+## 3. Infrastructure
 
-**Create Launch Template:**
-```bash
-aws ec2 create-launch-template \
-    --launch-template-name ev-charging-template \
-    --version-description "EV Charging CSMS Deployment" \
-    --launch-template-data '{
-        "ImageId": "ami-0c55b159cbfafe1f0",
-        "InstanceType": "t4g.large",
-        "KeyName": "ev-charging-key",
-        "SecurityGroupIds": ["sg-0123456789abcdef2"],
-        "IamInstanceProfile": {"Name": "EC2-ECS-Role"},
-        "UserData": "base64_encoded_init_script",
-        "TagSpecifications": [{
-            "ResourceType": "instance",
-            "Tags": [{"Key": "Name", "Value": "EV-Charging-API"}]
-        }]
-    }'
+### Cloud Run Services
+
+All three services run in `asia-southeast1` with auto-scaling:
+
+| Service | Memory | CPU | Min Instances | Max Instances | Timeout | Session Affinity |
+|---------|--------|-----|---------------|---------------|---------|-----------------|
+| `klc-admin-api` | 1Gi | 1 | 0 | 3 | 3600s | Yes (WebSocket) |
+| `klc-driver-bff` | 512Mi | 1 | 0 | 5 | 300s | No |
+| `klc-admin-portal` | 512Mi | 1 | 0 | 3 | 300s | No |
+
+The Admin API has session affinity and a 3600s (1 hour) timeout to support long-lived OCPP WebSocket connections.
+
+### Cloud SQL (PostgreSQL)
+
+- **Instance**: `klc-postgres` (connection name: `klc-ev-charging:asia-southeast1:klc-postgres`)
+- **IP**: `34.177.104.51`
+- **Database**: `KLC`
+- **User**: `klc_app`
+- **Extensions**: PostGIS (spatial queries via `UseNetTopologySuite()`)
+- **Connection**: Via Cloud SQL Auth Proxy sidecar (automatically configured with `--add-cloudsql-instances` flag)
+
+### Memorystore Redis
+
+- **Instance**: `klc-redis`
+- **IP**: `10.239.176.251:6379`
+- **Access**: Via VPC connector `klc-connector` (private IP only)
+- **Purpose**: Session cache, real-time OCPP status, Driver BFF cache-first reads
+
+### Artifact Registry
+
+- **Repository**: `asia-southeast1-docker.pkg.dev/klc-ev-charging/klc-backend`
+- **Images**:
+  - `admin-api:<tag>` -- Admin API
+  - `driver-bff:<tag>` -- Driver BFF
+  - `admin-portal:<tag>` -- Admin Portal
+- **Tags**: Images are tagged with both the Git SHA and `latest`
+
+### Secret Manager
+
+All sensitive configuration is stored in GCP Secret Manager and injected into Cloud Run services at runtime. See section 5 for the full list.
+
+### VPC Connector
+
+- **Name**: `klc-connector`
+- **Egress**: `private-ranges-only` (only traffic to private IPs goes through the connector)
+- **Purpose**: Allows Cloud Run services to reach Memorystore Redis on private IP
+
+## 4. CI/CD Pipeline
+
+### Workflows
+
+Three GitHub Actions workflows handle CI and deployment:
+
+| Workflow | File | Trigger | Purpose |
+|----------|------|---------|---------|
+| CI | `ci.yml` | Push/PR to `develop`, `main` | Build, type check, test |
+| Deploy (Prod) | `deploy.yml` | Push to `main` | Deploy to production Cloud Run |
+| Deploy (Dev) | `deploy-dev.yml` | Push to `develop` | Deploy to dev Cloud Run |
+
+### Branch Strategy
+
+```
+develop  ──push──>  Deploy Dev workflow  ──>  evcms-dev-* Cloud Run services
+main     ──push──>  Deploy (Prod) workflow ──>  klc-* Cloud Run services
+PR       ──open──>  CI workflow (tests only, no deploy)
 ```
 
-**Create Auto Scaling Group:**
-```bash
-aws autoscaling create-auto-scaling-group \
-    --auto-scaling-group-name ev-charging-asg \
-    --launch-template LaunchTemplateName=ev-charging-template,Version='$Latest' \
-    --min-size 2 \
-    --max-size 6 \
-    --desired-capacity 2 \
-    --vpc-zone-identifier "subnet-12345,subnet-67890" \
-    --target-group-arns arn:aws:elasticloadbalancing:ap-southeast-1:123456789:targetgroup/ev-charging/abc123
+### Production Deploy Pipeline (`deploy.yml`)
+
+```
+  ┌──────────┐
+  │ Detect   │──> Which paths changed? (backend / admin-portal)
+  │ Changes  │
+  └────┬─────┘
+       │
+  ┌────v─────┐
+  │ Backend  │──> dotnet test (PostGIS service container)
+  │ Tests    │
+  └────┬─────┘
+       │
+  ┌────v────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐
+  │ Deploy Admin API    │  │ Deploy Driver BFF   │  │ Deploy Admin Portal │
+  │ (needs test pass)   │  │ (needs test pass)   │  │ (no test gate)      │
+  └─────────────────────┘  └─────────────────────┘  └─────────────────────┘
 ```
 
-### 4. Application Load Balancer (ALB)
+Each deploy job:
+1. Authenticates to GCP via Workload Identity Federation (keyless, no service account keys)
+2. Builds the Docker image
+3. Pushes to Artifact Registry with both `:<sha>` and `:latest` tags
+4. Deploys to Cloud Run via `google-github-actions/deploy-cloudrun@v2`
 
-```bash
-# Create ALB
-aws elbv2 create-load-balancer \
-    --name ev-charging-alb \
-    --subnets subnet-12345 subnet-67890 \
-    --security-groups sg-0123456789abcdef3 \
-    --scheme internet-facing
+### Authentication: Workload Identity Federation
 
-# Create target groups
-aws elbv2 create-target-group \
-    --name ev-charging-admin \
-    --protocol HTTP \
-    --port 5000 \
-    --vpc-id vpc-12345678
+The CI/CD pipeline uses **Workload Identity Federation** instead of service account keys:
 
-aws elbv2 create-target-group \
-    --name ev-charging-driver \
-    --protocol HTTP \
-    --port 5001 \
-    --vpc-id vpc-12345678
-```
+- **Identity Pool**: `github-actions`
+- **Service Account**: `github-actions-deploy@klc-ev-charging.iam.gserviceaccount.com`
+- **GitHub Secrets Required**:
+  - `GCP_WORKLOAD_IDENTITY_PROVIDER` -- The full provider resource name
+  - `GCP_SA_EMAIL` -- The deploy service account email
+  - `GCP_PROJECT_ID` -- `klc-ev-charging`
+  - `GCP_REGION` -- `asia-southeast1`
 
-## Environment Configuration
+### Change Detection
 
-### Staging Environment
-`.env.staging`:
-```env
-ASPNETCORE_ENVIRONMENT=Staging
-ConnectionStrings__Default=Server=ev-charging-staging.c9akciq32.us-east-1.rds.amazonaws.com;Database=EVCharging_Staging;User Id=postgres;Password=***;
-Redis__Connection=ev-charging-redis-staging.abc123.ng.0001.use1.cache.amazonaws.com:6379
-AuthServer__Authority=https://staging-api.klc.vn
-Serilog__MinimumLevel=Information
-OCPP__MaxConnections=500
-```
+The deploy workflow uses `dorny/paths-filter@v3` to detect which parts of the codebase changed. Only affected services are rebuilt and redeployed:
 
-### Production Environment
-`.env.production`:
-```env
-ASPNETCORE_ENVIRONMENT=Production
-ConnectionStrings__Default=Server=ev-charging-prod.c9akciq32.us-east-1.rds.amazonaws.com;Database=EVCharging;User Id=postgres;Password=***;
-ConnectionStrings__ReadReplica=Server=ev-charging-read-replica.c9akciq32.us-east-1.rds.amazonaws.com;Database=EVCharging;User Id=postgres;Password=***;
-Redis__Connection=ev-charging-redis-prod.abc123.ng.0001.use1.cache.amazonaws.com:6379
-AuthServer__Authority=https://api.klc.vn
-Serilog__MinimumLevel=Warning
-OCPP__MaxConnections=5000
-CORS__Origins=https://app.klc.vn,https://admin.klc.vn
-```
+- `src/backend/**` changes trigger Admin API and Driver BFF deploys
+- `src/admin-portal/**` changes trigger Admin Portal deploy
+- Admin Portal does not require backend tests to pass
 
-## Health Checks & Monitoring
+## 5. Environment Variables & Secrets
 
-### Health Check Endpoint (appsettings.json)
-```json
-{
-  "HealthChecks": {
-    "Enabled": true,
-    "Endpoints": {
-      "Health": "/health",
-      "Ready": "/health/ready"
-    },
-    "Checks": {
-      "Database": true,
-      "Redis": true,
-      "OCPP": true
-    }
-  }
-}
-```
+### Admin API (`klc-admin-api`)
 
-### Health Check Implementation
-```csharp
-// Program.cs
-builder.Services.AddHealthChecks()
-    .AddDbContextCheck<EVChargingDbContext>()
-    .AddRedis(builder.Configuration["Redis:Connection"])
-    .AddCheck<OcppConnectionHealthCheck>("ocpp");
+**Environment Variables** (set via `--set-env-vars`):
 
-app.MapHealthChecks("/health");
-app.MapHealthChecks("/health/ready", new HealthCheckOptions
-{
-    Predicate = check => check.Tags.Contains("ready")
-});
-```
+| Variable | Value |
+|----------|-------|
+| `ASPNETCORE_ENVIRONMENT` | `Production` |
+| `App__CorsOrigins` | `https://ev.odcall.com,https://api.ev.odcall.com,http://localhost:3001` |
 
-### CloudWatch Monitoring
+**Secrets** (injected from Secret Manager via `--set-secrets`):
 
-**CloudWatch Agent Configuration** (`cloudwatch-config.json`):
-```json
-{
-  "metrics": {
-    "namespace": "EV-Charging/API",
-    "metrics_collected": {
-      "cpu": {
-        "measurement": [
-          {"name": "cpu_usage_idle", "rename": "CPU_IDLE", "unit": "Percent"},
-          {"name": "cpu_usage_iowait", "rename": "CPU_IOWAIT", "unit": "Percent"}
-        ],
-        "metrics_collection_interval": 60
-      },
-      "mem": {
-        "measurement": [
-          {"name": "mem_used_percent", "rename": "MEM_USED", "unit": "Percent"}
-        ],
-        "metrics_collection_interval": 60
-      }
-    }
-  },
-  "logs": {
-    "logs_collected": {
-      "files": {
-        "collect_list": [
-          {
-            "file_path": "/var/log/dotnet/admin-api.log",
-            "log_group_name": "/aws/ec2/ev-charging/admin-api",
-            "log_stream_name": "{instance_id}"
-          },
-          {
-            "file_path": "/var/log/dotnet/driver-api.log",
-            "log_group_name": "/aws/ec2/ev-charging/driver-api",
-            "log_stream_name": "{instance_id}"
-          }
-        ]
-      }
-    }
-  }
-}
-```
+| Env Variable | Secret Manager Key | Description |
+|--------------|--------------------|-------------|
+| `ConnectionStrings__Default` | `db-connection-string` | Cloud SQL PostgreSQL connection string |
+| `ConnectionStrings__Redis` | `redis-connection-string` | Memorystore Redis connection string |
+| `Jwt__SecretKey` | `jwt-secret-key` | JWT signing key |
+| `StringEncryption__DefaultPassPhrase` | `string-encryption-passphrase` | ABP string encryption passphrase |
+| `Payment__MoMo__PartnerCode` | `momo-partner-code` | MoMo payment gateway partner code |
+| `Payment__MoMo__AccessKey` | `momo-access-key` | MoMo payment gateway access key |
+| `Payment__MoMo__SecretKey` | `momo-secret-key` | MoMo payment gateway secret key |
+| `Payment__VnPay__TmnCode` | `vnpay-tmn-code` | VnPay terminal code |
+| `Payment__VnPay__HashSecret` | `vnpay-hash-secret` | VnPay hash secret |
+| `OPENIDDICT_SIGNING_CERT` | `openiddict-signing-cert` | OpenIddict signing certificate (base64) |
+| `OPENIDDICT_SIGNING_PASSWORD` | `openiddict-signing-password` | OpenIddict signing cert password |
+| `OPENIDDICT_ENCRYPTION_CERT` | `openiddict-encryption-cert` | OpenIddict encryption certificate (base64) |
+| `OPENIDDICT_ENCRYPTION_PASSWORD` | `openiddict-encryption-password` | OpenIddict encryption cert password |
 
-### Serilog Configuration (Structured Logging)
-```csharp
-// Program.cs
-Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Information()
-    .WriteTo.Console()
-    .WriteTo.PostgreSQL(
-        connectionString: builder.Configuration["ConnectionStrings:Default"],
-        tableName: "Logs")
-    .WriteTo.CloudWatch(
-        logGroupName: "/aws/ec2/ev-charging/admin-api",
-        textFormatter: new CompactJsonFormatter())
-    .Enrich.FromLogContext()
-    .Enrich.WithMachineName()
-    .Enrich.WithEnvironmentUserName()
-    .CreateLogger();
-```
+### Driver BFF (`klc-driver-bff`)
 
-## CI/CD Pipeline (GitHub Actions)
+**Environment Variables**:
 
-**Workflow file** (`.github/workflows/deploy.yml`):
-```yaml
-name: Deploy to Production
+| Variable | Value |
+|----------|-------|
+| `ASPNETCORE_ENVIRONMENT` | `Production` |
+| `EnableApiDocs` | `true` |
 
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+**Secrets**: Same as Admin API except without the OpenIddict certificates and CORS settings.
 
-env:
-  AWS_REGION: ap-southeast-1
-  ECR_REGISTRY: 123456789.dkr.ecr.ap-southeast-1.amazonaws.com
-  ADMIN_API_IMAGE: ev-charging-admin
-  DRIVER_API_IMAGE: ev-charging-driver
+### Admin Portal (`klc-admin-portal`)
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-dotnet@v3
-        with:
-          dotnet-version: '10.0.x'
-      - run: dotnet restore
-      - run: dotnet build
-      - run: dotnet test /p:CollectCoverage=true
+**Environment Variables**:
 
-  build:
-    needs: test
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v3
+| Variable | Value |
+|----------|-------|
+| `NODE_ENV` | `production` |
+| `BACKEND_API_URL` | `https://api.ev.odcall.com` |
+| `OIDC_CLIENT_ID` | `KLC_Api` |
 
-      - uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+**Build Args** (set at Docker build time):
 
-      - uses: aws-actions/amazon-ecr-login@v1
-        id: login-ecr
+| Arg | Value |
+|-----|-------|
+| `NEXT_PUBLIC_API_URL` | `https://api.ev.odcall.com` |
 
-      - name: Build and push Admin API
-        run: |
-          docker build -t $ECR_REGISTRY/$ADMIN_API_IMAGE:latest \
-            -f src/backend/src/KLC.HttpApi.Host/Dockerfile .
-          docker push $ECR_REGISTRY/$ADMIN_API_IMAGE:latest
+**Secrets**:
 
-      - name: Build and push Driver API
-        run: |
-          docker build -t $ECR_REGISTRY/$DRIVER_API_IMAGE:latest \
-            -f src/backend/src/KLC.Driver.BFF/Dockerfile .
-          docker push $ECR_REGISTRY/$DRIVER_API_IMAGE:latest
+| Env Variable | Secret Manager Key | Description |
+|--------------|--------------------|-------------|
+| `OIDC_CLIENT_SECRET` | `oidc-client-secret` | OpenIddict client secret |
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Update EC2 instances
-        run: |
-          aws ec2-instance-connect send-ssh-public-key \
-            --instance-id i-1234567890abcdef0 \
-            --os-user ec2-user \
-            --ssh-public-key-file ~/.ssh/id_rsa.pub
-
-          ssh -i ~/.ssh/id_rsa ec2-user@your-instance \
-            "cd /opt/ev-charging && \
-             docker compose pull && \
-             docker compose up -d"
-
-      - name: Verify deployment
-        run: |
-          curl -f https://api.klc.vn/health || exit 1
-          curl -f https://api.klc.vn/admin/health || exit 1
-```
-
-## Rollback Procedure
-
-If deployment fails:
+### Managing Secrets
 
 ```bash
-# View deployment history
-docker pull <previous-image>:latest
+# Create a new secret
+echo -n "my-secret-value" | gcloud secrets create my-secret-name \
+    --data-file=- --replication-policy=automatic
 
-# Rollback in docker-compose
-docker compose down
-docker compose up -d  # Uses previous image
+# Update an existing secret
+echo -n "new-value" | gcloud secrets versions add my-secret-name --data-file=-
 
-# Verify health
-curl http://localhost:5000/health
-curl http://localhost:5001/health
+# View secret metadata (not the value)
+gcloud secrets describe db-connection-string
 
-# Check logs
-docker compose logs admin-api
-docker compose logs driver-api
+# List all secrets
+gcloud secrets list
+
+# Grant Cloud Run service account access to a secret
+gcloud secrets add-iam-policy-binding my-secret-name \
+    --member="serviceAccount:493799105026-compute@developer.gserviceaccount.com" \
+    --role="roles/secretmanager.secretAccessor"
 ```
 
-## Disaster Recovery
+## 6. Manual Deployment
 
-### Database Backup
+### Build and Push Images
+
 ```bash
-# Automated RDS backups (30-day retention)
-aws rds create-db-snapshot \
-    --db-instance-identifier ev-charging-prod \
-    --db-snapshot-identifier ev-charging-backup-$(date +%Y%m%d)
+# Set variables
+export PROJECT_ID=klc-ev-charging
+export REGION=asia-southeast1
+export AR_REPO=${REGION}-docker.pkg.dev/${PROJECT_ID}/klc-backend
+export TAG=$(git rev-parse --short HEAD)
 
-# Restore from snapshot
-aws rds restore-db-instance-from-db-snapshot \
-    --db-instance-identifier ev-charging-restored \
-    --db-snapshot-identifier ev-charging-backup-20260301
+# Authenticate
+gcloud auth configure-docker ${REGION}-docker.pkg.dev --quiet
 ```
 
-### Redis Persistence
-Enable AOF (Append-Only File) in ElastiCache:
-```json
-{
-  "ParameterGroupName": "ev-charging-redis-params",
-  "Parameters": [
-    {"ParameterName": "appendonly", "ParameterValue": "yes"},
-    {"ParameterName": "appendfsync", "ParameterValue": "everysec"}
-  ]
-}
-```
+**Admin API**:
 
-## Performance Optimization
-
-### Database Query Optimization
-- Index frequently filtered columns (ProvinceCode, Status)
-- Use read replicas for reporting/analytics
-- Implement query result caching (Redis)
-
-### API Response Caching
-- Cache station list for 1 hour
-- Cache connector status for 5 minutes
-- Invalidate on updates
-
-### Load Testing
 ```bash
-# Using Apache Bench
-ab -n 10000 -c 100 https://api.klc.vn/driver/api/v1/stations
+docker build -t ${AR_REPO}/admin-api:${TAG} \
+    -f src/backend/src/KLC.HttpApi.Host/Dockerfile \
+    src/backend
 
-# Using k6
-k6 run load-test.js
+docker push ${AR_REPO}/admin-api:${TAG}
 ```
+
+**Driver BFF**:
+
+```bash
+docker build -t ${AR_REPO}/driver-bff:${TAG} \
+    -f src/backend/src/KLC.Driver.BFF/Dockerfile \
+    src/backend
+
+docker push ${AR_REPO}/driver-bff:${TAG}
+```
+
+**Admin Portal**:
+
+```bash
+docker build -t ${AR_REPO}/admin-portal:${TAG} \
+    --build-arg NEXT_PUBLIC_API_URL=https://api.ev.odcall.com \
+    -f src/admin-portal/Dockerfile \
+    src/admin-portal
+
+docker push ${AR_REPO}/admin-portal:${TAG}
+```
+
+### Deploy to Cloud Run
+
+**Admin API**:
+
+```bash
+gcloud run deploy klc-admin-api \
+    --image ${AR_REPO}/admin-api:${TAG} \
+    --region ${REGION} \
+    --port=8080 \
+    --memory=1Gi \
+    --cpu=1 \
+    --min-instances=0 \
+    --max-instances=3 \
+    --timeout=3600 \
+    --session-affinity \
+    --add-cloudsql-instances=klc-ev-charging:asia-southeast1:klc-postgres \
+    --vpc-connector=klc-connector \
+    --vpc-egress=private-ranges-only \
+    --set-env-vars="ASPNETCORE_ENVIRONMENT=Production,App__CorsOrigins=https://ev.odcall.com" \
+    --set-secrets="ConnectionStrings__Default=db-connection-string:latest,ConnectionStrings__Redis=redis-connection-string:latest,Jwt__SecretKey=jwt-secret-key:latest,StringEncryption__DefaultPassPhrase=string-encryption-passphrase:latest"
+```
+
+**Driver BFF**:
+
+```bash
+gcloud run deploy klc-driver-bff \
+    --image ${AR_REPO}/driver-bff:${TAG} \
+    --region ${REGION} \
+    --port=8080 \
+    --memory=512Mi \
+    --cpu=1 \
+    --min-instances=0 \
+    --max-instances=5 \
+    --add-cloudsql-instances=klc-ev-charging:asia-southeast1:klc-postgres \
+    --vpc-connector=klc-connector \
+    --vpc-egress=private-ranges-only \
+    --set-env-vars="ASPNETCORE_ENVIRONMENT=Production" \
+    --set-secrets="ConnectionStrings__Default=db-connection-string:latest,ConnectionStrings__Redis=redis-connection-string:latest,Jwt__SecretKey=jwt-secret-key:latest"
+```
+
+**Admin Portal**:
+
+```bash
+gcloud run deploy klc-admin-portal \
+    --image ${AR_REPO}/admin-portal:${TAG} \
+    --region ${REGION} \
+    --port=3000 \
+    --memory=512Mi \
+    --cpu=1 \
+    --min-instances=0 \
+    --max-instances=3 \
+    --set-env-vars="NODE_ENV=production,BACKEND_API_URL=https://api.ev.odcall.com,OIDC_CLIENT_ID=KLC_Api" \
+    --set-secrets="OIDC_CLIENT_SECRET=oidc-client-secret:latest"
+```
+
+### Database Migrations
+
+Migrations are run manually via the `deploy-dev.yml` workflow dispatch or from a local machine with Cloud SQL Auth Proxy:
+
+```bash
+# Install Cloud SQL Auth Proxy
+gcloud components install cloud-sql-proxy
+
+# Start the proxy (connects to Cloud SQL via IAM auth)
+cloud-sql-proxy klc-ev-charging:asia-southeast1:klc-postgres &
+sleep 3
+
+# Run migrations (use the proxy's local port)
+dotnet ef database update \
+    --project src/backend/src/KLC.EntityFrameworkCore \
+    --startup-project src/backend/src/KLC.HttpApi.Host
+```
+
+Set the connection string environment variable to point to `127.0.0.1` when using the proxy:
+
+```bash
+export ConnectionStrings__Default="Host=127.0.0.1;Port=5432;Database=KLC;Username=klc_app;Password=<password>"
+```
+
+## 7. Domain Configuration
+
+### Custom Domain Mappings
+
+Three domains are mapped to Cloud Run services:
+
+| Domain | Cloud Run Service | Purpose |
+|--------|------------------|---------|
+| `ev.odcall.com` | `klc-admin-portal` | Admin Portal (Next.js) |
+| `api.ev.odcall.com` | `klc-admin-api` | Admin API + OCPP WebSocket |
+| `bff.ev.odcall.com` | `klc-driver-bff` | Driver BFF (mobile API) |
+
+### Setting Up Domain Mappings
+
+```bash
+# Map custom domains to Cloud Run services
+gcloud run domain-mappings create \
+    --service klc-admin-portal \
+    --domain ev.odcall.com \
+    --region asia-southeast1
+
+gcloud run domain-mappings create \
+    --service klc-admin-api \
+    --domain api.ev.odcall.com \
+    --region asia-southeast1
+
+gcloud run domain-mappings create \
+    --service klc-driver-bff \
+    --domain bff.ev.odcall.com \
+    --region asia-southeast1
+```
+
+### DNS Configuration
+
+After creating domain mappings, configure DNS records at your domain registrar:
+
+```
+# Verify the mapping status and get required DNS records
+gcloud run domain-mappings describe \
+    --domain ev.odcall.com \
+    --region asia-southeast1
+```
+
+Typically, Cloud Run requires:
+- A `CNAME` record pointing to `ghs.googlehosted.com.` for each subdomain
+- Domain ownership verification via Google Search Console
+
+### OCPP WebSocket Access
+
+OCPP chargers connect via WebSocket at:
+
+```
+wss://api.ev.odcall.com/ocpp/{chargePointId}
+```
+
+The Admin API Cloud Run service is configured with:
+- **Session affinity**: Ensures WebSocket connections stick to the same instance
+- **Timeout**: 3600s (1 hour) to support long-lived WebSocket connections
+- **Subprotocol**: `ocpp1.6`
+
+## 8. Monitoring & Health Checks
+
+### Health Endpoints
+
+| Service | Health URL |
+|---------|-----------|
+| Admin API | `https://api.ev.odcall.com/health` |
+| Driver BFF | `https://bff.ev.odcall.com/health` |
+| Admin Portal | `https://ev.odcall.com/` (HTTP 200 check) |
+
+### Quick Health Check
+
+```bash
+# Check all services
+curl -sf https://api.ev.odcall.com/health && echo "Admin API: OK" || echo "Admin API: FAIL"
+curl -sf https://bff.ev.odcall.com/health && echo "Driver BFF: OK" || echo "Driver BFF: FAIL"
+curl -sf https://ev.odcall.com/ -o /dev/null && echo "Admin Portal: OK" || echo "Admin Portal: FAIL"
+```
+
+### Cloud Run Metrics
+
+View service metrics in the GCP Console or via CLI:
+
+```bash
+# View recent logs for a service
+gcloud run services logs read klc-admin-api --region asia-southeast1 --limit 50
+
+# View logs for a specific revision
+gcloud run revisions logs read klc-admin-api-00042-abc --region asia-southeast1
+
+# Stream logs in real-time
+gcloud run services logs tail klc-admin-api --region asia-southeast1
+```
+
+### Cloud Logging Queries
+
+Access structured logs via Cloud Logging in the GCP Console. Useful queries:
+
+```
+# All errors from Admin API
+resource.type="cloud_run_revision"
+resource.labels.service_name="klc-admin-api"
+severity>=ERROR
+
+# OCPP WebSocket connections
+resource.type="cloud_run_revision"
+resource.labels.service_name="klc-admin-api"
+textPayload=~"ocpp"
+
+# Slow requests (>5s)
+resource.type="cloud_run_revision"
+resource.labels.service_name="klc-admin-api"
+httpRequest.latency>"5s"
+```
+
+### Key Metrics to Monitor
+
+| Metric | Description | Alert Threshold |
+|--------|-------------|-----------------|
+| Request count | Total requests per service | Spike > 10x normal |
+| Request latency (p95) | 95th percentile response time | > 2s for API, > 5s for portal |
+| Container instance count | Active instances | Max instances sustained |
+| Memory utilization | Container memory usage | > 80% |
+| Error rate (5xx) | Server error percentage | > 1% |
+
+## 9. Rollback Procedures
+
+Cloud Run maintains a history of revisions, making rollbacks straightforward.
+
+### View Revision History
+
+```bash
+# List revisions for a service
+gcloud run revisions list --service klc-admin-api --region asia-southeast1
+
+# Output shows revision name, traffic %, and status
+# Example:
+#   klc-admin-api-00045-xyz   100%   READY
+#   klc-admin-api-00044-abc   0%     READY
+#   klc-admin-api-00043-def   0%     READY
+```
+
+### Rollback to Previous Revision
+
+```bash
+# Route 100% traffic to a specific previous revision
+gcloud run services update-traffic klc-admin-api \
+    --to-revisions=klc-admin-api-00044-abc=100 \
+    --region asia-southeast1
+```
+
+### Gradual Rollback (Canary)
+
+```bash
+# Split traffic: 90% to old revision, 10% to new
+gcloud run services update-traffic klc-admin-api \
+    --to-revisions=klc-admin-api-00044-abc=90,klc-admin-api-00045-xyz=10 \
+    --region asia-southeast1
+
+# After verification, fully shift
+gcloud run services update-traffic klc-admin-api \
+    --to-revisions=klc-admin-api-00044-abc=100 \
+    --region asia-southeast1
+```
+
+### Redeploy a Known-Good Image
+
+```bash
+# Deploy a specific image by SHA tag
+gcloud run deploy klc-admin-api \
+    --image asia-southeast1-docker.pkg.dev/klc-ev-charging/klc-backend/admin-api:<known-good-sha> \
+    --region asia-southeast1
+```
+
+### Database Rollback
+
+If a migration needs to be reverted:
+
+```bash
+# Revert to a specific migration (via Cloud SQL Auth Proxy)
+cloud-sql-proxy klc-ev-charging:asia-southeast1:klc-postgres &
+sleep 3
+
+dotnet ef database update <PreviousMigrationName> \
+    --project src/backend/src/KLC.EntityFrameworkCore \
+    --startup-project src/backend/src/KLC.HttpApi.Host
+```
+
+**Important**: Always deploy the application code rollback _before_ reverting the database migration, since the old code expects the old schema.
+
+## 10. Troubleshooting
+
+### Common Issues
+
+#### Service fails to start (CrashLoopBackOff)
+
+**Symptoms**: Cloud Run revision shows `FAILED` status, container restarts repeatedly.
+
+**Diagnosis**:
+```bash
+gcloud run revisions describe <revision-name> --region asia-southeast1
+gcloud run services logs read klc-admin-api --region asia-southeast1 --limit 100
+```
+
+**Common causes**:
+- Missing or invalid secrets (check Secret Manager access)
+- Database connection failure (check Cloud SQL instance status and VPC connector)
+- Port mismatch (service must listen on the port specified in `--port`)
+
+#### Cannot connect to Redis
+
+**Symptoms**: `RedisConnectionException` in logs.
+
+**Fix**:
+1. Verify VPC connector is active: `gcloud compute networks vpc-access connectors describe klc-connector --region asia-southeast1`
+2. Verify Redis instance is running: `gcloud redis instances describe klc-redis --region asia-southeast1`
+3. Confirm the `redis-connection-string` secret contains the correct private IP (`10.239.176.251:6379`)
+
+Note: Redis connections in the BFF are configured as lazy and non-fatal. The service will start even if Redis is temporarily unavailable.
+
+#### Cannot connect to Cloud SQL
+
+**Symptoms**: `Npgsql.NpgsqlException` in logs.
+
+**Fix**:
+1. Verify the Cloud SQL instance is running: `gcloud sql instances describe klc-postgres`
+2. Ensure `--add-cloudsql-instances` flag is set in the deploy command
+3. Verify the `db-connection-string` secret uses the Cloud SQL socket path format:
+   ```
+   Host=/cloudsql/klc-ev-charging:asia-southeast1:klc-postgres;Database=KLC;Username=klc_app;Password=<password>
+   ```
+
+#### OCPP WebSocket connections dropping
+
+**Symptoms**: Chargers disconnect and reconnect frequently.
+
+**Fix**:
+1. Verify `--timeout=3600` is set on `klc-admin-api`
+2. Verify `--session-affinity` is enabled
+3. Check Cloud Run logs for idle timeout messages
+4. Ensure the charger's heartbeat interval is shorter than the Cloud Run timeout
+
+#### Admin Portal shows 502/503 errors
+
+**Symptoms**: `ev.odcall.com` returns Bad Gateway.
+
+**Fix**:
+1. Check if the portal container is running: `gcloud run services describe klc-admin-portal --region asia-southeast1`
+2. Verify `BACKEND_API_URL` points to `https://api.ev.odcall.com`
+3. Check if the Admin API itself is healthy (the portal proxies auth requests server-side)
+
+#### Deployment fails with permission errors
+
+**Symptoms**: GitHub Actions workflow fails at GCP authentication step.
+
+**Fix**:
+1. Verify Workload Identity Federation is configured correctly
+2. Check that the deploy SA has required roles:
+   - `roles/run.admin`
+   - `roles/artifactregistry.writer`
+   - `roles/iam.serviceAccountUser`
+   - `roles/secretmanager.secretAccessor`
+3. Verify GitHub secrets `GCP_WORKLOAD_IDENTITY_PROVIDER` and `GCP_SA_EMAIL` are set
+
+#### Secret access denied
+
+**Symptoms**: `PermissionDenied` error when Cloud Run tries to access secrets.
+
+**Fix**:
+```bash
+# Grant the compute service account access to all secrets
+for secret in db-connection-string redis-connection-string jwt-secret-key \
+    string-encryption-passphrase oidc-client-secret momo-partner-code \
+    momo-access-key momo-secret-key vnpay-tmn-code vnpay-hash-secret; do
+    gcloud secrets add-iam-policy-binding ${secret} \
+        --member="serviceAccount:493799105026-compute@developer.gserviceaccount.com" \
+        --role="roles/secretmanager.secretAccessor"
+done
+```
+
+### Useful Diagnostic Commands
+
+```bash
+# List all Cloud Run services and their URLs
+gcloud run services list --region asia-southeast1
+
+# Describe a specific service (shows URL, revisions, env vars)
+gcloud run services describe klc-admin-api --region asia-southeast1
+
+# Check domain mapping status
+gcloud run domain-mappings list --region asia-southeast1
+
+# List images in Artifact Registry
+gcloud artifacts docker images list \
+    asia-southeast1-docker.pkg.dev/klc-ev-charging/klc-backend
+
+# Check Cloud SQL status
+gcloud sql instances describe klc-postgres
+
+# Check Redis status
+gcloud redis instances describe klc-redis --region asia-southeast1
+
+# Check VPC connector status
+gcloud compute networks vpc-access connectors describe klc-connector \
+    --region asia-southeast1
+```
+
+### Dev Environment
+
+The dev environment uses a separate set of Cloud Run services and secrets with the `evcms-dev-` prefix:
+
+| Production | Dev |
+|-----------|-----|
+| `klc-admin-api` | `evcms-dev-backend-api` |
+| `klc-driver-bff` | `evcms-dev-bff-socket` |
+| `klc-admin-portal` | `evcms-dev-admin-portal` |
+| `klc-connector` | `evcms-dev-vpc-connector` |
+| `db-connection-string` | `evcms-dev-db-connection-string` |
+| `redis-connection-string` | `evcms-dev-redis-auth-string` |
+
+Dev also has an additional `evcms-dev-ocpp-gateway` service (separate Cloud Run instance for OCPP WebSocket handling).
+
+The dev environment deploys automatically on push to `develop` branch via the `deploy-dev.yml` workflow. Database migrations can be triggered manually via `workflow_dispatch` with `run_migrations: true`.

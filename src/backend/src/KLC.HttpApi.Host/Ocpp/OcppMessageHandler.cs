@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using KLC.Auditing;
 using KLC.Enums;
 using KLC.Hubs;
 using KLC.Ocpp.Messages;
@@ -26,6 +27,7 @@ public class OcppMessageHandler
     private readonly IRepository<OcppRawEvent, Guid> _rawEventRepository;
     private readonly IGuidGenerator _guidGenerator;
     private readonly OcppMessageParserFactory _parserFactory;
+    private readonly IAuditEventLogger _auditLogger;
 
     public OcppMessageHandler(
         ILogger<OcppMessageHandler> logger,
@@ -35,7 +37,8 @@ public class OcppMessageHandler
         VendorProfileFactory vendorProfileFactory,
         IRepository<OcppRawEvent, Guid> rawEventRepository,
         IGuidGenerator guidGenerator,
-        OcppMessageParserFactory parserFactory)
+        OcppMessageParserFactory parserFactory,
+        IAuditEventLogger auditLogger)
     {
         _logger = logger;
         _connectionManager = connectionManager;
@@ -45,6 +48,7 @@ public class OcppMessageHandler
         _rawEventRepository = rawEventRepository;
         _guidGenerator = guidGenerator;
         _parserFactory = parserFactory;
+        _auditLogger = auditLogger;
     }
 
     /// <summary>
@@ -199,6 +203,9 @@ public class OcppMessageHandler
         // Reject unknown stations (BR-006-02)
         var status = stationId.HasValue ? RegistrationStatus.Accepted : RegistrationStatus.Rejected;
 
+        _auditLogger.LogOcppEvent("BootNotification", connection.ChargePointId,
+            $"Vendor={request.ChargePointVendor}, Model={request.ChargePointModel}, Status={status}");
+
         var response = new BootNotificationResponse
         {
             Status = status,
@@ -279,6 +286,9 @@ public class OcppMessageHandler
             request.MeterStart,
             transactionId);
 
+        _auditLogger.LogOcppEvent("StartTransaction", connection.ChargePointId,
+            $"Connector={request.ConnectorId}, IdTag={request.IdTag}, TransactionId={transactionId}, SessionId={sessionId}");
+
         // Push real-time update via SignalR
         if (sessionId.HasValue && connection.StationId.HasValue)
         {
@@ -340,6 +350,9 @@ public class OcppMessageHandler
             request.TransactionId,
             request.MeterStop,
             request.Reason);
+
+        _auditLogger.LogOcppEvent("StopTransaction", connection.ChargePointId,
+            $"TransactionId={request.TransactionId}, MeterStop={request.MeterStop}, Reason={request.Reason}");
 
         // Push real-time update via SignalR
         if (stopResult != null)

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
+using KLC.Auditing;
 using KLC.Driver;
 using KLC.Driver.Services;
 using KLC.EntityFrameworkCore;
@@ -38,8 +39,9 @@ public class PaymentBffServiceTests : KLCEntityFrameworkCoreTestBase
         var walletDomainService = CreateWalletDomainService();
         var paymentGateways = CreateMockPaymentGateways();
 
+        var auditLogger = Substitute.For<IAuditEventLogger>();
         _service = new PaymentBffService(
-            _dbContext, _cache, logger, paymentGateways, walletDomainService, _driverNotifier);
+            _dbContext, _cache, logger, paymentGateways, walletDomainService, _driverNotifier, auditLogger);
     }
 
     [Fact]

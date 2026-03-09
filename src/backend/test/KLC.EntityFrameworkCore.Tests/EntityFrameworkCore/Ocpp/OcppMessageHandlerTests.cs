@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using KLC.Enums;
 using KLC.Hubs;
+using KLC.Auditing;
 using KLC.Ocpp;
 using KLC.Ocpp.Messages;
 using KLC.Ocpp.Vendors;
@@ -46,6 +47,8 @@ public class OcppMessageHandlerTests
 
         var parserFactory = new OcppMessageParserFactory();
 
+        var auditLogger = Substitute.For<IAuditEventLogger>();
+
         _handler = new OcppMessageHandler(
             NullLogger<OcppMessageHandler>.Instance,
             connectionManager,
@@ -54,7 +57,8 @@ public class OcppMessageHandlerTests
             vendorFactory,
             rawEventRepo,
             guidGenerator,
-            parserFactory);
+            parserFactory,
+            auditLogger);
     }
 
     private static OcppConnection CreateConnection(string chargePointId = "TEST-001")

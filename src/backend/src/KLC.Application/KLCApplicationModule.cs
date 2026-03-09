@@ -1,4 +1,5 @@
-﻿using Volo.Abp.Account;
+﻿using KLC.Auditing;
+using Volo.Abp.Account;
 using Volo.Abp.Mapperly;
 using Volo.Abp.FeatureManagement;
 using Volo.Abp.Identity;
@@ -25,5 +26,6 @@ public class KLCApplicationModule : AbpModule
     public override void ConfigureServices(ServiceConfigurationContext context)
     {
         context.Services.AddMapperlyObjectMapper<KLCApplicationModule>();
+        context.Services.AddTransient<IAuditEventLogger, AuditEventLogger>();
     }
 }

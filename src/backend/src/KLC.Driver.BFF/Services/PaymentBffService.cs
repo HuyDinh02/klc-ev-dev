@@ -1,3 +1,4 @@
+using KLC.Auditing;
 using KLC.EntityFrameworkCore;
 using KLC.Enums;
 using KLC.Marketing;
@@ -25,6 +26,7 @@ public class PaymentBffService : IPaymentBffService
     private readonly IEnumerable<IPaymentGatewayService> _paymentGateways;
     private readonly WalletDomainService _walletDomainService;
     private readonly IDriverHubNotifier _driverNotifier;
+    private readonly IAuditEventLogger _auditLogger;
 
     public PaymentBffService(
         KLCDbContext dbContext,
@@ -32,7 +34,8 @@ public class PaymentBffService : IPaymentBffService
         ILogger<PaymentBffService> logger,
         IEnumerable<IPaymentGatewayService> paymentGateways,
         WalletDomainService walletDomainService,
-        IDriverHubNotifier driverNotifier)
+        IDriverHubNotifier driverNotifier,
+        IAuditEventLogger auditLogger)
     {
         _dbContext = dbContext;
         _cache = cache;
@@ -40,6 +43,7 @@ public class PaymentBffService : IPaymentBffService
         _paymentGateways = paymentGateways;
         _walletDomainService = walletDomainService;
         _driverNotifier = driverNotifier;
+        _auditLogger = auditLogger;
     }
 
     public async Task<PaymentResultDto> ProcessPaymentAsync(Guid userId, ProcessPaymentRequest request)
@@ -173,6 +177,8 @@ public class PaymentBffService : IPaymentBffService
                 "Payment completed (no gateway needed): SessionId={SessionId}, VoucherCode={VoucherCode}, Amount={Amount}",
                 request.SessionId, voucher?.Code, sessionCost);
 
+            _auditLogger.LogPaymentEvent("PaymentCompleted", payment.Id, sessionCost, paymentGateway.ToString(), userId.ToString());
+
             return new PaymentResultDto
             {
                 Success = true,
@@ -192,12 +198,15 @@ public class PaymentBffService : IPaymentBffService
 
         gatewayPayment.MarkProcessing();
 
+        _auditLogger.LogPaymentEvent("PaymentInitiated", gatewayPayment.Id, finalAmount, request.Gateway.ToString(), userId.ToString());
+
         var gateway = _paymentGateways.FirstOrDefault(g => g.Gateway == request.Gateway);
         if (gateway == null)
         {
             gatewayPayment.MarkFailed($"Gateway {request.Gateway} not supported");
             await _dbContext.PaymentTransactions.AddAsync(gatewayPayment);
             await _dbContext.SaveChangesAsync();
+            _auditLogger.LogPaymentEvent("PaymentFailed", gatewayPayment.Id, finalAmount, request.Gateway.ToString(), userId.ToString());
             return new PaymentResultDto { Success = false, PaymentId = gatewayPayment.Id, Error = $"Gateway {request.Gateway} not supported" };
         }
 
@@ -215,10 +224,12 @@ public class PaymentBffService : IPaymentBffService
             if (gatewayResult.Success)
             {
                 gatewayPayment.MarkCompleted(gatewayResult.GatewayTransactionId ?? "");
+                _auditLogger.LogPaymentEvent("PaymentCompleted", gatewayPayment.Id, finalAmount, request.Gateway.ToString(), userId.ToString());
             }
             else
             {
                 gatewayPayment.MarkFailed(gatewayResult.ErrorMessage ?? "Payment failed");
+                _auditLogger.LogPaymentEvent("PaymentFailed", gatewayPayment.Id, finalAmount, request.Gateway.ToString(), userId.ToString());
             }
 
             await _dbContext.PaymentTransactions.AddAsync(gatewayPayment);
