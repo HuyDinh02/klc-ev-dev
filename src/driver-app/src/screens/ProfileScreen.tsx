@@ -10,7 +10,9 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../navigation/types';
 import { Colors, Shadows } from '../constants/colors';
 import { Card, Button } from '../components/common';
 import { profileApi, vehiclesApi } from '../api/profile';
@@ -18,6 +20,7 @@ import { useAuthStore } from '../stores';
 import type { UserProfile, UserStatistics, Vehicle } from '../types';
 
 export function ProfileScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { logout } = useAuthStore();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [statistics, setStatistics] = useState<UserStatistics | null>(null);
@@ -135,8 +138,15 @@ export function ProfileScreen() {
           </Card>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>My Vehicles</Text>
+        <TouchableOpacity
+          style={styles.section}
+          onPress={() => navigation.navigate('Vehicles')}
+          activeOpacity={0.7}
+        >
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>My Vehicles</Text>
+            <Text style={styles.sectionArrow}>›</Text>
+          </View>
           {vehicles.length === 0 ? (
             <Card style={styles.emptyCard}>
               <Text style={styles.emptyText}>No vehicles added</Text>
@@ -144,7 +154,7 @@ export function ProfileScreen() {
                 title="Add Vehicle"
                 variant="outline"
                 size="small"
-                onPress={() => {}}
+                onPress={() => navigation.navigate('Vehicles')}
                 style={styles.addButton}
               />
             </Card>
@@ -172,7 +182,7 @@ export function ProfileScreen() {
               </Card>
             ))
           )}
-        </View>
+        </TouchableOpacity>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
@@ -294,11 +304,20 @@ const styles = StyleSheet.create({
   section: {
     padding: 16,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: Colors.text,
-    marginBottom: 12,
+  },
+  sectionArrow: {
+    fontSize: 24,
+    color: Colors.textSecondary,
   },
   emptyCard: {
     alignItems: 'center',

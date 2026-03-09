@@ -6,11 +6,15 @@ export type RootStackParamList = {
   StationDetail: { stationId: string };
   Session: undefined;
   QRScanner: undefined;
+  Vehicles: undefined;
+  Notifications: undefined;
 };
 
 export type MainTabParamList = {
   Home: undefined;
+  Favorites: undefined;
   History: undefined;
+  Wallet: undefined;
   Profile: undefined;
 };
 

@@ -4,3 +4,5 @@ export { sessionsApi } from './sessions';
 export { paymentsApi } from './payments';
 export { profileApi, vehiclesApi } from './profile';
 export { notificationsApi } from './notifications';
+export { favoritesApi } from './favorites';
+export { walletApi } from './wallet';

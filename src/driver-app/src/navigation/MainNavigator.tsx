@@ -1,7 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, StyleSheet, Text } from 'react-native';
-import { HomeScreen, HistoryScreen, ProfileScreen } from '../screens';
+import { HomeScreen, FavoritesScreen, HistoryScreen, WalletScreen, ProfileScreen } from '../screens';
 import { Colors } from '../constants/colors';
 import type { MainTabParamList } from './types';
 
@@ -16,10 +16,26 @@ function HomeIcon({ focused }: { focused: boolean }) {
   );
 }
 
+function FavoritesIcon({ focused }: { focused: boolean }) {
+  return (
+    <View style={[styles.iconContainer, focused && styles.iconFocused]}>
+      <Text style={[styles.iconText, focused && styles.iconTextFocused]}>&#x2665;</Text>
+    </View>
+  );
+}
+
 function HistoryIcon({ focused }: { focused: boolean }) {
   return (
     <View style={[styles.iconContainer, focused && styles.iconFocused]}>
       <Text style={[styles.iconText, focused && styles.iconTextFocused]}>📋</Text>
+    </View>
+  );
+}
+
+function WalletIcon({ focused }: { focused: boolean }) {
+  return (
+    <View style={[styles.iconContainer, focused && styles.iconFocused]}>
+      <Text style={[styles.iconText, focused && styles.iconTextFocused]}>💰</Text>
     </View>
   );
 }
@@ -52,11 +68,27 @@ export function MainNavigator() {
         }}
       />
       <Tab.Screen
+        name="Favorites"
+        component={FavoritesScreen}
+        options={{
+          tabBarLabel: 'Favorites',
+          tabBarIcon: FavoritesIcon,
+        }}
+      />
+      <Tab.Screen
         name="History"
         component={HistoryScreen}
         options={{
           tabBarLabel: 'History',
           tabBarIcon: HistoryIcon,
+        }}
+      />
+      <Tab.Screen
+        name="Wallet"
+        component={WalletScreen}
+        options={{
+          tabBarLabel: 'Wallet',
+          tabBarIcon: WalletIcon,
         }}
       />
       <Tab.Screen

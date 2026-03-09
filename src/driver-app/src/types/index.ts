@@ -119,6 +119,16 @@ export interface Notification {
 
 export type NotificationType = 'SessionComplete' | 'PaymentSuccess' | 'PaymentFailed' | 'Promotion' | 'System';
 
+// Wallet types
+export interface WalletTransaction {
+  id: string;
+  type: 'TopUp' | 'Payment' | 'Refund' | 'Bonus';
+  amount: number;
+  balance: number;
+  description: string;
+  createdAt: string;
+}
+
 // API Response types
 export interface PaginatedResponse<T> {
   items: T[];

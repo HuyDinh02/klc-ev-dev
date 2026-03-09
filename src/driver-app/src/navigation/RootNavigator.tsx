@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { MainNavigator } from './MainNavigator';
-import { LoginScreen, StationDetailScreen, SessionScreen } from '../screens';
+import { LoginScreen, StationDetailScreen, SessionScreen, VehiclesScreen, NotificationsScreen } from '../screens';
 import { useAuthStore } from '../stores';
 import { Colors } from '../constants/colors';
 import type { RootStackParamList } from './types';
@@ -55,6 +55,22 @@ export function RootNavigator() {
             options={{
               title: 'Charging Session',
               headerBackVisible: false,
+            }}
+          />
+          <Stack.Screen
+            name="Vehicles"
+            component={VehiclesScreen}
+            options={{
+              title: 'My Vehicles',
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="Notifications"
+            component={NotificationsScreen}
+            options={{
+              title: 'Notifications',
+              headerShown: false,
             }}
           />
         </>
