@@ -362,7 +362,9 @@ public class KLCHttpApiHostModule : AbpModule
     private void ConfigureHealthChecks(ServiceConfigurationContext context, IConfiguration configuration)
     {
         context.Services.AddHealthChecks()
-            .AddNpgSql(configuration.GetConnectionString("Default")!);
+            .AddNpgSql(configuration.GetConnectionString("Default")!,
+                tags: ["db"],
+                failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded);
     }
 
     public override void OnApplicationInitialization(ApplicationInitializationContext context)
