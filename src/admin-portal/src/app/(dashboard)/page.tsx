@@ -1,6 +1,7 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Activity,
   Zap,
@@ -10,6 +11,7 @@ import {
   TrendingUp,
   BatteryCharging,
   Gauge,
+  Wifi,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +24,7 @@ import { CHART_COLORS } from "@/lib/constants";
 import { monitoringApi, alertsApi } from "@/lib/api";
 import { formatCurrency, formatEnergy } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
+import { useMonitoringHub } from "@/lib/signalr";
 import {
   BarChart,
   Bar,
@@ -35,6 +38,28 @@ import {
 
 export default function DashboardPage() {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
+
+  // SignalR real-time updates — invalidate dashboard data on events
+  const onStationStatusChanged = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+  }, [queryClient]);
+
+  const onSessionUpdated = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+  }, [queryClient]);
+
+  const onAlertCreated = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    queryClient.invalidateQueries({ queryKey: ["recent-alerts"] });
+  }, [queryClient]);
+
+  const { status: hubStatus } = useMonitoringHub({
+    onStationStatusChanged,
+    onSessionUpdated,
+    onAlertCreated,
+  });
+
   const { data: dashboardData, isLoading } = useQuery({
     queryKey: ["dashboard"],
     queryFn: async () => {
@@ -83,7 +108,15 @@ export default function DashboardPage() {
         <PageHeader
           title={t("dashboard.title")}
           description={t("dashboard.description")}
-        />
+        >
+          {hubStatus === "connected" && (
+            <div className="flex items-center gap-1.5 text-green-600">
+              <Wifi className="h-3.5 w-3.5" />
+              <span className="text-xs font-medium">{t("monitoring.live")}</span>
+              <span className="flex h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+            </div>
+          )}
+        </PageHeader>
       </div>
 
       <div className="flex-1 space-y-6 p-6">

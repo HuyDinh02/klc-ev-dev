@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonCard } from "@/components/ui/skeleton";
 import { useTranslation } from "@/lib/i18n";
 import { api } from "@/lib/api";
+import { useMonitoringHub } from "@/lib/signalr";
+import { useAlertsStore } from "@/lib/store";
 import {
   Bell,
   AlertTriangle,
@@ -23,6 +25,7 @@ import {
   Eye,
   ChevronLeft,
   ChevronRight,
+  Wifi,
 } from "lucide-react";
 
 interface Alert {
@@ -69,6 +72,16 @@ export default function AlertsPage() {
   const [cursorStack, setCursorStack] = useState<(string | null)[]>([]);
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const pageSize = 20;
+
+  // SignalR real-time updates — refresh alerts list when new alerts arrive
+  const onAlertCreated = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["alerts"] });
+    useAlertsStore.getState().incrementUnreadCount();
+  }, [queryClient]);
+
+  const { status: hubStatus } = useMonitoringHub({
+    onAlertCreated,
+  });
 
   const resetPagination = () => { setCursor(null); setCursorStack([]); };
 
@@ -159,6 +172,13 @@ export default function AlertsPage() {
     <div className="space-y-6">
       {/* Header */}
       <PageHeader title={t("alerts.title")} description={t("alerts.description")}>
+        {hubStatus === "connected" && (
+          <div className="flex items-center gap-1.5 text-green-600">
+            <Wifi className="h-3.5 w-3.5" />
+            <span className="text-xs font-medium">{t("monitoring.live")}</span>
+            <span className="flex h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+          </div>
+        )}
         <Badge variant="secondary" className="text-sm">
           {stats?.unacknowledgedCount || 0} {t("alerts.unacknowledged")}
         </Badge>

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,9 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors, Shadows } from '../constants/colors';
 import { Card, Badge } from '../components/common';
 import { favoritesApi } from '../api/favorites';
-import type { Station, ConnectorStatus } from '../types';
+import { useSignalR } from '../hooks/useSignalR';
+import type { StationStatusChangedMessage } from '../hooks/useSignalR';
+import type { Station, ConnectorStatus, StationStatus } from '../types';
 
 type RootStackParamList = {
   StationDetail: { stationId: string };
@@ -28,6 +30,26 @@ export function FavoritesScreen() {
   const [favorites, setFavorites] = useState<Station[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // SignalR: listen for station status changes to update favorite stations in real-time
+  const signalRCallbacks = useMemo(() => ({
+    onStationStatusChanged: (message: StationStatusChangedMessage) => {
+      const isOnline = message.newStatus === 'Online';
+      setFavorites((prev) =>
+        prev.map((station) =>
+          station.id === message.stationId
+            ? {
+                ...station,
+                status: message.newStatus as StationStatus,
+                isOnline,
+              }
+            : station
+        )
+      );
+    },
+  }), []);
+
+  const { connect, subscribeToStation, unsubscribeFromStation } = useSignalR(signalRCallbacks);
 
   const loadFavorites = async () => {
     try {
@@ -46,6 +68,23 @@ export function FavoritesScreen() {
       loadFavorites();
     }, [])
   );
+
+  // Subscribe to station groups for all favorite stations
+  useEffect(() => {
+    if (favorites.length === 0) return;
+
+    connect().then(() => {
+      favorites.forEach((station) => {
+        subscribeToStation(station.id);
+      });
+    });
+
+    return () => {
+      favorites.forEach((station) => {
+        unsubscribeFromStation(station.id);
+      });
+    };
+  }, [favorites.length, connect, subscribeToStation, unsubscribeFromStation]);
 
   const onRefresh = () => {
     setRefreshing(true);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Plus,
@@ -10,6 +10,7 @@ import {
   PowerOff,
   Eye,
   Edit,
+  Wifi,
 } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/page-header";
@@ -22,11 +23,26 @@ import { SkeletonCard } from "@/components/ui/skeleton";
 import { stationsApi } from "@/lib/api";
 import { formatDateTime } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
+import { useMonitoringHub } from "@/lib/signalr";
 
 export default function StationsPage() {
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const queryClient = useQueryClient();
+
+  // SignalR real-time updates — refresh station list on status changes
+  const onStationStatusChanged = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["stations"] });
+  }, [queryClient]);
+
+  const onConnectorStatusChanged = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["stations"] });
+  }, [queryClient]);
+
+  const { status: hubStatus } = useMonitoringHub({
+    onStationStatusChanged,
+    onConnectorStatusChanged,
+  });
 
   const { data: stationsData, isLoading } = useQuery({
     queryKey: ["stations", search],
@@ -52,7 +68,15 @@ export default function StationsPage() {
     <div className="flex flex-col">
       {/* Sticky Header */}
       <div className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <PageHeader title={t("stations.title")} description={t("stations.description")} />
+        <PageHeader title={t("stations.title")} description={t("stations.description")}>
+          {hubStatus === "connected" && (
+            <div className="flex items-center gap-1.5 text-green-600">
+              <Wifi className="h-3.5 w-3.5" />
+              <span className="text-xs font-medium">{t("monitoring.live")}</span>
+              <span className="flex h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+            </div>
+          )}
+        </PageHeader>
         <div className="flex items-center gap-3">
           <div className="relative w-72">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

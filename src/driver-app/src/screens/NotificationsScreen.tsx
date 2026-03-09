@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,8 @@ import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { Colors, Shadows } from '../constants/colors';
 import { notificationsApi } from '../api/notifications';
+import { useSignalR } from '../hooks/useSignalR';
+import type { NotificationMessage } from '../hooks/useSignalR';
 import type { Notification, NotificationType } from '../types';
 
 interface NotificationIconConfig {
@@ -69,6 +71,27 @@ export function NotificationsScreen() {
   const [markingAllRead, setMarkingAllRead] = useState(false);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  // SignalR: listen for new notifications in real-time
+  const signalRCallbacks = useMemo(() => ({
+    onNotification: (message: NotificationMessage) => {
+      const newNotification: Notification = {
+        id: message.notificationId,
+        title: message.title,
+        message: message.body,
+        type: (message.type as NotificationType) || 'System',
+        isRead: false,
+        createdAt: message.timestamp,
+      };
+      setNotifications((prev) => [newNotification, ...prev]);
+    },
+  }), []);
+
+  const { connect } = useSignalR(signalRCallbacks);
+
+  useEffect(() => {
+    connect();
+  }, [connect]);
 
   const loadNotifications = async (reset = false) => {
     if (!reset && !hasMore) return;

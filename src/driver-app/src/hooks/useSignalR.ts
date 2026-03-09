@@ -5,9 +5,56 @@ import { useSessionStore } from '../stores/sessionStore';
 import { getAuthToken } from '../api/client';
 import type { MeterValue, ChargingSession } from '../types';
 
-export function useSignalR() {
+// SignalR message types matching the backend DriverHub records
+export interface NotificationMessage {
+  notificationId: string;
+  type: string;
+  title: string;
+  body: string;
+  actionUrl?: string;
+  timestamp: string;
+}
+
+export interface WalletBalanceChangedMessage {
+  userId: string;
+  newBalance: number;
+  changeAmount: number;
+  reason: string;
+  timestamp: string;
+}
+
+export interface ConnectorStatusMessage {
+  stationId: string;
+  connectorNumber: number;
+  status: string;
+  timestamp: string;
+}
+
+export interface StationStatusChangedMessage {
+  stationId: string;
+  stationName: string;
+  previousStatus: string;
+  newStatus: string;
+  timestamp: string;
+}
+
+// Optional callbacks that screens can provide to react to specific events
+export interface SignalRCallbacks {
+  onNotification?: (message: NotificationMessage) => void;
+  onWalletBalanceChanged?: (message: WalletBalanceChangedMessage) => void;
+  onConnectorStatusChanged?: (message: ConnectorStatusMessage) => void;
+  onStationStatusChanged?: (message: StationStatusChangedMessage) => void;
+}
+
+export function useSignalR(callbacks?: SignalRCallbacks) {
   const connectionRef = useRef<signalR.HubConnection | null>(null);
+  const callbacksRef = useRef<SignalRCallbacks | undefined>(callbacks);
   const { updateMeterValue, updateSessionStatus, setActiveSession } = useSessionStore();
+
+  // Keep callbacks ref in sync without triggering reconnect
+  useEffect(() => {
+    callbacksRef.current = callbacks;
+  }, [callbacks]);
 
   const connect = useCallback(async () => {
     if (connectionRef.current?.state === signalR.HubConnectionState.Connected) {
@@ -64,6 +111,26 @@ export function useSignalR() {
       updateSessionStatus('Failed');
     });
 
+    // Handle new notification for user
+    connection.on('OnNotification', (data: NotificationMessage) => {
+      callbacksRef.current?.onNotification?.(data);
+    });
+
+    // Handle wallet balance changed
+    connection.on('OnWalletBalanceChanged', (data: WalletBalanceChangedMessage) => {
+      callbacksRef.current?.onWalletBalanceChanged?.(data);
+    });
+
+    // Handle connector status changed (individual connector)
+    connection.on('OnConnectorStatusChanged', (data: ConnectorStatusMessage) => {
+      callbacksRef.current?.onConnectorStatusChanged?.(data);
+    });
+
+    // Handle station status changed (station-level online/offline)
+    connection.on('OnStationStatusChanged', (data: StationStatusChangedMessage) => {
+      callbacksRef.current?.onStationStatusChanged?.(data);
+    });
+
     try {
       await connection.start();
       connectionRef.current = connection;
@@ -91,6 +158,18 @@ export function useSignalR() {
     }
   }, []);
 
+  const subscribeToStation = useCallback(async (stationId: string) => {
+    if (connectionRef.current?.state === signalR.HubConnectionState.Connected) {
+      await connectionRef.current.invoke('SubscribeToStation', stationId);
+    }
+  }, []);
+
+  const unsubscribeFromStation = useCallback(async (stationId: string) => {
+    if (connectionRef.current?.state === signalR.HubConnectionState.Connected) {
+      await connectionRef.current.invoke('UnsubscribeFromStation', stationId);
+    }
+  }, []);
+
   useEffect(() => {
     return () => {
       disconnect();
@@ -102,6 +181,8 @@ export function useSignalR() {
     disconnect,
     subscribeToSession,
     unsubscribeFromSession,
+    subscribeToStation,
+    unsubscribeFromStation,
     isConnected: connectionRef.current?.state === signalR.HubConnectionState.Connected,
   };
 }

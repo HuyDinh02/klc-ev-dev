@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { Search, Zap, Clock, Battery, DollarSign } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Search, Zap, Clock, Battery, DollarSign, Wifi } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -14,15 +14,26 @@ import { Card, CardContent } from "@/components/ui/card";
 import { sessionsApi } from "@/lib/api";
 import { formatCurrency, formatDateTime, formatEnergy, formatDuration } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
+import { useMonitoringHub } from "@/lib/signalr";
 
 export default function SessionsPage() {
   const { t } = useTranslation();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [cursor, setCursor] = useState<string | null>(null);
   const [cursorStack, setCursorStack] = useState<(string | null)[]>([]);
   const pageSize = 20;
+
+  // SignalR real-time updates — refresh sessions on updates
+  const onSessionUpdated = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["sessions"] });
+  }, [queryClient]);
+
+  const { status: hubStatus } = useMonitoringHub({
+    onSessionUpdated,
+  });
 
   const { data: sessionsData, isLoading } = useQuery({
     queryKey: ["sessions", statusFilter, cursor],
@@ -68,7 +79,15 @@ export default function SessionsPage() {
           <PageHeader
             title={t("sessions.title")}
             description={t("sessions.description")}
-          />
+          >
+            {hubStatus === "connected" && (
+              <div className="flex items-center gap-1.5 text-green-600">
+                <Wifi className="h-3.5 w-3.5" />
+                <span className="text-xs font-medium">{t("monitoring.live")}</span>
+                <span className="flex h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+              </div>
+            )}
+          </PageHeader>
         </div>
 
         {/* Filters */}

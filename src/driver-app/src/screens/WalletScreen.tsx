@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Colors, Shadows } from '../constants/colors';
 import { Card } from '../components/common';
 import { walletApi } from '../api/wallet';
+import { useSignalR } from '../hooks/useSignalR';
+import type { WalletBalanceChangedMessage } from '../hooks/useSignalR';
 import type { WalletTransaction } from '../types';
 
 const QUICK_AMOUNTS = [50_000, 100_000, 200_000, 500_000];
@@ -58,6 +60,31 @@ export function WalletScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [topUpLoading, setTopUpLoading] = useState(false);
+
+  // SignalR: listen for wallet balance changes in real-time
+  const signalRCallbacks = useMemo(() => ({
+    onWalletBalanceChanged: (message: WalletBalanceChangedMessage) => {
+      setBalance(message.newBalance);
+
+      // Prepend a synthetic transaction entry so the user sees the change immediately
+      const isCredit = message.changeAmount > 0;
+      const newTransaction: WalletTransaction = {
+        id: `rt-${message.timestamp}`,
+        type: isCredit ? 'TopUp' : 'Payment',
+        amount: Math.abs(message.changeAmount),
+        balance: message.newBalance,
+        description: message.reason,
+        createdAt: message.timestamp,
+      };
+      setTransactions((prev) => [newTransaction, ...prev]);
+    },
+  }), []);
+
+  const { connect } = useSignalR(signalRCallbacks);
+
+  useEffect(() => {
+    connect();
+  }, [connect]);
 
   const loadData = async () => {
     try {
