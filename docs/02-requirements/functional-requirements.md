@@ -64,3 +64,40 @@
 | FR-AI02 | Power Optimization Recommendation | Recommend per-connector power adjustments to avoid overload | Phase 2 |
 | FR-AI03 | Abnormal Pattern Detection | Detect abnormal charging behaviors from historical data | Phase 2 |
 | FR-AI04 | Failure Risk Scoring | Estimate charger failure risks based on fault frequency and usage | Phase 2 |
+
+### D. Power Management (Phase 2)
+
+| FR ID | Function | Description | Phase |
+|-------|----------|-------------|-------|
+| FR-PM-01 | Power Sharing Groups | System SHALL support Power Sharing Groups where up to 10 chargers share a common power pool (LINK & LOOP) | Phase 2 |
+| FR-PM-02 | Dynamic Load Balancing | System SHALL implement Dynamic Load Balancing with three strategies: Average Distribution, Proportional Distribution, Dynamic Distribution | Phase 2 |
+| FR-PM-03 | Power Rebalancing | System SHALL automatically rebalance power allocation when sessions start/stop within a Power Sharing Group | Phase 2 |
+| FR-PM-04 | Charging Profile Push | System SHALL push updated ChargingProfiles to chargers via OCPP SetChargingProfile when power allocation changes | Phase 2 |
+| FR-PM-05 | Grid Capacity Tracking | System SHALL track site-level grid capacity and reserve power for non-EV loads | Phase 2 |
+| FR-PM-06 | Smart Meter Integration | System SHALL support smart meter integration (Modbus/REST) for real-time site load monitoring | Phase 2 |
+
+### E. Fleet Management (Phase 2)
+
+| FR ID | Function | Description | Phase |
+|-------|----------|-------------|-------|
+| FR-FL-01 | Fleet Entities | System SHALL support Fleet entities with operator association, vehicles, drivers, and charging policies | Phase 2 |
+| FR-FL-02 | Fleet Charging Policies | System SHALL enforce fleet charging policies (AnytimeAnywhere, ScheduledOnly, ApprovedStationsOnly) | Phase 2 |
+| FR-FL-03 | Fleet Budget Tracking | System SHALL track fleet charging budgets with monthly limits and alerts | Phase 2 |
+| FR-FL-04 | Fleet Reporting | System SHALL generate fleet charging reports (cost, energy, sessions by driver/vehicle) | Phase 2 |
+| FR-FL-05 | Vehicle-Driver Assignment | System SHALL support fleet-level vehicle-to-driver assignment | Phase 2 |
+
+### F. Operator API (Phase 2)
+
+| FR ID | Function | Description | Phase |
+|-------|----------|-------------|-------|
+| FR-OP-01 | External Operator API | System SHALL expose REST API for external operators (cloud-to-cloud integration) | Phase 2 |
+| FR-OP-02 | Operator Authentication | System SHALL support OAuth2 client credentials authentication for operator API | Phase 2 |
+| FR-OP-03 | Webhook Notifications | System SHALL support webhook registration for real-time event notifications to operators | Phase 2 |
+| FR-OP-04 | Operator Rate Limiting | System SHALL rate-limit operator API to 1000 requests/minute per operator | Phase 2 |
+
+### G. Hardware Support (Phase 2)
+
+| FR ID | Function | Description | Phase |
+|-------|----------|-------------|-------|
+| FR-HW-01 | NACS Connector Support | System SHALL support NACS (Tesla) connector type | Phase 2 |
+| FR-HW-02 | Metering Accuracy Class | System SHALL track metering accuracy class per connector (e.g., Class 1.0, MID) | Phase 2 |

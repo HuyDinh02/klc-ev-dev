@@ -177,10 +177,13 @@ Groups: `Stations`, `Connectors`, `Tariffs`, `Sessions`, `Faults`, `Alerts`, `Mo
 - **Vehicles**: Vehicle
 - **Tariffs**: TariffPlan
 - **Faults**: Fault
+- **Power Management** (Phase 2): PowerSharingGroup, PowerSharingGroupMember, SiteLoadProfile
+- **Fleet** (Phase 2): Fleet, FleetVehicle
+- **Integration** (Phase 2): Operator
 
 ## Enums (KLC.Domain.Shared/Enums/)
 
-StationStatus, ConnectorStatus, ConnectorType, SessionStatus, PaymentGateway (ZaloPay/MoMo/OnePay/Wallet/VnPay/QrPayment/Voucher/Urbox), PaymentStatus, NotificationType, FaultStatus, MembershipTier, DevicePlatform, WalletTransactionType, TransactionStatus, AmenityType, VoucherType, PromotionType, FeedbackType, FeedbackStatus
+StationStatus, ConnectorStatus, ConnectorType (Phase 2: add NACS), SessionStatus, PaymentGateway (ZaloPay/MoMo/OnePay/Wallet/VnPay/QrPayment/Voucher/Urbox), PaymentStatus, NotificationType, FaultStatus, MembershipTier, DevicePlatform, WalletTransactionType, TransactionStatus, AmenityType, VoucherType, PromotionType, FeedbackType, FeedbackStatus, PowerSharingStrategy (Phase 2: EqualSplit/PriorityBased/FirstComeFirstServed), LoadDistributionStrategy (Phase 2: ProRata/EqualShare/PriorityFirst), ChargingPolicyType (Phase 2: Unrestricted/OffPeakOnly/BudgetCapped)
 
 ## Driver BFF Endpoints (KLC.Driver.BFF)
 
@@ -251,3 +254,9 @@ StationStatus, ConnectorStatus, ConnectorType, SessionStatus, PaymentGateway (Za
 ## Functional Modules (MOD-001 to MOD-015)
 
 Station Management, Connector Management, Real-time Monitoring, Energy Metering, Fault Management, OCPP Integration, Tariff Management, Payment & Billing, Vehicle Management, Charging Session, User Account, Notifications, Station Grouping, Audit Log, E-Invoice. Phase 1 critical: MOD-001, 002, 003, 006, 008, 010.
+
+Phase 2 modules:
+- **MOD-016 Power Sharing**: Manage PowerSharingGroups, assign connectors, configure strategies (EqualSplit/PriorityBased/FirstComeFirstServed), real-time rebalancing via SetChargingProfile on session start/stop
+- **MOD-017 Dynamic Load Balancing**: Site-level load management via SiteLoadProfile, smart meter polling, grid capacity enforcement, automatic power distribution across chargers
+- **MOD-018 Fleet Management**: Fleet CRUD, vehicle-driver assignment, daily charging limits, station group restrictions, monthly budget caps, charging policy enforcement
+- **MOD-019 Operator API**: Third-party operator onboarding, API key auth, rate limiting, scoped station access, webhook event delivery, session/billing data export

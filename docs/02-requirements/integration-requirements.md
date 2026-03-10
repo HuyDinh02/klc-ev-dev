@@ -48,3 +48,25 @@
 |----|-------------|---------|
 | INT-NOTIF-01 | Firebase Cloud Messaging (FCM) | Push notifications to iOS and Android |
 | INT-NOTIF-02 | Notification Types | Charge complete, billing alerts, fault alerts, promotional |
+
+## 6. Chargecore Integration
+
+| ID | Requirement | Details |
+|----|-------------|---------|
+| IR-CC-01 | LINK & LOOP Power Sharing | System SHALL support Chargecore LINK & LOOP power sharing protocol via OCPP SetChargingProfile |
+| IR-CC-02 | Dynamic Load Balancing | System SHALL support Chargecore Dynamic Load Balancing via RS485 smart meter + OCPP |
+| IR-CC-03 | Vendor Profile Auto-Detection | System SHALL detect and apply Chargecore vendor profile automatically on BootNotification |
+
+## 7. POS Terminal Integration
+
+| ID | Requirement | Details |
+|----|-------------|---------|
+| IR-POS-01 | Contactless Payment | System SHALL support POS terminal integration for on-site contactless payment |
+| IR-POS-02 | Transaction Reconciliation | System SHALL reconcile POS transactions with CSMS session records |
+
+## 8. Operator API Integration
+
+| ID | Requirement | Details |
+|----|-------------|---------|
+| IR-OP-01 | OpenAPI Specification | System SHALL provide OpenAPI 3.0 specification for the operator API |
+| IR-OP-02 | Webhook Delivery | System SHALL support webhook delivery with retry (3 attempts, exponential backoff) |

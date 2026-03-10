@@ -157,3 +157,77 @@ All incoming OCPP Call messages are persisted to `OcppRawEvents` table:
 - MeterValues measurands: Energy.Active.Import.Register, Current.Import, Voltage, Power.Active.Import, SoC
 - Vendor-aware energy/power normalization via VendorProfileFactory
 - Structured logging: cpId, vendorProfile, action, uniqueId, latencyMs
+
+## 9. Phase 2 — Power Management
+
+Phase 2 introduces power sharing and dynamic load balancing via OCPP's `SetChargingProfile` command. These features allow the CSMS to control how much power each connector draws, enabling sites to operate within grid limits without expensive electrical upgrades.
+
+### SetChargingProfile for Power Sharing
+
+`SetChargingProfile` sends a `ChargingProfile` to a charger with a `ChargingSchedule` specifying power limits (in kW or A) over time periods. The CSMS uses this to enforce real-time power caps on individual connectors.
+
+Key OCPP fields used:
+- `chargingProfileId`: Unique ID per profile (CSMS-generated)
+- `stackLevel`: Priority layering (site load = 0, power sharing = 1, user override = 2)
+- `chargingProfilePurpose`: `TxProfile` (per-transaction) or `ChargePointMaxProfile` (station-wide)
+- `chargingSchedule.chargingRateUnit`: `W` (watts) or `A` (amps)
+- `chargingSchedule.chargingSchedulePeriod`: Array of `{ startPeriod, limit }` entries
+
+### Power Sharing — Rebalancing Flow
+
+When multiple connectors share a limited power budget (PowerSharingGroup), the CSMS rebalances on every session lifecycle event:
+
+```
+1. Session starts on Connector C in PowerSharingGroup G
+2. PowerSharingDomainService.Rebalance(G):
+   a. Load all active sessions in group G
+   b. Get total available power: G.MaxTotalPowerKw
+   c. Apply strategy:
+      - EqualSplit: Divide equally among active connectors
+      - PriorityBased: Allocate by member Priority, respecting MinPowerKw floors
+      - FirstComeFirstServed: Earlier sessions get higher allocation
+   d. Enforce MinPowerKw floor and MaxPowerKw ceiling per member
+3. For each affected connector, send SetChargingProfile:
+   - stackLevel: 1 (power sharing layer)
+   - chargingProfilePurpose: TxProfile
+   - limit: calculated kW for this connector
+4. On session stop → rebalance again (remaining sessions get more power)
+```
+
+### Dynamic Load Balancing — Smart Meter Flow
+
+SiteLoadProfile enables the CSMS to respond to real-time grid readings, ensuring total EV load never exceeds the site's electrical capacity:
+
+```
+1. SiteLoadBalancingService (hosted background service) polls SmartMeterEndpoint
+   - Interval: configurable (default 15 seconds)
+   - Reads: total site consumption (kW) from smart meter
+2. Calculate available EV capacity:
+   availableKw = GridCapacityKw - ReservedForOtherLoadsKw - nonEvLoadKw
+3. Distribute availableKw across active connectors using DistributionStrategy:
+   - ProRata: Proportional to each connector's max power rating
+   - EqualShare: Divide equally
+   - PriorityFirst: Fleet/premium users get priority allocation
+4. Send SetChargingProfile to each active connector:
+   - stackLevel: 0 (site load layer — lowest priority, overridden by power sharing)
+   - chargingProfilePurpose: ChargePointMaxProfile
+   - limit: calculated kW
+5. If smart meter is unreachable → fallback to static allocation (GridCapacityKw - ReservedForOtherLoadsKw)
+```
+
+### Interaction Between Power Sharing and Load Balancing
+
+When both are active at a site, OCPP's stack levels ensure correct layering:
+- Stack level 0 (site load): Sets the absolute ceiling per charger based on grid capacity
+- Stack level 1 (power sharing): Further constrains within the group budget
+- The charger applies the **minimum** of all active profile limits at each stack level
+
+### OCPP 2.0.1 Upgrade Roadmap (Phase 3)
+
+Phase 3 targets OCPP 2.0.1 adoption for enhanced smart charging:
+- **Device Model**: Richer charger capability reporting (replaces GetConfiguration)
+- **Smart Charging**: `NotifyChargingLimit`, `ClearedChargingLimit` for bidirectional communication of power constraints
+- **ISO 15118**: Plug & Charge support (certificate-based auth, no RFID needed)
+- **Transaction Events**: Replaces Start/StopTransaction with granular `TransactionEvent` messages
+- **Cost Updates**: Real-time cost display on charger screen during session
+- Migration path: Dual-protocol support (1.6J + 2.0.1) via subprotocol negotiation at WebSocket handshake
