@@ -59,37 +59,6 @@ public static class VoucherEndpoints
         .Produces<VoucherValidationResultDto>(200)
         .Produces(400);
 
-        // Promotions group
-        var promotionGroup = app.MapGroup("/api/v1/promotions")
-            .WithTags("Promotions")
-            .RequireAuthorization();
-
-        // GET /api/v1/promotions
-        promotionGroup.MapGet("/", async (
-            IVoucherBffService voucherService) =>
-        {
-            var promotions = await voucherService.GetActivePromotionsAsync();
-            return Results.Ok(new { data = promotions });
-        })
-        .WithName("GetActivePromotions")
-        .WithSummary("List active promotions")
-        .Produces<object>(200);
-
-        // GET /api/v1/promotions/{id}
-        promotionGroup.MapGet("/{id:guid}", async (
-            Guid id,
-            IVoucherBffService voucherService) =>
-        {
-            var promotion = await voucherService.GetPromotionDetailAsync(id);
-
-            return promotion is null
-                ? Results.NotFound(new { error = new { code = "PROMOTION_NOT_FOUND", message = "Promotion not found" } })
-                : Results.Ok(promotion);
-        })
-        .WithName("GetPromotionDetail")
-        .WithSummary("Get promotion details")
-        .Produces<PromotionDetailDto>(200)
-        .Produces(404);
     }
 
     private static Guid GetUserId(ClaimsPrincipal user)

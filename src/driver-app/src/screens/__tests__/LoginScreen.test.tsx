@@ -3,11 +3,21 @@ import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import { LoginScreen } from '../LoginScreen';
 import { useAuthStore } from '../../stores';
+import { authApi } from '../../api';
+import type { LoginResponse } from '../../api';
+
+// Mock the auth API module
+jest.mock('../../api', () => ({
+  authApi: {
+    login: jest.fn(),
+  },
+  mapAuthUserToProfile: jest.requireActual('../../api/auth').mapAuthUserToProfile,
+}));
 
 // Spy on Alert.alert
 jest.spyOn(Alert, 'alert');
 
-// Reset auth store before each test
+// Reset auth store and mocks before each test
 beforeEach(() => {
   useAuthStore.setState({
     isAuthenticated: false,
@@ -24,6 +34,23 @@ function getSignInButton(getAllByText: (text: string | RegExp) => any[]) {
   // The button's text is the last one (inside the Button component)
   return elements[elements.length - 1];
 }
+
+const mockLoginResponse: LoginResponse = {
+  success: true,
+  accessToken: 'real-access-token',
+  refreshToken: 'real-refresh-token',
+  expiresIn: 3600,
+  user: {
+    userId: 'user-123',
+    fullName: 'Test Driver',
+    phoneNumber: '0901234567',
+    email: 'driver@klc.vn',
+    avatarUrl: undefined,
+    isPhoneVerified: true,
+    membershipTier: 0,
+    walletBalance: 0,
+  },
+};
 
 describe('LoginScreen', () => {
   it('renders the login form with brand and inputs', () => {
@@ -94,43 +121,66 @@ describe('LoginScreen', () => {
   });
 
   it('calls login on successful credential submission', async () => {
-    // Use fake timers to skip the 1-second delay inside handleLogin
-    jest.useFakeTimers();
     const loginMock = jest.fn().mockResolvedValue(undefined);
     useAuthStore.setState({ login: loginMock } as any);
+    (authApi.login as jest.Mock).mockResolvedValue(mockLoginResponse);
 
     const { getByLabelText, getAllByText } = render(<LoginScreen />);
 
-    fireEvent.changeText(getByLabelText('Email'), 'driver@klc.vn');
+    fireEvent.changeText(getByLabelText('Email'), '0901234567');
     fireEvent.changeText(getByLabelText('Password'), 'driver123');
     fireEvent.press(getSignInButton(getAllByText));
 
-    // Advance past the 1000ms setTimeout in handleLogin
-    jest.advanceTimersByTime(1100);
-
     await waitFor(() => {
-      expect(loginMock).toHaveBeenCalledWith('mock-token', {
-        id: '1',
+      expect(authApi.login).toHaveBeenCalledWith({
+        phoneNumber: '0901234567',
+        password: 'driver123',
+      });
+      expect(loginMock).toHaveBeenCalledWith('real-access-token', {
+        id: 'user-123',
         email: 'driver@klc.vn',
+        phoneNumber: '0901234567',
         fullName: 'Test Driver',
+        avatarUrl: undefined,
         isPhoneVerified: true,
         isEmailVerified: true,
       });
     });
-
-    jest.useRealTimers();
   });
 
-  it('shows error alert on invalid credentials', async () => {
-    jest.useFakeTimers();
+  it('shows error alert when API returns success=false', async () => {
+    (authApi.login as jest.Mock).mockResolvedValue({
+      success: false,
+      error: 'AUTH:INVALID_CREDENTIALS',
+    });
+
     const { getByLabelText, getAllByText } = render(<LoginScreen />);
 
     fireEvent.changeText(getByLabelText('Email'), 'wrong@email.com');
     fireEvent.changeText(getByLabelText('Password'), 'wrongpass');
     fireEvent.press(getSignInButton(getAllByText));
 
-    // Advance past the 1000ms setTimeout in handleLogin
-    jest.advanceTimersByTime(1100);
+    await waitFor(() => {
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Error',
+        'AUTH:INVALID_CREDENTIALS'
+      );
+    });
+  });
+
+  it('shows error alert on 401 unauthorized response', async () => {
+    const axiosError = {
+      response: { status: 401, data: {} },
+      request: {},
+      isAxiosError: true,
+    };
+    (authApi.login as jest.Mock).mockRejectedValue(axiosError);
+
+    const { getByLabelText, getAllByText } = render(<LoginScreen />);
+
+    fireEvent.changeText(getByLabelText('Email'), 'wrong@email.com');
+    fireEvent.changeText(getByLabelText('Password'), 'wrongpass');
+    fireEvent.press(getSignInButton(getAllByText));
 
     await waitFor(() => {
       expect(Alert.alert).toHaveBeenCalledWith(
@@ -138,12 +188,77 @@ describe('LoginScreen', () => {
         'Invalid email or password'
       );
     });
+  });
 
-    jest.useRealTimers();
+  it('shows server error message on non-401 API error', async () => {
+    const axiosError = {
+      response: { status: 500, data: { message: 'Internal server error' } },
+      request: {},
+      isAxiosError: true,
+    };
+    (authApi.login as jest.Mock).mockRejectedValue(axiosError);
+
+    const { getByLabelText, getAllByText } = render(<LoginScreen />);
+
+    fireEvent.changeText(getByLabelText('Email'), 'driver@klc.vn');
+    fireEvent.changeText(getByLabelText('Password'), 'driver123');
+    fireEvent.press(getSignInButton(getAllByText));
+
+    await waitFor(() => {
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Error',
+        'Internal server error'
+      );
+    });
+  });
+
+  it('shows network error alert when no response received', async () => {
+    const networkError = {
+      request: {},
+      isAxiosError: true,
+    };
+    (authApi.login as jest.Mock).mockRejectedValue(networkError);
+
+    const { getByLabelText, getAllByText } = render(<LoginScreen />);
+
+    fireEvent.changeText(getByLabelText('Email'), 'driver@klc.vn');
+    fireEvent.changeText(getByLabelText('Password'), 'driver123');
+    fireEvent.press(getSignInButton(getAllByText));
+
+    await waitFor(() => {
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Error',
+        'Network error. Please check your connection and try again.'
+      );
+    });
+  });
+
+  it('shows generic error alert on unexpected error', async () => {
+    (authApi.login as jest.Mock).mockRejectedValue(new Error('Unexpected'));
+
+    const { getByLabelText, getAllByText } = render(<LoginScreen />);
+
+    fireEvent.changeText(getByLabelText('Email'), 'driver@klc.vn');
+    fireEvent.changeText(getByLabelText('Password'), 'driver123');
+    fireEvent.press(getSignInButton(getAllByText));
+
+    await waitFor(() => {
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Error',
+        'Login failed. Please try again.'
+      );
+    });
   });
 
   it('disables button during login submission', async () => {
-    jest.useFakeTimers();
+    // Make login hang to keep loading state active
+    let resolveLogin: (value: LoginResponse) => void;
+    (authApi.login as jest.Mock).mockReturnValue(
+      new Promise<LoginResponse>((resolve) => {
+        resolveLogin = resolve;
+      })
+    );
+
     const { getByLabelText, getAllByText } = render(<LoginScreen />);
 
     fireEvent.changeText(getByLabelText('Email'), 'driver@klc.vn');
@@ -152,20 +267,14 @@ describe('LoginScreen', () => {
     const signInButton = getSignInButton(getAllByText);
     fireEvent.press(signInButton);
 
-    // During the loading state (1s setTimeout), the button title changes to "Signing in..."
-    // The Button component renders ActivityIndicator when loading=true
-    // Verify the state changed by checking the button text is no longer "Sign In" x2
-    // (one is the heading, the other should now be "Signing in...")
+    // During the loading state, the button title changes to "Signing in..."
     await waitFor(() => {
-      // The loading flag is set, button should now show "Signing in..." as its title prop
-      // Even though Button renders ActivityIndicator, the title prop text is still in the tree
       const allSignIn = getAllByText('Sign In');
       // When loading, one "Sign In" (heading) remains, the button text changes to "Signing in..."
       expect(allSignIn.length).toBeLessThanOrEqual(1);
     });
 
-    // Advance timers to finish the login flow
-    jest.advanceTimersByTime(1100);
-    jest.useRealTimers();
+    // Resolve the login to clean up
+    resolveLogin!(mockLoginResponse);
   });
 });

@@ -11,8 +11,6 @@ public interface IVoucherBffService
     Task<List<VoucherDto>> GetAvailableVouchersAsync(Guid userId);
     Task<VoucherValidationResultDto> ValidateVoucherAsync(string code);
     Task<ApplyVoucherResponse> ApplyVoucherAsync(Guid userId, string code);
-    Task<List<PromotionDto>> GetActivePromotionsAsync();
-    Task<PromotionDetailDto?> GetPromotionDetailAsync(Guid id);
 }
 
 public class VoucherBffService : IVoucherBffService
@@ -238,62 +236,6 @@ public class VoucherBffService : IVoucherBffService
         }
     }
 
-    public async Task<List<PromotionDto>> GetActivePromotionsAsync()
-    {
-        var cacheKey = "promotions:active";
-
-        return await _cache.GetOrSetAsync(cacheKey, async () =>
-        {
-            var now = DateTime.UtcNow;
-
-            var promotions = await _dbContext.Promotions
-                .AsNoTracking()
-                .Where(p => p.IsActive
-                            && !p.IsDeleted
-                            && p.StartDate <= now
-                            && p.EndDate >= now)
-                .OrderByDescending(p => p.CreationTime)
-                .Select(p => new PromotionDto
-                {
-                    Id = p.Id,
-                    Title = p.Title,
-                    Description = p.Description,
-                    ImageUrl = p.ImageUrl,
-                    StartDate = p.StartDate,
-                    EndDate = p.EndDate,
-                    Type = p.Type
-                })
-                .ToListAsync();
-
-            return promotions;
-        }, TimeSpan.FromMinutes(5));
-    }
-
-    public async Task<PromotionDetailDto?> GetPromotionDetailAsync(Guid id)
-    {
-        var cacheKey = $"promotion:{id}:detail";
-
-        return await _cache.GetOrSetAsync(cacheKey, async () =>
-        {
-            var promotion = await _dbContext.Promotions
-                .AsNoTracking()
-                .FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted);
-
-            if (promotion == null) return null;
-
-            return new PromotionDetailDto
-            {
-                Id = promotion.Id,
-                Title = promotion.Title,
-                Description = promotion.Description,
-                ImageUrl = promotion.ImageUrl,
-                StartDate = promotion.StartDate,
-                EndDate = promotion.EndDate,
-                Type = promotion.Type,
-                IsActive = promotion.IsCurrentlyActive()
-            };
-        }, TimeSpan.FromMinutes(5));
-    }
 }
 
 // DTOs
@@ -315,29 +257,6 @@ public record VoucherValidationResultDto
     public bool IsValid { get; init; }
     public VoucherDto? Voucher { get; init; }
     public string? Error { get; init; }
-}
-
-public record PromotionDto
-{
-    public Guid Id { get; init; }
-    public string Title { get; init; } = string.Empty;
-    public string? Description { get; init; }
-    public string? ImageUrl { get; init; }
-    public DateTime StartDate { get; init; }
-    public DateTime EndDate { get; init; }
-    public PromotionType Type { get; init; }
-}
-
-public record PromotionDetailDto
-{
-    public Guid Id { get; init; }
-    public string Title { get; init; } = string.Empty;
-    public string? Description { get; init; }
-    public string? ImageUrl { get; init; }
-    public DateTime StartDate { get; init; }
-    public DateTime EndDate { get; init; }
-    public PromotionType Type { get; init; }
-    public bool IsActive { get; init; }
 }
 
 public record ApplyVoucherRequest(string Code);

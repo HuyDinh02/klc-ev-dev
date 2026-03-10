@@ -154,7 +154,7 @@ public class VnPayPaymentService : IPaymentGatewayService, ITransientDependency
         var dataToSign = BuildQueryString(sortedParams);
         var expectedHash = ComputeHmacSha512(dataToSign, hashSecret);
 
-        if (!string.Equals(expectedHash, vnpSecureHash, StringComparison.OrdinalIgnoreCase))
+        if (!ConstantTimeEquals(expectedHash, vnpSecureHash))
         {
             _logger.LogWarning(
                 "[VnPay] Callback rejected: signature mismatch for data length={Length}",
@@ -185,6 +185,47 @@ public class VnPayPaymentService : IPaymentGatewayService, ITransientDependency
             GatewayTransactionId = gatewayTxId,
             ErrorMessage = isSuccess ? null : $"VnPay response code: {responseCode}"
         });
+    }
+
+    /// <summary>
+    /// Verify HMAC-SHA512 signature over sorted callback parameters.
+    /// VnPay signature = HMAC_SHA512(hashSecret, sorted query params excluding vnp_SecureHash and vnp_SecureHashType).
+    /// </summary>
+    public bool VerifyCallbackSignature(Dictionary<string, string> parameters, string signature)
+    {
+        var hashSecret = _configuration["Payment:VnPay:HashSecret"];
+
+        if (string.IsNullOrEmpty(hashSecret))
+        {
+            _logger.LogWarning(
+                "[VnPay] Payment:VnPay:HashSecret is not configured. " +
+                "Skipping signature verification (development mode)");
+            return true;
+        }
+
+        if (string.IsNullOrEmpty(signature))
+        {
+            _logger.LogWarning("[VnPay] VerifyCallbackSignature rejected: empty or null signature");
+            return false;
+        }
+
+        // Build sorted params excluding signature fields
+        var sortedParams = new SortedDictionary<string, string>(StringComparer.Ordinal);
+        foreach (var kvp in parameters)
+        {
+            if (kvp.Key.Equals("vnp_SecureHash", StringComparison.OrdinalIgnoreCase) ||
+                kvp.Key.Equals("vnp_SecureHashType", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            sortedParams[kvp.Key] = kvp.Value;
+        }
+
+        var dataToSign = BuildQueryString(sortedParams);
+        var expectedHash = ComputeHmacSha512(dataToSign, hashSecret);
+
+        return ConstantTimeEquals(expectedHash, signature);
     }
 
     /// <summary>
@@ -220,5 +261,15 @@ public class VnPayPaymentService : IPaymentGatewayService, ITransientDependency
         using var hmac = new HMACSHA512(Encoding.UTF8.GetBytes(key));
         var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(data));
         return Convert.ToHexString(hash).ToLowerInvariant();
+    }
+
+    /// <summary>
+    /// Constant-time string comparison to prevent timing attacks on HMAC signatures.
+    /// </summary>
+    private static bool ConstantTimeEquals(string a, string b)
+    {
+        var aBytes = Encoding.UTF8.GetBytes(a.ToLowerInvariant());
+        var bBytes = Encoding.UTF8.GetBytes(b.ToLowerInvariant());
+        return CryptographicOperations.FixedTimeEquals(aBytes, bBytes);
     }
 }

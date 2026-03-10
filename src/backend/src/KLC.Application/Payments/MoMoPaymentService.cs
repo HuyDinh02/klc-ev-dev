@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
@@ -197,7 +198,7 @@ public class MoMoPaymentService : IPaymentGatewayService, ITransientDependency
 
         var expectedSignature = ComputeHmacSha256(rawData, secretKey);
 
-        if (!string.Equals(expectedSignature, signature, StringComparison.OrdinalIgnoreCase))
+        if (!ConstantTimeEquals(expectedSignature, signature))
         {
             _logger.LogWarning(
                 "[MoMo] Callback rejected: signature mismatch for data length={Length}",
@@ -238,11 +239,54 @@ public class MoMoPaymentService : IPaymentGatewayService, ITransientDependency
         }
     }
 
+    /// <summary>
+    /// Verify HMAC-SHA256 signature over sorted callback parameters.
+    /// MoMo signature = HMAC_SHA256(secretKey, sorted key=value pairs joined by &amp;, excluding 'signature').
+    /// </summary>
+    public bool VerifyCallbackSignature(Dictionary<string, string> parameters, string signature)
+    {
+        var secretKey = _configuration["Payment:MoMo:SecretKey"];
+
+        if (string.IsNullOrEmpty(secretKey))
+        {
+            _logger.LogWarning(
+                "[MoMo] Payment:MoMo:SecretKey is not configured. " +
+                "Skipping signature verification (development mode)");
+            return true;
+        }
+
+        if (string.IsNullOrEmpty(signature))
+        {
+            _logger.LogWarning("[MoMo] VerifyCallbackSignature rejected: empty or null signature");
+            return false;
+        }
+
+        // Build raw data from sorted parameters, excluding 'signature'
+        var sorted = new SortedDictionary<string, string>(parameters, StringComparer.Ordinal);
+        sorted.Remove("signature");
+
+        var rawData = string.Join("&", sorted.Select(kvp => $"{kvp.Key}={kvp.Value}"));
+
+        var expectedSignature = ComputeHmacSha256(rawData, secretKey);
+
+        return ConstantTimeEquals(expectedSignature, signature);
+    }
+
     private static string ComputeHmacSha256(string data, string key)
     {
         using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(key));
         var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(data));
         return Convert.ToHexString(hash).ToLowerInvariant();
+    }
+
+    /// <summary>
+    /// Constant-time string comparison to prevent timing attacks on HMAC signatures.
+    /// </summary>
+    private static bool ConstantTimeEquals(string a, string b)
+    {
+        var aBytes = Encoding.UTF8.GetBytes(a.ToLowerInvariant());
+        var bBytes = Encoding.UTF8.GetBytes(b.ToLowerInvariant());
+        return CryptographicOperations.FixedTimeEquals(aBytes, bBytes);
     }
 }
 

@@ -461,6 +461,7 @@ public record TopUpCallbackRequest
     public string ReferenceCode { get; init; } = string.Empty;
     public string? GatewayTransactionId { get; init; }
     public TransactionStatus Status { get; init; }
+    public PaymentGateway? Gateway { get; init; }
 }
 
 public record TopUpCallbackResultDto

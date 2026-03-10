@@ -75,6 +75,7 @@ builder.Services.AddScoped<IAuthBffService, AuthBffService>();
 builder.Services.AddScoped<IWalletBffService, WalletBffService>();
 builder.Services.AddScoped<IFavoriteBffService, FavoriteBffService>();
 builder.Services.AddScoped<IVoucherBffService, VoucherBffService>();
+builder.Services.AddScoped<IPromotionBffService, PromotionBffService>();
 builder.Services.AddScoped<IFeedbackBffService, FeedbackBffService>();
 
 // Register services from Application layer (not auto-registered since BFF doesn't depend on KLCApplicationModule)
@@ -183,6 +184,7 @@ app.MapNotificationEndpoints();
 app.MapWalletEndpoints();
 app.MapFavoriteEndpoints();
 app.MapVoucherEndpoints();
+app.MapPromotionEndpoints();
 app.MapFeedbackEndpoints();
 
 // Map SignalR hub

@@ -1,4 +1,6 @@
 export { default as api, setAuthToken, clearAuthToken, getAuthToken } from './client';
+export { authApi, mapAuthUserToProfile } from './auth';
+export type { LoginRequest, LoginResponse } from './auth';
 export { stationsApi } from './stations';
 export { sessionsApi } from './sessions';
 export { paymentsApi } from './payments';

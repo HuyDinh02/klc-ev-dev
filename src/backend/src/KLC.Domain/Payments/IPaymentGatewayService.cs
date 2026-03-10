@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using KLC.Enums;
 
@@ -22,6 +23,15 @@ public interface IPaymentGatewayService
     /// Verify a callback/webhook from the payment gateway.
     /// </summary>
     Task<PaymentCallbackResult> VerifyCallbackAsync(string rawData, string? signature);
+
+    /// <summary>
+    /// Verify the HMAC signature of a payment gateway callback.
+    /// Uses constant-time comparison to prevent timing attacks.
+    /// </summary>
+    /// <param name="parameters">The callback parameters (excluding signature field).</param>
+    /// <param name="signature">The signature provided by the gateway.</param>
+    /// <returns>True if the signature is valid.</returns>
+    bool VerifyCallbackSignature(Dictionary<string, string> parameters, string signature);
 }
 
 public class CreateTopUpRequest

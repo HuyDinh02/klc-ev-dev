@@ -9,10 +9,13 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import { AxiosError } from 'axios';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, Shadows } from '../constants/colors';
 import { Button, Card } from '../components/common';
 import { useAuthStore } from '../stores';
+import { authApi, mapAuthUserToProfile } from '../api';
+import type { ApiError } from '../types';
 
 export function LoginScreen() {
   const { login } = useAuthStore();
@@ -28,23 +31,31 @@ export function LoginScreen() {
 
     setLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // Mock login for development
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const result = await authApi.login({ phoneNumber: email, password });
 
-      if (email === 'driver@klc.vn' && password === 'driver123') {
-        await login('mock-token', {
-          id: '1',
-          email: 'driver@klc.vn',
-          fullName: 'Test Driver',
-          isPhoneVerified: true,
-          isEmailVerified: true,
-        });
+      if (result.success && result.accessToken && result.user) {
+        const userProfile = mapAuthUserToProfile(result.user);
+        if (userProfile) {
+          await login(result.accessToken, userProfile);
+        }
       } else {
-        Alert.alert('Error', 'Invalid email or password');
+        Alert.alert('Error', result.error ?? 'Invalid email or password');
       }
     } catch (error) {
-      Alert.alert('Error', 'Login failed. Please try again.');
+      const axiosError = error as AxiosError<ApiError>;
+      if (axiosError.response) {
+        const status = axiosError.response.status;
+        if (status === 401) {
+          Alert.alert('Error', 'Invalid email or password');
+        } else {
+          const message = axiosError.response.data?.message ?? 'Login failed. Please try again.';
+          Alert.alert('Error', message);
+        }
+      } else if (axiosError.request) {
+        Alert.alert('Error', 'Network error. Please check your connection and try again.');
+      } else {
+        Alert.alert('Error', 'Login failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

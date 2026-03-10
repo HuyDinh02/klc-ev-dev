@@ -46,9 +46,39 @@ public static class WalletEndpoints
 
         // POST /api/v1/wallet/topup/callback
         group.MapPost("/topup/callback", async (
+            HttpContext httpContext,
             [FromBody] TopUpCallbackRequest request,
-            IWalletBffService walletService) =>
+            IWalletBffService walletService,
+            IEnumerable<KLC.Payments.IPaymentGatewayService> paymentGateways) =>
         {
+            // Verify HMAC signature from the gateway before processing
+            var signature = httpContext.Request.Headers["X-Payment-Signature"].FirstOrDefault()
+                            ?? httpContext.Request.Query["signature"].FirstOrDefault();
+
+            if (!string.IsNullOrEmpty(signature))
+            {
+                var gateway = paymentGateways.FirstOrDefault(g =>
+                    g.Gateway == (request.Gateway ?? PaymentGateway.MoMo));
+
+                if (gateway != null)
+                {
+                    var parameters = new Dictionary<string, string>
+                    {
+                        { "referenceCode", request.ReferenceCode },
+                        { "gatewayTransactionId", request.GatewayTransactionId ?? string.Empty },
+                        { "status", ((int)request.Status).ToString() }
+                    };
+
+                    if (!gateway.VerifyCallbackSignature(parameters, signature))
+                    {
+                        return Results.BadRequest(new
+                        {
+                            error = new { code = "INVALID_SIGNATURE", message = "Payment callback signature verification failed" }
+                        });
+                    }
+                }
+            }
+
             var result = await walletService.ProcessTopUpCallbackAsync(request);
 
             return result.Success
@@ -59,7 +89,7 @@ public static class WalletEndpoints
         .WithSummary("Payment gateway callback for top-up")
         .Produces<TopUpCallbackResultDto>(200)
         .Produces(400)
-        .AllowAnonymous(); // Gateway callbacks are authenticated via reference code
+        .AllowAnonymous(); // Gateway callbacks are authenticated via signature
 
         // GET /api/v1/wallet/topup/{id}/status
         group.MapGet("/topup/{id:guid}/status", async (
