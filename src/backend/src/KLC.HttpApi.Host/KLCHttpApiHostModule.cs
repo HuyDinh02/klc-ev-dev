@@ -388,7 +388,6 @@ public class KLCHttpApiHostModule : AbpModule
             app.UseDeveloperExceptionPage();
         }
 
-        app.UseSentryTracing();
         app.UseAbpRequestLocalization();
 
         // Don't use ABP error page — it redirects API 403/500 to /Error HTML page

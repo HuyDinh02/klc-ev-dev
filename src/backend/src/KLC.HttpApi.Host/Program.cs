@@ -30,19 +30,6 @@ public class Program
             Log.Information("Starting KLC.HttpApi.Host.");
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add Sentry error tracking
-            var sentryDsn = builder.Configuration["Sentry:Dsn"] ?? "";
-            if (!string.IsNullOrEmpty(sentryDsn))
-            {
-                Sentry.SentrySdk.Init(o =>
-                {
-                    o.Dsn = sentryDsn;
-                    o.Environment = builder.Environment.EnvironmentName;
-                    o.TracesSampleRate = builder.Environment.IsProduction() ? 0.1 : 1.0;
-                    o.SendDefaultPii = false;
-                });
-            }
-
             builder.Host.AddAppSettingsSecretsJson()
                 .UseAutofac()
                 .UseSerilog();
