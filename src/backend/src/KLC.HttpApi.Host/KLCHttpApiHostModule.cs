@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using KLC.EntityFrameworkCore;
 using KLC.Hubs;
 using KLC.MultiTenancy;
@@ -372,6 +373,13 @@ public class KLCHttpApiHostModule : AbpModule
         var app = context.GetApplicationBuilder();
         var env = context.GetEnvironment();
 
+        if (env.IsProduction())
+        {
+            var configuration = context.ServiceProvider.GetRequiredService<IConfiguration>();
+            var logger = context.ServiceProvider.GetRequiredService<ILogger<KLCHttpApiHostModule>>();
+            ValidateProductionConfiguration(configuration, logger);
+        }
+
         // Trust forwarded headers from Cloud Run load balancer (X-Forwarded-For, X-Forwarded-Proto)
         // This ensures OpenIddict sees HTTPS scheme even though Cloud Run terminates TLS
         var forwardedHeadersOptions = new Microsoft.AspNetCore.Builder.ForwardedHeadersOptions
@@ -438,7 +446,109 @@ public class KLCHttpApiHostModule : AbpModule
         {
             // Map SignalR hub for real-time monitoring
             endpoints.MapHub<MonitoringHub>("/hubs/monitoring");
-            endpoints.MapHealthChecks("/health");
+
+            // Liveness probe — always returns 200 if the process is running (no dependency checks)
+            endpoints.MapGet("/health", () => Results.Ok(new { status = "Healthy" }))
+                .ExcludeFromDescription();
+
+            // Readiness probe — checks DB connectivity
+            endpoints.MapHealthChecks("/health/ready");
         });
+    }
+
+    private static void ValidateProductionConfiguration(IConfiguration config, ILogger logger)
+    {
+        logger.LogInformation("Validating production configuration...");
+
+        var hasErrors = false;
+
+        // Critical: Connection string must not be the dev default
+        var connectionString = config.GetConnectionString("Default") ?? "";
+        if (string.IsNullOrWhiteSpace(connectionString) ||
+            connectionString.Contains("Host=localhost") ||
+            connectionString.Contains("Port=5433;Database=KLC;Username=postgres;Password=postgres"))
+        {
+            logger.LogCritical(
+                "PRODUCTION CONFIG ERROR: ConnectionStrings:Default is using the development default. " +
+                "Configure a production database connection string via environment variable or Secret Manager.");
+            hasErrors = true;
+        }
+
+        // Critical: Jwt:SecretKey must be configured
+        var jwtSecret = config["Jwt:SecretKey"] ?? "";
+        if (string.IsNullOrWhiteSpace(jwtSecret))
+        {
+            logger.LogCritical(
+                "PRODUCTION CONFIG ERROR: Jwt:SecretKey is not configured. " +
+                "Set a strong secret key via environment variable Jwt__SecretKey or Secret Manager.");
+            hasErrors = true;
+        }
+
+        // Critical: StringEncryption passphrase must not be the dev default
+        var passPhrase = config["StringEncryption:DefaultPassPhrase"] ?? "";
+        if (string.IsNullOrWhiteSpace(passPhrase) || passPhrase == "IMGWbiZSGFfhNl7G")
+        {
+            logger.LogCritical(
+                "PRODUCTION CONFIG ERROR: StringEncryption:DefaultPassPhrase is using the development default 'IMGWbiZSGFfhNl7G'. " +
+                "Configure a unique passphrase for production via environment variable or Secret Manager.");
+            hasErrors = true;
+        }
+
+        // Critical: OCPP test ID tags must be disabled
+        var allowTestIdTags = config.GetValue<bool>("Ocpp:AllowTestIdTags");
+        if (allowTestIdTags)
+        {
+            logger.LogCritical(
+                "PRODUCTION CONFIG ERROR: Ocpp:AllowTestIdTags is true. " +
+                "This must be false in production to prevent unauthorized charging sessions.");
+            hasErrors = true;
+        }
+
+        // Critical: HTTPS metadata must be required
+        var requireHttps = config.GetValue<bool>("AuthServer:RequireHttpsMetadata");
+        if (!requireHttps)
+        {
+            logger.LogCritical(
+                "PRODUCTION CONFIG ERROR: AuthServer:RequireHttpsMetadata is false. " +
+                "This must be true in production to enforce secure token validation.");
+            hasErrors = true;
+        }
+
+        // Optional: Payment gateway secrets
+        var momoSecret = config["Payment:MoMo:SecretKey"] ?? "";
+        if (string.IsNullOrWhiteSpace(momoSecret))
+        {
+            logger.LogWarning(
+                "PRODUCTION CONFIG WARNING: Payment:MoMo:SecretKey is not configured. " +
+                "MoMo payments will not work until this is set.");
+        }
+
+        var vnpaySecret = config["Payment:VnPay:HashSecret"] ?? "";
+        if (string.IsNullOrWhiteSpace(vnpaySecret))
+        {
+            logger.LogWarning(
+                "PRODUCTION CONFIG WARNING: Payment:VnPay:HashSecret is not configured. " +
+                "VnPay payments will not work until this is set.");
+        }
+
+        // Optional: Sentry DSN
+        var sentryDsn = config["Sentry:Dsn"] ?? "";
+        if (string.IsNullOrWhiteSpace(sentryDsn))
+        {
+            logger.LogWarning(
+                "PRODUCTION CONFIG WARNING: Sentry:Dsn is not configured. " +
+                "Error tracking will be disabled.");
+        }
+
+        if (hasErrors)
+        {
+            logger.LogCritical(
+                "PRODUCTION CONFIG VALIDATION FAILED: One or more critical configuration issues detected. " +
+                "The application will start but may not function correctly. Review the errors above.");
+        }
+        else
+        {
+            logger.LogInformation("Production configuration validation passed.");
+        }
     }
 }

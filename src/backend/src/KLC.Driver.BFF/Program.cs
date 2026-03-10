@@ -147,6 +147,12 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
+// Validate production configuration
+if (app.Environment.IsProduction())
+{
+    ValidateProductionConfiguration(app.Configuration, app.Logger);
+}
+
 // Initialize ABP
 await app.InitializeApplicationAsync();
 
@@ -170,8 +176,11 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Map health check
-app.MapHealthChecks("/health");
+// Liveness probe — always returns 200 if the process is running (no dependency checks)
+app.MapGet("/health", () => Results.Ok(new { status = "Healthy" }));
+
+// Readiness probe — checks DB + Redis connectivity
+app.MapHealthChecks("/health/ready");
 
 // Map API endpoints
 app.MapAuthEndpoints();
@@ -191,3 +200,63 @@ app.MapFeedbackEndpoints();
 app.MapHub<DriverHub>("/hubs/driver");
 
 await app.RunAsync();
+
+static void ValidateProductionConfiguration(IConfiguration config, ILogger logger)
+{
+    logger.LogInformation("Validating production configuration...");
+
+    var hasErrors = false;
+
+    // Critical: Connection string must not be the dev default
+    var connectionString = config.GetConnectionString("Default") ?? "";
+    if (string.IsNullOrWhiteSpace(connectionString) ||
+        connectionString.Contains("Host=localhost") ||
+        connectionString.Contains("Port=5433;Database=KLC;Username=postgres;Password=postgres"))
+    {
+        logger.LogCritical(
+            "PRODUCTION CONFIG ERROR: ConnectionStrings:Default is using the development default. " +
+            "Configure a production database connection string via environment variable or Secret Manager.");
+        hasErrors = true;
+    }
+
+    // Critical: Redis connection must not be the dev default
+    var redisConn = config.GetConnectionString("Redis") ?? "";
+    if (string.IsNullOrWhiteSpace(redisConn) || redisConn == "localhost:6379")
+    {
+        logger.LogCritical(
+            "PRODUCTION CONFIG ERROR: ConnectionStrings:Redis is using the development default 'localhost:6379'. " +
+            "Configure a production Redis connection string via environment variable or Secret Manager.");
+        hasErrors = true;
+    }
+
+    // Critical: Jwt:SecretKey must be configured and not the dev default
+    var jwtSecret = config["Jwt:SecretKey"] ?? "";
+    if (string.IsNullOrWhiteSpace(jwtSecret) ||
+        jwtSecret == "KLC_DEFAULT_JWT_SECRET_KEY_FOR_DEVELOPMENT_ONLY_2026")
+    {
+        logger.LogCritical(
+            "PRODUCTION CONFIG ERROR: Jwt:SecretKey is missing or using the development default. " +
+            "Configure a strong secret key via environment variable Jwt__SecretKey or Secret Manager.");
+        hasErrors = true;
+    }
+
+    // Optional: Sentry DSN
+    var sentryDsn = config["Sentry:Dsn"] ?? "";
+    if (string.IsNullOrWhiteSpace(sentryDsn))
+    {
+        logger.LogWarning(
+            "PRODUCTION CONFIG WARNING: Sentry:Dsn is not configured. " +
+            "Error tracking will be disabled.");
+    }
+
+    if (hasErrors)
+    {
+        logger.LogCritical(
+            "PRODUCTION CONFIG VALIDATION FAILED: One or more critical configuration issues detected. " +
+            "The application will start but may not function correctly. Review the errors above.");
+    }
+    else
+    {
+        logger.LogInformation("Production configuration validation passed.");
+    }
+}
