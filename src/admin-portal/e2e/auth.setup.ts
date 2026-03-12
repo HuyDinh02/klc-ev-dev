@@ -24,8 +24,8 @@ setup("authenticate as admin", async ({ page }) => {
   await expect(page.getByText("K-Charge")).toBeVisible({ timeout: 15000 });
 
   // Fill credentials
-  await page.getByLabel(/username/i).fill("admin");
-  await page.getByLabel(/password/i).fill("Admin@123");
+  await page.locator("#email").fill("admin");
+  await page.locator("#password").fill("Admin@123");
 
   // Submit
   await page.getByRole("button", { name: /sign in/i }).click();
