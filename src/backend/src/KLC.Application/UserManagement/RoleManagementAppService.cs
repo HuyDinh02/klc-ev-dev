@@ -162,35 +162,52 @@ public class RoleManagementAppService : KLCAppService, IRoleManagementAppService
     {
         var role = await _roleRepository.GetAsync(roleId);
         var groups = await _permissionDefinitionManager.GetGroupsAsync();
+
+        // Only return KLC permissions, split into sub-groups by top-level permission
+        // (e.g., KLC.Stations, KLC.Connectors) so the frontend can map them to sidebar sections.
+        var klcGroup = groups.FirstOrDefault(g => g.Name == KLCPermissions.GroupName);
+        if (klcGroup == null) return new List<PermissionGroupDto>();
+
         var result = new List<PermissionGroupDto>();
+        var topLevelPermissions = klcGroup.Permissions; // Direct children of the group
 
-        foreach (var group in groups)
+        foreach (var topLevel in topLevelPermissions)
         {
-            var groupPermissions = group.GetPermissionsWithChildren();
-
-            if (!groupPermissions.Any())
-                continue;
-
             var groupDto = new PermissionGroupDto
             {
-                Name = group.Name,
-                DisplayName = group.DisplayName?.Localize(StringLocalizerFactory) ?? group.Name,
+                Name = topLevel.Name, // e.g., "KLC.Stations"
+                DisplayName = topLevel.DisplayName?.Localize(StringLocalizerFactory) ?? topLevel.Name,
                 Permissions = new List<PermissionDto>()
             };
 
-            foreach (var permission in groupPermissions)
+            // Add the parent permission itself
+            var parentGrant = await _permissionManager.GetAsync(
+                topLevel.Name,
+                RolePermissionValueProvider.ProviderName,
+                role.Name);
+
+            groupDto.Permissions.Add(new PermissionDto
             {
-                var grantInfo = await _permissionManager.GetAsync(
-                    permission.Name,
+                Name = topLevel.Name,
+                DisplayName = topLevel.DisplayName?.Localize(StringLocalizerFactory) ?? topLevel.Name,
+                ParentName = null,
+                IsGranted = parentGrant.IsGranted
+            });
+
+            // Add child permissions
+            foreach (var child in topLevel.Children)
+            {
+                var childGrant = await _permissionManager.GetAsync(
+                    child.Name,
                     RolePermissionValueProvider.ProviderName,
                     role.Name);
 
                 groupDto.Permissions.Add(new PermissionDto
                 {
-                    Name = permission.Name,
-                    DisplayName = permission.DisplayName?.Localize(StringLocalizerFactory) ?? permission.Name,
-                    ParentName = permission.Parent?.Name,
-                    IsGranted = grantInfo.IsGranted
+                    Name = child.Name,
+                    DisplayName = child.DisplayName?.Localize(StringLocalizerFactory) ?? child.Name,
+                    ParentName = topLevel.Name,
+                    IsGranted = childGrant.IsGranted
                 });
             }
 
@@ -205,39 +222,32 @@ public class RoleManagementAppService : KLCAppService, IRoleManagementAppService
     {
         var role = await _roleRepository.GetAsync(roleId);
 
-        // Only update permissions that were sent from the frontend (the ones displayed in the UI).
-        // This avoids touching ABP built-in permissions that may have multi-tenancy restrictions.
         var allGrantedSet = new HashSet<string>(input.GrantedPermissions);
         var groups = await _permissionDefinitionManager.GetGroupsAsync();
 
-        foreach (var group in groups)
+        // Only update KLC permissions — skip ABP built-in groups (AbpIdentity, AbpOpenIddict, etc.)
+        // to avoid 500 errors from multi-tenancy or host-only permission restrictions.
+        var klcGroup = groups.FirstOrDefault(g => g.Name == KLCPermissions.GroupName);
+        if (klcGroup == null) return;
+
+        var groupPermissions = klcGroup.GetPermissionsWithChildren();
+
+        foreach (var permission in groupPermissions)
         {
-            var groupPermissions = group.GetPermissionsWithChildren();
+            var isGranted = allGrantedSet.Contains(permission.Name);
 
-            foreach (var permission in groupPermissions)
+            try
             {
-                // Only update if this permission was part of the request
-                // (i.e., it's either in the granted list, or it's a permission the UI knows about)
-                var isGranted = allGrantedSet.Contains(permission.Name);
-
-                try
-                {
-                    await _permissionManager.SetAsync(
-                        permission.Name,
-                        RolePermissionValueProvider.ProviderName,
-                        role.Name,
-                        isGranted
-                    );
-                }
-                catch (AbpDbConcurrencyException)
-                {
-                    // Concurrency conflict — another process updated the same permission. Skip.
-                }
-                catch (Volo.Abp.Authorization.AbpAuthorizationException)
-                {
-                    // Some ABP framework permissions may reject being set
-                    // (e.g., host-only tenant management permissions). Skip them.
-                }
+                await _permissionManager.SetAsync(
+                    permission.Name,
+                    RolePermissionValueProvider.ProviderName,
+                    role.Name,
+                    isGranted
+                );
+            }
+            catch (AbpDbConcurrencyException)
+            {
+                // Concurrency conflict — skip.
             }
         }
     }
