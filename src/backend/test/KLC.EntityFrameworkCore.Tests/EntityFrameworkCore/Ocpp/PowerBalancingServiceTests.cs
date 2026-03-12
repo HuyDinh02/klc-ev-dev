@@ -61,6 +61,26 @@ public class PowerBalancingServiceTests
             NullLogger<PowerBalancingService>.Instance);
     }
 
+    /// <summary>
+    /// Runs a single rebalance cycle deterministically by triggering then
+    /// waiting for the notifier or repo call that signals completion.
+    /// </summary>
+    private async Task RunOneCycleAsync(TaskCompletionSource completionSignal, int timeoutMs = 5000)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(timeoutMs));
+        _service.TriggerRebalance();
+        try
+        {
+            await _service.StartAsync(cts.Token);
+            // Wait for the signal that the cycle completed, or timeout
+            var completed = await Task.WhenAny(completionSignal.Task, Task.Delay(timeoutMs, cts.Token));
+            if (completed != completionSignal.Task)
+                throw new TimeoutException("Balancing cycle did not complete in time");
+        }
+        catch (OperationCanceledException) { }
+        finally { await _service.StopAsync(CancellationToken.None); }
+    }
+
     private static Connector CreateConnector(Guid id, Guid stationId, int connectorNumber, decimal maxPowerKw = 100m)
     {
         return new Connector(id, stationId, connectorNumber, ConnectorType.CCS2, maxPowerKw);
@@ -69,15 +89,16 @@ public class PowerBalancingServiceTests
     [Fact]
     public async Task Should_Skip_When_No_Active_Groups()
     {
-        _groupRepo.GetListAsync(Arg.Any<System.Linq.Expressions.Expression<Func<PowerSharingGroup, bool>>>())
-            .Returns(new List<PowerSharingGroup>());
+        var done = new TaskCompletionSource();
 
-        // Start and immediately cancel to run one cycle
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
-        _service.TriggerRebalance();
-        try { await _service.StartAsync(cts.Token); await Task.Delay(500); }
-        catch (OperationCanceledException) { }
-        finally { await _service.StopAsync(CancellationToken.None); }
+        _groupRepo.GetListAsync(Arg.Any<System.Linq.Expressions.Expression<Func<PowerSharingGroup, bool>>>())
+            .Returns(ci =>
+            {
+                done.TrySetResult();
+                return new List<PowerSharingGroup>();
+            });
+
+        await RunOneCycleAsync(done);
 
         await _remoteCommandService.DidNotReceive()
             .SendSetChargingProfileAsync(Arg.Any<string>(), Arg.Any<int>(), Arg.Any<ChargingProfilePayload>());
@@ -87,6 +108,7 @@ public class PowerBalancingServiceTests
     public async Task Should_Dispatch_Profiles_For_Active_Group()
     {
         // Arrange
+        var done = new TaskCompletionSource();
         var groupId = Guid.NewGuid();
         var stationId = Guid.NewGuid();
         var connectorId = Guid.NewGuid();
@@ -119,12 +141,12 @@ public class PowerBalancingServiceTests
             Arg.Any<string>(), Arg.Any<int>(), Arg.Any<ChargingProfilePayload>())
             .Returns(new RemoteCommandResult(true));
 
-        // Act - trigger immediate rebalance
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
-        _service.TriggerRebalance();
-        try { await _service.StartAsync(cts.Token); await Task.Delay(1000); }
-        catch (OperationCanceledException) { }
-        finally { await _service.StopAsync(CancellationToken.None); }
+        // Signal completion when notifier is called (last action in the cycle)
+        _notifier.NotifyPowerAllocationChangedAsync(Arg.Any<PowerAllocationUpdate>())
+            .Returns(ci => { done.TrySetResult(); return Task.CompletedTask; });
+
+        // Act
+        await RunOneCycleAsync(done);
 
         // Assert
         await _remoteCommandService.Received()
@@ -140,6 +162,7 @@ public class PowerBalancingServiceTests
     public async Task Should_Send_SignalR_Notification_After_Dispatch()
     {
         // Arrange
+        var done = new TaskCompletionSource();
         var groupId = Guid.NewGuid();
         var stationId = Guid.NewGuid();
         var connectorId = Guid.NewGuid();
@@ -167,12 +190,11 @@ public class PowerBalancingServiceTests
             Arg.Any<string>(), Arg.Any<int>(), Arg.Any<ChargingProfilePayload>())
             .Returns(new RemoteCommandResult(true));
 
+        _notifier.NotifyPowerAllocationChangedAsync(Arg.Any<PowerAllocationUpdate>())
+            .Returns(ci => { done.TrySetResult(); return Task.CompletedTask; });
+
         // Act
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
-        _service.TriggerRebalance();
-        try { await _service.StartAsync(cts.Token); await Task.Delay(1000); }
-        catch (OperationCanceledException) { }
-        finally { await _service.StopAsync(CancellationToken.None); }
+        await RunOneCycleAsync(done);
 
         // Assert
         await _notifier.Received().NotifyPowerAllocationChangedAsync(
@@ -188,6 +210,7 @@ public class PowerBalancingServiceTests
     public async Task Should_Skip_Disconnected_Stations()
     {
         // Arrange
+        var done = new TaskCompletionSource();
         var groupId = Guid.NewGuid();
         var stationId = Guid.NewGuid();
         var connectorId = Guid.NewGuid();
@@ -207,13 +230,12 @@ public class PowerBalancingServiceTests
             .Returns(new List<Connector> { connector });
 
         // Station NOT connected to _connectionManager
+        // Signal completion when notifier is called
+        _notifier.NotifyPowerAllocationChangedAsync(Arg.Any<PowerAllocationUpdate>())
+            .Returns(ci => { done.TrySetResult(); return Task.CompletedTask; });
 
         // Act
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
-        _service.TriggerRebalance();
-        try { await _service.StartAsync(cts.Token); await Task.Delay(1000); }
-        catch (OperationCanceledException) { }
-        finally { await _service.StopAsync(CancellationToken.None); }
+        await RunOneCycleAsync(done);
 
         // Assert - no profiles sent but SignalR notification still sent (with allocation info)
         await _remoteCommandService.DidNotReceive()
