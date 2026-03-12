@@ -165,7 +165,16 @@
     "deleteConnectorConfirm": "Xóa đầu sạc này?",
     "noConnectors": "Chưa có đầu sạc. Thêm đầu sạc để bắt đầu.",
     "recentFaults": "Lỗi gần đây",
-    "noRecentFaults": "Không có lỗi gần đây"
+    "noRecentFaults": "Không có lỗi gần đây",
+    "listView": "Dạng danh sách",
+    "boardView": "Dạng thẻ",
+    "allStatuses": "Tất cả trạng thái",
+    "occupied": "Đang sử dụng",
+    "unavailable": "Không khả dụng",
+    "totalStations": "tổng trạm sạc",
+    "sortByCode": "Sắp xếp theo mã",
+    "sortByName": "Sắp xếp theo tên",
+    "sortByStatus": "Sắp xếp theo trạng thái"
   },
   "sessions": {
     "title": "Phiên sạc",

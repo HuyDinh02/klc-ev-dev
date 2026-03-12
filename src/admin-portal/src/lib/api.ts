@@ -62,7 +62,7 @@ api.interceptors.response.use(
 
 // API functions
 export const stationsApi = {
-  getAll: (params?: { skipCount?: number; maxResultCount?: number; status?: number; search?: string }) =>
+  getAll: (params?: { skipCount?: number; maxResultCount?: number; status?: number; search?: string; cursor?: string; sortBy?: string; sortOrder?: string }) =>
     api.get("/stations", { params }),
   getById: (id: string) => api.get(`/stations/${id}`),
   create: (data: CreateStationDto) => api.post("/stations", data),

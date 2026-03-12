@@ -6,31 +6,37 @@ import {
   Plus,
   Search,
   MapPin,
-  Power,
-  PowerOff,
-  Eye,
-  Edit,
+  LayoutGrid,
+  List,
   Wifi,
 } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { StatusBadge } from "@/components/ui/status-badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { SkeletonCard } from "@/components/ui/skeleton";
+import { SkeletonCard, SkeletonTable } from "@/components/ui/skeleton";
 import { stationsApi } from "@/lib/api";
-import { formatDateTime } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
 import { useMonitoringHub } from "@/lib/signalr";
+import { usePreferencesStore } from "@/lib/store";
+import { StationBoardView, StationListView } from "@/components/stations";
+import type { StationListItem } from "@/components/stations";
+
+const pageSize = 20;
 
 export default function StationsPage() {
   const { t } = useTranslation();
-  const [search, setSearch] = useState("");
   const queryClient = useQueryClient();
 
-  // SignalR real-time updates — refresh station list on status changes
+  const { stationsViewMode, setStationsViewMode } = usePreferencesStore();
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState("name");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [cursorStack, setCursorStack] = useState<(string | null)[]>([]);
+
+  // SignalR real-time updates
   const onStationStatusChanged = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["stations"] });
   }, [queryClient]);
@@ -45,14 +51,22 @@ export default function StationsPage() {
   });
 
   const { data: stationsData, isLoading } = useQuery({
-    queryKey: ["stations", search],
+    queryKey: ["stations", search, statusFilter, sortBy, sortOrder, cursor],
     queryFn: async () => {
-      const { data } = await stationsApi.getAll({ maxResultCount: 50, search: search || undefined });
+      const params: Record<string, unknown> = {
+        maxResultCount: pageSize,
+        sortBy,
+        sortOrder,
+      };
+      if (search) params.search = search;
+      if (statusFilter !== "all") params.status = Number(statusFilter);
+      if (cursor) params.cursor = cursor;
+      const { data } = await stationsApi.getAll(params as Parameters<typeof stationsApi.getAll>[0]);
       return data;
     },
   });
 
-  const stations = stationsData?.items || [];
+  const stations: StationListItem[] = stationsData?.items || [];
 
   const enableMutation = useMutation({
     mutationFn: (id: string) => stationsApi.enable(id),
@@ -63,6 +77,25 @@ export default function StationsPage() {
     mutationFn: (id: string) => stationsApi.disable(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["stations"] }),
   });
+
+  const isMutating = enableMutation.isPending || disableMutation.isPending;
+
+  const handleSort = (field: string) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(field);
+      setSortOrder("asc");
+    }
+    setCursor(null);
+    setCursorStack([]);
+  };
+
+  const handleStatusFilterChange = (value: string) => {
+    setStatusFilter(value);
+    setCursor(null);
+    setCursorStack([]);
+  };
 
   return (
     <div className="flex flex-col">
@@ -85,9 +118,46 @@ export default function StationsPage() {
               placeholder={t("stations.searchPlaceholder")}
               aria-label={t("stations.searchPlaceholder")}
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCursor(null);
+                setCursorStack([]);
+              }}
               className="h-10 w-full rounded-md border bg-background pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
             />
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => handleStatusFilterChange(e.target.value)}
+            className="h-10 rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+            aria-label={t("common.status")}
+          >
+            <option value="all">{t("stations.allStatuses")}</option>
+            <option value="0">{t("stations.available")}</option>
+            <option value="1">{t("stations.occupied")}</option>
+            <option value="2">{t("stations.offline")}</option>
+            <option value="3">{t("stations.faulted")}</option>
+            <option value="4">{t("stations.unavailable")}</option>
+          </select>
+          <div className="flex items-center rounded-md border">
+            <Button
+              variant={stationsViewMode === "board" ? "default" : "ghost"}
+              size="icon"
+              className="rounded-r-none"
+              onClick={() => setStationsViewMode("board")}
+              aria-label={t("stations.boardView")}
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={stationsViewMode === "list" ? "default" : "ghost"}
+              size="icon"
+              className="rounded-l-none"
+              onClick={() => setStationsViewMode("list")}
+              aria-label={t("stations.listView")}
+            >
+              <List className="h-4 w-4" />
+            </Button>
           </div>
           <Link href="/stations/new">
             <Button>
@@ -99,97 +169,83 @@ export default function StationsPage() {
       </div>
 
       <div className="flex-1 space-y-6 p-6" aria-live="polite">
-        {/* Stations Grid */}
         {isLoading ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" role="status" aria-label="Loading stations">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <SkeletonCard key={i} />
-            ))}
-          </div>
+          stationsViewMode === "board" ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" role="status" aria-label="Loading stations">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <SkeletonCard key={i} />
+              ))}
+            </div>
+          ) : (
+            <SkeletonTable rows={8} cols={7} />
+          )
         ) : stations.length === 0 ? (
           <EmptyState
             icon={MapPin}
             title={t("stations.noStationsFound")}
-            description={search ? t("stations.tryDifferentSearch") : t("stations.getStarted")}
+            description={search || statusFilter !== "all" ? t("stations.tryDifferentSearch") : t("stations.getStarted")}
           />
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {stations.map((station: { id: string; stationCode: string; name: string; address: string; status: number; isEnabled: boolean; connectorCount?: number; lastHeartbeat?: string }) => (
-              <Card key={station.id} className="relative">
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="text-lg">{station.name}</CardTitle>
-                      <p className="text-xs font-mono text-muted-foreground">{station.stationCode}</p>
-                      <div className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
-                        <MapPin className="h-3 w-3" aria-hidden="true" />
-                        <span className="line-clamp-1">{station.address}</span>
-                      </div>
-                    </div>
-                    {!station.isEnabled ? (
-                      <Badge variant="secondary">{t("stations.disabled")}</Badge>
-                    ) : (
-                      <StatusBadge type="station" value={station.status} />
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-2 text-center">
-                      <div className="rounded-md bg-muted p-2">
-                        <div className="text-lg font-semibold tabular-nums">{station.connectorCount || 0}</div>
-                        <div className="text-xs text-muted-foreground">{t("stations.connectors")}</div>
-                      </div>
-                      <div className="rounded-md bg-muted p-2">
-                        <div className="text-xs font-medium">
-                          {station.lastHeartbeat
-                            ? formatDateTime(station.lastHeartbeat)
-                            : t("stations.never")}
-                        </div>
-                        <div className="text-xs text-muted-foreground">{t("stations.lastHeartbeat")}</div>
-                      </div>
-                    </div>
+          <>
+            {stationsViewMode === "board" ? (
+              <StationBoardView
+                stations={stations}
+                onEnable={(id) => enableMutation.mutate(id)}
+                onDisable={(id) => disableMutation.mutate(id)}
+                isMutating={isMutating}
+              />
+            ) : (
+              <StationListView
+                stations={stations}
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSort={handleSort}
+                onEnable={(id) => enableMutation.mutate(id)}
+                onDisable={(id) => disableMutation.mutate(id)}
+                isMutating={isMutating}
+              />
+            )}
 
-                    {/* Actions */}
-                    <div className="flex items-center gap-2">
-                      <Link href={`/stations/${station.id}`} className="flex-1">
-                        <Button variant="outline" size="sm" className="w-full">
-                          <Eye className="mr-2 h-4 w-4" aria-hidden="true" />
-                          {t("stations.view")}
-                        </Button>
-                      </Link>
-                      <Link href={`/stations/${station.id}/edit`}>
-                        <Button variant="outline" size="icon" aria-label={t("common.edit")}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                      {station.isEnabled ? (
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          aria-label={t("stations.disabled")}
-                          onClick={() => disableMutation.mutate(station.id)}
-                          disabled={disableMutation.isPending}
-                        >
-                          <PowerOff className="h-4 w-4" />
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          aria-label={t("stations.enable")}
-                          onClick={() => enableMutation.mutate(station.id)}
-                          disabled={enableMutation.isPending}
-                        >
-                          <Power className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+            {/* Pagination */}
+            {((stationsData?.totalCount ?? 0) > pageSize || cursorStack.length > 0) && (
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  {stationsData?.totalCount ?? 0} {t("stations.totalStations")}
+                </p>
+                <div className="flex items-center gap-2">
+                  {cursorStack.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const prev = [...cursorStack];
+                        const prevCursor = prev.pop()!;
+                        setCursorStack(prev);
+                        setCursor(prevCursor);
+                      }}
+                    >
+                      {t("common.previous")}
+                    </Button>
+                  )}
+                  {stations.length === pageSize && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const lastId = stations[stations.length - 1]?.id;
+                        if (lastId) {
+                          setCursorStack([...cursorStack, cursor]);
+                          setCursor(lastId);
+                        }
+                      }}
+                    >
+                      {t("common.next")}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

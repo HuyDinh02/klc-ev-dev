@@ -64,6 +64,23 @@ interface AlertsState {
   decrementUnreadCount: () => void;
 }
 
+interface PreferencesState {
+  stationsViewMode: "board" | "list";
+  setStationsViewMode: (mode: "board" | "list") => void;
+}
+
+export const usePreferencesStore = create<PreferencesState>()(
+  persist(
+    (set) => ({
+      stationsViewMode: "board",
+      setStationsViewMode: (mode) => set({ stationsViewMode: mode }),
+    }),
+    {
+      name: "preferences-storage",
+    }
+  )
+);
+
 export const useAlertsStore = create<AlertsState>((set) => ({
   unreadCount: 0,
   setUnreadCount: (count) => set({ unreadCount: count }),

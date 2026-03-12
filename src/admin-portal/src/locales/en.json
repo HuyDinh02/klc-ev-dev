@@ -165,7 +165,16 @@
     "deleteConnectorConfirm": "Delete this connector?",
     "noConnectors": "No connectors. Add one to get started.",
     "recentFaults": "Recent Faults",
-    "noRecentFaults": "No recent faults"
+    "noRecentFaults": "No recent faults",
+    "listView": "List view",
+    "boardView": "Board view",
+    "allStatuses": "All Statuses",
+    "occupied": "Occupied",
+    "unavailable": "Unavailable",
+    "totalStations": "total stations",
+    "sortByCode": "Sort by code",
+    "sortByName": "Sort by name",
+    "sortByStatus": "Sort by status"
   },
   "sessions": {
     "title": "Charging Sessions",
