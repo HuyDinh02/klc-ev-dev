@@ -107,6 +107,70 @@
 
     "KLC:EntityNotFound": "The requested resource was not found.",
 
+    "Permission:Stations": "Station Management",
+    "Permission:Stations.Create": "Create Stations",
+    "Permission:Stations.Update": "Update Stations",
+    "Permission:Stations.Delete": "Delete Stations",
+    "Permission:Stations.Decommission": "Decommission Stations",
+
+    "Permission:Connectors": "Connector Management",
+    "Permission:Connectors.Create": "Create Connectors",
+    "Permission:Connectors.Update": "Update Connectors",
+    "Permission:Connectors.Delete": "Delete Connectors",
+    "Permission:Connectors.Enable": "Enable Connectors",
+    "Permission:Connectors.Disable": "Disable Connectors",
+
+    "Permission:Tariffs": "Tariff Management",
+    "Permission:Tariffs.Create": "Create Tariffs",
+    "Permission:Tariffs.Update": "Update Tariffs",
+    "Permission:Tariffs.Activate": "Activate Tariffs",
+    "Permission:Tariffs.Deactivate": "Deactivate Tariffs",
+
+    "Permission:Sessions": "Session Management",
+    "Permission:Sessions.ViewAll": "View All Sessions",
+
+    "Permission:Faults": "Fault Management",
+    "Permission:Faults.Update": "Update Faults",
+
+    "Permission:Alerts": "Alert Management",
+    "Permission:Alerts.Acknowledge": "Acknowledge Alerts",
+
+    "Permission:Monitoring": "Real-time Monitoring",
+    "Permission:Monitoring.Dashboard": "View Monitoring Dashboard",
+    "Permission:Monitoring.StatusHistory": "View Status History",
+    "Permission:Monitoring.EnergySummary": "View Energy Summary",
+
+    "Permission:StationGroups": "Station Group Management",
+    "Permission:StationGroups.Create": "Create Station Groups",
+    "Permission:StationGroups.Update": "Update Station Groups",
+    "Permission:StationGroups.Delete": "Delete Station Groups",
+    "Permission:StationGroups.Assign": "Assign Stations to Groups",
+
+    "Permission:Payments": "Payment Management",
+    "Permission:Payments.ViewAll": "View All Payments",
+    "Permission:Payments.Refund": "Process Refunds",
+
+    "Permission:AuditLogs": "Audit Log Management",
+    "Permission:AuditLogs.Export": "Export Audit Logs",
+
+    "Permission:EInvoices": "E-Invoice Management",
+    "Permission:EInvoices.Generate": "Generate E-Invoices",
+    "Permission:EInvoices.Retry": "Retry E-Invoices",
+    "Permission:EInvoices.Cancel": "Cancel E-Invoices",
+
+    "Permission:UserManagement": "User Management",
+    "Permission:UserManagement.Create": "Create Users",
+    "Permission:UserManagement.Update": "Update Users",
+    "Permission:UserManagement.Delete": "Delete Users",
+    "Permission:UserManagement.ManageRoles": "Assign User Roles",
+    "Permission:UserManagement.ManagePermissions": "Manage User Permissions",
+
+    "Permission:RoleManagement": "Role Management",
+    "Permission:RoleManagement.Create": "Create Roles",
+    "Permission:RoleManagement.Update": "Update Roles",
+    "Permission:RoleManagement.Delete": "Delete Roles",
+    "Permission:RoleManagement.ManagePermissions": "Manage Role Permissions",
+
     "Permission:MobileUsers": "Mobile User Management",
     "Permission:MobileUsers.ViewAll": "View All Mobile Users",
     "Permission:MobileUsers.Suspend": "Suspend/Unsuspend Mobile Users",

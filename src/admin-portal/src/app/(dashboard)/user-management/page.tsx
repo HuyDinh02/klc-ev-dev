@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,7 +14,83 @@ import { formatDateTime } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
 import {
   Plus, Edit, Trash2, Lock, Unlock, Key, Shield, Search, Users, ChevronLeft, ChevronRight,
+  MapPin, Activity, Zap, Cable, AlertTriangle, Wrench, DollarSign, CreditCard, Ticket,
+  Building2, Truck, FileText, Bell, ChevronDown, ChevronUp, type LucideIcon,
 } from "lucide-react";
+
+// Permission-to-sidebar mapping
+const PERMISSION_SECTIONS: Array<{
+  sectionKey: string;
+  groups: Array<{ permissionGroup: string; icon: LucideIcon; pageHint: string | null }>;
+}> = [
+  {
+    sectionKey: "permissions.sectionOperations",
+    groups: [
+      { permissionGroup: "KLC.Stations", icon: MapPin, pageHint: "/stations" },
+      { permissionGroup: "KLC.Connectors", icon: Zap, pageHint: "/stations" },
+      { permissionGroup: "KLC.Monitoring", icon: Activity, pageHint: "/monitoring" },
+      { permissionGroup: "KLC.Sessions", icon: Zap, pageHint: "/sessions" },
+      { permissionGroup: "KLC.PowerSharing", icon: Cable, pageHint: "/power-sharing" },
+    ],
+  },
+  {
+    sectionKey: "permissions.sectionIncidents",
+    groups: [
+      { permissionGroup: "KLC.Faults", icon: AlertTriangle, pageHint: "/faults" },
+      { permissionGroup: "KLC.Maintenance", icon: Wrench, pageHint: "/maintenance" },
+    ],
+  },
+  {
+    sectionKey: "permissions.sectionBusiness",
+    groups: [
+      { permissionGroup: "KLC.Tariffs", icon: DollarSign, pageHint: "/tariffs" },
+      { permissionGroup: "KLC.Payments", icon: CreditCard, pageHint: "/payments" },
+      { permissionGroup: "KLC.Vouchers", icon: Ticket, pageHint: "/marketing" },
+      { permissionGroup: "KLC.Promotions", icon: Ticket, pageHint: "/marketing" },
+      { permissionGroup: "KLC.Operators", icon: Building2, pageHint: "/operators" },
+      { permissionGroup: "KLC.Fleets", icon: Truck, pageHint: "/fleets" },
+    ],
+  },
+  {
+    sectionKey: "permissions.sectionUsers",
+    groups: [
+      { permissionGroup: "KLC.UserManagement", icon: Users, pageHint: "/user-management" },
+      { permissionGroup: "KLC.RoleManagement", icon: Shield, pageHint: "/user-management" },
+      { permissionGroup: "KLC.MobileUsers", icon: Users, pageHint: "/mobile-users" },
+    ],
+  },
+  {
+    sectionKey: "permissions.sectionSystem",
+    groups: [
+      { permissionGroup: "KLC.StationGroups", icon: MapPin, pageHint: "/groups" },
+      { permissionGroup: "KLC.AuditLogs", icon: FileText, pageHint: "/audit-logs" },
+      { permissionGroup: "KLC.EInvoices", icon: FileText, pageHint: "/e-invoices" },
+      { permissionGroup: "KLC.Alerts", icon: Bell, pageHint: "/alerts" },
+      { permissionGroup: "KLC.Notifications", icon: Bell, pageHint: null },
+      { permissionGroup: "KLC.Feedback", icon: FileText, pageHint: null },
+    ],
+  },
+];
+
+type PermissionItem = { name: string; displayName: string; isGranted: boolean };
+type PermissionGroup = { name: string; displayName: string; permissions: PermissionItem[] };
+
+// Indeterminate checkbox component
+function IndeterminateCheckbox({ checked, indeterminate, onChange, label }: {
+  checked: boolean; indeterminate: boolean; onChange: (checked: boolean) => void; label: string;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate;
+  }, [indeterminate]);
+  return (
+    <label className="flex items-center gap-2 cursor-pointer">
+      <input ref={ref} type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)}
+        className="h-4 w-4 rounded border-gray-300" />
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+    </label>
+  );
+}
 
 type TabType = "users" | "roles";
 
@@ -310,6 +386,8 @@ function RolesTab() {
   const [permissionsRole, setPermissionsRole] = useState<Record<string, unknown> | null>(null);
   const [roleForm, setRoleForm] = useState({ name: "", isDefault: false, isPublic: true });
   const [permissionGrants, setPermissionGrants] = useState<Record<string, boolean>>({});
+  const [permSearch, setPermSearch] = useState("");
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
 
   const { data: rolesData, isLoading } = useQuery({
     queryKey: ["roles"],
@@ -329,10 +407,17 @@ function RolesTab() {
     enabled: !!permissionsRole,
   });
 
-  // Initialize permission grants when permissions data loads
-  const permissionGroups = Array.isArray(permissionsData) ? permissionsData : permissionsData?.groups || [];
+  const permissionGroups: PermissionGroup[] = Array.isArray(permissionsData) ? permissionsData : permissionsData?.groups || [];
 
-  const initializeGrants = () => {
+  // Build a lookup from group name to group data
+  const groupLookup = useMemo(() => {
+    const map: Record<string, PermissionGroup> = {};
+    for (const g of permissionGroups) map[g.name] = g;
+    return map;
+  }, [permissionGroups]);
+
+  // Initialize grants when permissions data loads
+  const initializeGrants = useCallback(() => {
     if (permissionGroups.length > 0) {
       const grants: Record<string, boolean> = {};
       for (const group of permissionGroups) {
@@ -342,6 +427,64 @@ function RolesTab() {
       }
       setPermissionGrants(grants);
     }
+  }, [permissionGroups]);
+
+  // Auto-initialize when permissions load
+  useEffect(() => {
+    if (permissionGroups.length > 0 && Object.keys(permissionGrants).length === 0) {
+      initializeGrants();
+    }
+  }, [permissionGroups, permissionGrants, initializeGrants]);
+
+  // Computed: total and granted counts
+  const allPermNames = useMemo(() => {
+    const names: string[] = [];
+    for (const g of permissionGroups) for (const p of g.permissions || []) names.push(p.name);
+    return names;
+  }, [permissionGroups]);
+
+  const grantedCount = useMemo(() =>
+    allPermNames.filter((n) => permissionGrants[n]).length,
+    [allPermNames, permissionGrants],
+  );
+
+  const handleGrantAll = () => {
+    if (!confirm(t("permissions.grantAllConfirm"))) return;
+    const next: Record<string, boolean> = {};
+    for (const n of allPermNames) next[n] = true;
+    setPermissionGrants(next);
+  };
+
+  const handleRevokeAll = () => {
+    if (!confirm(t("permissions.revokeAllConfirm"))) return;
+    const next: Record<string, boolean> = {};
+    for (const n of allPermNames) next[n] = false;
+    setPermissionGrants(next);
+  };
+
+  const toggleGroupAll = (group: PermissionGroup, grant: boolean) => {
+    const next = { ...permissionGrants };
+    for (const p of group.permissions || []) next[p.name] = grant;
+    setPermissionGrants(next);
+  };
+
+  const getGroupState = (group: PermissionGroup) => {
+    const perms = group.permissions || [];
+    if (perms.length === 0) return { all: false, none: true, indeterminate: false };
+    const checked = perms.filter((p) => permissionGrants[p.name]).length;
+    return { all: checked === perms.length, none: checked === 0, indeterminate: checked > 0 && checked < perms.length };
+  };
+
+  const toggleSection = (key: string) => {
+    setCollapsedSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  // Filter groups by search
+  const matchesSearch = (group: PermissionGroup) => {
+    if (!permSearch) return true;
+    const q = permSearch.toLowerCase();
+    if (group.displayName.toLowerCase().includes(q)) return true;
+    return group.permissions?.some((p) => p.displayName.toLowerCase().includes(q));
   };
 
   const createMutation = useMutation({
@@ -374,6 +517,59 @@ function RolesTab() {
   });
 
   const roles = rolesData?.items || [];
+
+  // Render a single permission group card
+  const renderGroupCard = (groupDef: { permissionGroup: string; icon: LucideIcon; pageHint: string | null }) => {
+    const group = groupLookup[groupDef.permissionGroup];
+    if (!group) return null;
+    if (!matchesSearch(group)) return null;
+    const Icon = groupDef.icon;
+    const state = getGroupState(group);
+    const childPerms = (group.permissions || []).filter((p) => p.name !== group.name);
+    const filteredPerms = permSearch
+      ? childPerms.filter((p) => p.displayName.toLowerCase().includes(permSearch.toLowerCase()) || group.displayName.toLowerCase().includes(permSearch.toLowerCase()))
+      : childPerms;
+
+    return (
+      <div key={group.name} className="rounded-lg border bg-card p-3 space-y-2">
+        <div className="flex items-center gap-2">
+          <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" aria-hidden="true" />
+          <span className="font-medium text-sm flex-1">{group.displayName}</span>
+          {groupDef.pageHint && (
+            <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+              {groupDef.pageHint}
+            </span>
+          )}
+        </div>
+        <IndeterminateCheckbox
+          checked={state.all}
+          indeterminate={state.indeterminate}
+          onChange={(checked) => toggleGroupAll(group, checked)}
+          label={t("permissions.selectAll")}
+        />
+        {filteredPerms.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 pl-6">
+            {filteredPerms.map((perm) => (
+              <label key={perm.name} className="flex items-center gap-2 cursor-pointer py-0.5">
+                <input type="checkbox" checked={permissionGrants[perm.name] ?? false}
+                  onChange={(e) => setPermissionGrants({ ...permissionGrants, [perm.name]: e.target.checked })}
+                  className="h-3.5 w-3.5 rounded border-gray-300" />
+                <span className="text-xs">{perm.displayName}</span>
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Check if a section has any visible groups
+  const sectionHasVisibleGroups = (section: typeof PERMISSION_SECTIONS[0]) => {
+    return section.groups.some((gDef) => {
+      const group = groupLookup[gDef.permissionGroup];
+      return group && matchesSearch(group);
+    });
+  };
 
   return (
     <>
@@ -419,7 +615,7 @@ function RolesTab() {
                           <Button variant="ghost" size="sm" title={t("common.edit")} aria-label={t("common.edit")} onClick={() => { setEditingRole(role); setRoleForm({ name: role.name as string, isDefault: role.isDefault as boolean, isPublic: (role.isPublic as boolean) ?? true }); }}>
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" title={t("userManagement.permissions")} aria-label={t("userManagement.permissions")} onClick={() => { setPermissionsRole(role); setPermissionGrants({}); }}>
+                          <Button variant="ghost" size="sm" title={t("userManagement.permissions")} aria-label={t("userManagement.permissions")} onClick={() => { setPermissionsRole(role); setPermissionGrants({}); setPermSearch(""); setCollapsedSections({}); }}>
                             <Shield className="h-4 w-4" />
                           </Button>
                           {!role.isStatic && (
@@ -464,39 +660,116 @@ function RolesTab() {
         </form>
       </Dialog>
 
-      {/* Permissions Dialog */}
-      <Dialog open={!!permissionsRole} onClose={() => setPermissionsRole(null)} size="xl" className="max-h-[80vh] flex flex-col">
+      {/* Permissions Dialog — Redesigned */}
+      <Dialog open={!!permissionsRole} onClose={() => setPermissionsRole(null)} size="xl" className="max-h-[85vh] flex flex-col">
         <DialogHeader onClose={() => setPermissionsRole(null)}>
           {t("userManagement.permissions")} — {permissionsRole?.name as string}
         </DialogHeader>
-        <DialogContent className="space-y-4 overflow-y-auto flex-1">
+        <DialogContent className="space-y-4 overflow-y-auto flex-1 p-4">
           {permissionGroups.length > 0 ? (
             <>
-              {!Object.keys(permissionGrants).length && initializeGrants()}
-              {permissionGroups.map((group: { name: string; displayName: string; permissions: Array<{ name: string; displayName: string; isGranted: boolean }> }) => (
-                <div key={group.name} className="space-y-2">
-                  <h4 className="font-medium text-sm">{group.displayName}</h4>
-                  <div className="grid gap-1 pl-4">
-                    {group.permissions.map((perm) => (
-                      <label key={perm.name} className="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" checked={permissionGrants[perm.name] ?? perm.isGranted}
-                          onChange={(e) => setPermissionGrants({ ...permissionGrants, [perm.name]: e.target.checked })} />
-                        <span className="text-sm">{perm.displayName}</span>
-                      </label>
-                    ))}
-                  </div>
+              {/* Toolbar: Grant/Revoke All + Search */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sticky top-0 bg-background z-10 pb-2 border-b">
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={handleGrantAll}>
+                    {t("permissions.grantAll")}
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleRevokeAll}>
+                    {t("permissions.revokeAll")}
+                  </Button>
                 </div>
-              ))}
+                <div className="relative flex-1 w-full sm:w-auto">
+                  <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                  <input
+                    type="search"
+                    placeholder={t("permissions.searchPermissions")}
+                    value={permSearch}
+                    onChange={(e) => setPermSearch(e.target.value)}
+                    className="h-8 w-full rounded-md border bg-background pl-8 pr-3 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+                    aria-label={t("permissions.searchPermissions")}
+                  />
+                </div>
+              </div>
+
+              {/* Permission Sections */}
+              {PERMISSION_SECTIONS.map((section) => {
+                if (!sectionHasVisibleGroups(section)) return null;
+                const isCollapsed = collapsedSections[section.sectionKey];
+                return (
+                  <div key={section.sectionKey} className="space-y-2">
+                    <button
+                      type="button"
+                      className="flex items-center gap-2 w-full text-left py-1"
+                      onClick={() => toggleSection(section.sectionKey)}
+                    >
+                      {isCollapsed ? (
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                      )}
+                      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        {t(section.sectionKey)}
+                      </span>
+                    </button>
+                    {!isCollapsed && (
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 pl-2">
+                        {section.groups.map((gDef) => renderGroupCard(gDef))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Unmapped groups: show any groups from API not in PERMISSION_SECTIONS */}
+              {(() => {
+                const mappedNames = new Set(PERMISSION_SECTIONS.flatMap((s) => s.groups.map((g) => g.permissionGroup)));
+                const unmapped = permissionGroups.filter((g) => !mappedNames.has(g.name) && matchesSearch(g));
+                if (unmapped.length === 0) return null;
+                return (
+                  <div className="space-y-2">
+                    <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground py-1 pl-6">
+                      {t("common.other") ?? "Other"}
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 pl-2">
+                      {unmapped.map((group) => (
+                        <div key={group.name} className="rounded-lg border bg-card p-3 space-y-2">
+                          <span className="font-medium text-sm">{group.displayName}</span>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 pl-6">
+                            {group.permissions.map((perm) => (
+                              <label key={perm.name} className="flex items-center gap-2 cursor-pointer py-0.5">
+                                <input type="checkbox" checked={permissionGrants[perm.name] ?? false}
+                                  onChange={(e) => setPermissionGrants({ ...permissionGrants, [perm.name]: e.target.checked })}
+                                  className="h-3.5 w-3.5 rounded border-gray-300" />
+                                <span className="text-xs">{perm.displayName}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* No results message */}
+              {permSearch && !PERMISSION_SECTIONS.some((s) => sectionHasVisibleGroups(s)) && (
+                <p className="text-center text-sm text-muted-foreground py-8">{t("permissions.noResults")}</p>
+              )}
             </>
           ) : (
             <SkeletonTable rows={4} cols={2} />
           )}
         </DialogContent>
         {permissionGroups.length > 0 && (
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPermissionsRole(null)}>{t("common.cancel")}</Button>
-            <Button onClick={() => updatePermissionsMutation.mutate()} disabled={updatePermissionsMutation.isPending}>{t("userManagement.savePermissions")}</Button>
-          </DialogFooter>
+          <div className="border-t px-4 py-3 flex items-center justify-between">
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {t("permissions.summary").replace("{granted}", String(grantedCount)).replace("{total}", String(allPermNames.length))}
+            </span>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setPermissionsRole(null)}>{t("common.cancel")}</Button>
+              <Button onClick={() => updatePermissionsMutation.mutate()} disabled={updatePermissionsMutation.isPending}>{t("userManagement.savePermissions")}</Button>
+            </div>
+          </div>
         )}
       </Dialog>
     </>

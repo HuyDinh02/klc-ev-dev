@@ -1060,6 +1060,22 @@
     "start": "Bắt đầu",
     "end": "Kết thúc"
   },
+  "permissions": {
+    "grantAll": "Cấp tất cả",
+    "revokeAll": "Thu hồi tất cả",
+    "selectAll": "Chọn tất cả",
+    "searchPermissions": "Tìm quyền...",
+    "summary": "{granted}/{total} quyền được cấp",
+    "pageHint": "Kiểm soát",
+    "sectionOperations": "Vận hành",
+    "sectionIncidents": "Sự cố",
+    "sectionBusiness": "Kinh doanh",
+    "sectionUsers": "Người dùng & Truy cập",
+    "sectionSystem": "Hệ thống",
+    "noResults": "Không tìm thấy quyền phù hợp",
+    "grantAllConfirm": "Cấp tất cả quyền cho vai trò này?",
+    "revokeAllConfirm": "Thu hồi tất cả quyền từ vai trò này?"
+  },
   "powerSharing": {
     "title": "Chia sẻ công suất",
     "description": "Quản lý nhóm chia sẻ công suất LINK & LOOP",

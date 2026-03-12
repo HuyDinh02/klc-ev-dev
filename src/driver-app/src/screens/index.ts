@@ -8,3 +8,8 @@ export { FavoritesScreen } from './FavoritesScreen';
 export { VehiclesScreen } from './VehiclesScreen';
 export { WalletScreen } from './WalletScreen';
 export { NotificationsScreen } from './NotificationsScreen';
+export { SettingsScreen } from './SettingsScreen';
+export { QRScannerScreen } from './QRScannerScreen';
+export { PaymentMethodsScreen } from './PaymentMethodsScreen';
+export { HelpSupportScreen } from './HelpSupportScreen';
+export { PromotionsScreen } from './PromotionsScreen';

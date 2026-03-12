@@ -107,6 +107,70 @@
 
     "KLC:EntityNotFound": "Không tìm thấy tài nguyên yêu cầu.",
 
+    "Permission:Stations": "Quản lý trạm sạc",
+    "Permission:Stations.Create": "Tạo trạm sạc",
+    "Permission:Stations.Update": "Cập nhật trạm sạc",
+    "Permission:Stations.Delete": "Xóa trạm sạc",
+    "Permission:Stations.Decommission": "Ngừng hoạt động trạm sạc",
+
+    "Permission:Connectors": "Quản lý đầu sạc",
+    "Permission:Connectors.Create": "Tạo đầu sạc",
+    "Permission:Connectors.Update": "Cập nhật đầu sạc",
+    "Permission:Connectors.Delete": "Xóa đầu sạc",
+    "Permission:Connectors.Enable": "Bật đầu sạc",
+    "Permission:Connectors.Disable": "Tắt đầu sạc",
+
+    "Permission:Tariffs": "Quản lý biểu giá",
+    "Permission:Tariffs.Create": "Tạo biểu giá",
+    "Permission:Tariffs.Update": "Cập nhật biểu giá",
+    "Permission:Tariffs.Activate": "Kích hoạt biểu giá",
+    "Permission:Tariffs.Deactivate": "Vô hiệu hóa biểu giá",
+
+    "Permission:Sessions": "Quản lý phiên sạc",
+    "Permission:Sessions.ViewAll": "Xem tất cả phiên sạc",
+
+    "Permission:Faults": "Quản lý sự cố",
+    "Permission:Faults.Update": "Cập nhật sự cố",
+
+    "Permission:Alerts": "Quản lý cảnh báo",
+    "Permission:Alerts.Acknowledge": "Xác nhận cảnh báo",
+
+    "Permission:Monitoring": "Giám sát thời gian thực",
+    "Permission:Monitoring.Dashboard": "Xem bảng điều khiển giám sát",
+    "Permission:Monitoring.StatusHistory": "Xem lịch sử trạng thái",
+    "Permission:Monitoring.EnergySummary": "Xem tổng kết năng lượng",
+
+    "Permission:StationGroups": "Quản lý nhóm trạm sạc",
+    "Permission:StationGroups.Create": "Tạo nhóm trạm sạc",
+    "Permission:StationGroups.Update": "Cập nhật nhóm trạm sạc",
+    "Permission:StationGroups.Delete": "Xóa nhóm trạm sạc",
+    "Permission:StationGroups.Assign": "Gán trạm vào nhóm",
+
+    "Permission:Payments": "Quản lý thanh toán",
+    "Permission:Payments.ViewAll": "Xem tất cả thanh toán",
+    "Permission:Payments.Refund": "Xử lý hoàn tiền",
+
+    "Permission:AuditLogs": "Quản lý nhật ký kiểm toán",
+    "Permission:AuditLogs.Export": "Xuất nhật ký kiểm toán",
+
+    "Permission:EInvoices": "Quản lý hóa đơn điện tử",
+    "Permission:EInvoices.Generate": "Tạo hóa đơn điện tử",
+    "Permission:EInvoices.Retry": "Thử lại hóa đơn điện tử",
+    "Permission:EInvoices.Cancel": "Hủy hóa đơn điện tử",
+
+    "Permission:UserManagement": "Quản lý người dùng",
+    "Permission:UserManagement.Create": "Tạo người dùng",
+    "Permission:UserManagement.Update": "Cập nhật người dùng",
+    "Permission:UserManagement.Delete": "Xóa người dùng",
+    "Permission:UserManagement.ManageRoles": "Gán vai trò người dùng",
+    "Permission:UserManagement.ManagePermissions": "Quản lý quyền người dùng",
+
+    "Permission:RoleManagement": "Quản lý vai trò",
+    "Permission:RoleManagement.Create": "Tạo vai trò",
+    "Permission:RoleManagement.Update": "Cập nhật vai trò",
+    "Permission:RoleManagement.Delete": "Xóa vai trò",
+    "Permission:RoleManagement.ManagePermissions": "Quản lý quyền vai trò",
+
     "Permission:MobileUsers": "Quản lý người dùng di động",
     "Permission:MobileUsers.ViewAll": "Xem tất cả người dùng di động",
     "Permission:MobileUsers.Suspend": "Tạm ngưng/Mở khóa người dùng",

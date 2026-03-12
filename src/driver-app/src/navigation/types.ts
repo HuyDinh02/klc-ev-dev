@@ -8,6 +8,10 @@ export type RootStackParamList = {
   QRScanner: undefined;
   Vehicles: undefined;
   Notifications: undefined;
+  Settings: undefined;
+  PaymentMethods: undefined;
+  HelpSupport: undefined;
+  Promotions: undefined;
 };
 
 export type MainTabParamList = {
