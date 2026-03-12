@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { Colors, Shadows } from '../constants/colors';
 import { Card } from '../components/common';
 import { walletApi } from '../api/wallet';
@@ -52,6 +53,7 @@ function formatDate(dateStr: string): string {
 }
 
 export function WalletScreen() {
+  const { t } = useTranslation();
   const [balance, setBalance] = useState<number>(0);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [nextCursor, setNextCursor] = useState<string | undefined>();
@@ -132,12 +134,12 @@ export function WalletScreen() {
 
   const handleTopUp = (amount: number) => {
     Alert.alert(
-      'Top Up Wallet',
-      `Add ${formatCurrency(amount)} to your wallet?`,
+      t('wallet.topUpTitle'),
+      t('wallet.topUpMessage', { amount: formatCurrency(amount) }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Confirm',
+          text: t('common.confirm'),
           onPress: () => processTopUp(amount),
         },
       ]
@@ -149,10 +151,10 @@ export function WalletScreen() {
     try {
       await walletApi.topUp(amount, 'MoMo');
       await loadData();
-      Alert.alert('Success', `${formatCurrency(amount)} has been added to your wallet.`);
+      Alert.alert(t('common.success'), t('wallet.topUpSuccess', { amount: formatCurrency(amount) }));
     } catch (error) {
       console.error('Top up failed:', error);
-      Alert.alert('Error', 'Top up failed. Please try again.');
+      Alert.alert(t('common.error'), t('wallet.topUpError'));
     } finally {
       setTopUpLoading(false);
     }
@@ -196,7 +198,7 @@ export function WalletScreen() {
   const renderHeader = () => (
     <View>
       <Card style={styles.balanceCard}>
-        <Text style={styles.balanceLabel}>Wallet Balance</Text>
+        <Text style={styles.balanceLabel}>{t('wallet.walletBalance')}</Text>
         <Text
           style={styles.balanceAmount}
           accessible={true}
@@ -217,13 +219,13 @@ export function WalletScreen() {
           {topUpLoading ? (
             <ActivityIndicator size="small" color={Colors.background} />
           ) : (
-            <Text style={styles.topUpButtonText}>Top Up</Text>
+            <Text style={styles.topUpButtonText}>{t('wallet.topUp')}</Text>
           )}
         </TouchableOpacity>
       </Card>
 
       <View style={styles.quickAmountsSection}>
-        <Text style={styles.sectionTitle}>Quick Top Up</Text>
+        <Text style={styles.sectionTitle}>{t('wallet.quickTopUp')}</Text>
         <View style={styles.quickAmountsGrid}>
           {QUICK_AMOUNTS.map((amount) => (
             <TouchableOpacity
@@ -243,7 +245,7 @@ export function WalletScreen() {
       </View>
 
       <View style={styles.historyHeader}>
-        <Text style={styles.sectionTitle}>Transaction History</Text>
+        <Text style={styles.sectionTitle}>{t('wallet.transactionHistory')}</Text>
       </View>
     </View>
   );
@@ -251,9 +253,9 @@ export function WalletScreen() {
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
       <Text style={styles.emptyIcon}>{'\uD83D\uDCB3'}</Text>
-      <Text style={styles.emptyTitle}>No Transactions Yet</Text>
+      <Text style={styles.emptyTitle}>{t('wallet.noTransactions')}</Text>
       <Text style={styles.emptyText}>
-        Top up your wallet to start charging your vehicle.
+        {t('wallet.noTransactionsDescription')}
       </Text>
     </View>
   );
@@ -283,7 +285,7 @@ export function WalletScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.screenHeader}>
-        <Text style={styles.screenTitle} accessibilityRole="header">Wallet</Text>
+        <Text style={styles.screenTitle} accessibilityRole="header">{t('wallet.title')}</Text>
       </View>
       <FlatList
         data={transactions}

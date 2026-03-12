@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
+import { useTranslation } from 'react-i18next';
 import { Colors, Shadows } from '../constants/colors';
 import { Card, Button } from '../components/common';
 import { profileApi, vehiclesApi } from '../api/profile';
@@ -20,6 +21,7 @@ import { useAuthStore } from '../stores';
 import type { UserProfile, UserStatistics, Vehicle } from '../types';
 
 export function ProfileScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { logout } = useAuthStore();
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -59,12 +61,12 @@ export function ProfileScreen() {
 
   const handleLogout = () => {
     Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
+      t('profile.logoutTitle'),
+      t('profile.logoutMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Logout',
+          text: t('profile.logout'),
           style: 'destructive',
           onPress: () => logout(),
         },
@@ -114,7 +116,7 @@ export function ProfileScreen() {
             <View style={styles.statsGrid}>
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>{statistics?.totalSessions ?? 0}</Text>
-                <Text style={styles.statLabel}>Sessions</Text>
+                <Text style={styles.statLabel}>{t('profile.sessions')}</Text>
               </View>
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>
@@ -130,7 +132,7 @@ export function ProfileScreen() {
               </View>
             </View>
             <View style={styles.totalSpent}>
-              <Text style={styles.totalSpentLabel}>Total Spent</Text>
+              <Text style={styles.totalSpentLabel}>{t('profile.totalSpent')}</Text>
               <Text style={styles.totalSpentValue}>
                 {formatCurrency(statistics?.totalSpent ?? 0)}
               </Text>
@@ -146,14 +148,14 @@ export function ProfileScreen() {
           accessibilityLabel="My Vehicles"
         >
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>My Vehicles</Text>
+            <Text style={styles.sectionTitle}>{t('profile.myVehicles')}</Text>
             <Text style={styles.sectionArrow}>›</Text>
           </View>
           {vehicles.length === 0 ? (
             <Card style={styles.emptyCard}>
-              <Text style={styles.emptyText}>No vehicles added</Text>
+              <Text style={styles.emptyText}>{t('profile.noVehiclesAdded')}</Text>
               <Button
-                title="Add Vehicle"
+                title={t('profile.addVehicle')}
                 variant="outline"
                 size="small"
                 onPress={() => navigation.navigate('Vehicles')}
@@ -172,7 +174,7 @@ export function ProfileScreen() {
                   </View>
                   {vehicle.isDefault && (
                     <View style={styles.defaultBadge}>
-                      <Text style={styles.defaultBadgeText}>Default</Text>
+                      <Text style={styles.defaultBadgeText}>{t('common.default')}</Text>
                     </View>
                   )}
                 </View>
@@ -187,26 +189,26 @@ export function ProfileScreen() {
         </TouchableOpacity>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
+          <Text style={styles.sectionTitle}>{t('profile.account')}</Text>
           <Card padding="none">
-            <MenuItem title="Payment Methods" onPress={() => {}} />
-            <MenuItem title="Notifications" onPress={() => {}} />
-            <MenuItem title="E-Invoices" onPress={() => {}} />
-            <MenuItem title="Settings" onPress={() => {}} />
-            <MenuItem title="Help & Support" onPress={() => {}} />
+            <MenuItem title={t('profile.paymentMethods')} onPress={() => {}} />
+            <MenuItem title={t('profile.notificationsMenu')} onPress={() => {}} />
+            <MenuItem title={t('profile.eInvoices')} onPress={() => {}} />
+            <MenuItem title={t('profile.settings')} onPress={() => {}} />
+            <MenuItem title={t('profile.helpSupport')} onPress={() => {}} />
           </Card>
         </View>
 
         <View style={styles.logoutSection}>
           <Button
-            title="Logout"
+            title={t('profile.logout')}
             variant="outline"
             onPress={handleLogout}
             style={styles.logoutButton}
           />
         </View>
 
-        <Text style={styles.version}>Version 1.0.0</Text>
+        <Text style={styles.version}>{t('common.version', { version: '1.0.0' })}</Text>
       </ScrollView>
     </SafeAreaView>
   );

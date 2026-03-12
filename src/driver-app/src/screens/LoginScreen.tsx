@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { AxiosError } from 'axios';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { Colors, Shadows } from '../constants/colors';
 import { Button, Card } from '../components/common';
 import { useAuthStore } from '../stores';
@@ -18,6 +19,7 @@ import { authApi, mapAuthUserToProfile } from '../api';
 import type { ApiError } from '../types';
 
 export function LoginScreen() {
+  const { t } = useTranslation();
   const { login } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -25,7 +27,7 @@ export function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please enter email and password');
+      Alert.alert(t('common.error'), t('login.errorEmpty'));
       return;
     }
 
@@ -39,22 +41,22 @@ export function LoginScreen() {
           await login(result.accessToken, userProfile);
         }
       } else {
-        Alert.alert('Error', result.error ?? 'Invalid email or password');
+        Alert.alert(t('common.error'), result.error ?? t('login.errorInvalidCredentials'));
       }
     } catch (error) {
       const axiosError = error as AxiosError<ApiError>;
       if (axiosError.response) {
         const status = axiosError.response.status;
         if (status === 401) {
-          Alert.alert('Error', 'Invalid email or password');
+          Alert.alert(t('common.error'), t('login.errorInvalidCredentials'));
         } else {
-          const message = axiosError.response.data?.message ?? 'Login failed. Please try again.';
-          Alert.alert('Error', message);
+          const message = axiosError.response.data?.message ?? t('login.errorLoginFailed');
+          Alert.alert(t('common.error'), message);
         }
       } else if (axiosError.request) {
-        Alert.alert('Error', 'Network error. Please check your connection and try again.');
+        Alert.alert(t('common.error'), t('login.errorNetwork'));
       } else {
-        Alert.alert('Error', 'Login failed. Please try again.');
+        Alert.alert(t('common.error'), t('login.errorLoginFailed'));
       }
     } finally {
       setLoading(false);
@@ -71,20 +73,20 @@ export function LoginScreen() {
           <View style={styles.logoContainer} accessible={false}>
             <Text style={styles.logoText}>K</Text>
           </View>
-          <Text style={styles.title} accessibilityRole="header">K-Charge</Text>
-          <Text style={styles.subtitle}>EV Charging Made Simple</Text>
+          <Text style={styles.title} accessibilityRole="header">{t('login.title')}</Text>
+          <Text style={styles.subtitle}>{t('login.subtitle')}</Text>
         </View>
 
         <Card style={styles.formCard}>
-          <Text style={styles.formTitle} accessibilityRole="header">Sign In</Text>
+          <Text style={styles.formTitle} accessibilityRole="header">{t('login.formTitle')}</Text>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email</Text>
+            <Text style={styles.label}>{t('login.email')}</Text>
             <TextInput
               style={styles.input}
               value={email}
               onChangeText={setEmail}
-              placeholder="Enter your email"
+              placeholder={t('login.emailPlaceholder')}
               placeholderTextColor={Colors.textLight}
               keyboardType="email-address"
               autoCapitalize="none"
@@ -94,12 +96,12 @@ export function LoginScreen() {
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Password</Text>
+            <Text style={styles.label}>{t('login.password')}</Text>
             <TextInput
               style={styles.input}
               value={password}
               onChangeText={setPassword}
-              placeholder="Enter your password"
+              placeholder={t('login.passwordPlaceholder')}
               placeholderTextColor={Colors.textLight}
               secureTextEntry
               accessibilityLabel="Password"
@@ -107,11 +109,11 @@ export function LoginScreen() {
           </View>
 
           <TouchableOpacity style={styles.forgotPassword} accessibilityRole="button" accessibilityLabel="Forgot Password">
-            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+            <Text style={styles.forgotPasswordText}>{t('login.forgotPassword')}</Text>
           </TouchableOpacity>
 
           <Button
-            title={loading ? 'Signing in...' : 'Sign In'}
+            title={loading ? t('login.signingIn') : t('login.signIn')}
             onPress={handleLogin}
             loading={loading}
             size="large"
@@ -119,17 +121,17 @@ export function LoginScreen() {
           />
 
           <View style={styles.registerContainer}>
-            <Text style={styles.registerText}>Don't have an account? </Text>
+            <Text style={styles.registerText}>{t('login.noAccount')}</Text>
             <TouchableOpacity accessibilityRole="button" accessibilityLabel="Sign Up">
-              <Text style={styles.registerLink}>Sign Up</Text>
+              <Text style={styles.registerLink}>{t('login.signUp')}</Text>
             </TouchableOpacity>
           </View>
         </Card>
 
         <View style={styles.demoCredentials}>
-          <Text style={styles.demoTitle}>Demo Credentials</Text>
-          <Text style={styles.demoText}>Email: driver@klc.vn</Text>
-          <Text style={styles.demoText}>Password: driver123</Text>
+          <Text style={styles.demoTitle}>{t('login.demoTitle')}</Text>
+          <Text style={styles.demoText}>{t('login.demoEmail')}</Text>
+          <Text style={styles.demoText}>{t('login.demoPassword')}</Text>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

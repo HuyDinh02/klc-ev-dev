@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Skeleton, SkeletonCard } from "@/components/ui/skeleton";
 import { faultsApi } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/utils";
 
 interface FaultDetail {
@@ -42,6 +43,7 @@ export default function FaultDetailPage() {
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   const faultId = params.id as string;
 
   const { data: fault, isLoading } = useQuery({
@@ -65,7 +67,7 @@ export default function FaultDetailPage() {
   if (isLoading) {
     return (
       <div className="flex flex-col">
-        <Header title="Fault Detail" description="Loading fault data..." />
+        <Header title={t("faults.detailTitle")} description={t("faults.loadingFault")} />
         <div className="flex-1 space-y-6 p-6">
           <Skeleton className="h-9 w-36" />
           <div className="grid gap-6 md:grid-cols-2">
@@ -80,14 +82,14 @@ export default function FaultDetailPage() {
   if (!fault) {
     return (
       <div className="flex flex-col">
-        <Header title="Fault Detail" description="Fault not found" />
+        <Header title={t("faults.detailTitle")} description={t("faults.faultNotFound")} />
         <div className="flex-1 p-6">
           <Button variant="outline" onClick={() => router.push("/faults")}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Faults
+            {t("faults.backToFaults")}
           </Button>
           <div className="flex items-center justify-center py-20 text-muted-foreground">
-            Fault not found
+            {t("faults.faultNotFound")}
           </div>
         </div>
       </div>
@@ -97,15 +99,15 @@ export default function FaultDetailPage() {
   return (
     <div className="flex flex-col">
       <Header
-        title="Fault Detail"
-        description={`${fault.errorCode} at ${fault.stationName || "Unknown Station"}`}
+        title={t("faults.detailTitle")}
+        description={`${fault.errorCode} — ${fault.stationName || t("faults.unknownStation")}`}
       />
 
       <div className="flex-1 space-y-6 p-6">
         <div className="flex items-center justify-between">
           <Button variant="outline" onClick={() => router.push("/faults")}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Faults
+            {t("faults.backToFaults")}
           </Button>
 
           <div className="flex gap-2">
@@ -116,7 +118,7 @@ export default function FaultDetailPage() {
                 disabled={updateStatusMutation.isPending}
               >
                 <Wrench className="mr-2 h-4 w-4" />
-                Start Investigation
+                {t("faults.startInvestigation")}
               </Button>
             )}
             {fault.status === 1 && (
@@ -125,7 +127,7 @@ export default function FaultDetailPage() {
                 disabled={updateStatusMutation.isPending}
               >
                 <CheckCircle className="mr-2 h-4 w-4" />
-                Mark Resolved
+                {t("faults.markResolved")}
               </Button>
             )}
             {fault.status === 2 && (
@@ -134,7 +136,7 @@ export default function FaultDetailPage() {
                 onClick={() => updateStatusMutation.mutate({ status: 3 })}
                 disabled={updateStatusMutation.isPending}
               >
-                Close Fault
+                {t("faults.closeFault")}
               </Button>
             )}
           </div>
@@ -146,7 +148,7 @@ export default function FaultDetailPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <AlertTriangle className="h-5 w-5" />
-                Fault Info
+                {t("faults.faultInfo")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -154,33 +156,33 @@ export default function FaultDetailPage() {
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Hash className="h-4 w-4" />
-                    Error Code
+                    {t("faults.errorCode")}
                   </span>
                   <span className="font-mono font-semibold">{fault.errorCode}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Status</span>
+                  <span className="text-sm text-muted-foreground">{t("common.status")}</span>
                   <StatusBadge type="faultStatus" value={fault.status} />
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Priority</span>
+                  <span className="text-sm text-muted-foreground">{t("faults.priority")}</span>
                   <StatusBadge type="faultSeverity" value={fault.priority ?? 4} />
                 </div>
                 {fault.errorInfo && (
                   <div>
-                    <span className="text-sm text-muted-foreground">Error Info</span>
+                    <span className="text-sm text-muted-foreground">{t("faults.errorInfo")}</span>
                     <p className="mt-1 text-sm">{fault.errorInfo}</p>
                   </div>
                 )}
                 {fault.ocppVendorId && (
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Vendor ID</span>
+                    <span className="text-sm text-muted-foreground">{t("faults.vendorId")}</span>
                     <span className="font-mono text-sm">{fault.ocppVendorId}</span>
                   </div>
                 )}
                 {fault.ocppVendorErrorCode && (
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Vendor Error Code</span>
+                    <span className="text-sm text-muted-foreground">{t("faults.vendorErrorCode")}</span>
                     <span className="font-mono text-sm">{fault.ocppVendorErrorCode}</span>
                   </div>
                 )}
@@ -193,7 +195,7 @@ export default function FaultDetailPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Clock className="h-5 w-5" />
-                Location & Timeline
+                {t("faults.locationTimeline")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -202,7 +204,7 @@ export default function FaultDetailPage() {
                   <div className="flex items-center justify-between">
                     <span className="flex items-center gap-2 text-sm text-muted-foreground">
                       <MapPin className="h-4 w-4" />
-                      Station
+                      {t("faults.station")}
                     </span>
                     <Button
                       variant="link"
@@ -217,24 +219,24 @@ export default function FaultDetailPage() {
                   <div className="flex items-center justify-between">
                     <span className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Plug className="h-4 w-4" />
-                      Connector
+                      {t("faults.connector")}
                     </span>
                     <span className="font-medium">#{fault.connectorNumber}</span>
                   </div>
                 )}
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Detected</span>
+                  <span className="text-sm text-muted-foreground">{t("faults.detected")}</span>
                   <span className="text-sm">{formatDateTime(fault.detectedAt || fault.creationTime)}</span>
                 </div>
                 {fault.resolvedAt && (
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Resolved</span>
+                    <span className="text-sm text-muted-foreground">{t("faults.resolved")}</span>
                     <span className="text-sm">{formatDateTime(fault.resolvedAt)}</span>
                   </div>
                 )}
                 {fault.lastModificationTime && (
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Last Updated</span>
+                    <span className="text-sm text-muted-foreground">{t("faults.lastUpdated")}</span>
                     <span className="text-sm">{formatDateTime(fault.lastModificationTime)}</span>
                   </div>
                 )}
@@ -247,7 +249,7 @@ export default function FaultDetailPage() {
         {fault.resolutionNotes && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Resolution Notes</CardTitle>
+              <CardTitle className="text-lg">{t("faults.resolutionNotes")}</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm">{fault.resolutionNotes}</p>

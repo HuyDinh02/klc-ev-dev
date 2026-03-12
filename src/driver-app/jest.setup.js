@@ -1,3 +1,21 @@
+// Initialize i18n with English for tests
+const i18n = require('i18next');
+const { initReactI18next } = require('react-i18next');
+const en = require('./src/i18n/en.json');
+const vi = require('./src/i18n/vi.json');
+
+i18n.use(initReactI18next).init({
+  resources: {
+    en: { translation: en },
+    vi: { translation: vi },
+  },
+  lng: 'en',
+  fallbackLng: 'en',
+  interpolation: {
+    escapeValue: false,
+  },
+});
+
 // Mock expo-secure-store
 jest.mock('expo-secure-store', () => ({
   getItemAsync: jest.fn().mockResolvedValue(null),

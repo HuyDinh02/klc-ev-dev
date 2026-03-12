@@ -7,10 +7,12 @@ import { Header } from "@/components/layout/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { stationsApi, stationGroupsApi, tariffsApi } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n";
 import { ArrowLeft } from "lucide-react";
 
 export default function CreateStationPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     stationCode: "",
     name: "",
@@ -63,59 +65,59 @@ export default function CreateStationPage() {
 
   return (
     <div className="flex flex-col">
-      <Header title="Add Station" description="Create a new charging station" />
+      <Header title={t("stations.createTitle")} description={t("stations.createDescription")} />
 
       <div className="flex-1 space-y-6 p-6">
         <Button variant="ghost" onClick={() => router.push("/stations")}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Stations
+          <ArrowLeft className="mr-2 h-4 w-4" /> {t("stations.backToStations")}
         </Button>
 
         <Card>
           <CardHeader>
-            <CardTitle>Station Details</CardTitle>
+            <CardTitle>{t("stations.stationDetails")}</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="text-sm font-medium">Station Code *</label>
+                  <label className="text-sm font-medium">{t("stations.stationCode")} *</label>
                   <input
                     type="text"
                     value={formData.stationCode}
                     onChange={(e) => setFormData({ ...formData, stationCode: e.target.value })}
                     className="mt-1 w-full rounded-md border px-3 py-2"
-                    placeholder="e.g., HCM-001"
+                    placeholder={t("stations.stationCodePlaceholder")}
                     required
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Name *</label>
+                  <label className="text-sm font-medium">{t("stations.nameLabel")} *</label>
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="mt-1 w-full rounded-md border px-3 py-2"
-                    placeholder="e.g., Station HCM District 7"
+                    placeholder={t("stations.namePlaceholder")}
                     required
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-sm font-medium">Address *</label>
+                <label className="text-sm font-medium">{t("stations.addressLabel")} *</label>
                 <input
                   type="text"
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   className="mt-1 w-full rounded-md border px-3 py-2"
-                  placeholder="e.g., 123 Nguyen Van Linh, Q7, HCM"
+                  placeholder={t("stations.addressPlaceholder")}
                   required
                 />
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="text-sm font-medium">Latitude *</label>
+                  <label className="text-sm font-medium">{t("stations.latitudeLabel")} *</label>
                   <input
                     type="number"
                     step="0.000001"
@@ -126,7 +128,7 @@ export default function CreateStationPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Longitude *</label>
+                  <label className="text-sm font-medium">{t("stations.longitudeLabel")} *</label>
                   <input
                     type="number"
                     step="0.000001"
@@ -140,26 +142,26 @@ export default function CreateStationPage() {
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="text-sm font-medium">Station Group</label>
+                  <label className="text-sm font-medium">{t("stations.stationGroup")}</label>
                   <select
                     value={formData.stationGroupId}
                     onChange={(e) => setFormData({ ...formData, stationGroupId: e.target.value })}
                     className="mt-1 w-full rounded-md border px-3 py-2"
                   >
-                    <option value="">None</option>
+                    <option value="">{t("stations.none")}</option>
                     {(groupsData || []).map((g: { id: string; name: string }) => (
                       <option key={g.id} value={g.id}>{g.name}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Tariff Plan</label>
+                  <label className="text-sm font-medium">{t("stations.tariffPlan")}</label>
                   <select
                     value={formData.tariffPlanId}
                     onChange={(e) => setFormData({ ...formData, tariffPlanId: e.target.value })}
                     className="mt-1 w-full rounded-md border px-3 py-2"
                   >
-                    <option value="">Default</option>
+                    <option value="">{t("stations.default")}</option>
                     {(tariffsData || []).map((t: { id: string; name: string }) => (
                       <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
@@ -169,16 +171,16 @@ export default function CreateStationPage() {
 
               {createMutation.isError && (
                 <div className="text-sm text-red-500">
-                  Failed to create station. Please check your input and try again.
+                  {t("stations.createFailed")}
                 </div>
               )}
 
               <div className="flex gap-2">
                 <Button type="submit" disabled={createMutation.isPending}>
-                  {createMutation.isPending ? "Creating..." : "Create Station"}
+                  {createMutation.isPending ? t("stations.creating") : t("stations.createStation")}
                 </Button>
                 <Button type="button" variant="outline" onClick={() => router.push("/stations")}>
-                  Cancel
+                  {t("common.cancel")}
                 </Button>
               </div>
             </form>

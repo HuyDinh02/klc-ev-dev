@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
+import { useTranslation } from 'react-i18next';
 import { Colors, Shadows } from '../constants/colors';
 import { notificationsApi } from '../api/notifications';
 import { useSignalR } from '../hooks/useSignalR';
@@ -63,6 +64,7 @@ function formatTimeAgo(dateString: string): string {
 }
 
 export function NotificationsScreen() {
+  const { t } = useTranslation();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -219,7 +221,7 @@ export function NotificationsScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <Text style={styles.title} accessibilityRole="header">Notifications</Text>
+          <Text style={styles.title} accessibilityRole="header">{t('notifications.title')}</Text>
           {unreadCount > 0 && (
             <TouchableOpacity
               style={styles.markAllButton}
@@ -234,13 +236,13 @@ export function NotificationsScreen() {
               {markingAllRead ? (
                 <ActivityIndicator size="small" color={Colors.primary} />
               ) : (
-                <Text style={styles.markAllText}>Mark all as read</Text>
+                <Text style={styles.markAllText}>{t('notifications.markAllAsRead')}</Text>
               )}
             </TouchableOpacity>
           )}
         </View>
         <Text style={styles.subtitle}>
-          {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}
+          {unreadCount > 0 ? t('notifications.unreadCount', { count: unreadCount }) : t('notifications.allCaughtUp')}
         </Text>
       </View>
 
@@ -268,9 +270,9 @@ export function NotificationsScreen() {
             <View style={styles.emptyIconContainer}>
               <Text style={styles.emptyIcon}>{'\uD83D\uDD14'}</Text>
             </View>
-            <Text style={styles.emptyText}>No notifications yet</Text>
+            <Text style={styles.emptyText}>{t('notifications.noNotifications')}</Text>
             <Text style={styles.emptySubtext}>
-              You will be notified about charging sessions, payments, and promotions
+              {t('notifications.notificationsDescription')}
             </Text>
           </View>
         }

@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { Colors, Shadows } from '../constants/colors';
 import { Card, Button } from '../components/common';
 import { sessionsApi } from '../api/sessions';
@@ -14,6 +15,7 @@ import { useSessionStore } from '../stores';
 import { useSignalR } from '../hooks/useSignalR';
 
 export function SessionScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const { activeSession, latestMeterValue, clearSession } = useSessionStore();
   const { connect, subscribeToSession, unsubscribeFromSession } = useSignalR();
@@ -34,12 +36,12 @@ export function SessionScreen() {
     if (!activeSession) return;
 
     Alert.alert(
-      'Stop Charging',
-      'Are you sure you want to stop the charging session?',
+      t('session.stopTitle'),
+      t('session.stopMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Stop',
+          text: t('session.stop'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -48,7 +50,7 @@ export function SessionScreen() {
               navigation.goBack();
             } catch (error) {
               console.error('Failed to stop session:', error);
-              Alert.alert('Error', 'Failed to stop charging session');
+              Alert.alert(t('common.error'), t('session.errorStopSession'));
             }
           },
         },
@@ -77,9 +79,9 @@ export function SessionScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.noSessionContainer}>
-          <Text style={styles.noSessionText}>No active session</Text>
+          <Text style={styles.noSessionText}>{t('session.noActiveSession')}</Text>
           <Button
-            title="Go Back"
+            title={t('common.goBack')}
             onPress={() => navigation.goBack()}
             variant="outline"
             style={styles.goBackButton}
@@ -97,7 +99,7 @@ export function SessionScreen() {
         <View style={styles.header}>
           <View style={styles.statusIndicator}>
             <View style={styles.pulsingDot} accessible={false} />
-            <Text style={styles.statusText} accessibilityRole="text">Charging</Text>
+            <Text style={styles.statusText} accessibilityRole="text">{t('session.charging')}</Text>
           </View>
           <Text style={styles.stationName} accessibilityRole="header">{activeSession.stationName}</Text>
         </View>
@@ -120,47 +122,47 @@ export function SessionScreen() {
               <Text style={styles.statValue}>
                 {formatDuration(activeSession.durationMinutes)}
               </Text>
-              <Text style={styles.statLabel}>Duration</Text>
+              <Text style={styles.statLabel}>{t('session.duration')}</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem} accessibilityLabel={`State of charge: ${latestMeterValue?.soc ?? 'unknown'} percent`}>
               <Text style={styles.statValue}>
                 {latestMeterValue?.soc ?? '--'}%
               </Text>
-              <Text style={styles.statLabel}>SoC</Text>
+              <Text style={styles.statLabel}>{t('session.soc')}</Text>
             </View>
           </View>
         </Card>
 
         <Card style={styles.costCard}>
           <View style={styles.costRow} accessibilityLabel={`Estimated cost: ${formatCurrency(activeSession.estimatedCost)}`}>
-            <Text style={styles.costLabel}>Estimated Cost</Text>
+            <Text style={styles.costLabel}>{t('session.estimatedCost')}</Text>
             <Text style={styles.costValue} accessibilityRole="text">
               {formatCurrency(activeSession.estimatedCost)}
             </Text>
           </View>
           <View style={styles.costNote}>
             <Text style={styles.costNoteText}>
-              Final cost will be calculated when session ends
+              {t('session.costNote')}
             </Text>
           </View>
         </Card>
 
         <Card style={styles.sessionInfoCard}>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Connector</Text>
+            <Text style={styles.infoLabel}>{t('session.connector')}</Text>
             <Text style={styles.infoValue}>
               {activeSession.connectorType}
             </Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Started</Text>
+            <Text style={styles.infoLabel}>{t('session.started')}</Text>
             <Text style={styles.infoValue}>
               {new Date(activeSession.startTime).toLocaleTimeString('vi-VN')}
             </Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Meter Start</Text>
+            <Text style={styles.infoLabel}>{t('session.meterStart')}</Text>
             <Text style={styles.infoValue}>
               {activeSession.meterStart.toFixed(3)} kWh
             </Text>
@@ -168,7 +170,7 @@ export function SessionScreen() {
         </Card>
 
         <Button
-          title="Stop Charging"
+          title={t('session.stopCharging')}
           onPress={handleStopCharging}
           variant="danger"
           size="large"

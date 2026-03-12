@@ -312,7 +312,7 @@ export default function SettingsPage() {
                       updateSettings({ alertEmail: e.target.value })
                     }
                     className="mt-1 w-full rounded-md border px-3 py-2"
-                    placeholder="admin@example.com"
+                    placeholder={t("settings.alertEmailPlaceholder")}
                   />
                 </div>
               </CardContent>
@@ -376,7 +376,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="rounded-lg border p-4 bg-muted/30">
                   <p className="text-sm text-muted-foreground">
-                    <strong>Note:</strong> {t("settings.ocppNote")}
+                    <strong>{t("settings.note")}</strong> {t("settings.ocppNote")}
                   </p>
                 </div>
               </CardContent>

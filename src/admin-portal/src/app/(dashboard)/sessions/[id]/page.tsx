@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Skeleton, SkeletonCard } from "@/components/ui/skeleton";
 import { sessionsApi } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n";
 import {
   formatCurrency,
   formatDateTime,
@@ -87,6 +88,7 @@ function formatChartTime(timestamp: string): string {
 export default function SessionDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { t } = useTranslation();
   const sessionId = params.id as string;
 
   const { data: session, isLoading: sessionLoading } = useQuery({
@@ -119,7 +121,7 @@ export default function SessionDetailPage() {
   if (sessionLoading) {
     return (
       <div className="flex flex-col">
-        <Header title="Session Detail" description="Loading session data..." />
+        <Header title={t("sessions.detailTitle")} description={t("sessions.loadingSession")} />
         <div className="flex-1 space-y-6 p-6">
           <Skeleton className="h-9 w-40" />
           <div className="grid gap-6 md:grid-cols-2">
@@ -135,14 +137,14 @@ export default function SessionDetailPage() {
   if (!session) {
     return (
       <div className="flex flex-col">
-        <Header title="Session Detail" description="Session not found" />
+        <Header title={t("sessions.detailTitle")} description={t("sessions.sessionNotFound")} />
         <div className="flex-1 p-6">
           <Button variant="outline" onClick={() => router.push("/sessions")}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Sessions
+            {t("sessions.backToSessions")}
           </Button>
           <div className="flex items-center justify-center py-20 text-muted-foreground">
-            Session not found
+            {t("sessions.sessionNotFound")}
           </div>
         </div>
       </div>
@@ -154,15 +156,15 @@ export default function SessionDetailPage() {
   return (
     <div className="flex flex-col">
       <Header
-        title="Session Detail"
-        description={`Session at ${session.stationName || "Unknown Station"}`}
+        title={t("sessions.detailTitle")}
+        description={t("sessions.sessionAt").replace("{stationName}", session.stationName || t("sessions.unknownStation"))}
       />
 
       <div className="flex-1 space-y-6 p-6">
         {/* Back Button */}
         <Button variant="outline" onClick={() => router.push("/sessions")}>
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Sessions
+          {t("sessions.backToSessions")}
         </Button>
 
         {/* Session Overview & Cost Breakdown */}
@@ -172,7 +174,7 @@ export default function SessionDetailPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Activity className="h-5 w-5" />
-                Session Overview
+                {t("sessions.sessionOverview")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -180,48 +182,48 @@ export default function SessionDetailPage() {
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-2 text-sm text-muted-foreground">
                     <MapPin className="h-4 w-4" />
-                    Station
+                    {t("sessions.station")}
                   </span>
                   <span className="font-medium">{session.stationName || "—"}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Plug className="h-4 w-4" />
-                    Connector
+                    {t("sessions.connector")}
                   </span>
                   <span className="font-medium">#{session.connectorNumber}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Zap className="h-4 w-4" />
-                    Status
+                    {t("common.status")}
                   </span>
                   <StatusBadge type="session" value={session.status} />
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Clock className="h-4 w-4" />
-                    Start Time
+                    {t("sessions.startTime")}
                   </span>
                   <span className="text-sm">{formatDateTime(session.startTime)}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Clock className="h-4 w-4" />
-                    End Time
+                    {t("sessions.endTime")}
                   </span>
                   <span className="text-sm">{formatDateTime(session.endTime)}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Clock className="h-4 w-4" />
-                    Duration
+                    {t("sessions.duration")}
                   </span>
                   <span className="font-medium">{formatDuration(duration)}</span>
                 </div>
                 {session.vehicleName && (
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Vehicle</span>
+                    <span className="text-sm text-muted-foreground">{t("sessions.vehicle")}</span>
                     <span className="font-medium">{session.vehicleName}</span>
                   </div>
                 )}
@@ -229,14 +231,14 @@ export default function SessionDetailPage() {
                   <div className="flex items-center justify-between">
                     <span className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Hash className="h-4 w-4" />
-                      ID Tag
+                      {t("sessions.idTag")}
                     </span>
                     <span className="font-mono text-sm">{session.idTag}</span>
                   </div>
                 )}
                 {session.stopReason && (
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Stop Reason</span>
+                    <span className="text-sm text-muted-foreground">{t("sessions.stopReason")}</span>
                     <span className="text-sm">{session.stopReason}</span>
                   </div>
                 )}
@@ -249,7 +251,7 @@ export default function SessionDetailPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <DollarSign className="h-5 w-5" />
-                Cost Breakdown
+                {t("sessions.costBreakdown")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -257,29 +259,29 @@ export default function SessionDetailPage() {
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Battery className="h-4 w-4" />
-                    Energy Delivered
+                    {t("sessions.energyDelivered")}
                   </span>
                   <span className="font-medium">{formatEnergy(session.totalEnergyKwh)}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Rate per kWh</span>
+                  <span className="text-sm text-muted-foreground">{t("sessions.ratePerKwh")}</span>
                   <span className="font-medium">{formatCurrency(session.ratePerKwh)}</span>
                 </div>
                 {session.meterStart != null && (
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Meter Start</span>
+                    <span className="text-sm text-muted-foreground">{t("sessions.meterStart")}</span>
                     <span className="font-mono text-sm">{session.meterStart} Wh</span>
                   </div>
                 )}
                 {session.meterStop != null && (
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Meter Stop</span>
+                    <span className="text-sm text-muted-foreground">{t("sessions.meterStop")}</span>
                     <span className="font-mono text-sm">{session.meterStop} Wh</span>
                   </div>
                 )}
                 <div className="border-t pt-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-base font-semibold">Total Cost</span>
+                    <span className="text-base font-semibold">{t("sessions.totalCost")}</span>
                     <span className="text-xl font-bold text-primary">
                       {formatCurrency(session.totalCost)}
                     </span>
@@ -295,7 +297,7 @@ export default function SessionDetailPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <Activity className="h-5 w-5" />
-              Meter Values Chart
+              {t("sessions.meterValuesChart")}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -353,7 +355,7 @@ export default function SessionDetailPage() {
                     yAxisId="energy"
                     type="monotone"
                     dataKey="energyKwh"
-                    name="Energy (kWh)"
+                    name={t("sessions.energyKwh")}
                     stroke={CHART_COLORS.blue}
                     strokeWidth={2}
                     dot={false}
@@ -363,7 +365,7 @@ export default function SessionDetailPage() {
                     yAxisId="energy"
                     type="monotone"
                     dataKey="powerKw"
-                    name="Power (kW)"
+                    name={t("sessions.powerKw")}
                     stroke={CHART_COLORS.orange}
                     strokeWidth={2}
                     dot={false}
@@ -374,7 +376,7 @@ export default function SessionDetailPage() {
                       yAxisId="soc"
                       type="monotone"
                       dataKey="socPercent"
-                      name="SoC (%)"
+                      name={t("sessions.socPercent")}
                       stroke={CHART_COLORS.green}
                       strokeWidth={2}
                       dot={false}
@@ -385,7 +387,7 @@ export default function SessionDetailPage() {
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center py-12 text-muted-foreground">
-                No meter data available for this session
+                {t("sessions.noMeterData")}
               </div>
             )}
           </CardContent>
@@ -394,7 +396,7 @@ export default function SessionDetailPage() {
         {/* Meter Values Table */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Meter Values</CardTitle>
+            <CardTitle className="text-lg">{t("sessions.meterValues")}</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             {meterLoading ? (
@@ -408,12 +410,12 @@ export default function SessionDetailPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="px-4 py-3 text-left text-sm font-medium">Timestamp</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium">Energy (kWh)</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium">Power (kW)</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium">Current (A)</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium">Voltage (V)</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium">SoC (%)</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">{t("sessions.timestamp")}</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">{t("sessions.energyKwh")}</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">{t("sessions.powerKw")}</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">{t("sessions.currentA")}</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">{t("sessions.voltageV")}</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">{t("sessions.socPercent")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -442,7 +444,7 @@ export default function SessionDetailPage() {
               </div>
             ) : (
               <div className="flex items-center justify-center py-12 text-muted-foreground">
-                No meter data available
+                {t("sessions.noMeterDataShort")}
               </div>
             )}
           </CardContent>

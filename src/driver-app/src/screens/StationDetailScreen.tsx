@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import { Colors, Shadows } from '../constants/colors';
 import { Card, Button, Badge } from '../components/common';
 import { stationsApi } from '../api/stations';
@@ -28,6 +29,7 @@ type RootStackParamList = {
 type StationDetailRouteProp = RouteProp<RootStackParamList, 'StationDetail'>;
 
 export function StationDetailScreen() {
+  const { t } = useTranslation();
   const route = useRoute<StationDetailRouteProp>();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { setActiveSession, setConnecting } = useSessionStore();
@@ -47,7 +49,7 @@ export function StationDetailScreen() {
       setStation(data);
     } catch (error) {
       console.error('Failed to load station:', error);
-      Alert.alert('Error', 'Failed to load station details');
+      Alert.alert(t('common.error'), t('stations.errorLoadStation'));
     } finally {
       setLoading(false);
     }
@@ -55,7 +57,7 @@ export function StationDetailScreen() {
 
   const handleStartCharging = async (connector: Connector) => {
     if (connector.status !== 'Available') {
-      Alert.alert('Unavailable', 'This connector is not available for charging');
+      Alert.alert(t('stations.unavailableTitle'), t('stations.unavailableMessage'));
       return;
     }
 
@@ -70,7 +72,7 @@ export function StationDetailScreen() {
       navigation.navigate('Session');
     } catch (error) {
       console.error('Failed to start session:', error);
-      Alert.alert('Error', 'Failed to start charging session');
+      Alert.alert(t('common.error'), t('stations.errorStartSession'));
     } finally {
       setStartingSession(null);
       setConnecting(false);
@@ -119,18 +121,18 @@ export function StationDetailScreen() {
 
       <View style={styles.connectorInfo}>
         <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Type</Text>
+          <Text style={styles.infoLabel}>{t('stations.type')}</Text>
           <Text style={styles.infoValue}>{connector.type}</Text>
         </View>
         <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Power</Text>
+          <Text style={styles.infoLabel}>{t('stations.power')}</Text>
           <Text style={styles.infoValue}>{connector.powerKw} kW</Text>
         </View>
       </View>
 
       {connector.status === 'Available' && (
         <Button
-          title={startingSession === connector.id ? 'Starting...' : 'Start Charging'}
+          title={startingSession === connector.id ? t('stations.starting') : t('stations.startCharging')}
           onPress={() => handleStartCharging(connector)}
           loading={startingSession === connector.id}
           style={styles.startButton}
@@ -139,7 +141,7 @@ export function StationDetailScreen() {
 
       {connector.status === 'Charging' && connector.currentSessionId && (
         <View style={styles.inUseContainer}>
-          <Text style={styles.inUseText} accessibilityRole="text">In use</Text>
+          <Text style={styles.inUseText} accessibilityRole="text">{t('stations.inUse')}</Text>
         </View>
       )}
     </Card>
@@ -156,7 +158,7 @@ export function StationDetailScreen() {
   if (!station) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Station not found</Text>
+        <Text style={styles.errorText}>{t('stations.notFound')}</Text>
       </View>
     );
   }
@@ -168,14 +170,14 @@ export function StationDetailScreen() {
           <Text style={styles.stationName} accessibilityRole="header">{station.name}</Text>
           <Text style={styles.stationAddress} accessibilityRole="text">{station.address}</Text>
           <Badge
-            label={station.isOnline ? 'Online' : 'Offline'}
+            label={station.isOnline ? t('common.online') : t('common.offline')}
             variant={station.isOnline ? 'success' : 'neutral'}
             style={styles.statusBadge}
           />
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle} accessibilityRole="header">Connectors</Text>
+          <Text style={styles.sectionTitle} accessibilityRole="header">{t('stations.connectors')}</Text>
           {station.connectors.map(renderConnector)}
         </View>
 
@@ -185,7 +187,7 @@ export function StationDetailScreen() {
           accessibilityRole="button"
           accessibilityLabel="Scan QR code to start charging"
         >
-          <Text style={styles.qrButtonText}>Scan QR Code to Start</Text>
+          <Text style={styles.qrButtonText}>{t('stations.scanQrCode')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

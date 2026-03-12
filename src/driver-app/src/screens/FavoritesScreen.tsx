@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import { Colors, Shadows } from '../constants/colors';
 import { Card, Badge } from '../components/common';
 import { favoritesApi } from '../api/favorites';
@@ -25,6 +26,7 @@ type RootStackParamList = {
 };
 
 export function FavoritesScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const [favorites, setFavorites] = useState<Station[]>([]);
@@ -93,12 +95,12 @@ export function FavoritesScreen() {
 
   const handleRemoveFavorite = (station: Station) => {
     Alert.alert(
-      'Remove Favorite',
-      `Remove "${station.name}" from your favorites?`,
+      t('favorites.removeFavoriteTitle'),
+      t('favorites.removeFavoriteMessage', { name: station.name }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Remove',
+          text: t('common.remove'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -106,7 +108,7 @@ export function FavoritesScreen() {
               setFavorites((prev) => prev.filter((s) => s.id !== station.id));
             } catch (error) {
               console.error('Failed to remove favorite:', error);
-              Alert.alert('Error', 'Failed to remove station from favorites.');
+              Alert.alert(t('common.error'), t('favorites.errorRemoveFavorite'));
             }
           },
         },
@@ -152,7 +154,7 @@ export function FavoritesScreen() {
                   {station.name}
                 </Text>
                 <Badge
-                  label={station.isOnline ? 'Online' : 'Offline'}
+                  label={station.isOnline ? t('common.online') : t('common.offline')}
                   variant={station.isOnline ? 'success' : 'neutral'}
                   size="small"
                 />
@@ -173,7 +175,7 @@ export function FavoritesScreen() {
               >
                 {availableCount}/{totalCount}
               </Text>
-              <Text style={styles.availabilityLabel}>Available</Text>
+              <Text style={styles.availabilityLabel}>{t('common.available')}</Text>
             </View>
           </View>
 
@@ -196,7 +198,7 @@ export function FavoritesScreen() {
             accessibilityRole="button"
             accessibilityLabel={`Remove ${station.name} from favorites`}
           >
-            <Text style={styles.removeButtonText}>Remove</Text>
+            <Text style={styles.removeButtonText}>{t('common.remove')}</Text>
           </TouchableOpacity>
         </Card>
       </TouchableOpacity>
@@ -207,7 +209,7 @@ export function FavoritesScreen() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={Colors.primary} accessibilityLabel="Loading" />
-        <Text style={styles.loadingText}>Loading favorites...</Text>
+        <Text style={styles.loadingText}>{t('favorites.loadingFavorites')}</Text>
       </View>
     );
   }
@@ -215,9 +217,9 @@ export function FavoritesScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.title} accessibilityRole="header">Favorites</Text>
+        <Text style={styles.title} accessibilityRole="header">{t('favorites.title')}</Text>
         <Text style={styles.subtitle}>
-          {favorites.length} {favorites.length === 1 ? 'station' : 'stations'}
+          {favorites.length === 1 ? t('favorites.stationCount', { count: favorites.length }) : t('favorites.stationCountPlural', { count: favorites.length })}
         </Text>
       </View>
 
@@ -236,9 +238,9 @@ export function FavoritesScreen() {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.heartIcon}>&#x2661;</Text>
-            <Text style={styles.emptyText}>No favorite stations</Text>
+            <Text style={styles.emptyText}>{t('favorites.noFavorites')}</Text>
             <Text style={styles.emptySubtext}>
-              Browse stations to add favorites
+              {t('favorites.browseTip')}
             </Text>
           </View>
         }

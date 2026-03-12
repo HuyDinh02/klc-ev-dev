@@ -10,12 +10,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { Colors } from '../constants/colors';
 import { Card, Badge } from '../components/common';
 import { sessionsApi } from '../api/sessions';
 import type { ChargingSession, SessionStatus } from '../types';
 
 export function HistoryScreen() {
+  const { t } = useTranslation();
   const [sessions, setSessions] = useState<ChargingSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -73,7 +75,7 @@ export function HistoryScreen() {
     }
   };
 
-  const formatDate = (dateString: string): string => {
+  const formatDateStr = (dateString: string): string => {
     const date = new Date(dateString);
     return date.toLocaleDateString('vi-VN', {
       day: '2-digit',
@@ -108,12 +110,12 @@ export function HistoryScreen() {
   };
 
   const renderSession = ({ item: session }: { item: ChargingSession }) => (
-    <Card style={styles.sessionCard} accessibilityLabel={`${session.stationName}, ${formatDate(session.startTime)}, ${session.status}, ${session.energyKwh.toFixed(2)} kilowatt hours, ${formatDuration(session.durationMinutes)}`}>
+    <Card style={styles.sessionCard} accessibilityLabel={`${session.stationName}, ${formatDateStr(session.startTime)}, ${session.status}, ${session.energyKwh.toFixed(2)} kilowatt hours, ${formatDuration(session.durationMinutes)}`}>
       <View style={styles.sessionHeader}>
         <View>
           <Text style={styles.stationName}>{session.stationName}</Text>
           <Text style={styles.dateTime}>
-            {formatDate(session.startTime)} • {formatTime(session.startTime)}
+            {formatDateStr(session.startTime)} • {formatTime(session.startTime)}
           </Text>
         </View>
         <Badge label={session.status} variant={getStatusVariant(session.status)} />
@@ -126,13 +128,13 @@ export function HistoryScreen() {
         </View>
         <View style={styles.statItem}>
           <Text style={styles.statValue}>{formatDuration(session.durationMinutes)}</Text>
-          <Text style={styles.statLabel}>Duration</Text>
+          <Text style={styles.statLabel}>{t('history.duration')}</Text>
         </View>
         <View style={styles.statItem}>
           <Text style={styles.statValue}>
             {formatCurrency(session.actualCost ?? session.estimatedCost)}
           </Text>
-          <Text style={styles.statLabel}>Cost</Text>
+          <Text style={styles.statLabel}>{t('history.cost')}</Text>
         </View>
       </View>
 
@@ -155,8 +157,8 @@ export function HistoryScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.title} accessibilityRole="header">Charging History</Text>
-        <Text style={styles.subtitle}>{sessions.length} sessions</Text>
+        <Text style={styles.title} accessibilityRole="header">{t('history.title')}</Text>
+        <Text style={styles.subtitle}>{t('history.subtitle', { count: sessions.length })}</Text>
       </View>
 
       <FlatList
@@ -180,9 +182,9 @@ export function HistoryScreen() {
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No charging history</Text>
+            <Text style={styles.emptyText}>{t('history.noHistory')}</Text>
             <Text style={styles.emptySubtext}>
-              Your charging sessions will appear here
+              {t('history.sessionsAppearHere')}
             </Text>
           </View>
         }

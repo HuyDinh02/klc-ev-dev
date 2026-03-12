@@ -46,7 +46,7 @@ function LoginForm() {
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[var(--color-brand-green)]/5 via-background to-[var(--color-brand-orange)]/5">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-          <p className="text-sm text-muted-foreground">Loading...</p>
+          <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
         </div>
       </div>
     );
@@ -75,10 +75,10 @@ function LoginForm() {
           login(user, tokenResponse.access_token);
           router.push(returnUrl);
         } else {
-          setError("Failed to parse authentication token");
+          setError(t("auth.tokenParseFailed"));
         }
       } else {
-        setError("Invalid response from server");
+        setError(t("auth.invalidResponse"));
       }
     } catch (err: unknown) {
       console.error("Login error:", err);
@@ -90,12 +90,12 @@ function LoginForm() {
         } else if (axiosError.response?.data?.error) {
           setError(axiosError.response.data.error);
         } else if (axiosError.response?.status === 400) {
-          setError("Invalid username or password");
+          setError(t("auth.invalidCredentials"));
         } else {
-          setError("Authentication failed. Please try again.");
+          setError(t("auth.authFailed"));
         }
       } else {
-        setError("Unable to connect to server. Please check your connection.");
+        setError(t("auth.connectionFailed"));
       }
     } finally {
       setIsLoading(false);

@@ -480,13 +480,13 @@ export default function FleetsPage() {
                       <thead>
                         <tr className="border-b">
                           <th className="text-left py-2" scope="col">
-                            Day
+                            {t("fleets.day")}
                           </th>
                           <th className="text-left py-2" scope="col">
-                            Start
+                            {t("fleets.start")}
                           </th>
                           <th className="text-left py-2" scope="col">
-                            End
+                            {t("fleets.end")}
                           </th>
                           <th className="text-right py-2" scope="col"></th>
                         </tr>
@@ -577,7 +577,7 @@ export default function FleetsPage() {
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 className="mt-1 w-full rounded-md border px-3 py-2"
-                placeholder="Fleet name"
+                placeholder={t("fleets.namePlaceholder")}
               />
             </div>
             <div>

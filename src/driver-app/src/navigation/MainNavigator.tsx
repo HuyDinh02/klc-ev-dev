@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, StyleSheet, Text } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { HomeScreen, FavoritesScreen, HistoryScreen, WalletScreen, ProfileScreen } from '../screens';
 import { Colors } from '../constants/colors';
 import type { MainTabParamList } from './types';
@@ -49,6 +50,8 @@ function ProfileIcon({ focused }: { focused: boolean }) {
 }
 
 export function MainNavigator() {
+  const { t } = useTranslation();
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -63,7 +66,7 @@ export function MainNavigator() {
         name="Home"
         component={HomeScreen}
         options={{
-          tabBarLabel: 'Stations',
+          tabBarLabel: t('tabs.stations'),
           tabBarIcon: HomeIcon,
         }}
       />
@@ -71,7 +74,7 @@ export function MainNavigator() {
         name="Favorites"
         component={FavoritesScreen}
         options={{
-          tabBarLabel: 'Favorites',
+          tabBarLabel: t('tabs.favorites'),
           tabBarIcon: FavoritesIcon,
         }}
       />
@@ -79,7 +82,7 @@ export function MainNavigator() {
         name="History"
         component={HistoryScreen}
         options={{
-          tabBarLabel: 'History',
+          tabBarLabel: t('tabs.history'),
           tabBarIcon: HistoryIcon,
         }}
       />
@@ -87,7 +90,7 @@ export function MainNavigator() {
         name="Wallet"
         component={WalletScreen}
         options={{
-          tabBarLabel: 'Wallet',
+          tabBarLabel: t('tabs.wallet'),
           tabBarIcon: WalletIcon,
         }}
       />
@@ -95,7 +98,7 @@ export function MainNavigator() {
         name="Profile"
         component={ProfileScreen}
         options={{
-          tabBarLabel: 'Profile',
+          tabBarLabel: t('tabs.profile'),
           tabBarIcon: ProfileIcon,
         }}
       />

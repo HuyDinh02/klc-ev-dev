@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import { Colors, Shadows } from '../constants/colors';
 import { Card, Badge } from '../components/common';
 import { stationsApi } from '../api/stations';
@@ -23,6 +24,7 @@ type RootStackParamList = {
 };
 
 export function HomeScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { latitude, longitude, requestPermission } = useLocationStore();
   const { activeSession } = useSessionStore();
@@ -94,7 +96,7 @@ export function HomeScreen() {
               <Text style={styles.stationName}>{station.name}</Text>
               <Text style={styles.stationAddress}>{station.address}</Text>
               {station.distance && (
-                <Text style={styles.distance}>{station.distance.toFixed(1)} km</Text>
+                <Text style={styles.distance}>{t('home.kmAway', { distance: station.distance.toFixed(1) })}</Text>
               )}
             </View>
             <View style={styles.availabilityContainer}>
@@ -104,7 +106,7 @@ export function HomeScreen() {
               ]}>
                 {availableCount}/{totalCount}
               </Text>
-              <Text style={styles.availabilityLabel}>Available</Text>
+              <Text style={styles.availabilityLabel}>{t('common.available')}</Text>
             </View>
           </View>
 
@@ -133,7 +135,7 @@ export function HomeScreen() {
         accessibilityState={{ busy: true }}
       >
         <ActivityIndicator size="large" color={Colors.primary} />
-        <Text style={styles.loadingText}>Finding nearby stations...</Text>
+        <Text style={styles.loadingText}>{t('home.loadingStations')}</Text>
       </View>
     );
   }
@@ -141,9 +143,9 @@ export function HomeScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.title} accessibilityRole="header">Nearby Stations</Text>
+        <Text style={styles.title} accessibilityRole="header">{t('home.title')}</Text>
         <Text style={styles.subtitle}>
-          {stations.length} stations within 10km
+          {t('home.subtitle', { count: stations.length })}
         </Text>
       </View>
 
@@ -157,12 +159,12 @@ export function HomeScreen() {
           accessibilityHint="Double tap to view session details"
         >
           <View style={styles.sessionInfo}>
-            <Text style={styles.sessionLabel}>Active Session</Text>
+            <Text style={styles.sessionLabel}>{t('home.activeSession')}</Text>
             <Text style={styles.sessionEnergy}>
               {activeSession.energyKwh.toFixed(2)} kWh
             </Text>
           </View>
-          <Text style={styles.viewSession}>View</Text>
+          <Text style={styles.viewSession}>{t('common.view')}</Text>
         </TouchableOpacity>
       )}
 
@@ -180,9 +182,9 @@ export function HomeScreen() {
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No stations found nearby</Text>
+            <Text style={styles.emptyText}>{t('home.noStations')}</Text>
             <Text style={styles.emptySubtext}>
-              Try expanding your search radius
+              {t('home.expandSearch')}
             </Text>
           </View>
         }

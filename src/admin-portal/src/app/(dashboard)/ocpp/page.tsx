@@ -224,9 +224,9 @@ export default function OcppManagementPage() {
   const timeSince = (ts: string) => {
     const diff = Date.now() - new Date(ts).getTime();
     const mins = Math.floor(diff / 60000);
-    if (mins < 1) return "just now";
-    if (mins < 60) return `${mins}m ago`;
-    return `${Math.floor(mins / 60)}h ${mins % 60}m ago`;
+    if (mins < 1) return t("ocpp.justNow");
+    if (mins < 60) return t("ocpp.minutesAgo").replace("{mins}", String(mins));
+    return t("ocpp.hoursMinutesAgo").replace("{hours}", String(Math.floor(mins / 60))).replace("{mins}", String(mins % 60));
   };
 
   return (
@@ -288,7 +288,7 @@ export default function OcppManagementPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge variant={vendorProfileVariant(conn.vendorProfile)}>
-                          {VendorProfileMap[conn.vendorProfile] || "Unknown"}
+                          {VendorProfileMap[conn.vendorProfile] || t("ocpp.unknown")}
                         </Badge>
                         <Badge variant={conn.isRegistered ? "success" : "warning"}>
                           {conn.isRegistered ? t("ocpp.registered") : t("ocpp.pending")}
@@ -408,7 +408,7 @@ export default function OcppManagementPage() {
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">{t("ocpp.profile")}</span>
                     <Badge variant={vendorProfileVariant(detail.vendorProfile)}>
-                      {VendorProfileMap[detail.vendorProfile] || "Unknown"}
+                      {VendorProfileMap[detail.vendorProfile] || t("ocpp.unknown")}
                     </Badge>
                   </div>
                   <div className="flex justify-between">
@@ -832,7 +832,7 @@ export default function OcppManagementPage() {
             <div>
               <label className="text-sm font-medium">{t("ocpp.downloadUrl")}</label>
               <Input
-                placeholder="https://example.com/firmware.bin"
+                placeholder={t("ocpp.firmwareUrlPlaceholder")}
                 value={updateFirmwareForm.location}
                 onChange={(e) => setUpdateFirmwareForm({ ...updateFirmwareForm, location: e.target.value })}
               />
@@ -885,7 +885,7 @@ export default function OcppManagementPage() {
             <div>
               <label className="text-sm font-medium">{t("ocpp.uploadUrl")}</label>
               <Input
-                placeholder="https://example.com/upload"
+                placeholder={t("ocpp.diagnosticsUrlPlaceholder")}
                 value={getDiagnosticsForm.location}
                 onChange={(e) => setGetDiagnosticsForm({ ...getDiagnosticsForm, location: e.target.value })}
               />

@@ -329,10 +329,10 @@ export default function PowerSharingPage() {
                 <table className="w-full text-sm" role="table">
                   <thead>
                     <tr className="border-b">
-                      <th className="text-left py-2" scope="col">Station</th>
-                      <th className="text-left py-2" scope="col">Connector</th>
-                      <th className="text-left py-2" scope="col">Type</th>
-                      <th className="text-right py-2" scope="col">Max (kW)</th>
+                      <th className="text-left py-2" scope="col">{t("powerSharing.stationColumn")}</th>
+                      <th className="text-left py-2" scope="col">{t("powerSharing.connectorColumn")}</th>
+                      <th className="text-left py-2" scope="col">{t("powerSharing.typeColumn")}</th>
+                      <th className="text-right py-2" scope="col">{t("powerSharing.maxKwColumn")}</th>
                       <th className="text-right py-2" scope="col">{t("powerSharing.allocatedPower")}</th>
                       <th className="text-right py-2" scope="col">{t("powerSharing.priority")}</th>
                       <th className="text-right py-2" scope="col"></th>
@@ -391,7 +391,7 @@ export default function PowerSharingPage() {
                 value={form.name}
                 onChange={e => setForm({ ...form, name: e.target.value })}
                 className="mt-1 w-full rounded-md border px-3 py-2"
-                placeholder="Site A Power Pool"
+                placeholder={t("powerSharing.groupNamePlaceholder")}
               />
             </div>
             <div>

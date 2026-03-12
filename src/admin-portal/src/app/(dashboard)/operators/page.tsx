@@ -333,7 +333,7 @@ export default function OperatorsPage() {
                   <thead>
                     <tr className="border-b">
                       <th className="text-left py-2" scope="col">
-                        Code
+                        {t("operators.stationCodeColumn")}
                       </th>
                       <th className="text-left py-2" scope="col">
                         {t("operators.name")}
@@ -389,7 +389,7 @@ export default function OperatorsPage() {
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 className="mt-1 w-full rounded-md border px-3 py-2"
-                placeholder="Operator name"
+                placeholder={t("operators.namePlaceholder")}
               />
             </div>
             <div>
@@ -399,7 +399,7 @@ export default function OperatorsPage() {
                 value={form.contactEmail}
                 onChange={(e) => setForm({ ...form, contactEmail: e.target.value })}
                 className="mt-1 w-full rounded-md border px-3 py-2"
-                placeholder="operator@example.com"
+                placeholder={t("operators.emailPlaceholder")}
               />
             </div>
             <div>
@@ -456,7 +456,7 @@ export default function OperatorsPage() {
                 value={editForm.webhookUrl}
                 onChange={(e) => setEditForm({ ...editForm, webhookUrl: e.target.value })}
                 className="mt-1 w-full rounded-md border px-3 py-2"
-                placeholder="https://..."
+                placeholder={t("operators.webhookUrlPlaceholder")}
               />
             </div>
             <div>

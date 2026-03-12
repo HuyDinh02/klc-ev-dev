@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { Colors, Shadows } from '../constants/colors';
 import { Card, Button } from '../components/common';
 import { vehiclesApi } from '../api/profile';
@@ -40,6 +41,7 @@ const INITIAL_FORM: AddVehicleRequest = {
 };
 
 export function VehiclesScreen() {
+  const { t } = useTranslation();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -56,7 +58,7 @@ export function VehiclesScreen() {
       setVehicles(data);
     } catch (err) {
       console.error('Failed to load vehicles:', err);
-      setError('Failed to load vehicles. Pull to refresh.');
+      setError(t('vehicles.errorLoadVehicles'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -78,22 +80,22 @@ export function VehiclesScreen() {
     const errors: Record<string, string> = {};
 
     if (!form.make.trim()) {
-      errors.make = 'Make is required';
+      errors.make = t('vehicles.validationMakeRequired');
     }
     if (!form.model.trim()) {
-      errors.model = 'Model is required';
+      errors.model = t('vehicles.validationModelRequired');
     }
     if (!form.year || form.year < 1990 || form.year > new Date().getFullYear() + 1) {
-      errors.year = 'Enter a valid year';
+      errors.year = t('vehicles.validationYearInvalid');
     }
     if (!form.licensePlate.trim()) {
-      errors.licensePlate = 'License plate is required';
+      errors.licensePlate = t('vehicles.validationLicensePlateRequired');
     }
     if (!form.batteryCapacityKwh || form.batteryCapacityKwh <= 0) {
-      errors.batteryCapacityKwh = 'Enter a valid battery capacity';
+      errors.batteryCapacityKwh = t('vehicles.validationBatteryCapacityInvalid');
     }
     if (!form.connectorType) {
-      errors.connectorType = 'Connector type is required';
+      errors.connectorType = t('vehicles.validationConnectorTypeRequired');
     }
 
     setFormErrors(errors);
@@ -117,7 +119,7 @@ export function VehiclesScreen() {
       setFormErrors({});
     } catch (err) {
       console.error('Failed to add vehicle:', err);
-      Alert.alert('Error', 'Failed to add vehicle. Please try again.');
+      Alert.alert(t('common.error'), t('vehicles.errorAddVehicle'));
     } finally {
       setSubmitting(false);
     }
@@ -136,18 +138,18 @@ export function VehiclesScreen() {
       );
     } catch (err) {
       console.error('Failed to set default vehicle:', err);
-      Alert.alert('Error', 'Failed to set default vehicle.');
+      Alert.alert(t('common.error'), t('vehicles.errorSetDefault'));
     }
   };
 
   const handleDelete = (vehicle: Vehicle) => {
     Alert.alert(
-      'Delete Vehicle',
-      `Are you sure you want to delete ${vehicle.make} ${vehicle.model}?`,
+      t('vehicles.deleteVehicle'),
+      t('vehicles.deleteVehicleMessage', { make: vehicle.make, model: vehicle.model }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -155,7 +157,7 @@ export function VehiclesScreen() {
               setVehicles((prev) => prev.filter((v) => v.id !== vehicle.id));
             } catch (err) {
               console.error('Failed to delete vehicle:', err);
-              Alert.alert('Error', 'Failed to delete vehicle.');
+              Alert.alert(t('common.error'), t('vehicles.errorDeleteVehicle'));
             }
           },
         },
@@ -191,7 +193,7 @@ export function VehiclesScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle} accessibilityRole="header">My Vehicles</Text>
+        <Text style={styles.headerTitle} accessibilityRole="header">{t('vehicles.title')}</Text>
       </View>
 
       <ScrollView
@@ -210,7 +212,7 @@ export function VehiclesScreen() {
             <Text style={styles.errorIcon}>!</Text>
             <Text style={styles.errorText}>{error}</Text>
             <Button
-              title="Retry"
+              title={t('common.retry')}
               variant="outline"
               size="small"
               onPress={() => {
@@ -225,12 +227,12 @@ export function VehiclesScreen() {
             <View style={styles.emptyIconContainer}>
               <Text style={styles.emptyIcon}>🚗</Text>
             </View>
-            <Text style={styles.emptyTitle}>No vehicles added</Text>
+            <Text style={styles.emptyTitle}>{t('vehicles.noVehicles')}</Text>
             <Text style={styles.emptySubtitle}>
-              Add your first vehicle to get personalized charging recommendations
+              {t('vehicles.noVehiclesSubtitle')}
             </Text>
             <Button
-              title="Add Your First Vehicle"
+              title={t('vehicles.addFirstVehicle')}
               onPress={openAddModal}
               style={styles.emptyAddButton}
             />
@@ -261,24 +263,24 @@ export function VehiclesScreen() {
                     {vehicle.isDefault && (
                       <View style={styles.defaultBadge}>
                         <Text style={styles.defaultStar}>★</Text>
-                        <Text style={styles.defaultBadgeText}>Default</Text>
+                        <Text style={styles.defaultBadgeText}>{t('common.default')}</Text>
                       </View>
                     )}
                   </View>
 
                   <View style={styles.vehicleDetails}>
                     <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>License Plate</Text>
+                      <Text style={styles.detailLabel}>{t('vehicles.licensePlate')}</Text>
                       <Text style={styles.detailValue}>{vehicle.licensePlate}</Text>
                     </View>
                     <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Battery</Text>
+                      <Text style={styles.detailLabel}>{t('vehicles.battery')}</Text>
                       <Text style={styles.detailValue}>
                         {vehicle.batteryCapacityKwh} kWh
                       </Text>
                     </View>
                     <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Connector</Text>
+                      <Text style={styles.detailLabel}>{t('vehicles.connectorLabel')}</Text>
                       <Text style={styles.detailValue}>{vehicle.connectorType}</Text>
                     </View>
                   </View>
@@ -291,7 +293,7 @@ export function VehiclesScreen() {
                         accessibilityRole="button"
                         accessibilityLabel={`Set ${vehicle.make} ${vehicle.model} as default`}
                       >
-                        <Text style={styles.actionButtonText}>Set as Default</Text>
+                        <Text style={styles.actionButtonText}>{t('vehicles.setAsDefault')}</Text>
                       </TouchableOpacity>
                     )}
                     <TouchableOpacity
@@ -300,7 +302,7 @@ export function VehiclesScreen() {
                       accessibilityRole="button"
                       accessibilityLabel={`Delete ${vehicle.make} ${vehicle.model}`}
                     >
-                      <Text style={styles.deleteActionText}>Delete</Text>
+                      <Text style={styles.deleteActionText}>{t('common.delete')}</Text>
                     </TouchableOpacity>
                   </View>
                 </Card>
@@ -337,9 +339,9 @@ export function VehiclesScreen() {
           >
             <View style={styles.modalHeader}>
               <TouchableOpacity onPress={() => setModalVisible(false)} accessibilityRole="button" accessibilityLabel="Cancel">
-                <Text style={styles.modalCancel}>Cancel</Text>
+                <Text style={styles.modalCancel}>{t('common.cancel')}</Text>
               </TouchableOpacity>
-              <Text style={styles.modalTitle} accessibilityRole="header">Add Vehicle</Text>
+              <Text style={styles.modalTitle} accessibilityRole="header">{t('vehicles.addVehicle')}</Text>
               <View style={styles.modalHeaderSpacer} />
             </View>
 
@@ -349,10 +351,10 @@ export function VehiclesScreen() {
               keyboardShouldPersistTaps="handled"
             >
               <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Make *</Text>
+                <Text style={styles.formLabel}>{t('vehicles.formMake')}</Text>
                 <TextInput
                   style={[styles.formInput, formErrors.make ? styles.formInputError : undefined]}
-                  placeholder="e.g. VinFast"
+                  placeholder={t('vehicles.formMakePlaceholder')}
                   placeholderTextColor={Colors.textLight}
                   value={form.make}
                   onChangeText={(text) => updateForm('make', text)}
@@ -365,10 +367,10 @@ export function VehiclesScreen() {
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Model *</Text>
+                <Text style={styles.formLabel}>{t('vehicles.formModel')}</Text>
                 <TextInput
                   style={[styles.formInput, formErrors.model ? styles.formInputError : undefined]}
-                  placeholder="e.g. VF 8"
+                  placeholder={t('vehicles.formModelPlaceholder')}
                   placeholderTextColor={Colors.textLight}
                   value={form.model}
                   onChangeText={(text) => updateForm('model', text)}
@@ -381,10 +383,10 @@ export function VehiclesScreen() {
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Year *</Text>
+                <Text style={styles.formLabel}>{t('vehicles.formYear')}</Text>
                 <TextInput
                   style={[styles.formInput, formErrors.year ? styles.formInputError : undefined]}
-                  placeholder="e.g. 2025"
+                  placeholder={t('vehicles.formYearPlaceholder')}
                   placeholderTextColor={Colors.textLight}
                   value={form.year ? String(form.year) : ''}
                   onChangeText={(text) => {
@@ -401,13 +403,13 @@ export function VehiclesScreen() {
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>License Plate *</Text>
+                <Text style={styles.formLabel}>{t('vehicles.formLicensePlate')}</Text>
                 <TextInput
                   style={[
                     styles.formInput,
                     formErrors.licensePlate ? styles.formInputError : undefined,
                   ]}
-                  placeholder="e.g. 30A-12345"
+                  placeholder={t('vehicles.formLicensePlatePlaceholder')}
                   placeholderTextColor={Colors.textLight}
                   value={form.licensePlate}
                   onChangeText={(text) => updateForm('licensePlate', text)}
@@ -420,13 +422,13 @@ export function VehiclesScreen() {
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Battery Capacity (kWh) *</Text>
+                <Text style={styles.formLabel}>{t('vehicles.formBatteryCapacity')}</Text>
                 <TextInput
                   style={[
                     styles.formInput,
                     !!formErrors.batteryCapacityKwh && styles.formInputError,
                   ]}
-                  placeholder="e.g. 82"
+                  placeholder={t('vehicles.formBatteryCapacityPlaceholder')}
                   placeholderTextColor={Colors.textLight}
                   value={form.batteryCapacityKwh ? String(form.batteryCapacityKwh) : ''}
                   onChangeText={(text) => {
@@ -442,7 +444,7 @@ export function VehiclesScreen() {
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Connector Type *</Text>
+                <Text style={styles.formLabel}>{t('vehicles.connectorType')}</Text>
                 <View style={styles.connectorOptions}>
                   {CONNECTOR_OPTIONS.map((option) => (
                     <TouchableOpacity
@@ -475,7 +477,7 @@ export function VehiclesScreen() {
               </View>
 
               <Button
-                title="Add Vehicle"
+                title={t('vehicles.addVehicle')}
                 onPress={handleAddVehicle}
                 loading={submitting}
                 disabled={submitting}

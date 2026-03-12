@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { MainNavigator } from './MainNavigator';
 import { LoginScreen, StationDetailScreen, SessionScreen, VehiclesScreen, NotificationsScreen } from '../screens';
 import { useAuthStore } from '../stores';
@@ -10,6 +11,7 @@ import type { RootStackParamList } from './types';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function RootNavigator() {
+  const { t } = useTranslation();
   const { isAuthenticated, isLoading, checkAuth } = useAuthStore();
 
   useEffect(() => {
@@ -46,14 +48,14 @@ export function RootNavigator() {
             name="StationDetail"
             component={StationDetailScreen}
             options={{
-              title: 'Station Details',
+              title: t('stations.title'),
             }}
           />
           <Stack.Screen
             name="Session"
             component={SessionScreen}
             options={{
-              title: 'Charging Session',
+              title: t('session.title'),
               headerBackVisible: false,
             }}
           />
@@ -61,7 +63,7 @@ export function RootNavigator() {
             name="Vehicles"
             component={VehiclesScreen}
             options={{
-              title: 'My Vehicles',
+              title: t('vehicles.title'),
               headerShown: false,
             }}
           />
@@ -69,7 +71,7 @@ export function RootNavigator() {
             name="Notifications"
             component={NotificationsScreen}
             options={{
-              title: 'Notifications',
+              title: t('notifications.title'),
               headerShown: false,
             }}
           />
