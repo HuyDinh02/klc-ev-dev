@@ -115,7 +115,33 @@ VALUES
 (gen_random_uuid(), NULL, 'KLC.MobileUsers.Suspend', 'R', 'admin'),
 (gen_random_uuid(), NULL, 'KLC.MobileUsers.WalletAdjust', 'R', 'admin'),
 (gen_random_uuid(), NULL, 'KLC.Notifications', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Notifications.Broadcast', 'R', 'admin');
+(gen_random_uuid(), NULL, 'KLC.Notifications.Broadcast', 'R', 'admin'),
+-- Phase 2 Module: Power Sharing permissions
+(gen_random_uuid(), NULL, 'KLC.PowerSharing', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.PowerSharing.Create', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.PowerSharing.Update', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.PowerSharing.Delete', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.PowerSharing.ManageMembers', 'R', 'admin'),
+-- Phase 2 Module: Operators permissions
+(gen_random_uuid(), NULL, 'KLC.Operators', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Operators.Create', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Operators.Update', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Operators.Delete', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Operators.ManageStations', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Operators.ManageWebhooks', 'R', 'admin'),
+-- Phase 2 Module: Fleets permissions
+(gen_random_uuid(), NULL, 'KLC.Fleets', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Fleets.Create', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Fleets.Update', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Fleets.Delete', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Fleets.ManageVehicles', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Fleets.ManageSchedules', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Fleets.ViewAnalytics', 'R', 'admin'),
+-- Maintenance permissions
+(gen_random_uuid(), NULL, 'KLC.Maintenance', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Maintenance.Create', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Maintenance.Update', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Maintenance.Delete', 'R', 'admin');
 
 -- Grant Permissions to Operator Role (station management, monitoring, faults)
 INSERT INTO "AbpPermissionGrants" ("Id", "TenantId", "Name", "ProviderName", "ProviderKey")
@@ -143,7 +169,13 @@ VALUES
 (gen_random_uuid(), NULL, 'KLC.Feedback', 'R', 'operator'),
 (gen_random_uuid(), NULL, 'KLC.Feedback.Respond', 'R', 'operator'),
 (gen_random_uuid(), NULL, 'KLC.MobileUsers', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KLC.MobileUsers.ViewAll', 'R', 'operator');
+(gen_random_uuid(), NULL, 'KLC.MobileUsers.ViewAll', 'R', 'operator'),
+-- Phase 2: operator read-only access
+(gen_random_uuid(), NULL, 'KLC.PowerSharing', 'R', 'operator'),
+(gen_random_uuid(), NULL, 'KLC.Operators', 'R', 'operator'),
+(gen_random_uuid(), NULL, 'KLC.Fleets', 'R', 'operator'),
+(gen_random_uuid(), NULL, 'KLC.Fleets.ViewAnalytics', 'R', 'operator'),
+(gen_random_uuid(), NULL, 'KLC.Maintenance', 'R', 'operator');
 
 -- Grant Permissions to Viewer Role (read-only)
 INSERT INTO "AbpPermissionGrants" ("Id", "TenantId", "Name", "ProviderName", "ProviderKey")
@@ -157,7 +189,12 @@ VALUES
 (gen_random_uuid(), NULL, 'KLC.Monitoring', 'R', 'viewer'),
 (gen_random_uuid(), NULL, 'KLC.Monitoring.Dashboard', 'R', 'viewer'),
 (gen_random_uuid(), NULL, 'KLC.StationGroups', 'R', 'viewer'),
-(gen_random_uuid(), NULL, 'KLC.Payments', 'R', 'viewer');
+(gen_random_uuid(), NULL, 'KLC.Payments', 'R', 'viewer'),
+-- Phase 2: viewer read-only access
+(gen_random_uuid(), NULL, 'KLC.PowerSharing', 'R', 'viewer'),
+(gen_random_uuid(), NULL, 'KLC.Operators', 'R', 'viewer'),
+(gen_random_uuid(), NULL, 'KLC.Fleets', 'R', 'viewer'),
+(gen_random_uuid(), NULL, 'KLC.Maintenance', 'R', 'viewer');
 
 -- ============================================================
 -- 1. STATION GROUPS (3 groups)
