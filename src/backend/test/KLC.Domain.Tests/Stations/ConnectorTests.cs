@@ -127,6 +127,51 @@ public class ConnectorTests
         connector.Status.ShouldBe(ConnectorStatus.Available);
     }
 
+    [Fact]
+    public void AddConnector_NACS_Should_Work()
+    {
+        var station = CreateStation();
+
+        station.AddConnector(Guid.NewGuid(), 1, ConnectorType.NACS, 250);
+
+        var connector = station.Connectors.First();
+        connector.ConnectorType.ShouldBe(ConnectorType.NACS);
+        connector.MaxPowerKw.ShouldBe(250m);
+    }
+
+    [Fact]
+    public void ConnectorTypes_Should_Cover_All_Standards()
+    {
+        var station = CreateStation();
+
+        station.AddConnector(Guid.NewGuid(), 1, ConnectorType.Type2, 22m);
+        station.AddConnector(Guid.NewGuid(), 2, ConnectorType.CCS2, 150m);
+        station.AddConnector(Guid.NewGuid(), 3, ConnectorType.CHAdeMO, 50m);
+        station.AddConnector(Guid.NewGuid(), 4, ConnectorType.GBT, 60m);
+        station.AddConnector(Guid.NewGuid(), 5, ConnectorType.Type1, 7.4m);
+        station.AddConnector(Guid.NewGuid(), 6, ConnectorType.NACS, 250m);
+
+        station.Connectors.Count.ShouldBe(6);
+    }
+
+    [Fact]
+    public void SetMeteringClass_Should_Update()
+    {
+        var connector = CreateConnector();
+
+        connector.SetMeteringClass(Enums.MeteringClass.ClassB);
+
+        connector.MeteringClass.ShouldBe(Enums.MeteringClass.ClassB);
+    }
+
+    [Fact]
+    public void MeteringClass_Should_Default_To_Unknown()
+    {
+        var connector = CreateConnector();
+
+        connector.MeteringClass.ShouldBe(Enums.MeteringClass.Unknown);
+    }
+
     private static Connector CreateConnector()
     {
         var station = CreateStation();

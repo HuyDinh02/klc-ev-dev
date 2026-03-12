@@ -43,6 +43,8 @@ public interface IMonitoringNotifier
         decimal energyKwh,
         decimal? powerKw,
         decimal? socPercent);
+
+    Task NotifyPowerAllocationChangedAsync(PowerAllocationUpdate update);
 }
 
 public class MonitoringNotifier : IMonitoringNotifier
@@ -169,5 +171,14 @@ public class MonitoringNotifier : IMonitoringNotifier
 
         // Notify session subscribers
         await _hubContext.Clients.Group($"Session:{sessionId}").OnMeterValueReceived(update);
+    }
+
+    public async Task NotifyPowerAllocationChangedAsync(PowerAllocationUpdate update)
+    {
+        // Notify all monitoring clients (admin dashboard)
+        await _hubContext.Clients.Group("Monitoring").OnPowerAllocationChanged(update);
+
+        // Notify group-specific subscribers (power sharing detail page)
+        await _hubContext.Clients.Group($"PowerSharing:{update.GroupId}").OnPowerAllocationChanged(update);
     }
 }

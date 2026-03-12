@@ -131,6 +131,54 @@
     "Permission:Maintenance": "Quản lý bảo trì",
     "Permission:Maintenance.Create": "Tạo tác vụ bảo trì",
     "Permission:Maintenance.Update": "Cập nhật tác vụ bảo trì",
-    "Permission:Maintenance.Delete": "Xóa tác vụ bảo trì"
+    "Permission:Maintenance.Delete": "Xóa tác vụ bảo trì",
+
+    "KLC:PowerSharing:NotFound": "Không tìm thấy nhóm chia sẻ công suất.",
+    "KLC:PowerSharing:InvalidCapacity": "Công suất tối đa phải lớn hơn 0.",
+    "KLC:PowerSharing:InvalidMinPower": "Công suất tối thiểu mỗi đầu sạc không được âm.",
+    "KLC:PowerSharing:ConnectorAlreadyInGroup": "Đầu sạc đã là thành viên của nhóm chia sẻ công suất này.",
+    "KLC:PowerSharing:ConnectorNotInGroup": "Đầu sạc không phải thành viên của nhóm chia sẻ công suất này.",
+    "KLC:PowerSharing:MaxMembersExceeded": "Chế độ LINK hỗ trợ tối đa 10 đầu sạc mỗi nhóm.",
+    "KLC:PowerSharing:GroupNotActive": "Nhóm chia sẻ công suất không hoạt động.",
+
+    "Permission:PowerSharing": "Quản lý chia sẻ công suất",
+    "Permission:PowerSharing.Create": "Tạo nhóm chia sẻ công suất",
+    "Permission:PowerSharing.Update": "Cập nhật nhóm chia sẻ công suất",
+    "Permission:PowerSharing.Delete": "Xóa nhóm chia sẻ công suất",
+    "Permission:PowerSharing.ManageMembers": "Quản lý thành viên nhóm chia sẻ công suất",
+
+    "KLC:Operator:NotFound": "Không tìm thấy nhà điều hành.",
+    "KLC:Operator:DuplicateName": "Tên nhà điều hành '{name}' đã tồn tại.",
+    "KLC:Operator:InvalidApiKey": "API key không hợp lệ.",
+    "KLC:Operator:NotActive": "Tài khoản nhà điều hành không hoạt động.",
+    "KLC:Operator:StationAlreadyAssigned": "Trạm sạc đã được gán cho nhà điều hành này.",
+    "KLC:Operator:StationNotAssigned": "Trạm sạc chưa được gán cho nhà điều hành này.",
+    "KLC:Operator:RateLimitExceeded": "Vượt quá giới hạn tốc độ API.",
+    "KLC:Operator:NoStationAccess": "Nhà điều hành không có quyền truy cập trạm sạc này.",
+
+    "Permission:Operators": "Quản lý nhà điều hành",
+    "Permission:Operators.Create": "Tạo nhà điều hành",
+    "Permission:Operators.Update": "Cập nhật nhà điều hành",
+    "Permission:Operators.Delete": "Xóa nhà điều hành",
+    "Permission:Operators.ManageStations": "Quản lý trạm sạc nhà điều hành",
+    "Permission:Operators.ManageWebhooks": "Quản lý webhook nhà điều hành",
+
+    "KLC:Fleet:NotFound": "Không tìm thấy đội xe.",
+    "KLC:Fleet:InvalidBudget": "Cấu hình ngân sách không hợp lệ.",
+    "KLC:Fleet:VehicleAlreadyInFleet": "Xe đã được gán cho đội xe này.",
+    "KLC:Fleet:VehicleNotInFleet": "Xe không thuộc đội xe này.",
+    "KLC:Fleet:BudgetExceeded": "Đã vượt ngân sách hàng tháng của đội xe.",
+    "KLC:Fleet:DailyLimitExceeded": "Đã vượt giới hạn sạc hàng ngày của xe.",
+    "KLC:Fleet:OutsideSchedule": "Không được phép sạc ngoài khung giờ cho phép.",
+    "KLC:Fleet:StationNotAllowed": "Trạm sạc này không nằm trong danh sách trạm được phê duyệt của đội xe.",
+    "KLC:Fleet:ChargingDenied": "Sạc bị từ chối theo chính sách đội xe.",
+
+    "Permission:Fleets": "Quản lý đội xe",
+    "Permission:Fleets.Create": "Tạo đội xe",
+    "Permission:Fleets.Update": "Cập nhật đội xe",
+    "Permission:Fleets.Delete": "Xóa đội xe",
+    "Permission:Fleets.ManageVehicles": "Quản lý xe trong đội",
+    "Permission:Fleets.ManageSchedules": "Quản lý lịch sạc đội xe",
+    "Permission:Fleets.ViewAnalytics": "Xem phân tích đội xe"
   }
 }

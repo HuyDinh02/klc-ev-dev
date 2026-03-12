@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using KLC.Driver.Services;
 using KLC.EntityFrameworkCore;
 using KLC.Enums;
+using KLC.Fleets;
 using KLC.Sessions;
 using KLC.Stations;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,8 +25,11 @@ public class SessionBffServiceTests : KLCEntityFrameworkCoreTestBase
     {
         _dbContext = GetRequiredService<KLCDbContext>();
         _cache = new PassthroughCacheService();
+        var fleetPolicyService = Substitute.For<IFleetChargingPolicyService>();
+        fleetPolicyService.ValidateChargingAsync(Arg.Any<Guid>(), Arg.Any<Guid>())
+            .Returns(new FleetChargingValidationResult(true));
         var logger = Substitute.For<ILogger<SessionBffService>>();
-        _service = new SessionBffService(_dbContext, _cache, logger);
+        _service = new SessionBffService(_dbContext, _cache, fleetPolicyService, logger);
     }
 
     [Fact]

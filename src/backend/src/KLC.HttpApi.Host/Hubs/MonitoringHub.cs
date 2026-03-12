@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using KLC.Enums;
 using Microsoft.AspNetCore.Authorization;
@@ -43,6 +44,22 @@ public class MonitoringHub : Hub<IMonitoringHubClient>
     }
 
     /// <summary>
+    /// Subscribe to updates for a specific power sharing group.
+    /// </summary>
+    public async Task SubscribeToPowerSharingGroup(Guid groupId)
+    {
+        await Groups.AddToGroupAsync(Context.ConnectionId, $"PowerSharing:{groupId}");
+    }
+
+    /// <summary>
+    /// Unsubscribe from power sharing group updates.
+    /// </summary>
+    public async Task UnsubscribeFromPowerSharingGroup(Guid groupId)
+    {
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"PowerSharing:{groupId}");
+    }
+
+    /// <summary>
     /// Subscribe to updates for a specific session (for driver app).
     /// </summary>
     public async Task SubscribeToSession(Guid sessionId)
@@ -69,6 +86,7 @@ public interface IMonitoringHubClient
     Task OnAlertCreated(AlertNotification alert);
     Task OnSessionUpdated(SessionUpdate update);
     Task OnMeterValueReceived(MeterValueUpdate update);
+    Task OnPowerAllocationChanged(PowerAllocationUpdate update);
 }
 
 // Update DTOs for SignalR messages
@@ -113,4 +131,24 @@ public record MeterValueUpdate(
     decimal? PowerKw,
     decimal? SocPercent,
     DateTime Timestamp
+);
+
+public record PowerAllocationUpdate(
+    Guid GroupId,
+    string GroupName,
+    decimal TotalCapacityKw,
+    decimal TotalAllocatedKw,
+    int ActiveConnectors,
+    int ProfilesDispatched,
+    IReadOnlyList<ConnectorAllocation> Allocations,
+    DateTime Timestamp
+);
+
+public record ConnectorAllocation(
+    Guid ConnectorId,
+    Guid StationId,
+    string StationCode,
+    int ConnectorNumber,
+    decimal AllocatedPowerKw,
+    decimal MaxPowerKw
 );

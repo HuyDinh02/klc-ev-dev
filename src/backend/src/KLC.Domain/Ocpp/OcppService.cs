@@ -3,10 +3,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using KLC.Enums;
 using KLC.Faults;
+using KLC.Fleets;
 using KLC.Sessions;
 using KLC.Stations;
 using KLC.Tariffs;
 using KLC.Users;
+using KLC.Vehicles;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.Domain.Repositories;
@@ -27,6 +29,10 @@ public class OcppService : DomainService, IOcppService
     private readonly IRepository<TariffPlan, Guid> _tariffPlanRepository;
     private readonly IRepository<UserIdTag, Guid> _userIdTagRepository;
     private readonly IRepository<Fault, Guid> _faultRepository;
+    private readonly IRepository<Vehicle, Guid> _vehicleRepository;
+    private readonly IRepository<FleetVehicle, Guid> _fleetVehicleRepository;
+    private readonly IRepository<Fleet, Guid> _fleetRepository;
+    private readonly IFleetChargingPolicyService _fleetChargingPolicyService;
     private readonly IConfiguration _configuration;
     private readonly ILogger<OcppService> _logger;
 
@@ -38,6 +44,10 @@ public class OcppService : DomainService, IOcppService
         IRepository<TariffPlan, Guid> tariffPlanRepository,
         IRepository<UserIdTag, Guid> userIdTagRepository,
         IRepository<Fault, Guid> faultRepository,
+        IRepository<Vehicle, Guid> vehicleRepository,
+        IRepository<FleetVehicle, Guid> fleetVehicleRepository,
+        IRepository<Fleet, Guid> fleetRepository,
+        IFleetChargingPolicyService fleetChargingPolicyService,
         IConfiguration configuration,
         ILogger<OcppService> logger)
     {
@@ -48,6 +58,10 @@ public class OcppService : DomainService, IOcppService
         _tariffPlanRepository = tariffPlanRepository;
         _userIdTagRepository = userIdTagRepository;
         _faultRepository = faultRepository;
+        _vehicleRepository = vehicleRepository;
+        _fleetVehicleRepository = fleetVehicleRepository;
+        _fleetRepository = fleetRepository;
+        _fleetChargingPolicyService = fleetChargingPolicyService;
         _configuration = configuration;
         _logger = logger;
     }
@@ -248,6 +262,25 @@ public class OcppService : DomainService, IOcppService
             return null;
         }
 
+        // Resolve user's default vehicle for fleet policy validation
+        Guid? vehicleId = null;
+        var defaultVehicle = await _vehicleRepository.FirstOrDefaultAsync(
+            v => v.UserId == userId && v.IsDefault && v.IsActive);
+        if (defaultVehicle != null)
+        {
+            vehicleId = defaultVehicle.Id;
+
+            // Validate fleet charging policy
+            var policyResult = await _fleetChargingPolicyService.ValidateChargingAsync(defaultVehicle.Id, station.Id);
+            if (!policyResult.Allowed)
+            {
+                _logger.LogWarning(
+                    "StartTransaction rejected by fleet policy: idTag={IdTag}, vehicleId={VehicleId}, reason={Reason}",
+                    idTag, defaultVehicle.Id, policyResult.DenialReason);
+                return null;
+            }
+        }
+
         // Resolve tariff rate from station's tariff plan
         var tariffPlanId = station.TariffPlanId;
         decimal ratePerKwh = 0;
@@ -266,7 +299,7 @@ public class OcppService : DomainService, IOcppService
             userId,
             station.Id,
             connectorId,
-            null, // Vehicle ID - could be resolved from idTag
+            vehicleId,
             tariffPlanId,
             ratePerKwh,
             idTag
@@ -316,6 +349,29 @@ public class OcppService : DomainService, IOcppService
         session.RecordStop(meterStop, stopReason, tariffPlan);
 
         await _sessionRepository.UpdateAsync(session);
+
+        // Record fleet energy consumption and spending after session completion
+        if (session.VehicleId.HasValue)
+        {
+            var fleetVehicle = await _fleetVehicleRepository.FirstOrDefaultAsync(
+                fv => fv.VehicleId == session.VehicleId.Value && fv.IsActive);
+            if (fleetVehicle != null)
+            {
+                fleetVehicle.RecordEnergy(session.TotalEnergyKwh);
+                await _fleetVehicleRepository.UpdateAsync(fleetVehicle);
+
+                var fleet = await _fleetRepository.FirstOrDefaultAsync(f => f.Id == fleetVehicle.FleetId);
+                if (fleet != null)
+                {
+                    fleet.RecordSpending(session.TotalCost);
+                    await _fleetRepository.UpdateAsync(fleet);
+
+                    _logger.LogInformation(
+                        "Fleet {FleetId} recorded: Energy={EnergyKwh}kWh on vehicle {VehicleId}, Spending={Cost}VND",
+                        fleet.Id, session.TotalEnergyKwh, session.VehicleId, session.TotalCost);
+                }
+            }
+        }
 
         _logger.LogInformation("Session {SessionId} completed: Energy={EnergyKwh}kWh, Cost={Cost}, TariffType={TariffType}",
             session.Id, session.TotalEnergyKwh, session.TotalCost,

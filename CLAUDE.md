@@ -177,13 +177,13 @@ Groups: `Stations`, `Connectors`, `Tariffs`, `Sessions`, `Faults`, `Alerts`, `Mo
 - **Vehicles**: Vehicle
 - **Tariffs**: TariffPlan
 - **Faults**: Fault
-- **Power Management** (Phase 2): PowerSharingGroup, PowerSharingGroupMember, SiteLoadProfile
+- **Power Management**: PowerSharingGroup, PowerSharingGroupMember, SiteLoadProfile, PowerSharingDomainService
 - **Fleet** (Phase 2): Fleet, FleetVehicle
 - **Integration** (Phase 2): Operator
 
 ## Enums (KLC.Domain.Shared/Enums/)
 
-StationStatus, ConnectorStatus, ConnectorType (Phase 2: add NACS), SessionStatus, PaymentGateway (ZaloPay/MoMo/OnePay/Wallet/VnPay/QrPayment/Voucher/Urbox), PaymentStatus, NotificationType, FaultStatus, MembershipTier, DevicePlatform, WalletTransactionType, TransactionStatus, AmenityType, VoucherType, PromotionType, FeedbackType, FeedbackStatus, PowerSharingStrategy (Phase 2: EqualSplit/PriorityBased/FirstComeFirstServed), LoadDistributionStrategy (Phase 2: ProRata/EqualShare/PriorityFirst), ChargingPolicyType (Phase 2: Unrestricted/OffPeakOnly/BudgetCapped)
+StationStatus, ConnectorStatus, ConnectorType (incl. NACS), SessionStatus, PaymentGateway (ZaloPay/MoMo/OnePay/Wallet/VnPay/QrPayment/Voucher/Urbox), PaymentStatus, NotificationType, FaultStatus, MembershipTier, DevicePlatform, WalletTransactionType, TransactionStatus, AmenityType, VoucherType, PromotionType, FeedbackType, FeedbackStatus, PowerSharingMode (Link/Loop), PowerDistributionStrategy (Average/Proportional/Dynamic), MeteringClass (Unknown/ClassB/ClassA/Class05S/Class02S), ChargingPolicyType (Phase 2: Unrestricted/OffPeakOnly/BudgetCapped)
 
 ## Driver BFF Endpoints (KLC.Driver.BFF)
 

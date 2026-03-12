@@ -21,6 +21,9 @@ import {
   CreditCard,
   BarChart3,
   Shield,
+  Cable,
+  Building2,
+  Truck,
   type LucideIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -48,6 +51,7 @@ const navigation: NavSection[] = [
       { href: "/stations", labelKey: "nav.stations", icon: MapPin },
       { href: "/monitoring", labelKey: "nav.monitoring", icon: Activity },
       { href: "/sessions", labelKey: "nav.sessions", icon: Zap },
+      { href: "/power-sharing", labelKey: "nav.powerSharing", icon: Cable },
     ],
   },
   {
@@ -63,6 +67,8 @@ const navigation: NavSection[] = [
       { href: "/tariffs", labelKey: "nav.tariffs", icon: DollarSign },
       { href: "/payments", labelKey: "nav.payments", icon: CreditCard },
       { href: "/vouchers", labelKey: "nav.marketing", icon: Ticket },
+      { href: "/operators", labelKey: "nav.operators", icon: Building2 },
+      { href: "/fleets", labelKey: "nav.fleets", icon: Truck },
     ],
   },
   {

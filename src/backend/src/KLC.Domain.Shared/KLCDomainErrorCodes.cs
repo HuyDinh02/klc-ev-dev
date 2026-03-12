@@ -156,4 +156,40 @@ public static class KLCDomainErrorCodes
         public const string NotFound = "KLC:Maintenance:NotFound";
         public const string InvalidStateTransition = "KLC:Maintenance:InvalidStateTransition";
     }
+
+    public static class PowerSharing
+    {
+        public const string NotFound = "KLC:PowerSharing:NotFound";
+        public const string InvalidCapacity = "KLC:PowerSharing:InvalidCapacity";
+        public const string InvalidMinPower = "KLC:PowerSharing:InvalidMinPower";
+        public const string ConnectorAlreadyInGroup = "KLC:PowerSharing:ConnectorAlreadyInGroup";
+        public const string ConnectorNotInGroup = "KLC:PowerSharing:ConnectorNotInGroup";
+        public const string MaxMembersExceeded = "KLC:PowerSharing:MaxMembersExceeded";
+        public const string GroupNotActive = "KLC:PowerSharing:GroupNotActive";
+    }
+
+    public static class Operators
+    {
+        public const string NotFound = "KLC:Operator:NotFound";
+        public const string DuplicateName = "KLC:Operator:DuplicateName";
+        public const string InvalidApiKey = "KLC:Operator:InvalidApiKey";
+        public const string NotActive = "KLC:Operator:NotActive";
+        public const string StationAlreadyAssigned = "KLC:Operator:StationAlreadyAssigned";
+        public const string StationNotAssigned = "KLC:Operator:StationNotAssigned";
+        public const string RateLimitExceeded = "KLC:Operator:RateLimitExceeded";
+        public const string NoStationAccess = "KLC:Operator:NoStationAccess";
+    }
+
+    public static class Fleet
+    {
+        public const string NotFound = "KLC:Fleet:NotFound";
+        public const string InvalidBudget = "KLC:Fleet:InvalidBudget";
+        public const string VehicleAlreadyInFleet = "KLC:Fleet:VehicleAlreadyInFleet";
+        public const string VehicleNotInFleet = "KLC:Fleet:VehicleNotInFleet";
+        public const string BudgetExceeded = "KLC:Fleet:BudgetExceeded";
+        public const string DailyLimitExceeded = "KLC:Fleet:DailyLimitExceeded";
+        public const string OutsideSchedule = "KLC:Fleet:OutsideSchedule";
+        public const string StationNotAllowed = "KLC:Fleet:StationNotAllowed";
+        public const string ChargingDenied = "KLC:Fleet:ChargingDenied";
+    }
 }

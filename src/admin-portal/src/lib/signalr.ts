@@ -55,12 +55,33 @@ export interface MeterValueUpdate {
   timestamp: string;
 }
 
+export interface ConnectorAllocation {
+  connectorId: string;
+  stationId: string;
+  stationCode: string;
+  connectorNumber: number;
+  allocatedPowerKw: number;
+  maxPowerKw: number;
+}
+
+export interface PowerAllocationUpdate {
+  groupId: string;
+  groupName: string;
+  totalCapacityKw: number;
+  totalAllocatedKw: number;
+  activeConnectors: number;
+  profilesDispatched: number;
+  allocations: ConnectorAllocation[];
+  timestamp: string;
+}
+
 interface MonitoringCallbacks {
   onStationStatusChanged?: (update: StationStatusUpdate) => void;
   onConnectorStatusChanged?: (update: ConnectorStatusUpdate) => void;
   onAlertCreated?: (alert: AlertNotification) => void;
   onSessionUpdated?: (update: SessionUpdate) => void;
   onMeterValueReceived?: (update: MeterValueUpdate) => void;
+  onPowerAllocationChanged?: (update: PowerAllocationUpdate) => void;
 }
 
 export function useMonitoringHub(callbacks: MonitoringCallbacks) {
@@ -105,6 +126,10 @@ export function useMonitoringHub(callbacks: MonitoringCallbacks) {
 
     connection.on("OnMeterValueReceived", (update: MeterValueUpdate) => {
       callbacksRef.current.onMeterValueReceived?.(update);
+    });
+
+    connection.on("OnPowerAllocationChanged", (update: PowerAllocationUpdate) => {
+      callbacksRef.current.onPowerAllocationChanged?.(update);
     });
 
     connection.onreconnecting(() => {
@@ -159,5 +184,25 @@ export function useMonitoringHub(callbacks: MonitoringCallbacks) {
     }
   }, []);
 
-  return { status, subscribeToStation, unsubscribeFromStation };
+  const subscribeToPowerSharingGroup = useCallback(async (groupId: string) => {
+    const conn = connectionRef.current;
+    if (conn?.state === HubConnectionState.Connected) {
+      await conn.invoke("SubscribeToPowerSharingGroup", groupId);
+    }
+  }, []);
+
+  const unsubscribeFromPowerSharingGroup = useCallback(async (groupId: string) => {
+    const conn = connectionRef.current;
+    if (conn?.state === HubConnectionState.Connected) {
+      await conn.invoke("UnsubscribeFromPowerSharingGroup", groupId);
+    }
+  }, []);
+
+  return {
+    status,
+    subscribeToStation,
+    unsubscribeFromStation,
+    subscribeToPowerSharingGroup,
+    unsubscribeFromPowerSharingGroup,
+  };
 }

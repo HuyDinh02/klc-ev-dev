@@ -34,6 +34,7 @@ const connectorTypeLabels: Record<number, string> = {
   2: "CHAdeMO",
   3: "GB/T",
   4: "Type 1",
+  5: "NACS",
 };
 
 export default function VehiclesPage() {

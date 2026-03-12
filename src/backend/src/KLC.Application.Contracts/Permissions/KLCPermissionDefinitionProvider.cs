@@ -118,6 +118,30 @@ public class KLCPermissionDefinitionProvider : PermissionDefinitionProvider
         maintenancePermission.AddChild(KLCPermissions.Maintenance.Create, L("Permission:Maintenance.Create"));
         maintenancePermission.AddChild(KLCPermissions.Maintenance.Update, L("Permission:Maintenance.Update"));
         maintenancePermission.AddChild(KLCPermissions.Maintenance.Delete, L("Permission:Maintenance.Delete"));
+
+        // Power Sharing permissions
+        var powerSharingPermission = myGroup.AddPermission(KLCPermissions.PowerSharing.Default, L("Permission:PowerSharing"));
+        powerSharingPermission.AddChild(KLCPermissions.PowerSharing.Create, L("Permission:PowerSharing.Create"));
+        powerSharingPermission.AddChild(KLCPermissions.PowerSharing.Update, L("Permission:PowerSharing.Update"));
+        powerSharingPermission.AddChild(KLCPermissions.PowerSharing.Delete, L("Permission:PowerSharing.Delete"));
+        powerSharingPermission.AddChild(KLCPermissions.PowerSharing.ManageMembers, L("Permission:PowerSharing.ManageMembers"));
+
+        // Operator permissions
+        var operatorsPermission = myGroup.AddPermission(KLCPermissions.Operators.Default, L("Permission:Operators"));
+        operatorsPermission.AddChild(KLCPermissions.Operators.Create, L("Permission:Operators.Create"));
+        operatorsPermission.AddChild(KLCPermissions.Operators.Update, L("Permission:Operators.Update"));
+        operatorsPermission.AddChild(KLCPermissions.Operators.Delete, L("Permission:Operators.Delete"));
+        operatorsPermission.AddChild(KLCPermissions.Operators.ManageStations, L("Permission:Operators.ManageStations"));
+        operatorsPermission.AddChild(KLCPermissions.Operators.ManageWebhooks, L("Permission:Operators.ManageWebhooks"));
+
+        // Fleet permissions
+        var fleetsPermission = myGroup.AddPermission(KLCPermissions.Fleets.Default, L("Permission:Fleets"));
+        fleetsPermission.AddChild(KLCPermissions.Fleets.Create, L("Permission:Fleets.Create"));
+        fleetsPermission.AddChild(KLCPermissions.Fleets.Update, L("Permission:Fleets.Update"));
+        fleetsPermission.AddChild(KLCPermissions.Fleets.Delete, L("Permission:Fleets.Delete"));
+        fleetsPermission.AddChild(KLCPermissions.Fleets.ManageVehicles, L("Permission:Fleets.ManageVehicles"));
+        fleetsPermission.AddChild(KLCPermissions.Fleets.ManageSchedules, L("Permission:Fleets.ManageSchedules"));
+        fleetsPermission.AddChild(KLCPermissions.Fleets.ViewAnalytics, L("Permission:Fleets.ViewAnalytics"));
     }
 
     private static LocalizableString L(string name)

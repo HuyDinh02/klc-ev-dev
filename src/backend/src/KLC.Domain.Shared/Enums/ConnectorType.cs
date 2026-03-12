@@ -28,5 +28,10 @@ public enum ConnectorType
     /// <summary>
     /// Type 1 connector (SAE J1772) - AC charging, common in North America.
     /// </summary>
-    Type1 = 4
+    Type1 = 4,
+
+    /// <summary>
+    /// NACS connector (North American Charging Standard / Tesla) - AC and DC charging.
+    /// </summary>
+    NACS = 5
 }

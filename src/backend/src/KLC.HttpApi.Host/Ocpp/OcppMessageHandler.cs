@@ -8,6 +8,7 @@ using KLC.Enums;
 using KLC.Hubs;
 using KLC.Ocpp.Messages;
 using KLC.Ocpp.Vendors;
+using KLC.Operators;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Guids;
@@ -28,6 +29,8 @@ public class OcppMessageHandler
     private readonly IGuidGenerator _guidGenerator;
     private readonly OcppMessageParserFactory _parserFactory;
     private readonly IAuditEventLogger _auditLogger;
+    private readonly PowerBalancingService? _powerBalancingService;
+    private readonly IOperatorWebhookService? _webhookService;
 
     public OcppMessageHandler(
         ILogger<OcppMessageHandler> logger,
@@ -38,7 +41,9 @@ public class OcppMessageHandler
         IRepository<OcppRawEvent, Guid> rawEventRepository,
         IGuidGenerator guidGenerator,
         OcppMessageParserFactory parserFactory,
-        IAuditEventLogger auditLogger)
+        IAuditEventLogger auditLogger,
+        PowerBalancingService? powerBalancingService = null,
+        IOperatorWebhookService? webhookService = null)
     {
         _logger = logger;
         _connectionManager = connectionManager;
@@ -49,6 +54,8 @@ public class OcppMessageHandler
         _guidGenerator = guidGenerator;
         _parserFactory = parserFactory;
         _auditLogger = auditLogger;
+        _powerBalancingService = powerBalancingService;
+        _webhookService = webhookService;
     }
 
     /// <summary>
@@ -261,6 +268,40 @@ public class OcppMessageHandler
                 request.ConnectorId,
                 statusResult.PreviousStatus,
                 statusResult.NewStatus);
+
+            if (_webhookService != null)
+            {
+                // Deliver webhook: FaultDetected when connector transitions to Faulted
+                if (statusResult.NewStatus == ConnectorStatus.Faulted)
+                {
+                    _ = _webhookService.EnqueueWebhookAsync(
+                        WebhookEventType.FaultDetected,
+                        statusResult.StationId,
+                        new
+                        {
+                            stationId = statusResult.StationId,
+                            connectorId = request.ConnectorId,
+                            previousStatus = statusResult.PreviousStatus.ToString(),
+                            newStatus = statusResult.NewStatus.ToString(),
+                            errorCode = request.ErrorCode,
+                            errorInfo = request.Info,
+                            vendorErrorCode = request.VendorErrorCode
+                        });
+                }
+
+                // Deliver webhook: ConnectorStatusChanged for all status transitions
+                _ = _webhookService.EnqueueWebhookAsync(
+                    WebhookEventType.ConnectorStatusChanged,
+                    statusResult.StationId,
+                    new
+                    {
+                        stationId = statusResult.StationId,
+                        connectorId = request.ConnectorId,
+                        previousStatus = statusResult.PreviousStatus.ToString(),
+                        newStatus = statusResult.NewStatus.ToString(),
+                        timestamp = DateTime.UtcNow
+                    });
+            }
         }
 
         return parser.SerializeCallResult(uniqueId, new StatusNotificationResponse());
@@ -298,7 +339,27 @@ public class OcppMessageHandler
                 request.ConnectorId,
                 SessionStatus.InProgress,
                 0, 0);
+
+            // Deliver webhook: SessionStarted
+            if (_webhookService != null)
+            {
+                _ = _webhookService.EnqueueWebhookAsync(
+                    WebhookEventType.SessionStarted,
+                    connection.StationId.Value,
+                    new
+                    {
+                        sessionId = sessionId.Value,
+                        stationId = connection.StationId.Value,
+                        connectorId = request.ConnectorId,
+                        transactionId,
+                        idTag = request.IdTag,
+                        meterStart = request.MeterStart
+                    });
+            }
         }
+
+        // Trigger immediate power rebalancing (new session changes load)
+        _powerBalancingService?.TriggerRebalance();
 
         var response = new StartTransactionResponse
         {
@@ -364,7 +425,27 @@ public class OcppMessageHandler
                 SessionStatus.Completed,
                 stopResult.TotalEnergyKwh,
                 stopResult.TotalCost);
+
+            // Deliver webhook: SessionCompleted
+            if (_webhookService != null)
+            {
+                _ = _webhookService.EnqueueWebhookAsync(
+                    WebhookEventType.SessionCompleted,
+                    stopResult.StationId,
+                    new
+                    {
+                        sessionId = stopResult.SessionId,
+                        stationId = stopResult.StationId,
+                        connectorNumber = stopResult.ConnectorNumber,
+                        totalEnergyKwh = stopResult.TotalEnergyKwh,
+                        totalCost = stopResult.TotalCost,
+                        stopReason = request.Reason
+                    });
+            }
         }
+
+        // Trigger immediate power rebalancing (freed capacity)
+        _powerBalancingService?.TriggerRebalance();
 
         var response = new StopTransactionResponse
         {

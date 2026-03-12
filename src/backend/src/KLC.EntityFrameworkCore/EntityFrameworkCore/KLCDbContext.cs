@@ -1,9 +1,12 @@
 using KLC.Faults;
+using KLC.Fleets;
 using KLC.Maintenance;
 using KLC.Marketing;
 using KLC.Notifications;
 using KLC.Ocpp;
+using KLC.Operators;
 using KLC.Payments;
+using KLC.PowerSharing;
 using KLC.Sessions;
 using KLC.Stations;
 using KLC.Support;
@@ -111,6 +114,22 @@ public class KLCDbContext :
 
     // Maintenance
     public DbSet<MaintenanceTask> MaintenanceTasks { get; set; }
+
+    // Power Sharing
+    public DbSet<PowerSharingGroup> PowerSharingGroups { get; set; }
+    public DbSet<PowerSharingGroupMember> PowerSharingGroupMembers { get; set; }
+    public DbSet<SiteLoadProfile> SiteLoadProfiles { get; set; }
+
+    // Operators
+    public DbSet<Operator> Operators { get; set; }
+    public DbSet<OperatorStation> OperatorStations { get; set; }
+    public DbSet<OperatorWebhookLog> OperatorWebhookLogs { get; set; }
+
+    // Fleets
+    public DbSet<Fleet> Fleets { get; set; }
+    public DbSet<FleetVehicle> FleetVehicles { get; set; }
+    public DbSet<FleetChargingSchedule> FleetChargingSchedules { get; set; }
+    public DbSet<FleetAllowedStation> FleetAllowedStations { get; set; }
 
     #endregion
 
@@ -647,6 +666,165 @@ public static class KLCDbContextModelCreatingExtensions
             b.HasIndex(x => x.StationId);
             b.HasIndex(x => x.Status);
             b.HasIndex(x => x.ScheduledDate);
+        });
+
+        // PowerSharingGroup
+        builder.Entity<PowerSharingGroup>(b =>
+        {
+            b.ToTable(KLCConsts.DbTablePrefix + "PowerSharingGroups", KLCConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.Name).IsRequired().HasMaxLength(200);
+            b.Property(x => x.MaxCapacityKw).HasPrecision(10, 2);
+            b.Property(x => x.MinPowerPerConnectorKw).HasPrecision(10, 2);
+
+            b.HasIndex(x => x.IsActive);
+            b.HasIndex(x => x.Mode);
+            b.HasIndex(x => x.StationGroupId);
+
+            b.HasMany(x => x.Members)
+                .WithOne(x => x.Group)
+                .HasForeignKey(x => x.PowerSharingGroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // PowerSharingGroupMember
+        builder.Entity<PowerSharingGroupMember>(b =>
+        {
+            b.ToTable(KLCConsts.DbTablePrefix + "PowerSharingGroupMembers", KLCConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.AllocatedPowerKw).HasPrecision(10, 2);
+
+            b.HasIndex(x => x.PowerSharingGroupId);
+            b.HasIndex(x => x.ConnectorId);
+            b.HasIndex(x => x.StationId);
+            b.HasIndex(x => new { x.PowerSharingGroupId, x.ConnectorId }).IsUnique()
+                .HasFilter("\"IsDeleted\" = false");
+        });
+
+        // SiteLoadProfile
+        builder.Entity<SiteLoadProfile>(b =>
+        {
+            b.ToTable(KLCConsts.DbTablePrefix + "SiteLoadProfiles", KLCConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.TotalLoadKw).HasPrecision(10, 2);
+            b.Property(x => x.AvailableCapacityKw).HasPrecision(10, 2);
+            b.Property(x => x.PeakLoadKw).HasPrecision(10, 2);
+
+            b.HasIndex(x => x.PowerSharingGroupId);
+            b.HasIndex(x => x.Timestamp);
+            b.HasIndex(x => new { x.PowerSharingGroupId, x.Timestamp });
+        });
+
+        // Operator
+        builder.Entity<Operator>(b =>
+        {
+            b.ToTable(KLCConsts.DbTablePrefix + "Operators", KLCConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.Name).IsRequired().HasMaxLength(200);
+            b.Property(x => x.ApiKeyHash).IsRequired().HasMaxLength(128);
+            b.Property(x => x.ContactEmail).IsRequired().HasMaxLength(200);
+            b.Property(x => x.WebhookUrl).HasMaxLength(500);
+            b.Property(x => x.Description).HasMaxLength(1000);
+
+            b.HasIndex(x => x.Name).IsUnique();
+            b.HasIndex(x => x.ApiKeyHash);
+            b.HasIndex(x => x.IsActive);
+
+            b.HasMany(x => x.AllowedStations)
+                .WithOne()
+                .HasForeignKey(x => x.OperatorId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // OperatorStation
+        builder.Entity<OperatorStation>(b =>
+        {
+            b.ToTable(KLCConsts.DbTablePrefix + "OperatorStations", KLCConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.HasIndex(x => new { x.OperatorId, x.StationId }).IsUnique()
+                .HasFilter("\"IsDeleted\" = false");
+            b.HasIndex(x => x.OperatorId);
+            b.HasIndex(x => x.StationId);
+        });
+
+        // OperatorWebhookLog
+        builder.Entity<OperatorWebhookLog>(b =>
+        {
+            b.ToTable(KLCConsts.DbTablePrefix + "OperatorWebhookLogs", KLCConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.PayloadJson).IsRequired();
+            b.Property(x => x.ErrorMessage).HasMaxLength(1000);
+
+            b.HasIndex(x => x.OperatorId);
+            b.HasIndex(x => x.EventType);
+            b.HasIndex(x => x.CreationTime);
+        });
+
+        // Fleet
+        builder.Entity<Fleet>(b =>
+        {
+            b.ToTable(KLCConsts.DbTablePrefix + "Fleets", KLCConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.Name).IsRequired().HasMaxLength(200);
+            b.Property(x => x.Description).HasMaxLength(1000);
+            b.Property(x => x.MaxMonthlyBudgetVnd).HasPrecision(18, 2);
+            b.Property(x => x.CurrentMonthSpentVnd).HasPrecision(18, 2);
+
+            b.HasIndex(x => x.Name);
+            b.HasIndex(x => x.OperatorUserId);
+            b.HasIndex(x => x.IsActive);
+
+            b.HasMany(x => x.Vehicles)
+                .WithOne()
+                .HasForeignKey(x => x.FleetId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // FleetVehicle
+        builder.Entity<FleetVehicle>(b =>
+        {
+            b.ToTable(KLCConsts.DbTablePrefix + "FleetVehicles", KLCConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.DailyChargingLimitKwh).HasPrecision(18, 2);
+            b.Property(x => x.CurrentDayEnergyKwh).HasPrecision(18, 2);
+            b.Property(x => x.CurrentMonthEnergyKwh).HasPrecision(18, 2);
+
+            b.HasIndex(x => new { x.FleetId, x.VehicleId }).IsUnique()
+                .HasFilter("\"IsDeleted\" = false");
+            b.HasIndex(x => x.FleetId);
+            b.HasIndex(x => x.VehicleId);
+            b.HasIndex(x => x.DriverUserId);
+            b.HasIndex(x => x.IsActive);
+        });
+
+        // FleetChargingSchedule
+        builder.Entity<FleetChargingSchedule>(b =>
+        {
+            b.ToTable(KLCConsts.DbTablePrefix + "FleetChargingSchedules", KLCConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.HasIndex(x => new { x.FleetId, x.DayOfWeek });
+            b.HasIndex(x => x.FleetId);
+        });
+
+        // FleetAllowedStation
+        builder.Entity<FleetAllowedStation>(b =>
+        {
+            b.ToTable(KLCConsts.DbTablePrefix + "FleetAllowedStations", KLCConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.HasIndex(x => new { x.FleetId, x.StationGroupId }).IsUnique()
+                .HasFilter("\"IsDeleted\" = false");
+            b.HasIndex(x => x.FleetId);
+            b.HasIndex(x => x.StationGroupId);
         });
     }
 }

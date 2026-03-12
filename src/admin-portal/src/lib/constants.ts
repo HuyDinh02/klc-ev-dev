@@ -169,12 +169,12 @@ export const TREND_CONFIG = {
 // ============================================
 
 export const CONNECTOR_TYPE_LABELS: Record<number, string> = {
-  0: "Type 1",
-  1: "Type 2",
-  2: "CCS1",
-  3: "CCS2",
-  4: "CHAdeMO",
-  5: "GBT",
+  0: "Type 2",
+  1: "CCS2",
+  2: "CHAdeMO",
+  3: "GBT",
+  4: "Type 1",
+  5: "NACS",
 };
 
 // ============================================

@@ -22,7 +22,7 @@ export interface Connector {
   currentSessionId?: string;
 }
 
-export type ConnectorType = 'Type2' | 'CCS2' | 'CHAdeMO' | 'GBT';
+export type ConnectorType = 'Type2' | 'CCS2' | 'CHAdeMO' | 'GBT' | 'Type1' | 'NACS';
 export type ConnectorStatus = 'Available' | 'Preparing' | 'Charging' | 'Finishing' | 'Faulted' | 'Unavailable';
 
 // Session types

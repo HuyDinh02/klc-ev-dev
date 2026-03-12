@@ -150,4 +150,34 @@ public static class KLCPermissions
         public const string Update = Default + ".Update";
         public const string Delete = Default + ".Delete";
     }
+
+    public static class PowerSharing
+    {
+        public const string Default = GroupName + ".PowerSharing";
+        public const string Create = Default + ".Create";
+        public const string Update = Default + ".Update";
+        public const string Delete = Default + ".Delete";
+        public const string ManageMembers = Default + ".ManageMembers";
+    }
+
+    public static class Operators
+    {
+        public const string Default = GroupName + ".Operators";
+        public const string Create = Default + ".Create";
+        public const string Update = Default + ".Update";
+        public const string Delete = Default + ".Delete";
+        public const string ManageStations = Default + ".ManageStations";
+        public const string ManageWebhooks = Default + ".ManageWebhooks";
+    }
+
+    public static class Fleets
+    {
+        public const string Default = GroupName + ".Fleets";
+        public const string Create = Default + ".Create";
+        public const string Update = Default + ".Update";
+        public const string Delete = Default + ".Delete";
+        public const string ManageVehicles = Default + ".ManageVehicles";
+        public const string ManageSchedules = Default + ".ManageSchedules";
+        public const string ViewAnalytics = Default + ".ViewAnalytics";
+    }
 }

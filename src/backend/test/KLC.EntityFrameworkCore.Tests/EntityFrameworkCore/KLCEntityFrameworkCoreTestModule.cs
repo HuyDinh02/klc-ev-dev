@@ -12,6 +12,7 @@ using Volo.Abp.FeatureManagement;
 using Volo.Abp.Modularity;
 using Volo.Abp.PermissionManagement;
 using Volo.Abp.SettingManagement;
+using KLC.PowerSharing;
 using Volo.Abp.Uow;
 
 namespace KLC.EntityFrameworkCore;
@@ -52,6 +53,9 @@ public class KLCEntityFrameworkCoreTestModule : AbpModule
             })
             .Build();
         context.Services.AddSingleton<IConfiguration>(configuration);
+
+        // Explicit registration for domain services with non-conventional naming
+        context.Services.AddTransient<IPowerSharingService, PowerSharingDomainService>();
 
         ConfigureInMemorySqlite(context.Services);
     }

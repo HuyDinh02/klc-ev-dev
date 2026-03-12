@@ -26,6 +26,8 @@ const CONNECTOR_OPTIONS: { label: string; value: ConnectorType }[] = [
   { label: 'CCS2', value: 'CCS2' },
   { label: 'CHAdeMO', value: 'CHAdeMO' },
   { label: 'GB/T', value: 'GBT' },
+  { label: 'Type 1', value: 'Type1' },
+  { label: 'NACS', value: 'NACS' },
 ];
 
 const INITIAL_FORM: AddVehicleRequest = {

@@ -1,5 +1,6 @@
 using KLC.EntityFrameworkCore;
 using KLC.Enums;
+using KLC.Fleets;
 using KLC.Sessions;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,15 +19,18 @@ public class SessionBffService : ISessionBffService
 {
     private readonly KLCDbContext _dbContext;
     private readonly ICacheService _cache;
+    private readonly IFleetChargingPolicyService _fleetChargingPolicyService;
     private readonly ILogger<SessionBffService> _logger;
 
     public SessionBffService(
         KLCDbContext dbContext,
         ICacheService cache,
+        IFleetChargingPolicyService fleetChargingPolicyService,
         ILogger<SessionBffService> logger)
     {
         _dbContext = dbContext;
         _cache = cache;
+        _fleetChargingPolicyService = fleetChargingPolicyService;
         _logger = logger;
     }
 
@@ -59,6 +63,24 @@ public class SessionBffService : ISessionBffService
         if (existingSession != null)
         {
             return new SessionResponseDto { Success = false, Error = "You already have an active session" };
+        }
+
+        // Validate fleet charging policy if vehicle is specified
+        if (request.VehicleId.HasValue)
+        {
+            var policyResult = await _fleetChargingPolicyService.ValidateChargingAsync(
+                request.VehicleId.Value, request.StationId);
+            if (!policyResult.Allowed)
+            {
+                _logger.LogWarning(
+                    "Session start denied by fleet policy: userId={UserId}, vehicleId={VehicleId}, reason={Reason}",
+                    userId, request.VehicleId, policyResult.DenialReason);
+                return new SessionResponseDto
+                {
+                    Success = false,
+                    Error = policyResult.DenialReason ?? "Fleet charging policy denied"
+                };
+            }
         }
 
         try

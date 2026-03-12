@@ -17,6 +17,8 @@ using KLC.Hubs;
 using KLC.MultiTenancy;
 using KLC.Ocpp;
 using KLC.Ocpp.Vendors;
+using KLC.Operators;
+using KLC.Services;
 using Volo.Abp.AspNetCore.ExceptionHandling;
 using Volo.Abp.AspNetCore.Mvc.UI.Theme.LeptonXLite;
 using Volo.Abp.AspNetCore.Mvc.UI.Theme.LeptonXLite.Bundling;
@@ -225,6 +227,16 @@ public class KLCHttpApiHostModule : AbpModule
             options.Map(KLCDomainErrorCodes.Vehicle.NotOwned, HttpStatusCode.Forbidden);
             options.Map(KLCDomainErrorCodes.Session.NotOwned, HttpStatusCode.Forbidden);
             options.Map(KLCDomainErrorCodes.Payment.InvalidSignature, HttpStatusCode.Forbidden);
+            options.Map(KLCDomainErrorCodes.Operators.NoStationAccess, HttpStatusCode.Forbidden);
+
+            // Operator errors
+            options.Map(KLCDomainErrorCodes.Operators.NotFound, HttpStatusCode.NotFound);
+            options.Map(KLCDomainErrorCodes.Operators.DuplicateName, HttpStatusCode.Conflict);
+            options.Map(KLCDomainErrorCodes.Operators.StationAlreadyAssigned, HttpStatusCode.Conflict);
+            options.Map(KLCDomainErrorCodes.Operators.StationNotAssigned, HttpStatusCode.BadRequest);
+            options.Map(KLCDomainErrorCodes.Operators.InvalidApiKey, HttpStatusCode.Unauthorized);
+            options.Map(KLCDomainErrorCodes.Operators.NotActive, HttpStatusCode.Forbidden);
+            options.Map(KLCDomainErrorCodes.Operators.RateLimitExceeded, (HttpStatusCode)429);
         });
     }
 
@@ -235,6 +247,8 @@ public class KLCHttpApiHostModule : AbpModule
         context.Services.AddSingleton<OcppMessageParserFactory>();
         context.Services.AddScoped<OcppMessageHandler>();
         context.Services.AddHostedService<HeartbeatMonitorService>();
+        context.Services.AddSingleton<PowerBalancingService>();
+        context.Services.AddHostedService<PowerBalancingService>(sp => sp.GetRequiredService<PowerBalancingService>());
         context.Services.AddScoped<IOcppRemoteCommandService, OcppRemoteCommandService>();
 
         // Vendor profiles
@@ -358,6 +372,15 @@ public class KLCHttpApiHostModule : AbpModule
     {
         // HttpClient for payment gateways (MoMo API)
         context.Services.AddHttpClient();
+
+        // Named HttpClient for operator webhook delivery (10s timeout)
+        context.Services.AddHttpClient("OperatorWebhook", c =>
+        {
+            c.Timeout = TimeSpan.FromSeconds(10);
+        });
+
+        // Operator webhook delivery service
+        context.Services.AddScoped<IOperatorWebhookService, OperatorWebhookService>();
     }
 
     private void ConfigureHealthChecks(ServiceConfigurationContext context, IConfiguration configuration)
@@ -416,6 +439,10 @@ public class KLCHttpApiHostModule : AbpModule
         app.UseRouting();
         app.UseCors();
         app.UseRateLimiter();
+
+        // Operator API key middleware — authenticate B2B requests before standard auth
+        app.UseMiddleware<Middleware.OperatorApiKeyMiddleware>();
+
         app.UseAuthentication();
         app.UseAbpOpenIddictValidation();
 

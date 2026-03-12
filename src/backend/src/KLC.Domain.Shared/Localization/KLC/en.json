@@ -131,6 +131,54 @@
     "Permission:Maintenance": "Maintenance Management",
     "Permission:Maintenance.Create": "Create Maintenance Tasks",
     "Permission:Maintenance.Update": "Update Maintenance Tasks",
-    "Permission:Maintenance.Delete": "Delete Maintenance Tasks"
+    "Permission:Maintenance.Delete": "Delete Maintenance Tasks",
+
+    "KLC:PowerSharing:NotFound": "Power sharing group not found.",
+    "KLC:PowerSharing:InvalidCapacity": "Max capacity must be greater than 0.",
+    "KLC:PowerSharing:InvalidMinPower": "Minimum power per connector cannot be negative.",
+    "KLC:PowerSharing:ConnectorAlreadyInGroup": "Connector is already a member of this power sharing group.",
+    "KLC:PowerSharing:ConnectorNotInGroup": "Connector is not a member of this power sharing group.",
+    "KLC:PowerSharing:MaxMembersExceeded": "LINK mode supports a maximum of 10 connectors per group.",
+    "KLC:PowerSharing:GroupNotActive": "Power sharing group is not active.",
+
+    "Permission:PowerSharing": "Power Sharing Management",
+    "Permission:PowerSharing.Create": "Create Power Sharing Groups",
+    "Permission:PowerSharing.Update": "Update Power Sharing Groups",
+    "Permission:PowerSharing.Delete": "Delete Power Sharing Groups",
+    "Permission:PowerSharing.ManageMembers": "Manage Power Sharing Members",
+
+    "KLC:Operator:NotFound": "Operator not found.",
+    "KLC:Operator:DuplicateName": "Operator name '{name}' already exists.",
+    "KLC:Operator:InvalidApiKey": "Invalid API key.",
+    "KLC:Operator:NotActive": "Operator account is not active.",
+    "KLC:Operator:StationAlreadyAssigned": "Station is already assigned to this operator.",
+    "KLC:Operator:StationNotAssigned": "Station is not assigned to this operator.",
+    "KLC:Operator:RateLimitExceeded": "API rate limit exceeded.",
+    "KLC:Operator:NoStationAccess": "Operator does not have access to this station.",
+
+    "Permission:Operators": "Operator Management",
+    "Permission:Operators.Create": "Create Operators",
+    "Permission:Operators.Update": "Update Operators",
+    "Permission:Operators.Delete": "Delete Operators",
+    "Permission:Operators.ManageStations": "Manage Operator Stations",
+    "Permission:Operators.ManageWebhooks": "Manage Operator Webhooks",
+
+    "KLC:Fleet:NotFound": "Fleet not found.",
+    "KLC:Fleet:InvalidBudget": "Invalid budget configuration.",
+    "KLC:Fleet:VehicleAlreadyInFleet": "Vehicle is already assigned to this fleet.",
+    "KLC:Fleet:VehicleNotInFleet": "Vehicle is not assigned to this fleet.",
+    "KLC:Fleet:BudgetExceeded": "Fleet monthly budget has been exceeded.",
+    "KLC:Fleet:DailyLimitExceeded": "Vehicle daily charging limit has been exceeded.",
+    "KLC:Fleet:OutsideSchedule": "Charging is not allowed outside the scheduled time windows.",
+    "KLC:Fleet:StationNotAllowed": "This station is not in the fleet's approved station list.",
+    "KLC:Fleet:ChargingDenied": "Charging denied by fleet policy.",
+
+    "Permission:Fleets": "Fleet Management",
+    "Permission:Fleets.Create": "Create Fleets",
+    "Permission:Fleets.Update": "Update Fleets",
+    "Permission:Fleets.Delete": "Delete Fleets",
+    "Permission:Fleets.ManageVehicles": "Manage Fleet Vehicles",
+    "Permission:Fleets.ManageSchedules": "Manage Fleet Schedules",
+    "Permission:Fleets.ViewAnalytics": "View Fleet Analytics"
   }
 }

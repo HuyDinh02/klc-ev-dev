@@ -58,7 +58,8 @@ public class OcppMessageHandlerTests
             rawEventRepo,
             guidGenerator,
             parserFactory,
-            auditLogger);
+            auditLogger,
+            powerBalancingService: null);
     }
 
     private static OcppConnection CreateConnection(string chargePointId = "TEST-001")

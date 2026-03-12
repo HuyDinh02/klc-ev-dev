@@ -24,8 +24,8 @@ import {
 } from "lucide-react";
 
 const ConnectorTypeLabels: Record<number | string, string> = {
-  0: "Type 2", 1: "CCS2", 2: "CHAdeMO", 3: "GBT", 4: "Type 1",
-  "Type1": "Type 1", "Type2": "Type 2", "CCS2": "CCS2", "CHAdeMO": "CHAdeMO", "GBT": "GBT",
+  0: "Type 2", 1: "CCS2", 2: "CHAdeMO", 3: "GBT", 4: "Type 1", 5: "NACS",
+  "Type1": "Type 1", "Type2": "Type 2", "CCS2": "CCS2", "CHAdeMO": "CHAdeMO", "GBT": "GBT", "NACS": "NACS",
 };
 
 export default function StationDetailPage() {
@@ -230,6 +230,7 @@ export default function StationDetailPage() {
                       <option value={2}>CHAdeMO</option>
                       <option value={3}>GBT</option>
                       <option value={4}>Type 1</option>
+                      <option value={5}>NACS</option>
                     </select>
                   </div>
                   <div>

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using KLC.Enums;
 using KLC.Notifications;
 using KLC.Ocpp;
+using KLC.Operators;
 using KLC.Stations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -115,6 +116,31 @@ public class HeartbeatMonitorService : BackgroundService
                     station.Id);
 
                 await alertRepository.InsertAsync(alert);
+
+                // Deliver webhook: StationOffline
+                var webhookService = scope.ServiceProvider.GetService<IOperatorWebhookService>();
+                if (webhookService != null)
+                {
+                    try
+                    {
+                        await webhookService.EnqueueWebhookAsync(
+                            WebhookEventType.StationOffline,
+                            station.Id,
+                            new
+                            {
+                                stationId = station.Id,
+                                stationCode = station.StationCode,
+                                stationName = station.Name,
+                                lastHeartbeat = connection.LastHeartbeat
+                            });
+                    }
+                    catch (Exception webhookEx)
+                    {
+                        _logger.LogWarning(webhookEx,
+                            "Failed to deliver StationOffline webhook for {ChargePointId}",
+                            connection.ChargePointId);
+                    }
+                }
 
                 _logger.LogInformation(
                     "Station {StationCode} marked offline and alert created due to heartbeat timeout",

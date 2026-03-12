@@ -42,6 +42,11 @@ public class Connector : FullAuditedEntity<Guid>
     public bool IsEnabled { get; private set; }
 
     /// <summary>
+    /// IEC 62053 metering accuracy class for billing compliance.
+    /// </summary>
+    public MeteringClass MeteringClass { get; private set; }
+
+    /// <summary>
     /// Navigation property to parent station.
     /// </summary>
     public ChargingStation? Station { get; private set; }
@@ -92,5 +97,10 @@ public class Connector : FullAuditedEntity<Guid>
     {
         IsEnabled = false;
         Status = ConnectorStatus.Unavailable;
+    }
+
+    public void SetMeteringClass(MeteringClass meteringClass)
+    {
+        MeteringClass = meteringClass;
     }
 }

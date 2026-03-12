@@ -232,6 +232,40 @@ export const settingsApi = {
   update: (data: SystemSettings) => api.put("/settings", data),
 };
 
+export const powerSharingApi = {
+  getList: (params?: { cursor?: string; pageSize?: number; isActive?: boolean; mode?: number; search?: string }) =>
+    api.get("/power-sharing", { params }),
+  get: (id: string) => api.get(`/power-sharing/${id}`),
+  create: (data: CreatePowerSharingGroupDto) => api.post("/power-sharing", data),
+  update: (id: string, data: UpdatePowerSharingGroupDto) => api.put(`/power-sharing/${id}`, data),
+  delete: (id: string) => api.delete(`/power-sharing/${id}`),
+  activate: (id: string) => api.post(`/power-sharing/${id}/activate`),
+  deactivate: (id: string) => api.post(`/power-sharing/${id}/deactivate`),
+  addMember: (groupId: string, data: { stationId: string; connectorId: string; priority?: number }) =>
+    api.post(`/power-sharing/${groupId}/members`, data),
+  removeMember: (groupId: string, connectorId: string) =>
+    api.delete(`/power-sharing/${groupId}/members/${connectorId}`),
+  recalculate: (groupId: string) => api.post(`/power-sharing/${groupId}/recalculate`),
+  getLoadProfiles: (groupId: string, from?: string, to?: string) =>
+    api.get(`/power-sharing/${groupId}/load-profiles`, { params: { from, to } }),
+};
+
+export interface CreatePowerSharingGroupDto {
+  name: string;
+  maxCapacityKw: number;
+  mode: number;
+  distributionStrategy?: number;
+  minPowerPerConnectorKw?: number;
+  stationGroupId?: string;
+}
+
+export interface UpdatePowerSharingGroupDto {
+  name: string;
+  maxCapacityKw: number;
+  distributionStrategy: number;
+  minPowerPerConnectorKw: number;
+}
+
 export interface SystemSettings {
   siteName: string;
   timezone: string;
@@ -338,3 +372,72 @@ export interface UpdateStationGroupDto {
   parentGroupId?: string | null;
   isActive?: boolean;
 }
+
+// --- Operators ---
+
+export interface CreateOperatorDto {
+  name: string;
+  contactEmail: string;
+  description?: string;
+  rateLimitPerMinute?: number;
+}
+
+export interface UpdateOperatorDto {
+  name: string;
+  contactEmail: string;
+  webhookUrl?: string;
+  description?: string;
+  rateLimitPerMinute: number;
+}
+
+export const operatorsApi = {
+  getList: (params?: { cursor?: string; pageSize?: number; isActive?: boolean; search?: string }) =>
+    api.get("/operators", { params }),
+  get: (id: string) => api.get(`/operators/${id}`),
+  create: (data: CreateOperatorDto) => api.post("/operators", data),
+  update: (id: string, data: UpdateOperatorDto) => api.put(`/operators/${id}`, data),
+  delete: (id: string) => api.delete(`/operators/${id}`),
+  regenerateApiKey: (id: string) => api.post(`/operators/${id}/regenerate-api-key`),
+  addStation: (id: string, stationId: string) => api.post(`/operators/${id}/stations/${stationId}`),
+  removeStation: (id: string, stationId: string) => api.delete(`/operators/${id}/stations/${stationId}`),
+};
+
+// --- Fleets ---
+
+export interface CreateFleetDto {
+  name: string;
+  description?: string;
+  maxMonthlyBudgetVnd: number;
+  chargingPolicy?: number;
+  budgetAlertThresholdPercent?: number;
+}
+
+export interface UpdateFleetDto {
+  name: string;
+  description?: string;
+  maxMonthlyBudgetVnd: number;
+  chargingPolicy: number;
+  budgetAlertThresholdPercent: number;
+}
+
+export const fleetsApi = {
+  getList: (params?: { cursor?: string; pageSize?: number; isActive?: boolean; search?: string }) =>
+    api.get("/fleets", { params }),
+  get: (id: string) => api.get(`/fleets/${id}`),
+  create: (data: CreateFleetDto) => api.post("/fleets", data),
+  update: (id: string, data: UpdateFleetDto) => api.put(`/fleets/${id}`, data),
+  delete: (id: string) => api.delete(`/fleets/${id}`),
+  addVehicle: (id: string, data: { vehicleId: string; driverUserId?: string; dailyChargingLimitKwh?: number }) =>
+    api.post(`/fleets/${id}/vehicles`, data),
+  removeVehicle: (id: string, vehicleId: string) => api.delete(`/fleets/${id}/vehicles/${vehicleId}`),
+  getSchedules: (id: string) => api.get(`/fleets/${id}/schedules`),
+  addSchedule: (id: string, data: { dayOfWeek: number; startTimeUtc: string; endTimeUtc: string }) =>
+    api.post(`/fleets/${id}/schedules`, data),
+  removeSchedule: (id: string, scheduleId: string) => api.delete(`/fleets/${id}/schedules/${scheduleId}`),
+  addAllowedStationGroup: (id: string, stationGroupId: string) =>
+    api.post(`/fleets/${id}/allowed-station-groups/${stationGroupId}`),
+  removeAllowedStationGroup: (id: string, stationGroupId: string) =>
+    api.delete(`/fleets/${id}/allowed-station-groups/${stationGroupId}`),
+  getAnalytics: (id: string, params?: { from?: string; to?: string }) =>
+    api.get(`/fleets/${id}/analytics`, { params }),
+};
