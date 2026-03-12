@@ -62,10 +62,10 @@ describe('LoginPage', () => {
     expect(screen.getByLabelText('Password')).toBeInTheDocument();
   });
 
-  it('renders brand title', async () => {
+  it('renders brand logo', async () => {
     renderWithProviders(<LoginPage />);
     await waitFor(() => {
-      expect(screen.getByText('K-Charge')).toBeInTheDocument();
+      expect(screen.getByAltText('K-Charge')).toBeInTheDocument();
     });
   });
 

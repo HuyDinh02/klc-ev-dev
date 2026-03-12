@@ -2,16 +2,17 @@
 
 /* ============================================
    K-Charge Design System — Color Tokens
-   Brand: Green #28A649, Orange #FAA623
+   Brand: Green #2D9B3A, Orange #F5A623, White
+   Logo: K-CHARGE (stylized K + charging plug)
    ============================================ */
 
 :root {
   /* Brand — K-Charge Green as primary */
-  --primary: 145 61% 40%;
+  --primary: 134 55% 39%;
   --primary-foreground: 0 0% 100%;
 
   /* Surfaces */
-  --background: 140 20% 99%;
+  --background: 120 15% 98%;
   --foreground: 222.2 84% 4.9%;
   --card: 0 0% 100%;
   --card-foreground: 222.2 84% 4.9%;
@@ -27,7 +28,7 @@
   --muted-foreground: 215.4 16.3% 46.9%;
 
   /* Accent — K-Charge Orange */
-  --accent: 37 95% 56%;
+  --accent: 39 91% 55%;
   --accent-foreground: 222.2 47.4% 11.2%;
 
   /* Destructive */
@@ -37,7 +38,7 @@
   /* Borders & inputs */
   --border: 214.3 31.8% 91.4%;
   --input: 214.3 31.8% 91.4%;
-  --ring: 145 61% 40%;
+  --ring: 134 55% 39%;
 
   /* Radius */
   --radius: 0.5rem;
@@ -53,11 +54,11 @@
   --color-info-light: #EFF6FF;
 
   /* === Brand Explicit === */
-  --color-brand-green: #28A649;
-  --color-brand-green-light: #E8F5EC;
-  --color-brand-green-dark: #1E7D37;
-  --color-brand-orange: #FAA623;
-  --color-brand-orange-light: #FFF4E0;
+  --color-brand-green: #2D9B3A;
+  --color-brand-green-light: #E6F5E9;
+  --color-brand-green-dark: #1F7A2B;
+  --color-brand-orange: #F5A623;
+  --color-brand-orange-light: #FEF3DC;
   --color-brand-orange-dark: #D48A0F;
 
   /* === Connector/Station Status === */
@@ -79,9 +80,9 @@
   --color-severity-low: #3B82F6;
 
   /* === Chart Palette === */
-  --color-chart-1: #28A649;
+  --color-chart-1: #2D9B3A;
   --color-chart-2: #3B82F6;
-  --color-chart-3: #FAA623;
+  --color-chart-3: #F5A623;
   --color-chart-4: #8B5CF6;
   --color-chart-5: #EC4899;
   --color-chart-6: #14B8A6;
@@ -94,7 +95,7 @@
   --card-foreground: 210 40% 98%;
   --popover: 222.2 84% 4.9%;
   --popover-foreground: 210 40% 98%;
-  --primary: 145 61% 45%;
+  --primary: 134 55% 44%;
   --primary-foreground: 0 0% 100%;
   --secondary: 217.2 32.6% 17.5%;
   --secondary-foreground: 210 40% 98%;
@@ -106,7 +107,7 @@
   --destructive-foreground: 210 40% 98%;
   --border: 217.2 32.6% 17.5%;
   --input: 217.2 32.6% 17.5%;
-  --ring: 145 61% 45%;
+  --ring: 134 55% 44%;
 }
 
 @theme inline {

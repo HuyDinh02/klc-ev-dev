@@ -1,17 +1,17 @@
 export const Colors = {
-  primary: '#0066CC',      // Blue
-  secondary: '#FF6600',    // Orange
+  primary: '#2D9B3A',      // K-Charge Green
+  secondary: '#F5A623',    // K-Charge Orange
   background: '#FFFFFF',   // White
-  surface: '#F5F7FA',
+  surface: '#F5F8F5',
   text: '#1A1A1A',
   textSecondary: '#666666',
   textLight: '#999999',
   border: '#E0E0E0',
-  success: '#28A745',
-  warning: '#FFC107',
+  success: '#22C55E',
+  warning: '#F59E0B',
   error: '#DC3545',
-  available: '#28A745',    // Connector available
-  charging: '#0066CC',     // Connector in use
+  available: '#22C55E',    // Connector available
+  charging: '#2D9B3A',     // Connector in use (brand green)
   faulted: '#DC3545',      // Connector faulted
   offline: '#999999',      // Connector offline
 };

@@ -71,7 +71,7 @@ export function LoginScreen() {
           <View style={styles.logoContainer} accessible={false}>
             <Text style={styles.logoText}>K</Text>
           </View>
-          <Text style={styles.title} accessibilityRole="header">KLC</Text>
+          <Text style={styles.title} accessibilityRole="header">K-Charge</Text>
           <Text style={styles.subtitle}>EV Charging Made Simple</Text>
         </View>
 

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Rounded square border -->
+  <rect x="16" y="16" width="168" height="168" rx="16" ry="16" stroke="#F5A623" stroke-width="8" fill="white"/>
+
+  <!-- Orange top-left triangle -->
+  <path d="M44 40 L100 40 L44 100 Z" fill="#F5A623"/>
+
+  <!-- Green diagonal stripe (the K shape) -->
+  <path d="M72 36 L164 140 L140 164 L36 72 Z" fill="#2D9B3A"/>
+
+  <!-- Orange bottom-right plug piece -->
+  <path d="M120 140 L156 140 L156 160 C156 168 150 174 142 174 L134 174 L134 164 L120 164 Z" fill="#F5A623"/>
+  <path d="M134 164 L134 174 L126 174 C118 174 112 168 112 160 L112 152 L120 152 L120 164 Z" fill="#F5A623"/>
+</svg>

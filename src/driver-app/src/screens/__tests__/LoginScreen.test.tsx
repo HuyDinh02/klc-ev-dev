@@ -58,7 +58,7 @@ describe('LoginScreen', () => {
       <LoginScreen />
     );
 
-    expect(getByText('KLC')).toBeTruthy();
+    expect(getByText('K-Charge')).toBeTruthy();
     expect(getByText('EV Charging Made Simple')).toBeTruthy();
     // "Sign In" appears as both heading and button text
     expect(getAllByText('Sign In').length).toBeGreaterThanOrEqual(2);
