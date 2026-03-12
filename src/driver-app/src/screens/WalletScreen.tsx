@@ -10,7 +10,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Colors, Shadows } from '../constants/colors';
 import { Card } from '../components/common';
@@ -54,6 +54,7 @@ function formatDate(dateStr: string): string {
 
 export function WalletScreen() {
   const { t } = useTranslation();
+  const navigation = useNavigation();
   const [balance, setBalance] = useState<number>(0);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [nextCursor, setNextCursor] = useState<string | undefined>();
@@ -244,6 +245,24 @@ export function WalletScreen() {
         </View>
       </View>
 
+      <TouchableOpacity
+        style={styles.promotionsCard}
+        onPress={() => navigation.navigate('Promotions')}
+        activeOpacity={0.7}
+        accessible={true}
+        accessibilityRole="button"
+        accessibilityLabel={t('promotions.viewAll')}
+      >
+        <View style={styles.promotionsCardIcon}>
+          <Text style={styles.promotionsCardIconText}>{'\uD83C\uDF81'}</Text>
+        </View>
+        <View style={styles.promotionsCardContent}>
+          <Text style={styles.promotionsCardTitle}>{t('promotions.title')}</Text>
+          <Text style={styles.promotionsCardSubtitle}>{t('promotions.viewAll')}</Text>
+        </View>
+        <Text style={styles.promotionsCardArrow}>{'\u203A'}</Text>
+      </TouchableOpacity>
+
       <View style={styles.historyHeader}>
         <Text style={styles.sectionTitle}>{t('wallet.transactionHistory')}</Text>
       </View>
@@ -401,6 +420,49 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: Colors.primary,
+  },
+  promotionsCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 12,
+    padding: 14,
+    backgroundColor: Colors.background,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.secondary + '40',
+    ...Shadows.small,
+  },
+  promotionsCardIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.secondary + '20',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  promotionsCardIconText: {
+    fontSize: 20,
+  },
+  promotionsCardContent: {
+    flex: 1,
+  },
+  promotionsCardTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.text,
+    marginBottom: 2,
+  },
+  promotionsCardSubtitle: {
+    fontSize: 13,
+    color: Colors.secondary,
+    fontWeight: '500',
+  },
+  promotionsCardArrow: {
+    fontSize: 22,
+    color: Colors.textSecondary,
+    marginLeft: 8,
   },
   historyHeader: {
     paddingHorizontal: 16,

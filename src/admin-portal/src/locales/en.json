@@ -1060,6 +1060,22 @@
     "start": "Start",
     "end": "End"
   },
+  "permissions": {
+    "grantAll": "Grant All",
+    "revokeAll": "Revoke All",
+    "selectAll": "Select All",
+    "searchPermissions": "Search permissions...",
+    "summary": "{granted}/{total} permissions granted",
+    "pageHint": "Controls",
+    "sectionOperations": "Operations",
+    "sectionIncidents": "Incidents",
+    "sectionBusiness": "Business",
+    "sectionUsers": "Users & Access",
+    "sectionSystem": "System",
+    "noResults": "No matching permissions",
+    "grantAllConfirm": "Grant all permissions to this role?",
+    "revokeAllConfirm": "Revoke all permissions from this role?"
+  },
   "powerSharing": {
     "title": "Power Sharing",
     "description": "Manage LINK & LOOP power sharing groups",

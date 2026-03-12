@@ -45,7 +45,10 @@
     "noStations": "Kh\u00f4ng t\u00ecm th\u1ea5y tr\u1ea1m s\u1ea1c",
     "expandSearch": "Th\u1eed m\u1edf r\u1ed9ng ph\u1ea1m vi t\u00ecm ki\u1ebfm",
     "activeSession": "Phi\u00ean s\u1ea1c \u0111ang ho\u1ea1t \u0111\u1ed9ng",
-    "kmAway": "{{distance}} km"
+    "kmAway": "{{distance}} km",
+    "mapView": "B\u1ea3n \u0111\u1ed3",
+    "listView": "Danh s\u00e1ch",
+    "stationsNearby": "tr\u1ea1m g\u1ea7n \u0111\u00e2y"
   },
   "stations": {
     "title": "Chi ti\u1ebft tr\u1ea1m s\u1ea1c",
@@ -77,7 +80,8 @@
     "stopTitle": "D\u1eebng s\u1ea1c",
     "stopMessage": "B\u1ea1n c\u00f3 ch\u1eafc mu\u1ed1n d\u1eebng phi\u00ean s\u1ea1c kh\u00f4ng?",
     "stop": "D\u1eebng",
-    "errorStopSession": "Kh\u00f4ng th\u1ec3 d\u1eebng phi\u00ean s\u1ea1c"
+    "errorStopSession": "Kh\u00f4ng th\u1ec3 d\u1eebng phi\u00ean s\u1ea1c",
+    "resuming": "\u0110ang kh\u00f4i ph\u1ee5c phi\u00ean s\u1ea1c..."
   },
   "history": {
     "title": "L\u1ecbch s\u1eed s\u1ea1c",
@@ -175,11 +179,105 @@
     "network": "L\u1ed7i m\u1ea1ng. Vui l\u00f2ng ki\u1ec3m tra k\u1ebft n\u1ed1i.",
     "unauthorized": "Phi\u00ean \u0111\u0103ng nh\u1eadp \u0111\u00e3 h\u1ebft h\u1ea1n. Vui l\u00f2ng \u0111\u0103ng nh\u1eadp l\u1ea1i."
   },
+  "settings": {
+    "title": "C\u00e0i \u0111\u1eb7t",
+    "language": "Ng\u00f4n ng\u1eef",
+    "vietnameseLanguage": "Ti\u1ebfng Vi\u1ec7t",
+    "toggleLanguage": "Chuy\u1ec3n \u0111\u1ed5i ng\u00f4n ng\u1eef",
+    "currentLanguageVi": "\u0110ang s\u1eed d\u1ee5ng ti\u1ebfng Vi\u1ec7t",
+    "currentLanguageEn": "\u0110ang s\u1eed d\u1ee5ng ti\u1ebfng Anh",
+    "notificationPreferences": "T\u00f9y ch\u1ecdn th\u00f4ng b\u00e1o",
+    "chargingComplete": "Ho\u00e0n t\u1ea5t s\u1ea1c",
+    "chargingCompleteDesc": "Th\u00f4ng b\u00e1o khi phi\u00ean s\u1ea1c k\u1ebft th\u00fac",
+    "paymentAlerts": "C\u1ea3nh b\u00e1o thanh to\u00e1n",
+    "paymentAlertsDesc": "Th\u00f4ng b\u00e1o khi thanh to\u00e1n th\u00e0nh c\u00f4ng ho\u1eb7c th\u1ea5t b\u1ea1i",
+    "faultAlerts": "C\u1ea3nh b\u00e1o l\u1ed7i",
+    "faultAlertsDesc": "Th\u00f4ng b\u00e1o khi tr\u1ea1m s\u1ea1c g\u1eb7p s\u1ef1 c\u1ed1",
+    "promotions": "Khuy\u1ebfn m\u00e3i",
+    "promotionsDesc": "Nh\u1eadn \u01b0u \u0111\u00e3i v\u00e0 gi\u1ea3m gi\u00e1",
+    "about": "Th\u00f4ng tin",
+    "appVersion": "Phi\u00ean b\u1ea3n \u1ee9ng d\u1ee5ng"
+  },
+  "paymentMethods": {
+    "title": "Ph\u01b0\u01a1ng th\u1ee9c thanh to\u00e1n",
+    "addMethod": "Th\u00eam ph\u01b0\u01a1ng th\u1ee9c thanh to\u00e1n",
+    "noMethods": "Ch\u01b0a c\u00f3 ph\u01b0\u01a1ng th\u1ee9c thanh to\u00e1n",
+    "noMethodsSubtitle": "Th\u00eam ph\u01b0\u01a1ng th\u1ee9c thanh to\u00e1n \u0111\u1ec3 b\u1eaft \u0111\u1ea7u s\u1ea1c",
+    "setDefault": "\u0110\u1eb7t l\u00e0m m\u1eb7c \u0111\u1ecbnh",
+    "deleteMethod": "X\u00f3a ph\u01b0\u01a1ng th\u1ee9c",
+    "deleteConfirmTitle": "X\u00f3a ph\u01b0\u01a1ng th\u1ee9c thanh to\u00e1n",
+    "deleteConfirmMessage": "B\u1ea1n c\u00f3 ch\u1eafc mu\u1ed1n x\u00f3a ph\u01b0\u01a1ng th\u1ee9c thanh to\u00e1n n\u00e0y?",
+    "addTitle": "Th\u00eam ph\u01b0\u01a1ng th\u1ee9c thanh to\u00e1n",
+    "momo": "V\u00ed MoMo",
+    "zalopay": "ZaloPay",
+    "vnpay": "VnPay",
+    "onepay": "OnePay",
+    "card": "Th\u1ebb t\u00edn d\u1ee5ng/ghi n\u1ee3",
+    "default": "M\u1eb7c \u0111\u1ecbnh",
+    "lastFour": "k\u1ebft th\u00fac {{digits}}",
+    "errorLoad": "Kh\u00f4ng th\u1ec3 t\u1ea3i ph\u01b0\u01a1ng th\u1ee9c thanh to\u00e1n",
+    "errorAdd": "Kh\u00f4ng th\u1ec3 th\u00eam ph\u01b0\u01a1ng th\u1ee9c thanh to\u00e1n",
+    "errorDelete": "Kh\u00f4ng th\u1ec3 x\u00f3a ph\u01b0\u01a1ng th\u1ee9c thanh to\u00e1n"
+  },
+  "qrScanner": {
+    "title": "Qu\u00e9t m\u00e3 QR",
+    "instruction": "H\u01b0\u1edbng camera v\u00e0o m\u00e3 QR tr\u1ea1m s\u1ea1c",
+    "permissionRequired": "C\u1ea7n quy\u1ec1n truy c\u1eadp camera",
+    "permissionMessage": "Cho ph\u00e9p truy c\u1eadp camera \u0111\u1ec3 qu\u00e9t m\u00e3 QR tr\u1ea1m s\u1ea1c",
+    "openSettings": "M\u1edf C\u00e0i \u0111\u1eb7t",
+    "invalidQr": "M\u00e3 QR kh\u00f4ng h\u1ee3p l\u1ec7",
+    "scanning": "\u0110ang qu\u00e9t...",
+    "flash": "\u0110\u00e8n flash"
+  },
   "tabs": {
     "stations": "Tr\u1ea1m s\u1ea1c",
     "favorites": "Y\u00eau th\u00edch",
     "history": "L\u1ecbch s\u1eed",
     "wallet": "V\u00ed",
     "profile": "T\u00e0i kho\u1ea3n"
+  },
+  "helpSupport": {
+    "title": "Tr\u1ee3 gi\u00fap & H\u1ed7 tr\u1ee3",
+    "faq": "C\u00e2u h\u1ecfi th\u01b0\u1eddng g\u1eb7p",
+    "noFaq": "Ch\u01b0a c\u00f3 c\u00e2u h\u1ecfi th\u01b0\u1eddng g\u1eb7p",
+    "sendFeedback": "G\u1eedi ph\u1ea3n h\u1ed3i",
+    "feedbackType": "Lo\u1ea1i ph\u1ea3n h\u1ed3i",
+    "typeGeneral": "Chung",
+    "typeBug": "B\u00e1o l\u1ed7i",
+    "typeFeature": "Y\u00eau c\u1ea7u t\u00ednh n\u0103ng",
+    "typeComplaint": "Khi\u1ebfu n\u1ea1i",
+    "typeCompliment": "Khen ng\u1ee3i",
+    "subject": "Ti\u00eau \u0111\u1ec1",
+    "subjectPlaceholder": "M\u00f4 t\u1ea3 ng\u1eafn g\u1ecdn",
+    "message": "N\u1ed9i dung",
+    "messagePlaceholder": "M\u00f4 t\u1ea3 v\u1ea5n \u0111\u1ec1 ho\u1eb7c ph\u1ea3n h\u1ed3i c\u1ee7a b\u1ea1n...",
+    "submit": "G\u1eedi ph\u1ea3n h\u1ed3i",
+    "submitSuccess": "C\u1ea3m \u01a1n! Ph\u1ea3n h\u1ed3i c\u1ee7a b\u1ea1n \u0111\u00e3 \u0111\u01b0\u1ee3c g\u1eedi.",
+    "submitError": "Kh\u00f4ng th\u1ec3 g\u1eedi ph\u1ea3n h\u1ed3i. Vui l\u00f2ng th\u1eed l\u1ea1i.",
+    "contactUs": "Li\u00ean h\u1ec7",
+    "email": "Email",
+    "phone": "\u0110\u01b0\u1eddng d\u00e2y n\u00f3ng",
+    "comingSoon": "S\u1eafp ra m\u1eaft",
+    "eInvoicesComingSoon": "T\u00ednh n\u0103ng h\u00f3a \u0111\u01a1n \u0111i\u1ec7n t\u1eed s\u1eafp ra m\u1eaft."
+  },
+  "promotions": {
+    "title": "Khuy\u1ebfn m\u00e3i",
+    "noPromotions": "Ch\u01b0a c\u00f3 khuy\u1ebfn m\u00e3i",
+    "noPromotionsDesc": "Quay l\u1ea1i sau \u0111\u1ec3 xem c\u00e1c \u01b0u \u0111\u00e3i h\u1ea5p d\u1eabn!",
+    "percentOff": "Gi\u1ea3m {{value}}%",
+    "amountOff": "Gi\u1ea3m {{value}}",
+    "validUntil": "C\u00f3 hi\u1ec7u l\u1ef1c \u0111\u1ebfn {{date}}",
+    "expired": "\u0110\u00e3 h\u1ebft h\u1ea1n",
+    "active": "\u0110ang ho\u1ea1t \u0111\u1ed9ng",
+    "minCharge": "S\u1ea1c t\u1ed1i thi\u1ec3u: {{amount}}",
+    "usage": "\u0110\u00e3 d\u00f9ng {{current}}/{{max}}",
+    "viewAll": "Xem t\u1ea5t c\u1ea3 khuy\u1ebfn m\u00e3i"
+  },
+  "errorBoundary": {
+    "title": "\u0110\u00e3 x\u1ea3y ra l\u1ed7i",
+    "message": "\u0110\u00e3 x\u1ea3y ra l\u1ed7i kh\u00f4ng mong mu\u1ed1n. Vui l\u00f2ng th\u1eed l\u1ea1i.",
+    "tryAgain": "Th\u1eed l\u1ea1i",
+    "goHome": "V\u1ec1 trang ch\u1ee7",
+    "errorDetails": "Chi ti\u1ebft l\u1ed7i"
   }
 }

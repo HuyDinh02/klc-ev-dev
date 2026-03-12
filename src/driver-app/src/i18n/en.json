@@ -45,7 +45,10 @@
     "noStations": "No stations found nearby",
     "expandSearch": "Try expanding your search radius",
     "activeSession": "Active Session",
-    "kmAway": "{{distance}} km"
+    "kmAway": "{{distance}} km",
+    "mapView": "Map",
+    "listView": "List",
+    "stationsNearby": "stations nearby"
   },
   "stations": {
     "title": "Station Details",
@@ -77,7 +80,8 @@
     "stopTitle": "Stop Charging",
     "stopMessage": "Are you sure you want to stop the charging session?",
     "stop": "Stop",
-    "errorStopSession": "Failed to stop charging session"
+    "errorStopSession": "Failed to stop charging session",
+    "resuming": "Resuming active session..."
   },
   "history": {
     "title": "Charging History",
@@ -175,11 +179,105 @@
     "network": "Network error. Please check your connection.",
     "unauthorized": "Session expired. Please login again."
   },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "vietnameseLanguage": "Vietnamese",
+    "toggleLanguage": "Toggle language",
+    "currentLanguageVi": "Currently using Vietnamese",
+    "currentLanguageEn": "Currently using English",
+    "notificationPreferences": "Notification Preferences",
+    "chargingComplete": "Charging Complete",
+    "chargingCompleteDesc": "Notify when charging session ends",
+    "paymentAlerts": "Payment Alerts",
+    "paymentAlertsDesc": "Notify on payment success or failure",
+    "faultAlerts": "Fault Alerts",
+    "faultAlertsDesc": "Notify when charger faults occur",
+    "promotions": "Promotions",
+    "promotionsDesc": "Receive promotional offers and discounts",
+    "about": "About",
+    "appVersion": "App Version"
+  },
+  "paymentMethods": {
+    "title": "Payment Methods",
+    "addMethod": "Add Payment Method",
+    "noMethods": "No payment methods",
+    "noMethodsSubtitle": "Add a payment method to start charging",
+    "setDefault": "Set as Default",
+    "deleteMethod": "Remove Method",
+    "deleteConfirmTitle": "Remove Payment Method",
+    "deleteConfirmMessage": "Are you sure you want to remove this payment method?",
+    "addTitle": "Add Payment Method",
+    "momo": "MoMo Wallet",
+    "zalopay": "ZaloPay",
+    "vnpay": "VnPay",
+    "onepay": "OnePay",
+    "card": "Credit/Debit Card",
+    "default": "Default",
+    "lastFour": "ending in {{digits}}",
+    "errorLoad": "Failed to load payment methods",
+    "errorAdd": "Failed to add payment method",
+    "errorDelete": "Failed to remove payment method"
+  },
+  "qrScanner": {
+    "title": "Scan QR Code",
+    "instruction": "Point camera at a station QR code",
+    "permissionRequired": "Camera permission required",
+    "permissionMessage": "Allow camera access to scan station QR codes",
+    "openSettings": "Open Settings",
+    "invalidQr": "Invalid QR code",
+    "scanning": "Scanning...",
+    "flash": "Flash"
+  },
   "tabs": {
     "stations": "Stations",
     "favorites": "Favorites",
     "history": "History",
     "wallet": "Wallet",
     "profile": "Profile"
+  },
+  "helpSupport": {
+    "title": "Help & Support",
+    "faq": "Frequently Asked Questions",
+    "noFaq": "No FAQ available",
+    "sendFeedback": "Send Feedback",
+    "feedbackType": "Feedback Type",
+    "typeGeneral": "General",
+    "typeBug": "Bug Report",
+    "typeFeature": "Feature Request",
+    "typeComplaint": "Complaint",
+    "typeCompliment": "Compliment",
+    "subject": "Subject",
+    "subjectPlaceholder": "Brief description",
+    "message": "Message",
+    "messagePlaceholder": "Describe your issue or feedback...",
+    "submit": "Submit Feedback",
+    "submitSuccess": "Thank you! Your feedback has been submitted.",
+    "submitError": "Failed to submit feedback. Please try again.",
+    "contactUs": "Contact Us",
+    "email": "Email",
+    "phone": "Hotline",
+    "comingSoon": "Coming Soon",
+    "eInvoicesComingSoon": "E-Invoice feature is coming soon."
+  },
+  "promotions": {
+    "title": "Promotions",
+    "noPromotions": "No promotions available",
+    "noPromotionsDesc": "Check back later for exciting offers!",
+    "percentOff": "{{value}}% OFF",
+    "amountOff": "{{value}} OFF",
+    "validUntil": "Valid until {{date}}",
+    "expired": "Expired",
+    "active": "Active",
+    "minCharge": "Min charge: {{amount}}",
+    "usage": "Used {{current}}/{{max}}",
+    "viewAll": "View All Promotions"
+  },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "message": "An unexpected error occurred. Please try again.",
+    "tryAgain": "Try Again",
+    "goHome": "Go to Home",
+    "errorDetails": "Error details"
   }
 }

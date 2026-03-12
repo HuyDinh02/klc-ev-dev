@@ -191,11 +191,11 @@ export function ProfileScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('profile.account')}</Text>
           <Card padding="none">
-            <MenuItem title={t('profile.paymentMethods')} onPress={() => {}} />
-            <MenuItem title={t('profile.notificationsMenu')} onPress={() => {}} />
-            <MenuItem title={t('profile.eInvoices')} onPress={() => {}} />
-            <MenuItem title={t('profile.settings')} onPress={() => {}} />
-            <MenuItem title={t('profile.helpSupport')} onPress={() => {}} />
+            <MenuItem title={t('profile.paymentMethods')} onPress={() => navigation.navigate('PaymentMethods')} />
+            <MenuItem title={t('profile.notificationsMenu')} onPress={() => navigation.navigate('Notifications')} />
+            <MenuItem title={t('profile.eInvoices')} onPress={() => Alert.alert(t('helpSupport.comingSoon'), t('helpSupport.eInvoicesComingSoon'))} />
+            <MenuItem title={t('profile.settings')} onPress={() => navigation.navigate('Settings')} />
+            <MenuItem title={t('profile.helpSupport')} onPress={() => navigation.navigate('HelpSupport')} />
           </Card>
         </View>
 

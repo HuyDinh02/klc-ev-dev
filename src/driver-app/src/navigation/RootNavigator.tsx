@@ -1,14 +1,35 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MainNavigator } from './MainNavigator';
-import { LoginScreen, StationDetailScreen, SessionScreen, VehiclesScreen, NotificationsScreen } from '../screens';
-import { useAuthStore } from '../stores';
+import { LoginScreen, StationDetailScreen, SessionScreen, VehiclesScreen, NotificationsScreen, SettingsScreen, QRScannerScreen, PaymentMethodsScreen, HelpSupportScreen, PromotionsScreen } from '../screens';
+import { useAuthStore, useSessionStore } from '../stores';
 import { Colors } from '../constants/colors';
 import type { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+function SessionResumeHandler() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { checkActiveSession } = useSessionStore();
+  const hasChecked = useRef(false);
+
+  useEffect(() => {
+    if (hasChecked.current) return;
+    hasChecked.current = true;
+
+    checkActiveSession().then((hasActive) => {
+      if (hasActive) {
+        navigation.navigate('Session');
+      }
+    });
+  }, [checkActiveSession, navigation]);
+
+  return null;
+}
 
 export function RootNavigator() {
   const { t } = useTranslation();
@@ -41,7 +62,7 @@ export function RootNavigator() {
         <>
           <Stack.Screen
             name="Main"
-            component={MainNavigator}
+            component={MainNavigatorWithSessionResume}
             options={{ headerShown: false }}
           />
           <Stack.Screen
@@ -75,6 +96,43 @@ export function RootNavigator() {
               headerShown: false,
             }}
           />
+          <Stack.Screen
+            name="Settings"
+            component={SettingsScreen}
+            options={{
+              title: t('settings.title'),
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="PaymentMethods"
+            component={PaymentMethodsScreen}
+            options={{
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="HelpSupport"
+            component={HelpSupportScreen}
+            options={{
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="Promotions"
+            component={PromotionsScreen}
+            options={{
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="QRScanner"
+            component={QRScannerScreen}
+            options={{
+              headerShown: false,
+              presentation: 'fullScreenModal',
+            }}
+          />
         </>
       ) : (
         <Stack.Screen
@@ -84,6 +142,15 @@ export function RootNavigator() {
         />
       )}
     </Stack.Navigator>
+  );
+}
+
+function MainNavigatorWithSessionResume() {
+  return (
+    <>
+      <SessionResumeHandler />
+      <MainNavigator />
+    </>
   );
 }
 

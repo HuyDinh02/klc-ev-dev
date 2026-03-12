@@ -1,5 +1,5 @@
 import api from './client';
-import type { Notification, PaginatedResponse } from '../types';
+import type { Notification, NotificationPreferences, PaginatedResponse } from '../types';
 
 export const notificationsApi = {
   getAll: async (cursor?: string, limit = 20): Promise<PaginatedResponse<Notification>> => {
@@ -24,5 +24,15 @@ export const notificationsApi = {
 
   registerDevice: async (fcmToken: string): Promise<void> => {
     await api.post('/devices/register', { fcmToken });
+  },
+
+  getPreferences: async (): Promise<NotificationPreferences> => {
+    const { data } = await api.get('/notifications/preferences');
+    return data;
+  },
+
+  updatePreferences: async (preferences: NotificationPreferences): Promise<NotificationPreferences> => {
+    const { data } = await api.put('/notifications/preferences', preferences);
+    return data;
   },
 };

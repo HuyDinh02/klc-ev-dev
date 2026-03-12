@@ -8,3 +8,6 @@ export { profileApi, vehiclesApi } from './profile';
 export { notificationsApi } from './notifications';
 export { favoritesApi } from './favorites';
 export { walletApi } from './wallet';
+export { feedbackApi } from './feedback';
+export type { FaqItem, SubmitFeedbackRequest, FeedbackItem } from './feedback';
+export { promotionsApi } from './promotions';

@@ -22,7 +22,7 @@ concurrency:
 env:
   GCP_REGION: ${{ secrets.GCP_REGION }}
   GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  AR_REPO: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/evcms-dev-ar
+  AR_REPO: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/klc-backend
 
 permissions:
   contents: read

@@ -119,6 +119,13 @@ export interface Notification {
 
 export type NotificationType = 'SessionComplete' | 'PaymentSuccess' | 'PaymentFailed' | 'Promotion' | 'System';
 
+export interface NotificationPreferences {
+  chargingComplete: boolean;
+  paymentAlerts: boolean;
+  faultAlerts: boolean;
+  promotions: boolean;
+}
+
 // Wallet types
 export interface WalletTransaction {
   id: string;
@@ -127,6 +134,21 @@ export interface WalletTransaction {
   balance: number;
   description: string;
   createdAt: string;
+}
+
+// Promotion types
+export interface Promotion {
+  id: string;
+  name: string;
+  description?: string;
+  discountType: number; // 0=Percentage, 1=FixedAmount
+  discountValue: number;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+  maxUsageCount?: number;
+  currentUsageCount?: number;
+  minimumChargeAmount?: number;
 }
 
 // API Response types
