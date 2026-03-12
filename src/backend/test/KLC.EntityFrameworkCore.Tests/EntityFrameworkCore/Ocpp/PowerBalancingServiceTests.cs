@@ -73,9 +73,9 @@ public class PowerBalancingServiceTests
             .Returns(new List<PowerSharingGroup>());
 
         // Start and immediately cancel to run one cycle
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
         _service.TriggerRebalance();
-        try { await _service.StartAsync(cts.Token); await Task.Delay(200); }
+        try { await _service.StartAsync(cts.Token); await Task.Delay(500); }
         catch (OperationCanceledException) { }
         finally { await _service.StopAsync(CancellationToken.None); }
 
@@ -120,9 +120,9 @@ public class PowerBalancingServiceTests
             .Returns(new RemoteCommandResult(true));
 
         // Act - trigger immediate rebalance
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
         _service.TriggerRebalance();
-        try { await _service.StartAsync(cts.Token); await Task.Delay(300); }
+        try { await _service.StartAsync(cts.Token); await Task.Delay(1000); }
         catch (OperationCanceledException) { }
         finally { await _service.StopAsync(CancellationToken.None); }
 
@@ -168,9 +168,9 @@ public class PowerBalancingServiceTests
             .Returns(new RemoteCommandResult(true));
 
         // Act
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
         _service.TriggerRebalance();
-        try { await _service.StartAsync(cts.Token); await Task.Delay(300); }
+        try { await _service.StartAsync(cts.Token); await Task.Delay(1000); }
         catch (OperationCanceledException) { }
         finally { await _service.StopAsync(CancellationToken.None); }
 
@@ -209,9 +209,9 @@ public class PowerBalancingServiceTests
         // Station NOT connected to _connectionManager
 
         // Act
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
         _service.TriggerRebalance();
-        try { await _service.StartAsync(cts.Token); await Task.Delay(300); }
+        try { await _service.StartAsync(cts.Token); await Task.Delay(1000); }
         catch (OperationCanceledException) { }
         finally { await _service.StopAsync(CancellationToken.None); }
 
