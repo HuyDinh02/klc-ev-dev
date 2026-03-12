@@ -113,7 +113,7 @@ export function Sidebar() {
         <div className="flex h-16 items-center justify-between border-b px-4">
           {!isCollapsed && (
             <Link href="/" className="flex items-center gap-2.5">
-              <Image src="/logo-icon.svg" alt="K-Charge" width={32} height={32} className="h-8 w-8" priority />
+              <Image src="/logo-icon.png" alt="K-Charge" width={32} height={32} className="h-8 w-8" priority />
               <div className="flex flex-col">
                 <span className="text-sm font-bold tracking-tight text-[var(--color-brand-green)]">K-Charge</span>
                 <span className="text-[10px] text-muted-foreground">by KLC Energy</span>
@@ -121,7 +121,7 @@ export function Sidebar() {
             </Link>
           )}
           {isCollapsed && (
-            <Image src="/logo-icon.svg" alt="K-Charge" width={32} height={32} className="mx-auto h-8 w-8" priority />
+            <Image src="/logo-icon.png" alt="K-Charge" width={32} height={32} className="mx-auto h-8 w-8" priority />
           )}
           {!isCollapsed && (
             <Button variant="ghost" size="icon" onClick={toggle} className="h-7 w-7" aria-label="Collapse sidebar">

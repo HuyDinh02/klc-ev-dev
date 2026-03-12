@@ -11,7 +11,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "K-Charge Admin",
   description: "EV Charging Station Management System",
-  icons: { icon: "/logo-icon.svg" },
+  icons: { icon: "/favicon.png" },
 };
 
 export default function RootLayout({

@@ -108,7 +108,7 @@ function LoginForm() {
         <CardContent className="p-8">
           {/* Brand */}
           <div className="mb-8 flex flex-col items-center text-center">
-            <Image src="/logo.svg" alt="K-Charge" width={160} height={192} className="mb-2 h-32 w-auto" priority />
+            <Image src="/logo.png" alt="K-Charge" width={474} height={317} className="mb-2 h-32 w-auto" priority />
             <p className="mt-1 text-sm text-muted-foreground">
               {t("auth.networkManagement")}
             </p>
