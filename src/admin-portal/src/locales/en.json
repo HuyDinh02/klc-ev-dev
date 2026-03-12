@@ -174,7 +174,16 @@
     "totalStations": "total stations",
     "sortByCode": "Sort by code",
     "sortByName": "Sort by name",
-    "sortByStatus": "Sort by status"
+    "sortByStatus": "Sort by status",
+    "photos": "Photos",
+    "primary": "Primary",
+    "setPrimary": "Set as primary",
+    "clickToUploadPhotos": "Click to upload photos",
+    "photoFormats": "JPEG, PNG, GIF, WebP (max 5MB each)",
+    "photoSizeError": "Image must be less than 5MB",
+    "photoTypeError": "Only JPEG, PNG, GIF, and WebP images are allowed",
+    "photoUploadFailed": "Failed to upload image. Please try again.",
+    "uploading": "Uploading..."
   },
   "sessions": {
     "title": "Charging Sessions",

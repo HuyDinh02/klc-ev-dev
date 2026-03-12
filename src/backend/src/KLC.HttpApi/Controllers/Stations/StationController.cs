@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using KLC.Permissions;
 using KLC.Stations;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Volo.Abp.Application.Dtos;
 
@@ -142,5 +143,25 @@ public class StationController : KLCController
     {
         await _stationAppService.SetPrimaryPhotoAsync(stationId, photoId);
         return NoContent();
+    }
+
+    [HttpPost("upload-photo")]
+    [Authorize(KLCPermissions.Stations.Update)]
+    [Consumes("multipart/form-data")]
+    public async Task<ActionResult<StationPhotoUploadResultDto>> UploadPhotoAsync(IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { error = new { message = "No file provided" } });
+
+        if (file.Length > 5 * 1024 * 1024)
+            return BadRequest(new { error = new { message = "File size must be less than 5MB" } });
+
+        var allowedTypes = new[] { "image/jpeg", "image/png", "image/gif", "image/webp" };
+        if (!Array.Exists(allowedTypes, t => t == file.ContentType))
+            return BadRequest(new { error = new { message = "Only JPEG, PNG, GIF, and WebP images are allowed" } });
+
+        using var stream = file.OpenReadStream();
+        var result = await _stationAppService.UploadPhotoAsync(stream, file.FileName);
+        return Ok(result);
     }
 }

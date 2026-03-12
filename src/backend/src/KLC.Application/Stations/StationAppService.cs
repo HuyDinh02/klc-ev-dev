@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using KLC.Enums;
+using KLC.Files;
 using KLC.Permissions;
 using KLC.Sessions;
 using Microsoft.AspNetCore.Authorization;
@@ -19,18 +21,21 @@ public class StationAppService : KLCAppService, IStationAppService
     private readonly IRepository<ChargingSession, Guid> _sessionRepository;
     private readonly IRepository<StationAmenity, Guid> _amenityRepository;
     private readonly IRepository<StationPhoto, Guid> _photoRepository;
+    private readonly IFileUploadService _fileUploadService;
     private readonly StationMapper _mapper;
 
     public StationAppService(
         IRepository<ChargingStation, Guid> stationRepository,
         IRepository<ChargingSession, Guid> sessionRepository,
         IRepository<StationAmenity, Guid> amenityRepository,
-        IRepository<StationPhoto, Guid> photoRepository)
+        IRepository<StationPhoto, Guid> photoRepository,
+        IFileUploadService fileUploadService)
     {
         _stationRepository = stationRepository;
         _sessionRepository = sessionRepository;
         _amenityRepository = amenityRepository;
         _photoRepository = photoRepository;
+        _fileUploadService = fileUploadService;
         _mapper = new StationMapper();
     }
 
@@ -327,5 +332,16 @@ public class StationAppService : KLCAppService, IStationAppService
                 photo.UnsetPrimary();
         }
         await _photoRepository.UpdateManyAsync(photos);
+    }
+
+    [Authorize(KLCPermissions.Stations.Update)]
+    public async Task<StationPhotoUploadResultDto> UploadPhotoAsync(Stream stream, string fileName)
+    {
+        var result = await _fileUploadService.UploadAsync(stream, fileName, "stations");
+        return new StationPhotoUploadResultDto
+        {
+            Url = result.Url,
+            FileSize = result.FileSize
+        };
     }
 }

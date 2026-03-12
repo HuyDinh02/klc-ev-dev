@@ -56,4 +56,7 @@ public interface IStationAppService : IApplicationService
     Task<StationPhotoDto> AddPhotoAsync(Guid stationId, AddStationPhotoDto input);
     Task RemovePhotoAsync(Guid stationId, Guid photoId);
     Task SetPrimaryPhotoAsync(Guid stationId, Guid photoId);
+
+    // Photo upload
+    Task<StationPhotoUploadResultDto> UploadPhotoAsync(System.IO.Stream stream, string fileName);
 }

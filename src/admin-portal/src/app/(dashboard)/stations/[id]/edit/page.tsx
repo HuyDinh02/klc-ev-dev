@@ -10,6 +10,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { stationsApi, stationGroupsApi, tariffsApi } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
 import { ArrowLeft } from "lucide-react";
+import { StationPhotoUpload } from "@/components/stations";
+import type { PhotoItem } from "@/components/stations";
 
 export default function EditStationPage() {
   const { id } = useParams<{ id: string }>();
@@ -24,11 +26,20 @@ export default function EditStationPage() {
     tariffPlanId: "",
     concurrencyStamp: "",
   });
+  const [photos, setPhotos] = useState<PhotoItem[]>([]);
 
   const { data: station, isLoading } = useQuery({
     queryKey: ["station", id],
     queryFn: async () => {
       const { data } = await stationsApi.getById(id);
+      return data;
+    },
+  });
+
+  const { data: photosData } = useQuery({
+    queryKey: ["station-photos", id],
+    queryFn: async () => {
+      const { data } = await stationsApi.getPhotos(id);
       return data;
     },
   });
@@ -62,6 +73,19 @@ export default function EditStationPage() {
       });
     }
   }, [station]);
+
+  useEffect(() => {
+    if (photosData) {
+      const mapped: PhotoItem[] = (Array.isArray(photosData) ? photosData : []).map(
+        (p: { id: string; url: string; isPrimary: boolean }) => ({
+          id: p.id,
+          url: p.url,
+          isPrimary: p.isPrimary,
+        })
+      );
+      setPhotos(mapped);
+    }
+  }, [photosData]);
 
   const updateMutation = useMutation({
     mutationFn: async () => {
@@ -219,6 +243,13 @@ export default function EditStationPage() {
                   </select>
                 </div>
               </div>
+
+              {/* Photo Upload — persisted immediately since station exists */}
+              <StationPhotoUpload
+                stationId={id}
+                photos={photos}
+                onChange={setPhotos}
+              />
 
               {updateMutation.isError && (
                 <div className="text-sm text-red-500">

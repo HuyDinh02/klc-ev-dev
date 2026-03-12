@@ -70,6 +70,21 @@ export const stationsApi = {
   enable: (id: string) => api.post(`/stations/${id}/enable`),
   disable: (id: string) => api.post(`/stations/${id}/disable`),
   decommission: (id: string) => api.post(`/stations/${id}/decommission`),
+  // Photos
+  uploadPhoto: (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return api.post<{ url: string; fileSize: number }>("/stations/upload-photo", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
+  getPhotos: (stationId: string) => api.get(`/stations/${stationId}/photos`),
+  addPhoto: (stationId: string, data: { url: string; thumbnailUrl?: string; isPrimary?: boolean; sortOrder?: number }) =>
+    api.post(`/stations/${stationId}/photos`, data),
+  removePhoto: (stationId: string, photoId: string) =>
+    api.delete(`/stations/${stationId}/photos/${photoId}`),
+  setPrimaryPhoto: (stationId: string, photoId: string) =>
+    api.post(`/stations/${stationId}/photos/${photoId}/set-primary`),
 };
 
 export const connectorsApi = {

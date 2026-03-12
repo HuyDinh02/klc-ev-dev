@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { stationsApi, stationGroupsApi, tariffsApi } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
 import { ArrowLeft } from "lucide-react";
+import { StationPhotoUpload } from "@/components/stations";
+import type { PhotoItem } from "@/components/stations";
 
 export default function CreateStationPage() {
   const router = useRouter();
@@ -22,6 +24,7 @@ export default function CreateStationPage() {
     stationGroupId: "",
     tariffPlanId: "",
   });
+  const [photos, setPhotos] = useState<PhotoItem[]>([]);
 
   const { data: groupsData } = useQuery({
     queryKey: ["station-groups-select"],
@@ -51,6 +54,16 @@ export default function CreateStationPage() {
         tariffPlanId: formData.tariffPlanId || undefined,
       };
       const { data } = await stationsApi.create(payload);
+
+      // Link uploaded photos to the newly created station
+      for (let i = 0; i < photos.length; i++) {
+        await stationsApi.addPhoto(data.id, {
+          url: photos[i].url,
+          isPrimary: photos[i].isPrimary ?? i === 0,
+          sortOrder: i,
+        });
+      }
+
       return data;
     },
     onSuccess: (data) => {
@@ -168,6 +181,12 @@ export default function CreateStationPage() {
                   </select>
                 </div>
               </div>
+
+              {/* Photo Upload */}
+              <StationPhotoUpload
+                photos={photos}
+                onChange={setPhotos}
+              />
 
               {createMutation.isError && (
                 <div className="text-sm text-red-500">

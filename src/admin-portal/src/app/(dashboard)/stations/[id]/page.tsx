@@ -22,6 +22,8 @@ import {
   Plus,
   Zap,
   AlertTriangle,
+  ImageIcon,
+  Star,
 } from "lucide-react";
 
 const ConnectorTypeLabels: Record<number | string, string> = {
@@ -49,6 +51,14 @@ export default function StationDetailPage() {
     queryKey: ["station-faults", id],
     queryFn: async () => {
       const { data } = await faultsApi.getByStation(id);
+      return data;
+    },
+  });
+
+  const { data: photosData } = useQuery({
+    queryKey: ["station-photos", id],
+    queryFn: async () => {
+      const { data } = await stationsApi.getPhotos(id);
       return data;
     },
   });
@@ -146,6 +156,7 @@ export default function StationDetailPage() {
 
   const connectors = station.connectors || [];
   const faults = faultsData?.items || faultsData || [];
+  const stationPhotos: { id: string; url: string; isPrimary: boolean }[] = Array.isArray(photosData) ? photosData : [];
 
   return (
     <div className="flex flex-col">
@@ -296,6 +307,34 @@ export default function StationDetailPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Photos */}
+        {stationPhotos.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><ImageIcon className="h-5 w-5" /> {t("stations.photos")} ({stationPhotos.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                {stationPhotos.map((photo, index) => (
+                  <div key={photo.id} className="relative aspect-[4/3] overflow-hidden rounded-lg border">
+                    <img
+                      src={photo.url}
+                      alt={`${station.name} ${index + 1}`}
+                      className="h-full w-full object-cover"
+                    />
+                    {photo.isPrimary && (
+                      <div className="absolute bottom-1 left-1 flex items-center gap-1 rounded bg-amber-500/90 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                        <Star className="h-2.5 w-2.5" />
+                        {t("stations.primary")}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Recent Faults */}
         <Card>

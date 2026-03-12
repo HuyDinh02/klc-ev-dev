@@ -174,7 +174,16 @@
     "totalStations": "tổng trạm sạc",
     "sortByCode": "Sắp xếp theo mã",
     "sortByName": "Sắp xếp theo tên",
-    "sortByStatus": "Sắp xếp theo trạng thái"
+    "sortByStatus": "Sắp xếp theo trạng thái",
+    "photos": "Hình ảnh",
+    "primary": "Chính",
+    "setPrimary": "Đặt làm ảnh chính",
+    "clickToUploadPhotos": "Nhấn để tải ảnh lên",
+    "photoFormats": "JPEG, PNG, GIF, WebP (tối đa 5MB mỗi ảnh)",
+    "photoSizeError": "Ảnh phải nhỏ hơn 5MB",
+    "photoTypeError": "Chỉ chấp nhận ảnh JPEG, PNG, GIF và WebP",
+    "photoUploadFailed": "Tải ảnh thất bại. Vui lòng thử lại.",
+    "uploading": "Đang tải lên..."
   },
   "sessions": {
     "title": "Phiên sạc",

@@ -82,3 +82,9 @@ public class AddStationPhotoDto
     public bool IsPrimary { get; set; }
     public int SortOrder { get; set; }
 }
+
+public class StationPhotoUploadResultDto
+{
+    public string Url { get; set; } = string.Empty;
+    public long FileSize { get; set; }
+}
