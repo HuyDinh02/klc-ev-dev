@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Authorization;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Domain.Repositories;
+using Volo.Abp.Validation;
 
 namespace KLC.Stations;
 
@@ -335,6 +336,7 @@ public class StationAppService : KLCAppService, IStationAppService
     }
 
     [Authorize(KLCPermissions.Stations.Update)]
+    [DisableValidation]
     public async Task<StationPhotoUploadResultDto> UploadPhotoAsync(Stream stream, string fileName)
     {
         var result = await _fileUploadService.UploadAsync(stream, fileName, "stations");
