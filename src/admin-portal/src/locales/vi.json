@@ -102,6 +102,12 @@
   "header": {
     "searchPlaceholder": "Tìm kiếm..."
   },
+  "theme": {
+    "toggle": "Chuyển giao diện",
+    "light": "Sáng",
+    "dark": "Tối",
+    "system": "Hệ thống"
+  },
   "stations": {
     "title": "Quản lý trạm sạc",
     "description": "Quản lý trạm sạc và đầu sạc",
