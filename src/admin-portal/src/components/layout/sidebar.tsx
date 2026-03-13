@@ -25,6 +25,9 @@ import {
   Cable,
   Building2,
   Truck,
+  Gift,
+  Smartphone,
+  MessageSquare,
   type LucideIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -68,6 +71,7 @@ const navigation: NavSection[] = [
       { href: "/tariffs", labelKey: "nav.tariffs", icon: DollarSign },
       { href: "/payments", labelKey: "nav.payments", icon: CreditCard },
       { href: "/vouchers", labelKey: "nav.marketing", icon: Ticket },
+      { href: "/promotions", labelKey: "nav.promotions", icon: Gift },
       { href: "/operators", labelKey: "nav.operators", icon: Building2 },
       { href: "/fleets", labelKey: "nav.fleets", icon: Truck },
     ],
@@ -76,13 +80,17 @@ const navigation: NavSection[] = [
     titleKey: "nav.users",
     items: [
       { href: "/user-management", labelKey: "nav.userManagement", icon: Users },
+      { href: "/mobile-users", labelKey: "nav.mobileUsers", icon: Smartphone },
     ],
   },
   {
     titleKey: "nav.system",
     items: [
+      { href: "/groups", labelKey: "nav.stationGroups", icon: MapPin },
       { href: "/analytics", labelKey: "nav.reports", icon: BarChart3 },
       { href: "/audit-logs", labelKey: "nav.auditLogs", icon: FileText },
+      { href: "/e-invoices", labelKey: "nav.eInvoices", icon: FileText },
+      { href: "/feedback", labelKey: "nav.feedback", icon: MessageSquare },
     ],
   },
 ];
