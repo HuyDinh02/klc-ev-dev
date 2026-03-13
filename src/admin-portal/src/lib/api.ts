@@ -29,6 +29,9 @@ export const authApi = {
       return null;
     }
   },
+
+  // Get current user's granted KLC permissions
+  getMyPermissions: () => api.get<string[]>("/my-permissions"),
 };
 
 // Request interceptor to add auth token

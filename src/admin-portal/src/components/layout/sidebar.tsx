@@ -40,6 +40,7 @@ interface NavItem {
   href: string;
   labelKey: string;
   icon: LucideIcon;
+  permission?: string; // KLC permission required to see this item (undefined = always visible)
 }
 
 interface NavSection {
@@ -52,45 +53,45 @@ const navigation: NavSection[] = [
     titleKey: "nav.operations",
     items: [
       { href: "/", labelKey: "nav.dashboard", icon: LayoutDashboard },
-      { href: "/stations", labelKey: "nav.stations", icon: MapPin },
-      { href: "/monitoring", labelKey: "nav.monitoring", icon: Activity },
-      { href: "/sessions", labelKey: "nav.sessions", icon: Zap },
-      { href: "/power-sharing", labelKey: "nav.powerSharing", icon: Cable },
+      { href: "/stations", labelKey: "nav.stations", icon: MapPin, permission: "KLC.Stations" },
+      { href: "/monitoring", labelKey: "nav.monitoring", icon: Activity, permission: "KLC.Monitoring" },
+      { href: "/sessions", labelKey: "nav.sessions", icon: Zap, permission: "KLC.Sessions" },
+      { href: "/power-sharing", labelKey: "nav.powerSharing", icon: Cable, permission: "KLC.PowerSharing" },
     ],
   },
   {
     titleKey: "nav.incidents",
     items: [
-      { href: "/faults", labelKey: "nav.faults", icon: AlertTriangle },
-      { href: "/maintenance", labelKey: "nav.maintenance", icon: Wrench },
+      { href: "/faults", labelKey: "nav.faults", icon: AlertTriangle, permission: "KLC.Faults" },
+      { href: "/maintenance", labelKey: "nav.maintenance", icon: Wrench, permission: "KLC.Maintenance" },
     ],
   },
   {
     titleKey: "nav.business",
     items: [
-      { href: "/tariffs", labelKey: "nav.tariffs", icon: DollarSign },
-      { href: "/payments", labelKey: "nav.payments", icon: CreditCard },
-      { href: "/vouchers", labelKey: "nav.marketing", icon: Ticket },
-      { href: "/promotions", labelKey: "nav.promotions", icon: Gift },
-      { href: "/operators", labelKey: "nav.operators", icon: Building2 },
-      { href: "/fleets", labelKey: "nav.fleets", icon: Truck },
+      { href: "/tariffs", labelKey: "nav.tariffs", icon: DollarSign, permission: "KLC.Tariffs" },
+      { href: "/payments", labelKey: "nav.payments", icon: CreditCard, permission: "KLC.Payments" },
+      { href: "/vouchers", labelKey: "nav.marketing", icon: Ticket, permission: "KLC.Vouchers" },
+      { href: "/promotions", labelKey: "nav.promotions", icon: Gift, permission: "KLC.Promotions" },
+      { href: "/operators", labelKey: "nav.operators", icon: Building2, permission: "KLC.Operators" },
+      { href: "/fleets", labelKey: "nav.fleets", icon: Truck, permission: "KLC.Fleets" },
     ],
   },
   {
     titleKey: "nav.users",
     items: [
-      { href: "/user-management", labelKey: "nav.userManagement", icon: Users },
-      { href: "/mobile-users", labelKey: "nav.mobileUsers", icon: Smartphone },
+      { href: "/user-management", labelKey: "nav.userManagement", icon: Users, permission: "KLC.UserManagement" },
+      { href: "/mobile-users", labelKey: "nav.mobileUsers", icon: Smartphone, permission: "KLC.MobileUsers" },
     ],
   },
   {
     titleKey: "nav.system",
     items: [
-      { href: "/groups", labelKey: "nav.stationGroups", icon: MapPin },
+      { href: "/groups", labelKey: "nav.stationGroups", icon: MapPin, permission: "KLC.StationGroups" },
       { href: "/analytics", labelKey: "nav.reports", icon: BarChart3 },
-      { href: "/audit-logs", labelKey: "nav.auditLogs", icon: FileText },
-      { href: "/e-invoices", labelKey: "nav.eInvoices", icon: FileText },
-      { href: "/feedback", labelKey: "nav.feedback", icon: MessageSquare },
+      { href: "/audit-logs", labelKey: "nav.auditLogs", icon: FileText, permission: "KLC.AuditLogs" },
+      { href: "/e-invoices", labelKey: "nav.eInvoices", icon: FileText, permission: "KLC.EInvoices" },
+      { href: "/feedback", labelKey: "nav.feedback", icon: MessageSquare, permission: "KLC.Feedback" },
     ],
   },
 ];
@@ -99,13 +100,21 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { isCollapsed, toggle } = useSidebarStore();
-  const { logout, user } = useAuthStore();
+  const { logout, user, permissions } = useAuthStore();
   const { unreadCount } = useAlertsStore();
   const { t } = useTranslation();
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
     return pathname === href || pathname.startsWith(`${href}/`);
+  };
+
+  // Check if user has access to a nav item.
+  // If permissions haven't loaded yet (empty array), show all items to avoid flash.
+  const canAccess = (item: NavItem) => {
+    if (!item.permission) return true;
+    if (permissions.length === 0) return true; // not loaded yet — show all
+    return permissions.includes(item.permission);
   };
 
   return (
@@ -149,42 +158,47 @@ export function Sidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto px-2 py-1">
-          {navigation.map((section) => (
-            <div key={section.titleKey} className="mb-1">
-              {!isCollapsed && (
-                <p className="mb-1 px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {t(section.titleKey)}
-                </p>
-              )}
-              {isCollapsed && <div className="my-1 mx-2 border-t" />}
-              <div className="space-y-0.5">
-                {section.items.map((item) => {
-                  const active = isActive(item.href);
-                  const Icon = item.icon;
-                  const label = t(item.labelKey);
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      title={isCollapsed ? label : undefined}
-                      className={cn(
-                        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                        active
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-                      )}
-                    >
-                      <Icon className="h-[18px] w-[18px] flex-shrink-0" />
-                      {!isCollapsed && <span>{label}</span>}
-                    </Link>
-                  );
-                })}
+          {navigation.map((section) => {
+            const visibleItems = section.items.filter(canAccess);
+            if (visibleItems.length === 0) return null;
+            return (
+              <div key={section.titleKey} className="mb-1">
+                {!isCollapsed && (
+                  <p className="mb-1 px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {t(section.titleKey)}
+                  </p>
+                )}
+                {isCollapsed && <div className="my-1 mx-2 border-t" />}
+                <div className="space-y-0.5">
+                  {visibleItems.map((item) => {
+                    const active = isActive(item.href);
+                    const Icon = item.icon;
+                    const label = t(item.labelKey);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        title={isCollapsed ? label : undefined}
+                        className={cn(
+                          "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                          active
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                        )}
+                      >
+                        <Icon className="h-[18px] w-[18px] flex-shrink-0" />
+                        {!isCollapsed && <span>{label}</span>}
+                      </Link>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </nav>
 
         {/* Alerts */}
+        {canAccess({ href: "/alerts", labelKey: "nav.alerts", icon: Bell, permission: "KLC.Alerts" }) && (
         <div className="border-t px-2 py-1.5">
           <Link
             href="/alerts"
@@ -206,6 +220,7 @@ export function Sidebar() {
             {!isCollapsed && <span>{t("nav.alerts")}</span>}
           </Link>
         </div>
+        )}
 
         {/* User section */}
         <div className="border-t px-2 py-2">
