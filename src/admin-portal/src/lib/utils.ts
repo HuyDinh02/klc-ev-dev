@@ -58,3 +58,30 @@ export function formatDistanceToNow(date?: string | Date | null): string {
   const diffDay = Math.floor(diffHour / 24);
   return `${diffDay}d ago`;
 }
+
+/**
+ * Download data as a CSV file. Escapes values containing commas, quotes, or newlines.
+ */
+export function downloadCsv(
+  headers: string[],
+  rows: string[][],
+  filename: string,
+) {
+  const escape = (v: string) => {
+    if (v.includes(",") || v.includes('"') || v.includes("\n")) {
+      return `"${v.replace(/"/g, '""')}"`;
+    }
+    return v;
+  };
+  const csv = [
+    headers.map(escape).join(","),
+    ...rows.map((row) => row.map(escape).join(",")),
+  ].join("\n");
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
