@@ -102,6 +102,12 @@
   "header": {
     "searchPlaceholder": "Search..."
   },
+  "theme": {
+    "toggle": "Toggle theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
   "stations": {
     "title": "Station Management",
     "description": "Manage charging stations and connectors",
