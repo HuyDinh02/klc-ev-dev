@@ -6,13 +6,16 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Header } from "@/components/layout/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { AccessDenied } from "@/components/ui/access-denied";
 import { stationsApi, stationGroupsApi, tariffsApi } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
+import { useRequirePermission } from "@/lib/use-permission";
 import { ArrowLeft } from "lucide-react";
 import { StationPhotoUpload } from "@/components/stations";
 import type { PhotoItem } from "@/components/stations";
 
 export default function CreateStationPage() {
+  const hasAccess = useRequirePermission("KLC.Stations.Create");
   const router = useRouter();
   const { t } = useTranslation();
   const [formData, setFormData] = useState({
@@ -75,6 +78,8 @@ export default function CreateStationPage() {
     e.preventDefault();
     createMutation.mutate();
   };
+
+  if (!hasAccess) return <AccessDenied />;
 
   return (
     <div className="flex flex-col">

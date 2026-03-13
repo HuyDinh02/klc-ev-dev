@@ -12,6 +12,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Dialog, DialogHeader, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
+import { useRequirePermission, useHasPermission } from "@/lib/use-permission";
+import { AccessDenied } from "@/components/ui/access-denied";
 import { Plus, Edit, Trash2, AlertCircle, Ticket, Eye } from "lucide-react";
 
 interface Voucher {
@@ -58,6 +60,10 @@ const VoucherTypeBadgeVariants: Record<number, "default" | "warning" | "success"
 };
 
 export default function VouchersPage() {
+  const hasAccess = useRequirePermission("KLC.Vouchers");
+  const canCreate = useHasPermission("KLC.Vouchers.Create");
+  const canUpdate = useHasPermission("KLC.Vouchers.Update");
+  const canDelete = useHasPermission("KLC.Vouchers.Delete");
   const queryClient = useQueryClient();
   const { t } = useTranslation();
 
@@ -228,6 +234,8 @@ export default function VouchersPage() {
     return formatCurrency(value);
   };
 
+  if (!hasAccess) return <AccessDenied />;
+
   return (
     <div className="flex flex-col">
       {/* Sticky Header */}
@@ -236,10 +244,12 @@ export default function VouchersPage() {
           title={t("vouchers.title")}
           description={t("vouchers.description")}
         >
-          <Button onClick={() => { setIsCreating(true); setEditingId(null); resetForm(); }} disabled={isCreating}>
-            <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
-            {t("vouchers.addVoucher")}
-          </Button>
+          {canCreate && (
+            <Button onClick={() => { setIsCreating(true); setEditingId(null); resetForm(); }} disabled={isCreating}>
+              <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
+              {t("vouchers.addVoucher")}
+            </Button>
+          )}
         </PageHeader>
       </div>
 
@@ -521,28 +531,32 @@ export default function VouchersPage() {
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleEdit(voucher)}
-                              title={t("common.edit")}
-                              aria-label={t("common.edit")}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => {
-                                if (confirm(t("vouchers.deleteConfirm"))) {
-                                  deleteMutation.mutate(voucher.id);
-                                }
-                              }}
-                              title={t("common.delete")}
-                              aria-label={t("common.delete")}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            {canUpdate && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEdit(voucher)}
+                                title={t("common.edit")}
+                                aria-label={t("common.edit")}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {canDelete && (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => {
+                                  if (confirm(t("vouchers.deleteConfirm"))) {
+                                    deleteMutation.mutate(voucher.id);
+                                  }
+                                }}
+                                title={t("common.delete")}
+                                aria-label={t("common.delete")}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </td>
                       </tr>

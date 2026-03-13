@@ -24,6 +24,7 @@ const mockUpdateRole = vi.fn();
 const mockDeleteRole = vi.fn();
 const mockGetPermissions = vi.fn();
 const mockUpdatePermissions = vi.fn();
+const mockGetMyPermissions = vi.fn();
 
 vi.mock('@/lib/api', () => ({
   usersApi: {
@@ -44,6 +45,22 @@ vi.mock('@/lib/api', () => ({
     getPermissions: (roleId: string) => mockGetPermissions(roleId),
     updatePermissions: (roleId: string, perms: string[]) => mockUpdatePermissions(roleId, perms),
   },
+  authApi: {
+    getMyPermissions: () => mockGetMyPermissions(),
+  },
+}));
+
+// Mock the auth store (used for permission refresh after save)
+const mockSetPermissions = vi.fn();
+vi.mock('@/lib/store', () => ({
+  useAuthStore: Object.assign(
+    () => ({
+      permissions: [],
+      setPermissions: mockSetPermissions,
+      hasPermission: () => true,
+    }),
+    { getState: () => ({ setPermissions: mockSetPermissions }) },
+  ),
 }));
 
 import UserManagementPage from '../page';
@@ -78,6 +95,36 @@ const mockRoles = [
   { id: 'role-2', name: 'operator', isDefault: true, isStatic: false, isPublic: true, concurrencyStamp: 'def' },
 ];
 
+// Permission data matching the backend API response (array of PermissionGroupDto)
+const mockPermissionData = [
+  {
+    name: 'KLC.Stations',
+    displayName: 'Station Management',
+    permissions: [
+      { name: 'KLC.Stations', displayName: 'Station Management', isGranted: true },
+      { name: 'KLC.Stations.Create', displayName: 'Create Stations', isGranted: true },
+      { name: 'KLC.Stations.Update', displayName: 'Update Stations', isGranted: false },
+      { name: 'KLC.Stations.Delete', displayName: 'Delete Stations', isGranted: false },
+    ],
+  },
+  {
+    name: 'KLC.Sessions',
+    displayName: 'Session Management',
+    permissions: [
+      { name: 'KLC.Sessions', displayName: 'Session Management', isGranted: true },
+      { name: 'KLC.Sessions.ViewAll', displayName: 'View All Sessions', isGranted: true },
+    ],
+  },
+  {
+    name: 'KLC.Tariffs',
+    displayName: 'Tariff Management',
+    permissions: [
+      { name: 'KLC.Tariffs', displayName: 'Tariff Management', isGranted: false },
+      { name: 'KLC.Tariffs.Create', displayName: 'Create Tariffs', isGranted: false },
+    ],
+  },
+];
+
 describe('UserManagementPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -97,10 +144,12 @@ describe('UserManagementPage', () => {
     mockCreateRole.mockResolvedValue({ data: {} });
     mockUpdateRole.mockResolvedValue({ data: {} });
     mockDeleteRole.mockResolvedValue({ data: {} });
-    mockGetPermissions.mockResolvedValue({ data: { groups: [] } });
+    mockGetPermissions.mockResolvedValue({ data: [] });
     mockUpdatePermissions.mockResolvedValue({ data: {} });
+    mockGetMyPermissions.mockResolvedValue({ data: ['KLC.Stations', 'KLC.Sessions'] });
   });
 
+  // ---- Users Tab ----
   it('renders page title and description', async () => {
     renderWithProviders(<UserManagementPage />);
     expect(screen.getByText('User Management')).toBeInTheDocument();
@@ -122,11 +171,9 @@ describe('UserManagementPage', () => {
   it('renders users table with mock data', async () => {
     renderWithProviders(<UserManagementPage />);
     await waitFor(() => {
-      // "admin" appears as both username text and role badge text
       expect(screen.getAllByText('admin').length).toBeGreaterThanOrEqual(1);
     });
     expect(screen.getByText('admin@example.com')).toBeInTheDocument();
-    // "operator" also appears as username and role badge
     expect(screen.getAllByText('operator').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('operator@example.com')).toBeInTheDocument();
   });
@@ -136,7 +183,6 @@ describe('UserManagementPage', () => {
     await waitFor(() => {
       expect(screen.getByText('admin@example.com')).toBeInTheDocument();
     });
-    // user-2 is locked out
     expect(screen.getByText('Locked')).toBeInTheDocument();
   });
 
@@ -147,7 +193,6 @@ describe('UserManagementPage', () => {
     });
     expect(screen.getByText('Email')).toBeInTheDocument();
     expect(screen.getByText('Name')).toBeInTheDocument();
-    // "Roles" appears both as a tab label and as a column header
     expect(screen.getAllByText('Roles').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Status')).toBeInTheDocument();
     expect(screen.getByText('Created')).toBeInTheDocument();
@@ -172,6 +217,18 @@ describe('UserManagementPage', () => {
     });
   });
 
+  it('renders action buttons for each user', async () => {
+    renderWithProviders(<UserManagementPage />);
+    await waitFor(() => {
+      expect(screen.getByText('admin@example.com')).toBeInTheDocument();
+    });
+    const editButtons = screen.getAllByLabelText('Edit');
+    expect(editButtons.length).toBeGreaterThanOrEqual(2);
+    const assignRolesButtons = screen.getAllByLabelText('Assign Roles');
+    expect(assignRolesButtons.length).toBe(2);
+  });
+
+  // ---- Roles Tab ----
   it('switches to Roles tab when clicked', async () => {
     renderWithProviders(<UserManagementPage />);
     const rolesTab = screen.getByRole('tab', { name: /Roles/i });
@@ -181,9 +238,7 @@ describe('UserManagementPage', () => {
 
   it('renders roles table after switching to Roles tab', async () => {
     renderWithProviders(<UserManagementPage />);
-    const rolesTab = screen.getByRole('tab', { name: /Roles/i });
-    fireEvent.click(rolesTab);
-
+    fireEvent.click(screen.getByRole('tab', { name: /Roles/i }));
     await waitFor(() => {
       expect(screen.getByText('Role Name')).toBeInTheDocument();
     });
@@ -194,11 +249,9 @@ describe('UserManagementPage', () => {
   it('renders role data after switching to Roles tab', async () => {
     renderWithProviders(<UserManagementPage />);
     fireEvent.click(screen.getByRole('tab', { name: /Roles/i }));
-
     await waitFor(() => {
       expect(screen.getByText('Role Name')).toBeInTheDocument();
     });
-    // Role names are present (may also appear as user role badges in the DOM)
     expect(screen.getAllByText('admin').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('operator').length).toBeGreaterThanOrEqual(1);
   });
@@ -206,38 +259,242 @@ describe('UserManagementPage', () => {
   it('renders Add Role button on Roles tab', async () => {
     renderWithProviders(<UserManagementPage />);
     fireEvent.click(screen.getByRole('tab', { name: /Roles/i }));
-
     await waitFor(() => {
       expect(screen.getByText('Add Role')).toBeInTheDocument();
     });
   });
 
-  it('renders action buttons for each user', async () => {
-    renderWithProviders(<UserManagementPage />);
-    await waitFor(() => {
-      expect(screen.getByText('admin@example.com')).toBeInTheDocument();
-    });
-    // Each user should have Edit, Assign Roles, Lock/Unlock, Reset Password, Delete buttons
-    const editButtons = screen.getAllByLabelText('Edit');
-    expect(editButtons.length).toBeGreaterThanOrEqual(2);
-    const assignRolesButtons = screen.getAllByLabelText('Assign Roles');
-    expect(assignRolesButtons.length).toBe(2);
-  });
-
-  it('opens permission dialog for a role on Roles tab', async () => {
+  it('does not show delete button for static roles', async () => {
     renderWithProviders(<UserManagementPage />);
     fireEvent.click(screen.getByRole('tab', { name: /Roles/i }));
-
     await waitFor(() => {
       expect(screen.getByText('Role Name')).toBeInTheDocument();
     });
+    // admin role is static — should have 2 action buttons (edit + permissions)
+    // operator role is not static — should have 3 (edit + permissions + delete)
+    const deleteButtons = screen.getAllByLabelText('Delete');
+    // Only 1 delete button (for operator, not for admin)
+    expect(deleteButtons.length).toBe(1);
+  });
 
-    // Click the Permissions button (shield icon) for the first role
+  // ---- Permission Dialog ----
+  it('opens permission dialog for a role', async () => {
+    renderWithProviders(<UserManagementPage />);
+    fireEvent.click(screen.getByRole('tab', { name: /Roles/i }));
+    await waitFor(() => {
+      expect(screen.getByText('Role Name')).toBeInTheDocument();
+    });
     const permButtons = screen.getAllByLabelText('Permissions');
     fireEvent.click(permButtons[0]);
+    await waitFor(() => {
+      expect(screen.getByText(/Permissions — admin/)).toBeInTheDocument();
+    });
+  });
+
+  it('shows Grant All and Revoke All buttons in permission dialog', async () => {
+    mockGetPermissions.mockResolvedValue({ data: mockPermissionData });
+    renderWithProviders(<UserManagementPage />);
+    fireEvent.click(screen.getByRole('tab', { name: /Roles/i }));
+    await waitFor(() => expect(screen.getByText('Role Name')).toBeInTheDocument());
+    fireEvent.click(screen.getAllByLabelText('Permissions')[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText('Grant All')).toBeInTheDocument();
+      expect(screen.getByText('Revoke All')).toBeInTheDocument();
+    });
+  });
+
+  it('shows search input in permission dialog', async () => {
+    mockGetPermissions.mockResolvedValue({ data: mockPermissionData });
+    renderWithProviders(<UserManagementPage />);
+    fireEvent.click(screen.getByRole('tab', { name: /Roles/i }));
+    await waitFor(() => expect(screen.getByText('Role Name')).toBeInTheDocument());
+    fireEvent.click(screen.getAllByLabelText('Permissions')[0]);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Search permissions...')).toBeInTheDocument();
+    });
+  });
+
+  it('shows permission summary count in dialog', async () => {
+    mockGetPermissions.mockResolvedValue({ data: mockPermissionData });
+    renderWithProviders(<UserManagementPage />);
+    fireEvent.click(screen.getByRole('tab', { name: /Roles/i }));
+    await waitFor(() => expect(screen.getByText('Role Name')).toBeInTheDocument());
+    fireEvent.click(screen.getAllByLabelText('Permissions')[0]);
+
+    await waitFor(() => {
+      // 4 out of 8 permissions granted in our mock data
+      expect(screen.getByText(/4\/8 permissions granted/)).toBeInTheDocument();
+    });
+  });
+
+  it('shows permission groups as nav items with section headers', async () => {
+    mockGetPermissions.mockResolvedValue({ data: mockPermissionData });
+    renderWithProviders(<UserManagementPage />);
+    fireEvent.click(screen.getByRole('tab', { name: /Roles/i }));
+    await waitFor(() => expect(screen.getByText('Role Name')).toBeInTheDocument());
+    fireEvent.click(screen.getAllByLabelText('Permissions')[0]);
+
+    await waitFor(() => {
+      // Section header matching sidebar
+      expect(screen.getByText('Operations')).toBeInTheDocument();
+      // Permission groups shown as nav items using sidebar label keys
+      expect(screen.getByText('Stations')).toBeInTheDocument();
+      expect(screen.getByText('Sessions')).toBeInTheDocument();
+    });
+  });
+
+  it('shows toggle switches for each permission group', async () => {
+    mockGetPermissions.mockResolvedValue({ data: mockPermissionData });
+    renderWithProviders(<UserManagementPage />);
+    fireEvent.click(screen.getByRole('tab', { name: /Roles/i }));
+    await waitFor(() => expect(screen.getByText('Role Name')).toBeInTheDocument());
+    fireEvent.click(screen.getAllByLabelText('Permissions')[0]);
+
+    await waitFor(() => {
+      // Toggle switches — role="switch"
+      const toggles = screen.getAllByRole('switch');
+      expect(toggles.length).toBeGreaterThanOrEqual(3); // at least one per group
+    });
+  });
+
+  it('shows count badges for each permission group', async () => {
+    mockGetPermissions.mockResolvedValue({ data: mockPermissionData });
+    renderWithProviders(<UserManagementPage />);
+    fireEvent.click(screen.getByRole('tab', { name: /Roles/i }));
+    await waitFor(() => expect(screen.getByText('Role Name')).toBeInTheDocument());
+    fireEvent.click(screen.getAllByLabelText('Permissions')[0]);
+
+    await waitFor(() => {
+      // Stations: 2/4 granted (Stations + Create granted, Update + Delete not)
+      expect(screen.getByText('2/4')).toBeInTheDocument();
+      // Sessions: 2/2 granted
+      expect(screen.getByText('2/2')).toBeInTheDocument();
+      // Tariffs: 0/2 granted
+      expect(screen.getByText('0/2')).toBeInTheDocument();
+    });
+  });
+
+  it('expands permission group to show child permissions', async () => {
+    mockGetPermissions.mockResolvedValue({ data: mockPermissionData });
+    renderWithProviders(<UserManagementPage />);
+    fireEvent.click(screen.getByRole('tab', { name: /Roles/i }));
+    await waitFor(() => expect(screen.getByText('Role Name')).toBeInTheDocument());
+    fireEvent.click(screen.getAllByLabelText('Permissions')[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText('Stations')).toBeInTheDocument();
+    });
+
+    // Click on "Stations" row to expand — find the expand chevron button
+    const stationsRow = screen.getByText('Stations').closest('div[class*="flex items-center"]');
+    // Click on the expand button (first button child in the row)
+    const expandButton = stationsRow?.querySelector('button');
+    if (expandButton) fireEvent.click(expandButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Create Stations')).toBeInTheDocument();
+      expect(screen.getByText('Update Stations')).toBeInTheDocument();
+      expect(screen.getByText('Delete Stations')).toBeInTheDocument();
+    });
+  });
+
+  it('shows Cancel and Save Permissions buttons in dialog footer', async () => {
+    mockGetPermissions.mockResolvedValue({ data: mockPermissionData });
+    renderWithProviders(<UserManagementPage />);
+    fireEvent.click(screen.getByRole('tab', { name: /Roles/i }));
+    await waitFor(() => expect(screen.getByText('Role Name')).toBeInTheDocument());
+    fireEvent.click(screen.getAllByLabelText('Permissions')[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText('Cancel')).toBeInTheDocument();
+      expect(screen.getByText('Save Permissions')).toBeInTheDocument();
+    });
+  });
+
+  it('calls updatePermissions API when saving', async () => {
+    mockGetPermissions.mockResolvedValue({ data: mockPermissionData });
+    renderWithProviders(<UserManagementPage />);
+    fireEvent.click(screen.getByRole('tab', { name: /Roles/i }));
+    await waitFor(() => expect(screen.getByText('Role Name')).toBeInTheDocument());
+    fireEvent.click(screen.getAllByLabelText('Permissions')[0]);
+
+    // Wait for permission data to load and grants to initialize
+    await waitFor(() => {
+      expect(screen.getByText('4/8 permissions granted')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Save Permissions'));
+
+    await waitFor(() => {
+      expect(mockUpdatePermissions).toHaveBeenCalledTimes(1);
+      // First arg is roleId
+      expect(mockUpdatePermissions.mock.calls[0][0]).toBe('role-1');
+      // Second arg is granted permissions array — should include the 4 granted ones
+      const grantedPerms = mockUpdatePermissions.mock.calls[0][1] as string[];
+      expect(grantedPerms).toContain('KLC.Stations');
+      expect(grantedPerms).toContain('KLC.Stations.Create');
+      expect(grantedPerms).toContain('KLC.Sessions');
+      expect(grantedPerms).toContain('KLC.Sessions.ViewAll');
+      // Should NOT include non-granted ones
+      expect(grantedPerms).not.toContain('KLC.Tariffs');
+      expect(grantedPerms).not.toContain('KLC.Stations.Update');
+    });
+  });
+
+  it('refreshes user permissions after saving role permissions', async () => {
+    mockGetPermissions.mockResolvedValue({ data: mockPermissionData });
+    renderWithProviders(<UserManagementPage />);
+    fireEvent.click(screen.getByRole('tab', { name: /Roles/i }));
+    await waitFor(() => expect(screen.getByText('Role Name')).toBeInTheDocument());
+    fireEvent.click(screen.getAllByLabelText('Permissions')[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText('4/8 permissions granted')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Save Permissions'));
+
+    await waitFor(() => {
+      // Should call getMyPermissions to refresh sidebar
+      expect(mockGetMyPermissions).toHaveBeenCalled();
+    });
+  });
+
+  it('shows empty permission sections as skeleton while loading', async () => {
+    // Keep getPermissions pending (never resolves)
+    mockGetPermissions.mockReturnValue(new Promise(() => {}));
+    renderWithProviders(<UserManagementPage />);
+    fireEvent.click(screen.getByRole('tab', { name: /Roles/i }));
+    await waitFor(() => expect(screen.getByText('Role Name')).toBeInTheDocument());
+    fireEvent.click(screen.getAllByLabelText('Permissions')[0]);
 
     await waitFor(() => {
       expect(screen.getByText(/Permissions — admin/)).toBeInTheDocument();
+    });
+    // Should show skeleton loading (no "Grant All" button visible yet, but dialog is open)
+    // The dialog is open but content is loading
+  });
+
+  it('shows no results message when search matches nothing', async () => {
+    mockGetPermissions.mockResolvedValue({ data: mockPermissionData });
+    renderWithProviders(<UserManagementPage />);
+    fireEvent.click(screen.getByRole('tab', { name: /Roles/i }));
+    await waitFor(() => expect(screen.getByText('Role Name')).toBeInTheDocument());
+    fireEvent.click(screen.getAllByLabelText('Permissions')[0]);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Search permissions...')).toBeInTheDocument();
+    });
+
+    // Type a search that matches nothing
+    fireEvent.change(screen.getByLabelText('Search permissions...'), {
+      target: { value: 'zzz_nonexistent' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('No matching permissions')).toBeInTheDocument();
     });
   });
 });

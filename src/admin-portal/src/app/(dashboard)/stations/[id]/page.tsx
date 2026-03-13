@@ -12,6 +12,8 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { stationsApi, connectorsApi, faultsApi } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
+import { useRequirePermission, useHasPermission } from "@/lib/use-permission";
+import { AccessDenied } from "@/components/ui/access-denied";
 import { formatDateTime } from "@/lib/utils";
 import {
   ArrowLeft,
@@ -32,6 +34,12 @@ const ConnectorTypeLabels: Record<number | string, string> = {
 };
 
 export default function StationDetailPage() {
+  const hasAccess = useRequirePermission("KLC.Stations");
+  const canUpdate = useHasPermission("KLC.Stations.Update");
+  const canDecommission = useHasPermission("KLC.Stations.Decommission");
+  const canCreateConnector = useHasPermission("KLC.Connectors.Create");
+  const canToggleConnector = useHasPermission("KLC.Connectors.Enable");
+  const canDeleteConnector = useHasPermission("KLC.Connectors.Delete");
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -103,6 +111,8 @@ export default function StationDetailPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["station", id] }),
   });
 
+  if (!hasAccess) return <AccessDenied />;
+
   if (isLoading) {
     return (
       <div className="flex flex-col">
@@ -169,10 +179,12 @@ export default function StationDetailPage() {
             <ArrowLeft className="mr-2 h-4 w-4" /> {t("stations.backToStations")}
           </Button>
           <div className="flex items-center gap-2">
-            <Link href={`/stations/${id}/edit`}>
-              <Button variant="outline"><Edit className="mr-2 h-4 w-4" /> {t("stations.edit")}</Button>
-            </Link>
-            {station.isEnabled ? (
+            {canUpdate && (
+              <Link href={`/stations/${id}/edit`}>
+                <Button variant="outline"><Edit className="mr-2 h-4 w-4" /> {t("stations.edit")}</Button>
+              </Link>
+            )}
+            {canUpdate && (station.isEnabled ? (
               <Button variant="outline" onClick={() => disableMutation.mutate()} disabled={disableMutation.isPending}>
                 <PowerOff className="mr-2 h-4 w-4" /> {t("stations.disable")}
               </Button>
@@ -180,10 +192,12 @@ export default function StationDetailPage() {
               <Button variant="outline" onClick={() => enableMutation.mutate()} disabled={enableMutation.isPending}>
                 <Power className="mr-2 h-4 w-4" /> {t("stations.enable")}
               </Button>
+            ))}
+            {canDecommission && (
+              <Button variant="destructive" onClick={() => { if (confirm(t("stations.decommissionConfirm"))) decommissionMutation.mutate(); }}>
+                {t("stations.decommission")}
+              </Button>
             )}
-            <Button variant="destructive" onClick={() => { if (confirm(t("stations.decommissionConfirm"))) decommissionMutation.mutate(); }}>
-              {t("stations.decommission")}
-            </Button>
           </div>
         </div>
 
@@ -218,9 +232,11 @@ export default function StationDetailPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2"><Zap className="h-5 w-5" /> {t("stations.connectors")} ({connectors.length})</CardTitle>
-            <Button size="sm" onClick={() => setShowAddConnector(true)} disabled={showAddConnector}>
-              <Plus className="mr-2 h-4 w-4" /> {t("stations.addConnector")}
-            </Button>
+            {canCreateConnector && (
+              <Button size="sm" onClick={() => setShowAddConnector(true)} disabled={showAddConnector}>
+                <Plus className="mr-2 h-4 w-4" /> {t("stations.addConnector")}
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
             {showAddConnector && (
@@ -283,7 +299,7 @@ export default function StationDetailPage() {
                         <td className="px-4 py-3"><Badge variant={conn.isEnabled ? "success" : "secondary"}>{conn.isEnabled ? t("stations.yes") : t("stations.no")}</Badge></td>
                         <td className="px-4 py-3">
                           <div className="flex gap-1">
-                            {conn.isEnabled ? (
+                            {canToggleConnector && (conn.isEnabled ? (
                               <Button variant="ghost" size="sm" onClick={() => disableConnectorMutation.mutate(conn.id)}>
                                 <PowerOff className="h-4 w-4" />
                               </Button>
@@ -291,10 +307,12 @@ export default function StationDetailPage() {
                               <Button variant="ghost" size="sm" onClick={() => enableConnectorMutation.mutate(conn.id)}>
                                 <Power className="h-4 w-4" />
                               </Button>
+                            ))}
+                            {canDeleteConnector && (
+                              <Button variant="ghost" size="sm" onClick={() => { if (confirm(t("stations.deleteConnectorConfirm"))) deleteConnectorMutation.mutate(conn.id); }}>
+                                <Trash2 className="h-4 w-4 text-red-500" />
+                              </Button>
                             )}
-                            <Button variant="ghost" size="sm" onClick={() => { if (confirm(t("stations.deleteConnectorConfirm"))) deleteConnectorMutation.mutate(conn.id); }}>
-                              <Trash2 className="h-4 w-4 text-red-500" />
-                            </Button>
                           </div>
                         </td>
                       </tr>

@@ -44,6 +44,16 @@ vi.mock('@/lib/store', () => ({
       }),
     }
   ),
+  useAuthStore: () => ({
+    permissions: [],
+    user: null,
+    token: null,
+    isAuthenticated: true,
+    login: vi.fn(),
+    logout: vi.fn(),
+    setPermissions: vi.fn(),
+    hasPermission: () => true,
+  }),
 }));
 
 import AlertsPage from '../page';

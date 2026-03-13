@@ -19,12 +19,16 @@ import { stationsApi } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
 import { useMonitoringHub } from "@/lib/signalr";
 import { usePreferencesStore } from "@/lib/store";
+import { useRequirePermission, useHasPermission } from "@/lib/use-permission";
+import { AccessDenied } from "@/components/ui/access-denied";
 import { StationBoardView, StationListView } from "@/components/stations";
 import type { StationListItem } from "@/components/stations";
 
 const pageSize = 20;
 
 export default function StationsPage() {
+  const hasAccess = useRequirePermission("KLC.Stations");
+  const canCreate = useHasPermission("KLC.Stations.Create");
   const { t } = useTranslation();
   const queryClient = useQueryClient();
 
@@ -97,6 +101,8 @@ export default function StationsPage() {
     setCursorStack([]);
   };
 
+  if (!hasAccess) return <AccessDenied />;
+
   return (
     <div className="flex flex-col">
       {/* Sticky Header */}
@@ -159,12 +165,14 @@ export default function StationsPage() {
               <List className="h-4 w-4" />
             </Button>
           </div>
-          <Link href="/stations/new">
-            <Button>
-              <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
-              {t("stations.addStation")}
-            </Button>
-          </Link>
+          {canCreate && (
+            <Link href="/stations/new">
+              <Button>
+                <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
+                {t("stations.addStation")}
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
 

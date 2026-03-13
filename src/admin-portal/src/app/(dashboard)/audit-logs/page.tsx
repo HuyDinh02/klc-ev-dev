@@ -11,6 +11,8 @@ import { SkeletonTable } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { api } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
+import { useRequirePermission } from "@/lib/use-permission";
+import { AccessDenied } from "@/components/ui/access-denied";
 import {
   FileText,
   Search,
@@ -72,6 +74,7 @@ const CHANGE_TYPE_VARIANT: Record<string, "success" | "destructive" | "warning">
 };
 
 export default function AuditLogsPage() {
+  const hasAccess = useRequirePermission("KLC.AuditLogs");
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const [httpMethod, setHttpMethod] = useState("all");
@@ -135,6 +138,8 @@ export default function AuditLogsPage() {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString("vi-VN");
   };
+
+  if (!hasAccess) return <AccessDenied />;
 
   return (
     <div className="space-y-6">

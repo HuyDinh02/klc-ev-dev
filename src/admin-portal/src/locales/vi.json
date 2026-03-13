@@ -1007,7 +1007,9 @@
     "somethingWrong": "Đã xảy ra lỗi",
     "somethingWrongDesc": "Đã xảy ra lỗi không mong muốn. Vui lòng thử lại hoặc liên hệ hỗ trợ.",
     "backToDashboard": "Quay về tổng quan",
-    "errorId": "Mã lỗi"
+    "errorId": "Mã lỗi",
+    "accessDenied": "Truy cập bị từ chối",
+    "accessDeniedDescription": "Bạn không có quyền xem trang này. Liên hệ quản trị viên để yêu cầu quyền truy cập."
   },
   "operators": {
     "title": "Nhà vận hành",

@@ -18,6 +18,8 @@ import {
 import { PROMOTION_TYPE } from "@/lib/constants";
 import { api } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
+import { useRequirePermission, useHasPermission } from "@/lib/use-permission";
+import { AccessDenied } from "@/components/ui/access-denied";
 import {
   Plus,
   Edit,
@@ -57,6 +59,10 @@ interface PromotionFormData {
 type FilterTab = "all" | "active" | "inactive";
 
 export default function PromotionsPage() {
+  const hasAccess = useRequirePermission("KLC.Promotions");
+  const canCreate = useHasPermission("KLC.Promotions.Create");
+  const canUpdate = useHasPermission("KLC.Promotions.Update");
+  const canDelete = useHasPermission("KLC.Promotions.Delete");
   const queryClient = useQueryClient();
   const { t } = useTranslation();
   const [isCreating, setIsCreating] = useState(false);
@@ -279,15 +285,19 @@ export default function PromotionsPage() {
     resetForm();
   };
 
+  if (!hasAccess) return <AccessDenied />;
+
   return (
     <div className="flex flex-col">
       {/* Sticky Header */}
       <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <PageHeader title={t("promotions.title")} description={t("promotions.description")}>
-          <Button onClick={() => setIsCreating(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            {t("promotions.addPromotion")}
-          </Button>
+          {canCreate && (
+            <Button onClick={() => setIsCreating(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              {t("promotions.addPromotion")}
+            </Button>
+          )}
         </PageHeader>
       </div>
 
@@ -556,28 +566,34 @@ export default function PromotionsPage() {
                       </span>
                     </div>
 
-                    <div className="flex gap-2 pt-3 border-t">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                        onClick={() => handleEdit(promo)}
-                      >
-                        <Edit className="mr-1.5 h-3.5 w-3.5" />
-                        {t("common.edit")}
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => {
-                          if (confirm(t("promotions.deleteConfirm"))) {
-                            deleteMutation.mutate(promo.id);
-                          }
-                        }}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
+                    {(canUpdate || canDelete) && (
+                      <div className="flex gap-2 pt-3 border-t">
+                        {canUpdate && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => handleEdit(promo)}
+                          >
+                            <Edit className="mr-1.5 h-3.5 w-3.5" />
+                            {t("common.edit")}
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                              if (confirm(t("promotions.deleteConfirm"))) {
+                                deleteMutation.mutate(promo.id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               );

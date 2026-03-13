@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
+import { useRequirePermission, useHasPermission } from "@/lib/use-permission";
+import { AccessDenied } from "@/components/ui/access-denied";
 import {
   Plus,
   Edit,
@@ -56,6 +58,12 @@ interface TariffFormData {
 }
 
 export default function TariffsPage() {
+  const hasAccess = useRequirePermission("KLC.Tariffs");
+  const canCreate = useHasPermission("KLC.Tariffs.Create");
+  const canUpdate = useHasPermission("KLC.Tariffs.Update");
+  const canActivate = useHasPermission("KLC.Tariffs.Activate");
+  const canDeactivate = useHasPermission("KLC.Tariffs.Deactivate");
+  const canDelete = useHasPermission("KLC.Tariffs.Delete");
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [isCreating, setIsCreating] = useState(false);
@@ -220,15 +228,19 @@ export default function TariffsPage() {
     ? (tariffs!.reduce((sum, t) => sum + t.totalRatePerKwh, 0) / totalTariffs)
     : 0;
 
+  if (!hasAccess) return <AccessDenied />;
+
   return (
     <div className="flex flex-col">
       {/* Sticky Header */}
       <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <PageHeader title={t("tariffs.title")} description={t("tariffs.description")}>
-          <Button onClick={() => setIsCreating(true)} disabled={isCreating || !!editingId}>
-            <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
-            {t("tariffs.addTariff")}
-          </Button>
+          {canCreate && (
+            <Button onClick={() => setIsCreating(true)} disabled={isCreating || !!editingId}>
+              <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
+              {t("tariffs.addTariff")}
+            </Button>
+          )}
         </PageHeader>
       </div>
 
@@ -422,32 +434,36 @@ export default function TariffsPage() {
                   </div>
 
                   <div className="flex flex-wrap gap-2 pt-2 border-t">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEdit(tariff)}
-                      aria-label={t("common.edit")}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant={tariff.isActive ? "outline" : "default"}
-                      size="sm"
-                      onClick={() =>
-                        toggleActiveMutation.mutate({
-                          id: tariff.id,
-                          activate: !tariff.isActive,
-                        })
-                      }
-                      aria-label={tariff.isActive ? t("common.deactivate") : t("common.activate")}
-                    >
-                      {tariff.isActive ? (
-                        <X className="h-4 w-4" />
-                      ) : (
-                        <Check className="h-4 w-4" />
-                      )}
-                    </Button>
-                    {!tariff.isDefault && tariff.isActive && (
+                    {canUpdate && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEdit(tariff)}
+                        aria-label={t("common.edit")}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {(tariff.isActive ? canDeactivate : canActivate) && (
+                      <Button
+                        variant={tariff.isActive ? "outline" : "default"}
+                        size="sm"
+                        onClick={() =>
+                          toggleActiveMutation.mutate({
+                            id: tariff.id,
+                            activate: !tariff.isActive,
+                          })
+                        }
+                        aria-label={tariff.isActive ? t("common.deactivate") : t("common.activate")}
+                      >
+                        {tariff.isActive ? (
+                          <X className="h-4 w-4" />
+                        ) : (
+                          <Check className="h-4 w-4" />
+                        )}
+                      </Button>
+                    )}
+                    {!tariff.isDefault && tariff.isActive && canUpdate && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -457,7 +473,7 @@ export default function TariffsPage() {
                         <Star className="h-4 w-4" />
                       </Button>
                     )}
-                    {!tariff.isDefault && (
+                    {!tariff.isDefault && canDelete && (
                       <Button
                         variant="destructive"
                         size="sm"

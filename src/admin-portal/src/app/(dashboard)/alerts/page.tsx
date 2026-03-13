@@ -14,6 +14,8 @@ import { useTranslation } from "@/lib/i18n";
 import { api } from "@/lib/api";
 import { useMonitoringHub } from "@/lib/signalr";
 import { useAlertsStore } from "@/lib/store";
+import { useRequirePermission } from "@/lib/use-permission";
+import { AccessDenied } from "@/components/ui/access-denied";
 import {
   Bell,
   AlertTriangle,
@@ -64,6 +66,7 @@ interface AlertStats {
 }
 
 export default function AlertsPage() {
+  const hasAccess = useRequirePermission("KLC.Alerts");
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [typeFilter, setTypeFilter] = useState("all");
@@ -167,6 +170,8 @@ export default function AlertsPage() {
     if (minutes > 0) return `${minutes}${t("alerts.minutesAgo")}`;
     return t("alerts.justNow");
   };
+
+  if (!hasAccess) return <AccessDenied />;
 
   return (
     <div className="space-y-6">

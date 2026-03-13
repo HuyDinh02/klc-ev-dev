@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
+import { useRequirePermission } from "@/lib/use-permission";
+import { AccessDenied } from "@/components/ui/access-denied";
 import { AlertCircle, MessageSquare, Send } from "lucide-react";
 
 interface Feedback {
@@ -39,6 +41,7 @@ const FeedbackTypeBadgeVariants: Record<number, "warning" | "default" | "success
 };
 
 export default function FeedbackPage() {
+  const hasAccess = useRequirePermission("KLC.Feedback");
   const queryClient = useQueryClient();
   const { t } = useTranslation();
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -165,6 +168,8 @@ export default function FeedbackPage() {
     setResponseText("");
     setFormError("");
   };
+
+  if (!hasAccess) return <AccessDenied />;
 
   return (
     <div className="flex flex-col">

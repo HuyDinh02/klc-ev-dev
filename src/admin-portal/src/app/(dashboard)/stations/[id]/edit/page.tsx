@@ -9,11 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { stationsApi, stationGroupsApi, tariffsApi } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
+import { useRequirePermission } from "@/lib/use-permission";
+import { AccessDenied } from "@/components/ui/access-denied";
 import { ArrowLeft } from "lucide-react";
 import { StationPhotoUpload } from "@/components/stations";
 import type { PhotoItem } from "@/components/stations";
 
 export default function EditStationPage() {
+  const hasAccess = useRequirePermission("KLC.Stations.Update");
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { t } = useTranslation();
@@ -109,6 +112,8 @@ export default function EditStationPage() {
     e.preventDefault();
     updateMutation.mutate();
   };
+
+  if (!hasAccess) return <AccessDenied />;
 
   if (isLoading) {
     return (

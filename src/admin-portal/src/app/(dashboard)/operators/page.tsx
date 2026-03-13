@@ -12,6 +12,8 @@ import { SkeletonCard } from "@/components/ui/skeleton";
 import { Dialog, DialogHeader, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { operatorsApi } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
+import { useRequirePermission, useHasPermission } from "@/lib/use-permission";
+import { AccessDenied } from "@/components/ui/access-denied";
 import {
   Plus,
   Trash2,
@@ -54,6 +56,8 @@ interface OperatorDetail {
 }
 
 export default function OperatorsPage() {
+  const hasAccess = useRequirePermission("KLC.Operators");
+  const canCreate = useHasPermission("KLC.Operators.Create");
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
@@ -174,15 +178,19 @@ export default function OperatorsPage() {
     }
   };
 
+  if (!hasAccess) return <AccessDenied />;
+
   return (
     <div className="space-y-6">
       <PageHeader
         title={t("operators.title")}
         description={t("operators.description")}
       >
-        <Button onClick={() => setShowCreate(true)} aria-label={t("operators.createOperator")}>
-          <Plus className="mr-2 h-4 w-4" /> {t("operators.createOperator")}
-        </Button>
+        {canCreate && (
+          <Button onClick={() => setShowCreate(true)} aria-label={t("operators.createOperator")}>
+            <Plus className="mr-2 h-4 w-4" /> {t("operators.createOperator")}
+          </Button>
+        )}
       </PageHeader>
 
       {/* Stats */}

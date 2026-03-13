@@ -13,6 +13,8 @@ import { Dialog, DialogHeader, DialogContent, DialogFooter } from "@/components/
 import { powerSharingApi } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
 import { useMonitoringHub, PowerAllocationUpdate } from "@/lib/signalr";
+import { useRequirePermission, useHasPermission } from "@/lib/use-permission";
+import { AccessDenied } from "@/components/ui/access-denied";
 import {
   Plus,
   Trash2,
@@ -68,6 +70,8 @@ const MODE_LABELS: Record<number, string> = { 0: "LINK", 1: "LOOP" };
 const STRATEGY_LABELS: Record<number, string> = { 0: "Average", 1: "Proportional", 2: "Dynamic" };
 
 export default function PowerSharingPage() {
+  const hasAccess = useRequirePermission("KLC.PowerSharing");
+  const canCreate = useHasPermission("KLC.PowerSharing.Create");
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
@@ -160,6 +164,8 @@ export default function PowerSharingPage() {
     return sum + (live ? live.totalAllocatedKw : g.totalAllocatedKw);
   }, 0) ?? 0;
 
+  if (!hasAccess) return <AccessDenied />;
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -175,9 +181,11 @@ export default function PowerSharingPage() {
             )}
             {signalRStatus === "connected" ? t("powerSharing.live") : ""}
           </span>
-          <Button onClick={() => setShowCreate(true)} aria-label={t("powerSharing.createGroup")}>
-            <Plus className="mr-2 h-4 w-4" /> {t("powerSharing.createGroup")}
-          </Button>
+          {canCreate && (
+            <Button onClick={() => setShowCreate(true)} aria-label={t("powerSharing.createGroup")}>
+              <Plus className="mr-2 h-4 w-4" /> {t("powerSharing.createGroup")}
+            </Button>
+          )}
         </div>
       </PageHeader>
 

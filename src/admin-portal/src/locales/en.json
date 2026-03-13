@@ -1007,7 +1007,9 @@
     "somethingWrong": "Something went wrong",
     "somethingWrongDesc": "An unexpected error occurred. Please try again or contact support if the problem persists.",
     "backToDashboard": "Back to Dashboard",
-    "errorId": "Error ID"
+    "errorId": "Error ID",
+    "accessDenied": "Access Denied",
+    "accessDeniedDescription": "You do not have permission to view this page. Contact your administrator to request access."
   },
   "operators": {
     "title": "Operators",

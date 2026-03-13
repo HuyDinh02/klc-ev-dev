@@ -12,6 +12,8 @@ import { SkeletonCard } from "@/components/ui/skeleton";
 import { Dialog, DialogHeader, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { fleetsApi } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
+import { useRequirePermission, useHasPermission } from "@/lib/use-permission";
+import { AccessDenied } from "@/components/ui/access-denied";
 import {
   Plus,
   Trash2,
@@ -102,6 +104,8 @@ function formatVnd(value: number): string {
 }
 
 export default function FleetsPage() {
+  const hasAccess = useRequirePermission("KLC.Fleets");
+  const canCreate = useHasPermission("KLC.Fleets.Create");
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
@@ -231,15 +235,19 @@ export default function FleetsPage() {
     }
   };
 
+  if (!hasAccess) return <AccessDenied />;
+
   return (
     <div className="space-y-6">
       <PageHeader
         title={t("fleets.title")}
         description={t("fleets.description")}
       >
-        <Button onClick={() => setShowCreate(true)} aria-label={t("fleets.createFleet")}>
-          <Plus className="mr-2 h-4 w-4" /> {t("fleets.createFleet")}
-        </Button>
+        {canCreate && (
+          <Button onClick={() => setShowCreate(true)} aria-label={t("fleets.createFleet")}>
+            <Plus className="mr-2 h-4 w-4" /> {t("fleets.createFleet")}
+          </Button>
+        )}
       </PageHeader>
 
       {/* Stats */}

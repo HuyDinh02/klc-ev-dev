@@ -13,6 +13,8 @@ import { SkeletonCard } from "@/components/ui/skeleton";
 import { Dialog, DialogHeader, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { api, stationGroupsApi } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
+import { useRequirePermission, useHasPermission } from "@/lib/use-permission";
+import { AccessDenied } from "@/components/ui/access-denied";
 import {
   Plus,
   Edit,
@@ -262,6 +264,8 @@ function GroupCard({
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const canUpdate = useHasPermission("KLC.StationGroups.Update");
+  const canDelete = useHasPermission("KLC.StationGroups.Delete");
   const [expanded, setExpanded] = useState(false);
   const [showAssign, setShowAssign] = useState(false);
 
@@ -371,22 +375,28 @@ function GroupCard({
                   {group.childGroupCount} {t("groups.sub")}
                 </Badge>
               )}
-              <Button variant="outline" size="sm" onClick={() => setShowAssign(!showAssign)}>
-                <Plus className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => onEdit(group)}>
-                <Edit className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => {
-                  if (confirm(t("groups.deleteConfirm").replace("{name}", group.name)))
-                    onDelete(group.id);
-                }}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              {canUpdate && (
+                <Button variant="outline" size="sm" onClick={() => setShowAssign(!showAssign)}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              )}
+              {canUpdate && (
+                <Button variant="outline" size="sm" onClick={() => onEdit(group)}>
+                  <Edit className="h-4 w-4" />
+                </Button>
+              )}
+              {canDelete && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    if (confirm(t("groups.deleteConfirm").replace("{name}", group.name)))
+                      onDelete(group.id);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -528,6 +538,8 @@ function GroupCard({
 // --- Main Page ---
 
 export default function StationGroupsPage() {
+  const hasAccess = useRequirePermission("KLC.StationGroups");
+  const canCreate = useHasPermission("KLC.StationGroups.Create");
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [isCreating, setIsCreating] = useState(false);
@@ -595,6 +607,8 @@ export default function StationGroupsPage() {
   }, {});
   const totalStations = allGroups.reduce((sum, g) => sum + g.stationCount, 0);
 
+  if (!hasAccess) return <AccessDenied />;
+
   return (
     <div className="flex flex-col">
       {/* Sticky Header */}
@@ -603,10 +617,12 @@ export default function StationGroupsPage() {
           title={t("groups.title")}
           description={t("groups.description")}
         >
-          <Button onClick={() => { setIsCreating(true); setEditingGroup(null); }} disabled={isCreating}>
-            <Plus className="mr-2 h-4 w-4" />
-            {t("groups.addGroup")}
-          </Button>
+          {canCreate && (
+            <Button onClick={() => { setIsCreating(true); setEditingGroup(null); }} disabled={isCreating}>
+              <Plus className="mr-2 h-4 w-4" />
+              {t("groups.addGroup")}
+            </Button>
+          )}
         </PageHeader>
       </div>
 

@@ -14,8 +14,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { formatDateTime } from "@/lib/utils";
 import { faultsApi } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
+import { useRequirePermission, useHasPermission } from "@/lib/use-permission";
+import { AccessDenied } from "@/components/ui/access-denied";
 
 export default function FaultsPage() {
+  const hasAccess = useRequirePermission("KLC.Faults");
+  const canUpdate = useHasPermission("KLC.Faults.Update");
   const { t } = useTranslation();
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -58,6 +62,8 @@ export default function FaultsPage() {
   const newFaults = faults.filter((f: { status: number | string }) => f.status === 0 || f.status === "Open").length;
   const inProgressFaults = faults.filter((f: { status: number | string }) => f.status === 1 || f.status === "Investigating").length;
   const criticalFaults = faults.filter((f: { priority?: number }) => f.priority === 1).length;
+
+  if (!hasAccess) return <AccessDenied />;
 
   return (
     <div className="flex flex-col">
@@ -168,7 +174,7 @@ export default function FaultsPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {(fault.status === 0 || fault.status === "Open") && (
+                        {canUpdate && (fault.status === 0 || fault.status === "Open") && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -179,7 +185,7 @@ export default function FaultsPage() {
                             {t("faults.investigate")}
                           </Button>
                         )}
-                        {(fault.status === 1 || fault.status === "Investigating") && (
+                        {canUpdate && (fault.status === 1 || fault.status === "Investigating") && (
                           <Button
                             variant="default"
                             size="sm"
