@@ -15,7 +15,8 @@ import { useTranslation } from "@/lib/i18n";
 import {
   Plus, Edit, Trash2, Lock, Unlock, Key, Shield, Search, Users, ChevronLeft, ChevronRight,
   MapPin, Activity, Zap, Cable, AlertTriangle, Wrench, DollarSign, CreditCard, Ticket,
-  Building2, Truck, FileText, Bell, ChevronDown, ChevronUp, type LucideIcon,
+  Building2, Truck, FileText, Bell, ChevronDown, Plug, type LucideIcon,
+  Check, Minus,
 } from "lucide-react";
 
 // Permission-to-sidebar mapping
@@ -27,7 +28,7 @@ const PERMISSION_SECTIONS: Array<{
     sectionKey: "permissions.sectionOperations",
     groups: [
       { permissionGroup: "KLC.Stations", icon: MapPin, pageHint: "/stations" },
-      { permissionGroup: "KLC.Connectors", icon: Zap, pageHint: "/stations" },
+      { permissionGroup: "KLC.Connectors", icon: Plug, pageHint: "/stations" },
       { permissionGroup: "KLC.Monitoring", icon: Activity, pageHint: "/monitoring" },
       { permissionGroup: "KLC.Sessions", icon: Zap, pageHint: "/sessions" },
       { permissionGroup: "KLC.PowerSharing", icon: Cable, pageHint: "/power-sharing" },
@@ -75,20 +76,27 @@ const PERMISSION_SECTIONS: Array<{
 type PermissionItem = { name: string; displayName: string; isGranted: boolean };
 type PermissionGroup = { name: string; displayName: string; permissions: PermissionItem[] };
 
-// Indeterminate checkbox component
-function IndeterminateCheckbox({ checked, indeterminate, onChange, label }: {
-  checked: boolean; indeterminate: boolean; onChange: (checked: boolean) => void; label: string;
+// Toggle switch for group-level grant/revoke
+function PermissionToggle({ checked, indeterminate, onChange }: {
+  checked: boolean; indeterminate: boolean; onChange: (checked: boolean) => void;
 }) {
-  const ref = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    if (ref.current) ref.current.indeterminate = indeterminate;
-  }, [indeterminate]);
   return (
-    <label className="flex items-center gap-2 cursor-pointer">
-      <input ref={ref} type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)}
-        className="h-4 w-4 rounded border-gray-300" />
-      <span className="text-xs font-medium text-muted-foreground">{label}</span>
-    </label>
+    <button
+      type="button"
+      role="switch"
+      aria-checked={indeterminate ? "mixed" : checked}
+      onClick={(e) => { e.stopPropagation(); onChange(!checked); }}
+      className={`relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+        checked ? "bg-primary" : indeterminate ? "bg-amber-400" : "bg-muted-foreground/25"
+      }`}
+    >
+      <span className={`pointer-events-none flex h-4 w-4 items-center justify-center rounded-full bg-white shadow-sm transition-transform ${
+        checked ? "translate-x-[18px]" : indeterminate ? "translate-x-[9px]" : "translate-x-[2px]"
+      }`}>
+        {checked && <Check className="h-2.5 w-2.5 text-primary" />}
+        {indeterminate && <Minus className="h-2.5 w-2.5 text-amber-500" />}
+      </span>
+    </button>
   );
 }
 
@@ -388,6 +396,7 @@ function RolesTab() {
   const [permissionGrants, setPermissionGrants] = useState<Record<string, boolean>>({});
   const [permSearch, setPermSearch] = useState("");
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
   const { data: rolesData, isLoading } = useQuery({
     queryKey: ["roles"],
@@ -518,8 +527,12 @@ function RolesTab() {
 
   const roles = rolesData?.items || [];
 
-  // Render a single permission group card
-  const renderGroupCard = (groupDef: { permissionGroup: string; icon: LucideIcon; pageHint: string | null }) => {
+  const toggleGroup = (name: string) => {
+    setExpandedGroups((prev) => ({ ...prev, [name]: !prev[name] }));
+  };
+
+  // Render a compact accordion row for a permission group
+  const renderGroupRow = (groupDef: { permissionGroup: string; icon: LucideIcon; pageHint: string | null }) => {
     const group = groupLookup[groupDef.permissionGroup];
     if (!group) return null;
     if (!matchesSearch(group)) return null;
@@ -529,34 +542,57 @@ function RolesTab() {
     const filteredPerms = permSearch
       ? childPerms.filter((p) => p.displayName.toLowerCase().includes(permSearch.toLowerCase()) || group.displayName.toLowerCase().includes(permSearch.toLowerCase()))
       : childPerms;
+    const isExpanded = expandedGroups[group.name];
+    const checkedCount = (group.permissions || []).filter((p) => permissionGrants[p.name]).length;
+    const totalCount = (group.permissions || []).length;
+    const statusColor = state.all ? "border-l-emerald-500" : state.indeterminate ? "border-l-amber-400" : "border-l-muted-foreground/20";
 
     return (
-      <div key={group.name} className="rounded-lg border bg-card p-3 space-y-2">
-        <div className="flex items-center gap-2">
+      <div key={group.name} className={`border-l-[3px] ${statusColor} rounded-r-md bg-card`}>
+        {/* Compact row header */}
+        <button
+          type="button"
+          className="flex items-center gap-2.5 w-full px-3 py-2 text-left hover:bg-muted/50 transition-colors"
+          onClick={() => toggleGroup(group.name)}
+        >
           <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" aria-hidden="true" />
-          <span className="font-medium text-sm flex-1">{group.displayName}</span>
+          <span className="font-medium text-sm flex-1 truncate">{group.displayName}</span>
           {groupDef.pageHint && (
-            <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+            <span className="hidden sm:inline text-[10px] text-muted-foreground/70 bg-muted px-1.5 py-0.5 rounded flex-shrink-0">
               {groupDef.pageHint}
             </span>
           )}
-        </div>
-        <IndeterminateCheckbox
-          checked={state.all}
-          indeterminate={state.indeterminate}
-          onChange={(checked) => toggleGroupAll(group, checked)}
-          label={t("permissions.selectAll")}
-        />
-        {filteredPerms.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 pl-6">
-            {filteredPerms.map((perm) => (
-              <label key={perm.name} className="flex items-center gap-2 cursor-pointer py-0.5">
-                <input type="checkbox" checked={permissionGrants[perm.name] ?? false}
-                  onChange={(e) => setPermissionGrants({ ...permissionGrants, [perm.name]: e.target.checked })}
-                  className="h-3.5 w-3.5 rounded border-gray-300" />
-                <span className="text-xs">{perm.displayName}</span>
-              </label>
-            ))}
+          <span className={`text-[10px] font-medium tabular-nums px-1.5 py-0.5 rounded flex-shrink-0 ${
+            state.all ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+              : state.indeterminate ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+              : "bg-muted text-muted-foreground"
+          }`}>
+            {checkedCount}/{totalCount}
+          </span>
+          <PermissionToggle
+            checked={state.all}
+            indeterminate={state.indeterminate}
+            onChange={(checked) => toggleGroupAll(group, checked)}
+          />
+          {childPerms.length > 0 && (
+            isExpanded
+              ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+              : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+          )}
+        </button>
+        {/* Expanded child permissions */}
+        {isExpanded && filteredPerms.length > 0 && (
+          <div className="px-3 pb-2.5 pt-0.5 border-t border-dashed">
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5 pl-6">
+              {filteredPerms.map((perm) => (
+                <label key={perm.name} className="flex items-center gap-1.5 cursor-pointer py-0.5 min-w-[140px]">
+                  <input type="checkbox" checked={permissionGrants[perm.name] ?? false}
+                    onChange={(e) => setPermissionGrants({ ...permissionGrants, [perm.name]: e.target.checked })}
+                    className="h-3.5 w-3.5 rounded border-gray-300 accent-primary" />
+                  <span className="text-xs text-foreground/80">{perm.displayName}</span>
+                </label>
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -615,7 +651,7 @@ function RolesTab() {
                           <Button variant="ghost" size="sm" title={t("common.edit")} aria-label={t("common.edit")} onClick={() => { setEditingRole(role); setRoleForm({ name: role.name as string, isDefault: role.isDefault as boolean, isPublic: (role.isPublic as boolean) ?? true }); }}>
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" title={t("userManagement.permissions")} aria-label={t("userManagement.permissions")} onClick={() => { setPermissionsRole(role); setPermissionGrants({}); setPermSearch(""); setCollapsedSections({}); }}>
+                          <Button variant="ghost" size="sm" title={t("userManagement.permissions")} aria-label={t("userManagement.permissions")} onClick={() => { setPermissionsRole(role); setPermissionGrants({}); setPermSearch(""); setCollapsedSections({}); setExpandedGroups({}); }}>
                             <Shield className="h-4 w-4" />
                           </Button>
                           {!role.isStatic && (
@@ -691,65 +727,105 @@ function RolesTab() {
                 </div>
               </div>
 
-              {/* Permission Sections */}
-              {PERMISSION_SECTIONS.map((section) => {
-                if (!sectionHasVisibleGroups(section)) return null;
-                const isCollapsed = collapsedSections[section.sectionKey];
-                return (
-                  <div key={section.sectionKey} className="space-y-2">
-                    <button
-                      type="button"
-                      className="flex items-center gap-2 w-full text-left py-1"
-                      onClick={() => toggleSection(section.sectionKey)}
-                    >
-                      {isCollapsed ? (
-                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                      )}
-                      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        {t(section.sectionKey)}
-                      </span>
-                    </button>
-                    {!isCollapsed && (
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 pl-2">
-                        {section.groups.map((gDef) => renderGroupCard(gDef))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-
-              {/* Unmapped groups: show any groups from API not in PERMISSION_SECTIONS */}
-              {(() => {
-                const mappedNames = new Set(PERMISSION_SECTIONS.flatMap((s) => s.groups.map((g) => g.permissionGroup)));
-                const unmapped = permissionGroups.filter((g) => !mappedNames.has(g.name) && matchesSearch(g));
-                if (unmapped.length === 0) return null;
-                return (
-                  <div className="space-y-2">
-                    <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground py-1 pl-6">
-                      {t("common.other") ?? "Other"}
-                    </div>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 pl-2">
-                      {unmapped.map((group) => (
-                        <div key={group.name} className="rounded-lg border bg-card p-3 space-y-2">
-                          <span className="font-medium text-sm">{group.displayName}</span>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 pl-6">
-                            {group.permissions.map((perm) => (
-                              <label key={perm.name} className="flex items-center gap-2 cursor-pointer py-0.5">
-                                <input type="checkbox" checked={permissionGrants[perm.name] ?? false}
-                                  onChange={(e) => setPermissionGrants({ ...permissionGrants, [perm.name]: e.target.checked })}
-                                  className="h-3.5 w-3.5 rounded border-gray-300" />
-                                <span className="text-xs">{perm.displayName}</span>
-                              </label>
-                            ))}
-                          </div>
+              {/* Permission Sections — Compact Accordion */}
+              <div className="space-y-3">
+                {PERMISSION_SECTIONS.map((section) => {
+                  if (!sectionHasVisibleGroups(section)) return null;
+                  const isCollapsed = collapsedSections[section.sectionKey];
+                  return (
+                    <div key={section.sectionKey}>
+                      <button
+                        type="button"
+                        className="flex items-center gap-2 w-full text-left py-1.5 px-1 hover:bg-muted/30 rounded transition-colors"
+                        onClick={() => toggleSection(section.sectionKey)}
+                      >
+                        {isCollapsed ? (
+                          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                        ) : (
+                          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                        )}
+                        <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                          {t(section.sectionKey)}
+                        </span>
+                      </button>
+                      {!isCollapsed && (
+                        <div className="space-y-0.5 mt-1">
+                          {section.groups.map((gDef) => renderGroupRow(gDef))}
                         </div>
-                      ))}
+                      )}
                     </div>
-                  </div>
-                );
-              })()}
+                  );
+                })}
+
+                {/* Unmapped groups */}
+                {(() => {
+                  const mappedNames = new Set(PERMISSION_SECTIONS.flatMap((s) => s.groups.map((g) => g.permissionGroup)));
+                  const unmapped = permissionGroups.filter((g) => !mappedNames.has(g.name) && matchesSearch(g));
+                  if (unmapped.length === 0) return null;
+                  return (
+                    <div>
+                      <div className="flex items-center gap-2 py-1.5 px-1">
+                        <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                          {t("common.other") ?? "Other"}
+                        </span>
+                      </div>
+                      <div className="space-y-0.5 mt-1">
+                        {unmapped.map((group) => {
+                          const state = getGroupState(group);
+                          const isExpanded = expandedGroups[group.name];
+                          const childPerms = (group.permissions || []).filter((p) => p.name !== group.name);
+                          const checkedCount = (group.permissions || []).filter((p) => permissionGrants[p.name]).length;
+                          const totalCount = (group.permissions || []).length;
+                          const statusColor = state.all ? "border-l-emerald-500" : state.indeterminate ? "border-l-amber-400" : "border-l-muted-foreground/20";
+                          return (
+                            <div key={group.name} className={`border-l-[3px] ${statusColor} rounded-r-md bg-card`}>
+                              <button
+                                type="button"
+                                className="flex items-center gap-2.5 w-full px-3 py-2 text-left hover:bg-muted/50 transition-colors"
+                                onClick={() => toggleGroup(group.name)}
+                              >
+                                <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" aria-hidden="true" />
+                                <span className="font-medium text-sm flex-1 truncate">{group.displayName}</span>
+                                <span className={`text-[10px] font-medium tabular-nums px-1.5 py-0.5 rounded flex-shrink-0 ${
+                                  state.all ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                                    : state.indeterminate ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                                    : "bg-muted text-muted-foreground"
+                                }`}>
+                                  {checkedCount}/{totalCount}
+                                </span>
+                                <PermissionToggle
+                                  checked={state.all}
+                                  indeterminate={state.indeterminate}
+                                  onChange={(checked) => toggleGroupAll(group, checked)}
+                                />
+                                {childPerms.length > 0 && (
+                                  isExpanded
+                                    ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                                    : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                                )}
+                              </button>
+                              {isExpanded && childPerms.length > 0 && (
+                                <div className="px-3 pb-2.5 pt-0.5 border-t border-dashed">
+                                  <div className="flex flex-wrap gap-x-4 gap-y-1.5 pl-6">
+                                    {childPerms.map((perm) => (
+                                      <label key={perm.name} className="flex items-center gap-1.5 cursor-pointer py-0.5 min-w-[140px]">
+                                        <input type="checkbox" checked={permissionGrants[perm.name] ?? false}
+                                          onChange={(e) => setPermissionGrants({ ...permissionGrants, [perm.name]: e.target.checked })}
+                                          className="h-3.5 w-3.5 rounded border-gray-300 accent-primary" />
+                                        <span className="text-xs text-foreground/80">{perm.displayName}</span>
+                                      </label>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
 
               {/* No results message */}
               {permSearch && !PERMISSION_SECTIONS.some((s) => sectionHasVisibleGroups(s)) && (
