@@ -98,3 +98,20 @@ export const useAlertsStore = create<AlertsState>((set) => ({
   incrementUnreadCount: () => set((state) => ({ unreadCount: state.unreadCount + 1 })),
   decrementUnreadCount: () => set((state) => ({ unreadCount: Math.max(0, state.unreadCount - 1) })),
 }));
+
+type Theme = "light" | "dark" | "system";
+
+interface ThemeState {
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
+}
+
+export const useThemeStore = create<ThemeState>()(
+  persist(
+    (set) => ({
+      theme: "system" as Theme,
+      setTheme: (theme) => set({ theme }),
+    }),
+    { name: "theme-storage" }
+  )
+);
