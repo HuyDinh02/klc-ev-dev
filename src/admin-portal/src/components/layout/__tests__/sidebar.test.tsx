@@ -30,8 +30,10 @@ const storeState = {
 vi.mock('@/lib/store', () => ({
   useSidebarStore: () => ({
     isCollapsed: storeState.isCollapsed,
+    isMobileOpen: false,
     toggle: vi.fn(),
     setCollapsed: vi.fn(),
+    setMobileOpen: vi.fn(),
   }),
   useAuthStore: () => ({
     user: storeState.user,

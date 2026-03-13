@@ -12,9 +12,10 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonTable, SkeletonCard } from "@/components/ui/skeleton";
 import { Tabs } from "@/components/ui/tabs";
+import { Dialog, DialogHeader, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
-import { useRequirePermission } from "@/lib/use-permission";
+import { useRequirePermission, useHasPermission } from "@/lib/use-permission";
 import { AccessDenied } from "@/components/ui/access-denied";
 import {
   Search,
@@ -27,6 +28,7 @@ import {
   Wallet,
   Receipt,
   Zap,
+  CheckCircle,
 } from "lucide-react";
 
 interface MobileUser {
@@ -116,6 +118,7 @@ const formatDateTime = (date?: string | null) => {
 
 export default function MobileUsersPage() {
   const hasAccess = useRequirePermission("KLC.MobileUsers");
+  const canAdjustWallet = useHasPermission("KLC.MobileUsers.WalletAdjust");
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
@@ -123,6 +126,14 @@ export default function MobileUsersPage() {
   const pageSize = 20;
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<"profile" | "wallet" | "sessions">("profile");
+
+  // Wallet adjustment state
+  const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
+  const [adjustUserId, setAdjustUserId] = useState<string | null>(null);
+  const [adjustAmount, setAdjustAmount] = useState("");
+  const [adjustReason, setAdjustReason] = useState("");
+  const [adjustError, setAdjustError] = useState("");
+  const [adjustResult, setAdjustResult] = useState<{ newBalance: number; transactionId: string } | null>(null);
 
   // Fetch mobile users list
   const { data: usersData, isLoading } = useQuery<CursorPagedResult<MobileUser>>({
@@ -196,6 +207,71 @@ export default function MobileUsersPage() {
       queryClient.invalidateQueries({ queryKey: ["mobile-users"] });
     },
   });
+
+  // Wallet adjustment
+  const walletAdjustMutation = useMutation({
+    mutationFn: async ({ userId, data }: { userId: string; data: { amount: number; reason: string } }) => {
+      const res = await api.post(`/admin/mobile-users/${userId}/wallet/adjust`, data);
+      return res.data as { newBalance: number; transactionId: string };
+    },
+    onSuccess: (result) => {
+      setAdjustResult(result);
+      setAdjustAmount("");
+      setAdjustReason("");
+      setAdjustError("");
+      queryClient.invalidateQueries({ queryKey: ["mobile-users"] });
+    },
+    onError: (err: unknown) => {
+      if (err && typeof err === "object" && "response" in err) {
+        const axiosError = err as { response?: { data?: { error?: { message?: string; details?: string; validationErrors?: Array<{ message: string }> } } } };
+        const apiError = axiosError.response?.data?.error;
+        if (apiError?.validationErrors?.length) {
+          setAdjustError(apiError.validationErrors.map((e) => e.message).join(". "));
+        } else if (apiError?.details) {
+          setAdjustError(apiError.details);
+        } else if (apiError?.message) {
+          setAdjustError(apiError.message);
+        } else {
+          setAdjustError("An error occurred");
+        }
+      } else {
+        setAdjustError("An error occurred");
+      }
+    },
+  });
+
+  const openAdjustDialog = (userId: string) => {
+    setAdjustUserId(userId);
+    setAdjustAmount("");
+    setAdjustReason("");
+    setAdjustError("");
+    setAdjustResult(null);
+    setAdjustDialogOpen(true);
+  };
+
+  const closeAdjustDialog = () => {
+    setAdjustDialogOpen(false);
+    setAdjustUserId(null);
+    setAdjustResult(null);
+  };
+
+  const handleAdjustSubmit = () => {
+    const amount = parseFloat(adjustAmount);
+    if (isNaN(amount) || amount === 0) {
+      setAdjustError(t("mobileUsers.adjustAmount"));
+      return;
+    }
+    if (!adjustReason.trim()) {
+      setAdjustError(t("mobileUsers.adjustReason"));
+      return;
+    }
+    if (!adjustUserId) return;
+    setAdjustError("");
+    walletAdjustMutation.mutate({
+      userId: adjustUserId,
+      data: { amount, reason: adjustReason.trim() },
+    });
+  };
 
   const handleRowClick = (userId: string) => {
     if (selectedUserId === userId) {
@@ -467,6 +543,22 @@ export default function MobileUsersPage() {
                                     />
                                   </div>
 
+                                  {canAdjustWallet && (
+                                    <div className="flex justify-end">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          openAdjustDialog(user.id);
+                                        }}
+                                      >
+                                        <Wallet className="mr-1 h-4 w-4" />
+                                        {t("mobileUsers.adjustBalance")}
+                                      </Button>
+                                    </div>
+                                  )}
+
                                   <div>
                                     <h4 className="mb-2 text-sm font-medium">{t("mobileUsers.recentTransactions")}</h4>
                                     {userTransactions.length > 0 ? (
@@ -620,6 +712,79 @@ export default function MobileUsersPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Wallet Adjustment Dialog */}
+      <Dialog open={adjustDialogOpen} onClose={closeAdjustDialog} size="sm" title={t("mobileUsers.adjustBalance")}>
+        <DialogHeader onClose={closeAdjustDialog}>
+          {t("mobileUsers.adjustBalance")}
+        </DialogHeader>
+        <DialogContent>
+          {adjustResult ? (
+            <div className="space-y-4 text-center py-4">
+              <CheckCircle className="mx-auto h-12 w-12 text-emerald-500" />
+              <p className="text-sm font-medium">{t("mobileUsers.adjustSuccess")}</p>
+              <div className="rounded-md bg-muted p-3">
+                <p className="text-sm text-muted-foreground">{t("mobileUsers.newBalance")}</p>
+                <p className="text-lg font-semibold">{formatCurrency(adjustResult.newBalance)}</p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {adjustError && (
+                <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  {adjustError}
+                </div>
+              )}
+              <div className="space-y-2">
+                <label htmlFor="adjust-amount" className="text-sm font-medium">
+                  {t("mobileUsers.adjustAmount")}
+                </label>
+                <Input
+                  id="adjust-amount"
+                  type="number"
+                  value={adjustAmount}
+                  onChange={(e) => setAdjustAmount(e.target.value)}
+                  placeholder="0"
+                />
+                <p className="text-xs text-muted-foreground">{t("mobileUsers.adjustAmountHint")}</p>
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="adjust-reason" className="text-sm font-medium">
+                  {t("mobileUsers.adjustReason")}
+                </label>
+                <Input
+                  id="adjust-reason"
+                  type="text"
+                  value={adjustReason}
+                  onChange={(e) => setAdjustReason(e.target.value)}
+                  placeholder={t("mobileUsers.adjustReason")}
+                />
+              </div>
+            </div>
+          )}
+        </DialogContent>
+        <DialogFooter>
+          {adjustResult ? (
+            <Button variant="default" onClick={closeAdjustDialog}>
+              {t("common.close")}
+            </Button>
+          ) : (
+            <>
+              <Button variant="outline" onClick={closeAdjustDialog}>
+                {t("common.cancel")}
+              </Button>
+              <Button
+                variant="default"
+                onClick={handleAdjustSubmit}
+                disabled={walletAdjustMutation.isPending}
+              >
+                {walletAdjustMutation.isPending ? t("common.saving") : t("common.confirm")}
+              </Button>
+            </>
+          )}
+        </DialogFooter>
+      </Dialog>
     </div>
   );
 }

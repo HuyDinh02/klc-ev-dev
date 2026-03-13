@@ -927,7 +927,13 @@
     "noSessionsDescription": "This user has no charging sessions yet.",
     "profile": "Profile",
     "wallet": "Wallet",
-    "sessions": "Sessions"
+    "sessions": "Sessions",
+    "adjustBalance": "Adjust Balance",
+    "adjustAmount": "Amount (VNĐ)",
+    "adjustReason": "Reason",
+    "adjustSuccess": "Balance adjusted successfully",
+    "newBalance": "New Balance",
+    "adjustAmountHint": "Positive to add, negative to deduct"
   },
   "vouchers": {
     "title": "Voucher Management",

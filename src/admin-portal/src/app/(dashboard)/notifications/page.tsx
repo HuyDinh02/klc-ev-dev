@@ -11,8 +11,8 @@ import { Dialog, DialogHeader, DialogContent, DialogFooter } from "@/components/
 import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonCard } from "@/components/ui/skeleton";
 import { useTranslation } from "@/lib/i18n";
-import { notificationsApi } from "@/lib/api";
-import { useRequirePermission } from "@/lib/use-permission";
+import { notificationsApi, broadcastApi } from "@/lib/api";
+import { useRequirePermission, useHasPermission } from "@/lib/use-permission";
 import { AccessDenied } from "@/components/ui/access-denied";
 import { formatDistanceToNow } from "@/lib/utils";
 import {
@@ -30,6 +30,7 @@ import {
   Megaphone,
   ChevronLeft,
   ChevronRight,
+  Send,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -73,12 +74,16 @@ const PAGE_SIZE = 20;
 
 export default function NotificationsPage() {
   const hasAccess = useRequirePermission("KLC.Notifications");
+  const canBroadcast = useHasPermission("KLC.Notifications.Broadcast");
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [readFilter, setReadFilter] = useState<"all" | "unread" | "read">("all");
   const [cursor, setCursor] = useState<string | null>(null);
   const [cursorStack, setCursorStack] = useState<(string | null)[]>([]);
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
+  const [broadcastOpen, setBroadcastOpen] = useState(false);
+  const [broadcastForm, setBroadcastForm] = useState({ type: 8, title: "", body: "" });
+  const [broadcastResult, setBroadcastResult] = useState<string | null>(null);
 
   const { data: notificationsData, isLoading } = useQuery({
     queryKey: ["notifications", readFilter, cursor],
@@ -116,6 +121,24 @@ export default function NotificationsPage() {
     },
   });
 
+  const broadcastMutation = useMutation({
+    mutationFn: (data: { type: number; title: string; body: string }) =>
+      broadcastApi.send(data),
+    onSuccess: (response) => {
+      const result = response.data as { message: string; recipientCount: number };
+      setBroadcastResult(
+        `${t("notifications.broadcastSuccess")} (${result.recipientCount} recipients)`
+      );
+      setBroadcastForm({ type: 8, title: "", body: "" });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications-unread-count"] });
+      setTimeout(() => {
+        setBroadcastResult(null);
+        setBroadcastOpen(false);
+      }, 2000);
+    },
+  });
+
   const viewDetail = useCallback(async (notification: Notification) => {
     if (!notification.isRead) {
       markAsReadMutation.mutate(notification.id);
@@ -140,6 +163,12 @@ export default function NotificationsPage() {
       {/* Sticky Header */}
       <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <PageHeader title={t("notifications.title")} description={t("notifications.description")}>
+          {canBroadcast && (
+            <Button onClick={() => setBroadcastOpen(true)}>
+              <Send className="mr-2 h-4 w-4" />
+              {t("notifications.broadcastNew")}
+            </Button>
+          )}
           <Button
             variant="outline"
             onClick={() => markAllAsReadMutation.mutate()}
@@ -328,6 +357,89 @@ export default function NotificationsPage() {
           </DialogFooter>
         </Dialog>
       )}
+
+      {/* Broadcast Dialog */}
+      <Dialog
+        open={broadcastOpen}
+        onClose={() => {
+          setBroadcastOpen(false);
+          setBroadcastResult(null);
+        }}
+        title={t("notifications.broadcastNew")}
+      >
+        <DialogHeader
+          onClose={() => {
+            setBroadcastOpen(false);
+            setBroadcastResult(null);
+          }}
+        >
+          <h2 className="text-lg font-semibold">{t("notifications.broadcastNew")}</h2>
+        </DialogHeader>
+        <DialogContent>
+          <div className="space-y-4">
+            {broadcastResult && (
+              <div className="rounded-md bg-green-50 p-3 text-sm text-green-800 dark:bg-green-900/20 dark:text-green-400">
+                {broadcastResult}
+              </div>
+            )}
+            <div>
+              <label className="mb-1 block text-sm font-medium">{t("notifications.broadcastType")}</label>
+              <select
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                value={broadcastForm.type}
+                onChange={(e) => setBroadcastForm({ ...broadcastForm, type: Number(e.target.value) })}
+              >
+                <option value={7}>{t("notifications.promotion")}</option>
+                <option value={8}>{t("notifications.systemAnnouncement")}</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">{t("notifications.broadcastTitle")}</label>
+              <input
+                type="text"
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                value={broadcastForm.title}
+                onChange={(e) => setBroadcastForm({ ...broadcastForm, title: e.target.value })}
+                placeholder={t("notifications.broadcastTitle")}
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">{t("notifications.broadcastBody")}</label>
+              <textarea
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                rows={4}
+                value={broadcastForm.body}
+                onChange={(e) => setBroadcastForm({ ...broadcastForm, body: e.target.value })}
+                placeholder={t("notifications.broadcastBody")}
+                required
+              />
+            </div>
+          </div>
+        </DialogContent>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setBroadcastOpen(false);
+              setBroadcastResult(null);
+            }}
+          >
+            {t("common.cancel")}
+          </Button>
+          <Button
+            onClick={() => broadcastMutation.mutate(broadcastForm)}
+            disabled={
+              broadcastMutation.isPending ||
+              !broadcastForm.title.trim() ||
+              !broadcastForm.body.trim()
+            }
+          >
+            <Send className="mr-2 h-4 w-4" />
+            {broadcastMutation.isPending ? "..." : t("notifications.broadcastSend")}
+          </Button>
+        </DialogFooter>
+      </Dialog>
     </div>
   );
 }

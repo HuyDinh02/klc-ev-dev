@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
@@ -28,6 +29,7 @@ import {
   Gift,
   Smartphone,
   MessageSquare,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -35,6 +37,33 @@ import { cn } from "@/lib/utils";
 import { useSidebarStore, useAuthStore, useAlertsStore } from "@/lib/store";
 import { useTranslation } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
+
+// ---- Mobile detection hook (SSR-safe) ----
+const MD_BREAKPOINT = 768;
+
+function subscribeToMediaQuery(callback: () => void) {
+  const mql = window.matchMedia(`(max-width: ${MD_BREAKPOINT - 1}px)`);
+  mql.addEventListener("change", callback);
+  return () => mql.removeEventListener("change", callback);
+}
+
+function getIsMobileSnapshot() {
+  return window.matchMedia(`(max-width: ${MD_BREAKPOINT - 1}px)`).matches;
+}
+
+function getIsMobileServerSnapshot() {
+  return false; // assume desktop on SSR
+}
+
+function useIsMobile() {
+  return useSyncExternalStore(
+    subscribeToMediaQuery,
+    getIsMobileSnapshot,
+    getIsMobileServerSnapshot,
+  );
+}
+
+// ---- Navigation config ----
 
 interface NavItem {
   href: string;
@@ -100,10 +129,14 @@ const navigation: NavSection[] = [
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { isCollapsed, toggle } = useSidebarStore();
+  const { isCollapsed, toggle, isMobileOpen, setMobileOpen } = useSidebarStore();
   const { logout, user, permissions } = useAuthStore();
   const { unreadCount } = useAlertsStore();
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
+
+  // On mobile the sidebar is always full-width; collapse only applies on desktop.
+  const collapsed = !isMobile && isCollapsed;
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
@@ -118,142 +151,175 @@ export function Sidebar() {
     return permissions.includes(item.permission);
   };
 
+  // Close sidebar on mobile when navigating
+  const handleNavClick = useCallback(() => {
+    if (isMobile) {
+      setMobileOpen(false);
+    }
+  }, [isMobile, setMobileOpen]);
+
   return (
-    <aside
-      aria-label="Main navigation"
-      className={cn(
-        "fixed left-0 top-0 z-40 h-screen border-r bg-card transition-all duration-300",
-        isCollapsed ? "w-16" : "w-64"
+    <>
+      {/* Mobile backdrop */}
+      {isMobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
+        />
       )}
-    >
-      <div className="flex h-full flex-col">
-        {/* Brand */}
-        <div className="flex h-16 items-center justify-between border-b px-4">
-          {!isCollapsed && (
-            <Link href="/" className="flex items-center gap-2.5">
-              <Image src="/logo-icon.png" alt="K-Charge" width={32} height={32} className="h-8 w-8" priority />
-              <div className="flex flex-col">
-                <span className="text-sm font-bold tracking-tight text-[var(--color-brand-green)]">K-Charge</span>
-                <span className="text-[10px] text-muted-foreground">by KLC Energy</span>
-              </div>
-            </Link>
-          )}
-          {isCollapsed && (
-            <Image src="/logo-icon.png" alt="K-Charge" width={32} height={32} className="mx-auto h-8 w-8" priority />
-          )}
-          {!isCollapsed && (
-            <Button variant="ghost" size="icon" onClick={toggle} className="h-7 w-7" aria-label="Collapse sidebar">
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
 
-        {/* Expand button when collapsed */}
-        {isCollapsed && (
-          <div className="flex justify-center py-2">
-            <Button variant="ghost" size="icon" onClick={toggle} className="h-7 w-7" aria-label="Expand sidebar">
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
+      <aside
+        aria-label="Main navigation"
+        className={cn(
+          "fixed left-0 top-0 h-screen border-r bg-card transition-all duration-300",
+          // Mobile: always w-64, slide in/out, higher z-index
+          "max-md:z-50 max-md:w-64",
+          isMobileOpen ? "max-md:translate-x-0" : "max-md:-translate-x-full",
+          // Desktop: z-40, respect collapsed width
+          "md:z-40",
+          collapsed ? "md:w-16" : "md:w-64",
         )}
-
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto px-2 py-1">
-          {navigation.map((section) => {
-            const visibleItems = section.items.filter(canAccess);
-            if (visibleItems.length === 0) return null;
-            return (
-              <div key={section.titleKey} className="mb-1">
-                {!isCollapsed && (
-                  <p className="mb-1 px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    {t(section.titleKey)}
-                  </p>
-                )}
-                {isCollapsed && <div className="my-1 mx-2 border-t" />}
-                <div className="space-y-0.5">
-                  {visibleItems.map((item) => {
-                    const active = isActive(item.href);
-                    const Icon = item.icon;
-                    const label = t(item.labelKey);
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        title={isCollapsed ? label : undefined}
-                        className={cn(
-                          "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                          active
-                            ? "bg-primary text-primary-foreground"
-                            : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-                        )}
-                      >
-                        <Icon className="h-[18px] w-[18px] flex-shrink-0" />
-                        {!isCollapsed && <span>{label}</span>}
-                      </Link>
-                    );
-                  })}
+      >
+        <div className="flex h-full flex-col">
+          {/* Brand */}
+          <div className="flex h-16 items-center justify-between border-b px-4">
+            {!collapsed && (
+              <Link href="/" onClick={handleNavClick} className="flex items-center gap-2.5">
+                <Image src="/logo-icon.png" alt="K-Charge" width={32} height={32} className="h-8 w-8" priority />
+                <div className="flex flex-col">
+                  <span className="text-sm font-bold tracking-tight text-[var(--color-brand-green)]">K-Charge</span>
+                  <span className="text-[10px] text-muted-foreground">by KLC Energy</span>
                 </div>
-              </div>
-            );
-          })}
-        </nav>
-
-        {/* Alerts */}
-        {canAccess({ href: "/alerts", labelKey: "nav.alerts", icon: Bell, permission: "KLC.Alerts" }) && (
-        <div className="border-t px-2 py-1.5">
-          <Link
-            href="/alerts"
-            className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-              pathname === "/alerts"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+              </Link>
             )}
-          >
-            <div className="relative">
-              <Bell className="h-[18px] w-[18px] flex-shrink-0" />
-              {unreadCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              )}
-            </div>
-            {!isCollapsed && <span>{t("nav.alerts")}</span>}
-          </Link>
-        </div>
-        )}
+            {collapsed && (
+              <Image src="/logo-icon.png" alt="K-Charge" width={32} height={32} className="mx-auto h-8 w-8" priority />
+            )}
+            {/* Desktop: collapse toggle | Mobile: close button */}
+            {isMobile ? (
+              <Button variant="ghost" size="icon" onClick={() => setMobileOpen(false)} className="h-7 w-7" aria-label="Close sidebar">
+                <X className="h-4 w-4" />
+              </Button>
+            ) : (
+              !collapsed && (
+                <Button variant="ghost" size="icon" onClick={toggle} className="h-7 w-7" aria-label="Collapse sidebar">
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+              )
+            )}
+          </div>
 
-        {/* User section */}
-        <div className="border-t px-2 py-2">
-          {user && !isCollapsed && (
-            <div className="mb-1.5 px-3 py-1.5">
-              <p className="text-sm font-medium">{user.username}</p>
-              <p className="text-xs text-muted-foreground">{user.role}</p>
+          {/* Expand button when collapsed (desktop only) */}
+          {collapsed && (
+            <div className="flex justify-center py-2">
+              <Button variant="ghost" size="icon" onClick={toggle} className="h-7 w-7" aria-label="Expand sidebar">
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
           )}
-          <div className="space-y-0.5">
+
+          {/* Navigation */}
+          <nav className="flex-1 overflow-y-auto px-2 py-1">
+            {navigation.map((section) => {
+              const visibleItems = section.items.filter(canAccess);
+              if (visibleItems.length === 0) return null;
+              return (
+                <div key={section.titleKey} className="mb-1">
+                  {!collapsed && (
+                    <p className="mb-1 px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      {t(section.titleKey)}
+                    </p>
+                  )}
+                  {collapsed && <div className="my-1 mx-2 border-t" />}
+                  <div className="space-y-0.5">
+                    {visibleItems.map((item) => {
+                      const active = isActive(item.href);
+                      const Icon = item.icon;
+                      const label = t(item.labelKey);
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          title={collapsed ? label : undefined}
+                          onClick={handleNavClick}
+                          className={cn(
+                            "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                            active
+                              ? "bg-primary text-primary-foreground"
+                              : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                          )}
+                        >
+                          <Icon className="h-[18px] w-[18px] flex-shrink-0" />
+                          {!collapsed && <span>{label}</span>}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </nav>
+
+          {/* Alerts */}
+          {canAccess({ href: "/alerts", labelKey: "nav.alerts", icon: Bell, permission: "KLC.Alerts" }) && (
+          <div className="border-t px-2 py-1.5">
             <Link
-              href="/settings"
+              href="/alerts"
+              onClick={handleNavClick}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                pathname === "/settings"
+                pathname === "/alerts"
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
               )}
             >
-              <Settings className="h-[18px] w-[18px] flex-shrink-0" />
-              {!isCollapsed && <span>{t("nav.settings")}</span>}
+              <div className="relative">
+                <Bell className="h-[18px] w-[18px] flex-shrink-0" />
+                {unreadCount > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </div>
+              {!collapsed && <span>{t("nav.alerts")}</span>}
             </Link>
-            <button
-              onClick={() => { logout(); router.push("/login"); }}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
-            >
-              <LogOut className="h-[18px] w-[18px] flex-shrink-0" />
-              {!isCollapsed && <span>{t("nav.logout")}</span>}
-            </button>
+          </div>
+          )}
+
+          {/* User section */}
+          <div className="border-t px-2 py-2">
+            {user && !collapsed && (
+              <div className="mb-1.5 px-3 py-1.5">
+                <p className="text-sm font-medium">{user.username}</p>
+                <p className="text-xs text-muted-foreground">{user.role}</p>
+              </div>
+            )}
+            <div className="space-y-0.5">
+              <Link
+                href="/settings"
+                onClick={handleNavClick}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                  pathname === "/settings"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                )}
+              >
+                <Settings className="h-[18px] w-[18px] flex-shrink-0" />
+                {!collapsed && <span>{t("nav.settings")}</span>}
+              </Link>
+              <button
+                onClick={() => { handleNavClick(); logout(); router.push("/login"); }}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
+              >
+                <LogOut className="h-[18px] w-[18px] flex-shrink-0" />
+                {!collapsed && <span>{t("nav.logout")}</span>}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 }
