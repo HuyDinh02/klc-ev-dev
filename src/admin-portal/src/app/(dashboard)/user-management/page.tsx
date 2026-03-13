@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogHeader, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { SkeletonTable } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
-import { usersApi, rolesApi } from "@/lib/api";
+import { usersApi, rolesApi, authApi } from "@/lib/api";
+import { useAuthStore } from "@/lib/store";
 import { formatDateTime } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
 import {
@@ -522,7 +523,14 @@ function RolesTab() {
         .map(([name]) => name);
       await rolesApi.updatePermissions(permissionsRole.id as string, grantedPermissions);
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["role-permissions"] }); setPermissionsRole(null); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["role-permissions"] });
+      setPermissionsRole(null);
+      // Refresh current user's sidebar permissions in case their role was updated
+      authApi.getMyPermissions()
+        .then(({ data }) => useAuthStore.getState().setPermissions(data))
+        .catch(() => {});
+    },
   });
 
   const roles = rolesData?.items || [];

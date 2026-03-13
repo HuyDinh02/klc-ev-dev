@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { useSidebarStore, useAuthStore } from "@/lib/store";
+import { authApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 export default function DashboardLayout({
@@ -14,8 +15,9 @@ export default function DashboardLayout({
   const router = useRouter();
   const pathname = usePathname();
   const { isCollapsed } = useSidebarStore();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, permissions, setPermissions } = useAuthStore();
   const [hydrated, setHydrated] = useState(false);
+  const permsFetched = useRef(false);
 
   useEffect(() => {
     setHydrated(true);
@@ -26,6 +28,16 @@ export default function DashboardLayout({
       router.push(`/login?returnUrl=${encodeURIComponent(pathname)}`);
     }
   }, [hydrated, isAuthenticated, router, pathname]);
+
+  // Load current user's permissions once after auth
+  useEffect(() => {
+    if (hydrated && isAuthenticated && !permsFetched.current && permissions.length === 0) {
+      permsFetched.current = true;
+      authApi.getMyPermissions()
+        .then(({ data }) => setPermissions(data))
+        .catch(() => { /* permissions will remain empty — pages still accessible, just sidebar won't filter */ });
+    }
+  }, [hydrated, isAuthenticated, permissions.length, setPermissions]);
 
   if (!hydrated || !isAuthenticated) {
     return null;

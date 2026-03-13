@@ -12,28 +12,34 @@ interface AuthState {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
+  permissions: string[];
   login: (user: User, token: string) => void;
   logout: () => void;
+  setPermissions: (permissions: string[]) => void;
+  hasPermission: (permission: string) => boolean;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       token: null,
       isAuthenticated: false,
+      permissions: [],
       login: (user, token) => {
         localStorage.setItem("access_token", token);
         set({ user, token, isAuthenticated: true });
       },
       logout: () => {
         localStorage.removeItem("access_token");
-        set({ user: null, token: null, isAuthenticated: false });
+        set({ user: null, token: null, isAuthenticated: false, permissions: [] });
       },
+      setPermissions: (permissions) => set({ permissions }),
+      hasPermission: (permission) => get().permissions.includes(permission),
     }),
     {
       name: "auth-storage",
-      partialize: (state) => ({ user: state.user, token: state.token, isAuthenticated: state.isAuthenticated }),
+      partialize: (state) => ({ user: state.user, token: state.token, isAuthenticated: state.isAuthenticated, permissions: state.permissions }),
     }
   )
 );
