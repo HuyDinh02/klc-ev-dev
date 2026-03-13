@@ -19,56 +19,56 @@ import {
   Check, Minus,
 } from "lucide-react";
 
-// Permission-to-sidebar mapping
+// Permission sections — mirrors sidebar navigation exactly
 const PERMISSION_SECTIONS: Array<{
   sectionKey: string;
-  groups: Array<{ permissionGroup: string; icon: LucideIcon; pageHint: string | null }>;
+  groups: Array<{ permissionGroup: string; icon: LucideIcon; labelKey: string }>;
 }> = [
   {
-    sectionKey: "permissions.sectionOperations",
+    sectionKey: "nav.operations",
     groups: [
-      { permissionGroup: "KLC.Stations", icon: MapPin, pageHint: "/stations" },
-      { permissionGroup: "KLC.Connectors", icon: Plug, pageHint: "/stations" },
-      { permissionGroup: "KLC.Monitoring", icon: Activity, pageHint: "/monitoring" },
-      { permissionGroup: "KLC.Sessions", icon: Zap, pageHint: "/sessions" },
-      { permissionGroup: "KLC.PowerSharing", icon: Cable, pageHint: "/power-sharing" },
+      { permissionGroup: "KLC.Stations", icon: MapPin, labelKey: "nav.stations" },
+      { permissionGroup: "KLC.Connectors", icon: Plug, labelKey: "nav.connectors" },
+      { permissionGroup: "KLC.Monitoring", icon: Activity, labelKey: "nav.monitoring" },
+      { permissionGroup: "KLC.Sessions", icon: Zap, labelKey: "nav.sessions" },
+      { permissionGroup: "KLC.PowerSharing", icon: Cable, labelKey: "nav.powerSharing" },
     ],
   },
   {
-    sectionKey: "permissions.sectionIncidents",
+    sectionKey: "nav.incidents",
     groups: [
-      { permissionGroup: "KLC.Faults", icon: AlertTriangle, pageHint: "/faults" },
-      { permissionGroup: "KLC.Maintenance", icon: Wrench, pageHint: "/maintenance" },
+      { permissionGroup: "KLC.Faults", icon: AlertTriangle, labelKey: "nav.faults" },
+      { permissionGroup: "KLC.Maintenance", icon: Wrench, labelKey: "nav.maintenance" },
+      { permissionGroup: "KLC.Alerts", icon: Bell, labelKey: "nav.alerts" },
     ],
   },
   {
-    sectionKey: "permissions.sectionBusiness",
+    sectionKey: "nav.business",
     groups: [
-      { permissionGroup: "KLC.Tariffs", icon: DollarSign, pageHint: "/tariffs" },
-      { permissionGroup: "KLC.Payments", icon: CreditCard, pageHint: "/payments" },
-      { permissionGroup: "KLC.Vouchers", icon: Ticket, pageHint: "/marketing" },
-      { permissionGroup: "KLC.Promotions", icon: Ticket, pageHint: "/marketing" },
-      { permissionGroup: "KLC.Operators", icon: Building2, pageHint: "/operators" },
-      { permissionGroup: "KLC.Fleets", icon: Truck, pageHint: "/fleets" },
+      { permissionGroup: "KLC.Tariffs", icon: DollarSign, labelKey: "nav.tariffs" },
+      { permissionGroup: "KLC.Payments", icon: CreditCard, labelKey: "nav.payments" },
+      { permissionGroup: "KLC.Vouchers", icon: Ticket, labelKey: "nav.marketing" },
+      { permissionGroup: "KLC.Promotions", icon: Ticket, labelKey: "nav.promotions" },
+      { permissionGroup: "KLC.Operators", icon: Building2, labelKey: "nav.operators" },
+      { permissionGroup: "KLC.Fleets", icon: Truck, labelKey: "nav.fleets" },
     ],
   },
   {
-    sectionKey: "permissions.sectionUsers",
+    sectionKey: "nav.users",
     groups: [
-      { permissionGroup: "KLC.UserManagement", icon: Users, pageHint: "/user-management" },
-      { permissionGroup: "KLC.RoleManagement", icon: Shield, pageHint: "/user-management" },
-      { permissionGroup: "KLC.MobileUsers", icon: Users, pageHint: "/mobile-users" },
+      { permissionGroup: "KLC.UserManagement", icon: Users, labelKey: "nav.userManagement" },
+      { permissionGroup: "KLC.RoleManagement", icon: Shield, labelKey: "nav.roleManagement" },
+      { permissionGroup: "KLC.MobileUsers", icon: Users, labelKey: "nav.mobileUsers" },
     ],
   },
   {
-    sectionKey: "permissions.sectionSystem",
+    sectionKey: "nav.system",
     groups: [
-      { permissionGroup: "KLC.StationGroups", icon: MapPin, pageHint: "/groups" },
-      { permissionGroup: "KLC.AuditLogs", icon: FileText, pageHint: "/audit-logs" },
-      { permissionGroup: "KLC.EInvoices", icon: FileText, pageHint: "/e-invoices" },
-      { permissionGroup: "KLC.Alerts", icon: Bell, pageHint: "/alerts" },
-      { permissionGroup: "KLC.Notifications", icon: Bell, pageHint: null },
-      { permissionGroup: "KLC.Feedback", icon: FileText, pageHint: null },
+      { permissionGroup: "KLC.StationGroups", icon: MapPin, labelKey: "nav.stationGroups" },
+      { permissionGroup: "KLC.AuditLogs", icon: FileText, labelKey: "nav.auditLogs" },
+      { permissionGroup: "KLC.EInvoices", icon: FileText, labelKey: "nav.eInvoices" },
+      { permissionGroup: "KLC.Notifications", icon: Bell, labelKey: "nav.notifications" },
+      { permissionGroup: "KLC.Feedback", icon: FileText, labelKey: "nav.feedback" },
     ],
   },
 ];
@@ -531,8 +531,8 @@ function RolesTab() {
     setExpandedGroups((prev) => ({ ...prev, [name]: !prev[name] }));
   };
 
-  // Render a compact accordion row for a permission group
-  const renderGroupRow = (groupDef: { permissionGroup: string; icon: LucideIcon; pageHint: string | null }) => {
+  // Render a sidebar-style nav item for a permission group
+  const renderNavItem = (groupDef: { permissionGroup: string; icon: LucideIcon; labelKey: string }) => {
     const group = groupLookup[groupDef.permissionGroup];
     if (!group) return null;
     if (!matchesSearch(group)) return null;
@@ -545,26 +545,29 @@ function RolesTab() {
     const isExpanded = expandedGroups[group.name];
     const checkedCount = (group.permissions || []).filter((p) => permissionGrants[p.name]).length;
     const totalCount = (group.permissions || []).length;
-    const statusColor = state.all ? "border-l-emerald-500" : state.indeterminate ? "border-l-amber-400" : "border-l-muted-foreground/20";
 
     return (
-      <div key={group.name} className={`border-l-[3px] ${statusColor} rounded-r-md bg-card`}>
-        {/* Compact row header */}
-        <button
-          type="button"
-          className="flex items-center gap-2.5 w-full px-3 py-2 text-left hover:bg-muted/50 transition-colors"
-          onClick={() => toggleGroup(group.name)}
-        >
-          <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" aria-hidden="true" />
-          <span className="font-medium text-sm flex-1 truncate">{group.displayName}</span>
-          {groupDef.pageHint && (
-            <span className="hidden sm:inline text-[10px] text-muted-foreground/70 bg-muted px-1.5 py-0.5 rounded flex-shrink-0">
-              {groupDef.pageHint}
-            </span>
+      <div key={group.name}>
+        {/* Nav-style row */}
+        <div className={`flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-muted/60 ${
+          state.all ? "text-foreground" : state.indeterminate ? "text-foreground" : "text-muted-foreground"
+        }`}>
+          {/* Expand chevron or spacer */}
+          {childPerms.length > 0 ? (
+            <button type="button" className="p-0.5 -ml-0.5 hover:bg-muted rounded" onClick={() => toggleGroup(group.name)}>
+              {isExpanded
+                ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+              }
+            </button>
+          ) : (
+            <span className="w-[18px]" />
           )}
-          <span className={`text-[10px] font-medium tabular-nums px-1.5 py-0.5 rounded flex-shrink-0 ${
-            state.all ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-              : state.indeterminate ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+          <Icon className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+          <span className="text-sm flex-1 truncate">{t(groupDef.labelKey)}</span>
+          <span className={`text-[10px] tabular-nums px-1.5 py-0.5 rounded ${
+            state.all ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400"
+              : state.indeterminate ? "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400"
               : "bg-muted text-muted-foreground"
           }`}>
             {checkedCount}/{totalCount}
@@ -574,25 +577,18 @@ function RolesTab() {
             indeterminate={state.indeterminate}
             onChange={(checked) => toggleGroupAll(group, checked)}
           />
-          {childPerms.length > 0 && (
-            isExpanded
-              ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-              : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-          )}
-        </button>
-        {/* Expanded child permissions */}
+        </div>
+        {/* Expanded children */}
         {isExpanded && filteredPerms.length > 0 && (
-          <div className="px-3 pb-2.5 pt-0.5 border-t border-dashed">
-            <div className="flex flex-wrap gap-x-4 gap-y-1.5 pl-6">
-              {filteredPerms.map((perm) => (
-                <label key={perm.name} className="flex items-center gap-1.5 cursor-pointer py-0.5 min-w-[140px]">
-                  <input type="checkbox" checked={permissionGrants[perm.name] ?? false}
-                    onChange={(e) => setPermissionGrants({ ...permissionGrants, [perm.name]: e.target.checked })}
-                    className="h-3.5 w-3.5 rounded border-gray-300 accent-primary" />
-                  <span className="text-xs text-foreground/80">{perm.displayName}</span>
-                </label>
-              ))}
-            </div>
+          <div className="ml-[34px] pl-3 border-l border-border/50 mt-0.5 mb-1.5 space-y-0.5">
+            {filteredPerms.map((perm) => (
+              <label key={perm.name} className="flex items-center gap-2 cursor-pointer rounded px-2 py-1 hover:bg-muted/40 transition-colors">
+                <input type="checkbox" checked={permissionGrants[perm.name] ?? false}
+                  onChange={(e) => setPermissionGrants({ ...permissionGrants, [perm.name]: e.target.checked })}
+                  className="h-3.5 w-3.5 rounded border-gray-300 accent-primary" />
+                <span className="text-xs">{perm.displayName}</span>
+              </label>
+            ))}
           </div>
         )}
       </div>
@@ -696,25 +692,23 @@ function RolesTab() {
         </form>
       </Dialog>
 
-      {/* Permissions Dialog — Redesigned */}
-      <Dialog open={!!permissionsRole} onClose={() => setPermissionsRole(null)} size="xl" className="max-h-[85vh] flex flex-col">
+      {/* Permissions Dialog — Sidebar-style Navigation Tree */}
+      <Dialog open={!!permissionsRole} onClose={() => setPermissionsRole(null)} size="lg" className="max-h-[85vh] flex flex-col">
         <DialogHeader onClose={() => setPermissionsRole(null)}>
           {t("userManagement.permissions")} — {permissionsRole?.name as string}
         </DialogHeader>
-        <DialogContent className="space-y-4 overflow-y-auto flex-1 p-4">
+        <DialogContent className="overflow-y-auto flex-1 px-3 py-3">
           {permissionGroups.length > 0 ? (
             <>
-              {/* Toolbar: Grant/Revoke All + Search */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sticky top-0 bg-background z-10 pb-2 border-b">
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={handleGrantAll}>
-                    {t("permissions.grantAll")}
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={handleRevokeAll}>
-                    {t("permissions.revokeAll")}
-                  </Button>
-                </div>
-                <div className="relative flex-1 w-full sm:w-auto">
+              {/* Toolbar */}
+              <div className="flex items-center gap-2 mb-3 pb-2 border-b sticky top-0 bg-background z-10">
+                <Button variant="outline" size="sm" onClick={handleGrantAll}>
+                  {t("permissions.grantAll")}
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleRevokeAll}>
+                  {t("permissions.revokeAll")}
+                </Button>
+                <div className="relative flex-1 ml-1">
                   <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                   <input
                     type="search"
@@ -727,8 +721,8 @@ function RolesTab() {
                 </div>
               </div>
 
-              {/* Permission Sections — Compact Accordion */}
-              <div className="space-y-3">
+              {/* Navigation tree — mirrors left sidebar */}
+              <nav className="space-y-4">
                 {PERMISSION_SECTIONS.map((section) => {
                   if (!sectionHasVisibleGroups(section)) return null;
                   const isCollapsed = collapsedSections[section.sectionKey];
@@ -736,21 +730,16 @@ function RolesTab() {
                     <div key={section.sectionKey}>
                       <button
                         type="button"
-                        className="flex items-center gap-2 w-full text-left py-1.5 px-1 hover:bg-muted/30 rounded transition-colors"
+                        className="flex items-center gap-1 w-full text-left px-2 mb-1"
                         onClick={() => toggleSection(section.sectionKey)}
                       >
-                        {isCollapsed ? (
-                          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                        ) : (
-                          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                        )}
-                        <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                           {t(section.sectionKey)}
                         </span>
                       </button>
                       {!isCollapsed && (
-                        <div className="space-y-0.5 mt-1">
-                          {section.groups.map((gDef) => renderGroupRow(gDef))}
+                        <div className="space-y-0.5">
+                          {section.groups.map((gDef) => renderNavItem(gDef))}
                         </div>
                       )}
                     </div>
@@ -764,70 +753,20 @@ function RolesTab() {
                   if (unmapped.length === 0) return null;
                   return (
                     <div>
-                      <div className="flex items-center gap-2 py-1.5 px-1">
-                        <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                      <div className="px-2 mb-1">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                           {t("common.other") ?? "Other"}
                         </span>
                       </div>
-                      <div className="space-y-0.5 mt-1">
-                        {unmapped.map((group) => {
-                          const state = getGroupState(group);
-                          const isExpanded = expandedGroups[group.name];
-                          const childPerms = (group.permissions || []).filter((p) => p.name !== group.name);
-                          const checkedCount = (group.permissions || []).filter((p) => permissionGrants[p.name]).length;
-                          const totalCount = (group.permissions || []).length;
-                          const statusColor = state.all ? "border-l-emerald-500" : state.indeterminate ? "border-l-amber-400" : "border-l-muted-foreground/20";
-                          return (
-                            <div key={group.name} className={`border-l-[3px] ${statusColor} rounded-r-md bg-card`}>
-                              <button
-                                type="button"
-                                className="flex items-center gap-2.5 w-full px-3 py-2 text-left hover:bg-muted/50 transition-colors"
-                                onClick={() => toggleGroup(group.name)}
-                              >
-                                <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" aria-hidden="true" />
-                                <span className="font-medium text-sm flex-1 truncate">{group.displayName}</span>
-                                <span className={`text-[10px] font-medium tabular-nums px-1.5 py-0.5 rounded flex-shrink-0 ${
-                                  state.all ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                                    : state.indeterminate ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                                    : "bg-muted text-muted-foreground"
-                                }`}>
-                                  {checkedCount}/{totalCount}
-                                </span>
-                                <PermissionToggle
-                                  checked={state.all}
-                                  indeterminate={state.indeterminate}
-                                  onChange={(checked) => toggleGroupAll(group, checked)}
-                                />
-                                {childPerms.length > 0 && (
-                                  isExpanded
-                                    ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                                    : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                                )}
-                              </button>
-                              {isExpanded && childPerms.length > 0 && (
-                                <div className="px-3 pb-2.5 pt-0.5 border-t border-dashed">
-                                  <div className="flex flex-wrap gap-x-4 gap-y-1.5 pl-6">
-                                    {childPerms.map((perm) => (
-                                      <label key={perm.name} className="flex items-center gap-1.5 cursor-pointer py-0.5 min-w-[140px]">
-                                        <input type="checkbox" checked={permissionGrants[perm.name] ?? false}
-                                          onChange={(e) => setPermissionGrants({ ...permissionGrants, [perm.name]: e.target.checked })}
-                                          className="h-3.5 w-3.5 rounded border-gray-300 accent-primary" />
-                                        <span className="text-xs text-foreground/80">{perm.displayName}</span>
-                                      </label>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
+                      <div className="space-y-0.5">
+                        {unmapped.map((group) => renderNavItem({ permissionGroup: group.name, icon: FileText, labelKey: group.displayName }))}
                       </div>
                     </div>
                   );
                 })()}
-              </div>
+              </nav>
 
-              {/* No results message */}
+              {/* No results */}
               {permSearch && !PERMISSION_SECTIONS.some((s) => sectionHasVisibleGroups(s)) && (
                 <p className="text-center text-sm text-muted-foreground py-8">{t("permissions.noResults")}</p>
               )}
