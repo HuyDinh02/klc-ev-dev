@@ -162,6 +162,13 @@ export const notificationsApi = {
   markAllAsRead: () => api.put("/notifications/read-all"),
 };
 
+export const broadcastApi = {
+  send: (data: { type: number; title: string; body: string; data?: string; actionUrl?: string }) =>
+    api.post("/admin/notifications/broadcast", data),
+  getHistory: (params?: { cursor?: string; pageSize?: number }) =>
+    api.get("/admin/notifications/broadcasts", { params }),
+};
+
 export const auditLogsApi = {
   getAll: (params?: { maxResultCount?: number; entityType?: string; url?: string; httpMethod?: string; startTime?: string; endTime?: string; cursor?: string }) =>
     api.get("/audit-logs", { params }),

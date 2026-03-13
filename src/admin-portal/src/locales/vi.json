@@ -1028,7 +1028,13 @@
     "noSessionsDescription": "Người dùng này chưa có phiên sạc.",
     "profile": "Hồ sơ",
     "wallet": "Ví",
-    "sessions": "Phiên sạc"
+    "sessions": "Phiên sạc",
+    "adjustBalance": "Điều chỉnh số dư",
+    "adjustAmount": "Số tiền (VNĐ)",
+    "adjustReason": "Lý do",
+    "adjustSuccess": "Điều chỉnh số dư thành công",
+    "newBalance": "Số dư mới",
+    "adjustAmountHint": "Dương để cộng, âm để trừ"
   },
   "errors": {
     "pageNotFound": "Không tìm thấy trang",
