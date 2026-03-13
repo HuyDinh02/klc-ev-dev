@@ -91,6 +91,7 @@ const navigation: NavSection[] = [
       { href: "/analytics", labelKey: "nav.reports", icon: BarChart3 },
       { href: "/audit-logs", labelKey: "nav.auditLogs", icon: FileText, permission: "KLC.AuditLogs" },
       { href: "/e-invoices", labelKey: "nav.eInvoices", icon: FileText, permission: "KLC.EInvoices" },
+      { href: "/notifications", labelKey: "nav.notifications", icon: Bell, permission: "KLC.Notifications" },
       { href: "/feedback", labelKey: "nav.feedback", icon: MessageSquare, permission: "KLC.Feedback" },
     ],
   },
