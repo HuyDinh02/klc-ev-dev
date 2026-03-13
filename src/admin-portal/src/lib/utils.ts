@@ -44,3 +44,17 @@ export function formatDuration(minutes?: number | null): string {
   if (hours === 0) return `${mins}m`;
   return `${hours}h ${mins}m`;
 }
+
+export function formatDistanceToNow(date?: string | Date | null): string {
+  if (!date) return "—";
+  const now = Date.now();
+  const then = new Date(date).getTime();
+  const diffMs = now - then;
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "Just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `${diffHour}h ago`;
+  const diffDay = Math.floor(diffHour / 24);
+  return `${diffDay}d ago`;
+}

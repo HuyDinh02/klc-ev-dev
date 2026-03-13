@@ -160,7 +160,7 @@ describe('Sidebar', () => {
       'KLC.Faults', 'KLC.Maintenance',
       'KLC.Tariffs', 'KLC.Payments', 'KLC.Vouchers', 'KLC.Promotions', 'KLC.Operators', 'KLC.Fleets',
       'KLC.UserManagement', 'KLC.MobileUsers',
-      'KLC.StationGroups', 'KLC.AuditLogs', 'KLC.EInvoices', 'KLC.Feedback',
+      'KLC.StationGroups', 'KLC.AuditLogs', 'KLC.EInvoices', 'KLC.Notifications', 'KLC.Feedback',
       'KLC.Alerts',
     ];
     renderWithProviders(<Sidebar />);

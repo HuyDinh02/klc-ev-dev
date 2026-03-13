@@ -153,6 +153,15 @@ export const alertsApi = {
   acknowledge: (id: string) => api.post(`/alerts/${id}/acknowledge`),
 };
 
+export const notificationsApi = {
+  getAll: (params?: { maxResultCount?: number; isRead?: boolean; type?: number; cursor?: string }) =>
+    api.get("/notifications", { params }),
+  getById: (id: string) => api.get(`/notifications/${id}`),
+  getUnreadCount: () => api.get<number>("/notifications/unread-count"),
+  markAsRead: (id: string) => api.put(`/notifications/${id}/read`),
+  markAllAsRead: () => api.put("/notifications/read-all"),
+};
+
 export const auditLogsApi = {
   getAll: (params?: { maxResultCount?: number; entityType?: string; url?: string; httpMethod?: string; startTime?: string; endTime?: string; cursor?: string }) =>
     api.get("/audit-logs", { params }),

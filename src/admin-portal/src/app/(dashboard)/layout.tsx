@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { useSidebarStore, useAuthStore } from "@/lib/store";
@@ -19,6 +19,13 @@ export default function DashboardLayout({
   const [hydrated, setHydrated] = useState(false);
   const permsFetched = useRef(false);
 
+  const refreshPermissions = useCallback(() => {
+    if (!isAuthenticated) return;
+    authApi.getMyPermissions()
+      .then(({ data }) => setPermissions(data))
+      .catch(() => {});
+  }, [isAuthenticated, setPermissions]);
+
   useEffect(() => {
     setHydrated(true);
   }, []);
@@ -33,11 +40,20 @@ export default function DashboardLayout({
   useEffect(() => {
     if (hydrated && isAuthenticated && !permsFetched.current && permissions.length === 0) {
       permsFetched.current = true;
-      authApi.getMyPermissions()
-        .then(({ data }) => setPermissions(data))
-        .catch(() => { /* permissions will remain empty — pages still accessible, just sidebar won't filter */ });
+      refreshPermissions();
     }
-  }, [hydrated, isAuthenticated, permissions.length, setPermissions]);
+  }, [hydrated, isAuthenticated, permissions.length, refreshPermissions]);
+
+  // Refresh permissions when tab regains focus (catches role changes by admin)
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible" && isAuthenticated) {
+        refreshPermissions();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, [isAuthenticated, refreshPermissions]);
 
   if (!hydrated || !isAuthenticated) {
     return null;
