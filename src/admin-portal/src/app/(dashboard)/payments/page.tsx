@@ -12,7 +12,7 @@ import { Dialog, DialogHeader, DialogContent, DialogFooter } from "@/components/
 import { SkeletonTable } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PAYMENT_STATUS, PAYMENT_GATEWAY_LABELS } from "@/lib/constants";
-import { formatCurrency, formatDateTime } from "@/lib/utils";
+import { formatCurrency, formatDateTime, downloadCsv } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
 import { useRequirePermission } from "@/lib/use-permission";
@@ -126,7 +126,23 @@ export default function PaymentsPage() {
         description={t("payments.description")}
         className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 -mx-1 px-1 py-2"
       >
-        <Button variant="outline">
+        <Button
+          variant="outline"
+          disabled={payments.length === 0}
+          onClick={() => {
+            const headers = [t("payments.transaction"), t("payments.station"), t("payments.session"), t("payments.amount"), t("payments.method"), t("common.status"), t("payments.date")];
+            const rows = payments.map((p) => [
+              p.referenceCode || p.id.slice(0, 8),
+              p.stationName || "—",
+              p.sessionId?.slice(0, 8) || "—",
+              formatCurrency(p.amount),
+              PAYMENT_GATEWAY_LABELS[p.gateway] ?? "—",
+              PAYMENT_STATUS[p.status]?.label ?? String(p.status),
+              formatDateTime(p.creationTime),
+            ]);
+            downloadCsv(headers, rows, `payments-${new Date().toISOString().slice(0, 10)}.csv`);
+          }}
+        >
           <Download className="mr-2 h-4 w-4" aria-hidden="true" />
           {t("common.export")}
         </Button>

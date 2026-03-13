@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Search, Zap, Clock, Battery, DollarSign, Wifi } from "lucide-react";
+import { Search, Zap, Clock, Battery, DollarSign, Wifi, Download } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -12,7 +12,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { sessionsApi } from "@/lib/api";
-import { formatCurrency, formatDateTime, formatEnergy, formatDuration } from "@/lib/utils";
+import { formatCurrency, formatDateTime, formatEnergy, formatDuration, downloadCsv } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
 import { useMonitoringHub } from "@/lib/signalr";
 import { useRequirePermission } from "@/lib/use-permission";
@@ -85,13 +85,36 @@ export default function SessionsPage() {
             title={t("sessions.title")}
             description={t("sessions.description")}
           >
-            {hubStatus === "connected" && (
-              <div className="flex items-center gap-1.5 text-green-600">
-                <Wifi className="h-3.5 w-3.5" aria-hidden="true" />
-                <span className="text-xs font-medium">{t("monitoring.live")}</span>
-                <span className="flex h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" aria-hidden="true" />
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              {hubStatus === "connected" && (
+                <div className="flex items-center gap-1.5 text-green-600">
+                  <Wifi className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span className="text-xs font-medium">{t("monitoring.live")}</span>
+                  <span className="flex h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" aria-hidden="true" />
+                </div>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={filteredSessions.length === 0}
+                onClick={() => {
+                  const headers = [t("sessions.station"), t("sessions.user"), t("common.status"), t("sessions.startTime"), t("sessions.duration"), t("sessions.energy"), t("sessions.cost")];
+                  const rows = filteredSessions.map((s: { stationName?: string; userName?: string; status: number | string; startTime: string; endTime?: string | null; totalEnergyKwh?: number; energyDeliveredKwh?: number; totalCost?: number; cost?: number }) => [
+                    s.stationName || "—",
+                    s.userName || "—",
+                    String(s.status),
+                    formatDateTime(s.startTime),
+                    formatDuration(computeDuration(s.startTime, s.endTime)),
+                    formatEnergy(s.totalEnergyKwh || s.energyDeliveredKwh || 0),
+                    formatCurrency(s.totalCost || s.cost || 0),
+                  ]);
+                  downloadCsv(headers, rows, `sessions-${new Date().toISOString().slice(0, 10)}.csv`);
+                }}
+              >
+                <Download className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                {t("common.export")}
+              </Button>
+            </div>
           </PageHeader>
         </div>
 
