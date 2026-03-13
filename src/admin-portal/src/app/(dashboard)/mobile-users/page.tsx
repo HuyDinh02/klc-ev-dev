@@ -14,6 +14,8 @@ import { SkeletonTable, SkeletonCard } from "@/components/ui/skeleton";
 import { Tabs } from "@/components/ui/tabs";
 import { api } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
+import { useRequirePermission } from "@/lib/use-permission";
+import { AccessDenied } from "@/components/ui/access-denied";
 import {
   Search,
   UserX,
@@ -113,6 +115,7 @@ const formatDateTime = (date?: string | null) => {
 };
 
 export default function MobileUsersPage() {
+  const hasAccess = useRequirePermission("KLC.MobileUsers");
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
@@ -212,6 +215,8 @@ export default function MobileUsersPage() {
     { value: "wallet", label: t("mobileUsers.wallet") },
     { value: "sessions", label: t("mobileUsers.sessions") },
   ];
+
+  if (!hasAccess) return <AccessDenied />;
 
   return (
     <div className="space-y-6">

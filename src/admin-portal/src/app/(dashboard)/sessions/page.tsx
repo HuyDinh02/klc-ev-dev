@@ -15,8 +15,11 @@ import { sessionsApi } from "@/lib/api";
 import { formatCurrency, formatDateTime, formatEnergy, formatDuration } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
 import { useMonitoringHub } from "@/lib/signalr";
+import { useRequirePermission } from "@/lib/use-permission";
+import { AccessDenied } from "@/components/ui/access-denied";
 
 export default function SessionsPage() {
+  const hasAccess = useRequirePermission("KLC.Sessions");
   const { t } = useTranslation();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -70,6 +73,8 @@ export default function SessionsPage() {
   const activeSessions = sessions.filter((s: { status: number | string }) => s.status === 1 || s.status === 2 || s.status === "InProgress" || s.status === "Starting").length;
   const totalEnergy = sessions.reduce((acc: number, s: { totalEnergyKwh?: number; energyDeliveredKwh?: number }) => acc + (s.totalEnergyKwh || s.energyDeliveredKwh || 0), 0);
   const totalRevenue = sessions.reduce((acc: number, s: { totalCost?: number; cost?: number }) => acc + (s.totalCost || s.cost || 0), 0);
+
+  if (!hasAccess) return <AccessDenied />;
 
   return (
     <div className="flex flex-col">

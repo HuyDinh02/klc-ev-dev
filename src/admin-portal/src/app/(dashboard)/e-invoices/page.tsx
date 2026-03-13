@@ -15,6 +15,8 @@ import { EINVOICE_STATUS, EINVOICE_PROVIDER_LABELS } from "@/lib/constants";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
 import { api } from "@/lib/api";
+import { useRequirePermission } from "@/lib/use-permission";
+import { AccessDenied } from "@/components/ui/access-denied";
 import {
   Receipt,
   Search,
@@ -45,6 +47,7 @@ interface EInvoice {
 }
 
 export default function EInvoicesPage() {
+  const hasAccess = useRequirePermission("KLC.EInvoices");
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState("all");
@@ -119,6 +122,8 @@ export default function EInvoicesPage() {
 
   // Cancel confirmation dialog state
   const [cancelTarget, setCancelTarget] = useState<string | null>(null);
+
+  if (!hasAccess) return <AccessDenied />;
 
   const handleDownloadPdf = async (invoiceId: string) => {
     try {

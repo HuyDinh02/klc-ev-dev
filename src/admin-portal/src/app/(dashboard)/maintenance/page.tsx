@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/dialog";
 import { api, maintenanceApi } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
+import { useRequirePermission, useHasPermission } from "@/lib/use-permission";
+import { AccessDenied } from "@/components/ui/access-denied";
 import {
   Wrench,
   Plus,
@@ -58,6 +60,8 @@ interface MaintenanceStats {
 }
 
 export default function MaintenancePage() {
+  const hasAccess = useRequirePermission("KLC.Maintenance");
+  const canCreate = useHasPermission("KLC.Maintenance.Create");
   const { t } = useTranslation();
   const queryClient = useQueryClient();
 
@@ -203,15 +207,19 @@ export default function MaintenancePage() {
     createMutation.mutate();
   };
 
+  if (!hasAccess) return <AccessDenied />;
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <PageHeader title={t("maintenance.title")} description={t("maintenance.description")}>
-          <Button onClick={() => setIsCreating(true)} disabled={isCreating}>
-            <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
-            {t("maintenance.newTask")}
-          </Button>
+          {canCreate && (
+            <Button onClick={() => setIsCreating(true)} disabled={isCreating}>
+              <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
+              {t("maintenance.newTask")}
+            </Button>
+          )}
         </PageHeader>
       </div>
 

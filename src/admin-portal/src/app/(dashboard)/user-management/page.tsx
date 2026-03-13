@@ -13,6 +13,8 @@ import { usersApi, rolesApi, authApi } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
 import { formatDateTime } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
+import { useRequirePermission, useHasPermission } from "@/lib/use-permission";
+import { AccessDenied } from "@/components/ui/access-denied";
 import {
   Plus, Edit, Trash2, Lock, Unlock, Key, Shield, Search, Users, ChevronLeft, ChevronRight,
   MapPin, Activity, Zap, Cable, AlertTriangle, Wrench, DollarSign, CreditCard, Ticket,
@@ -107,6 +109,9 @@ type TabType = "users" | "roles";
 function UsersTab() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const canCreateUser = useHasPermission("KLC.UserManagement.Create");
+  const canUpdateUser = useHasPermission("KLC.UserManagement.Update");
+  const canDeleteUser = useHasPermission("KLC.UserManagement.Delete");
   const [search, setSearch] = useState("");
   const [pageIndex, setPageIndex] = useState(0);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -200,7 +205,9 @@ function UsersTab() {
             className="h-10 w-full rounded-md border bg-background pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             aria-label={t("userManagement.searchPlaceholder")} />
         </div>
-        <Button onClick={() => { resetForm(); setShowCreateModal(true); }}><Plus className="mr-2 h-4 w-4" aria-hidden="true" /> {t("userManagement.addUser")}</Button>
+        {canCreateUser && (
+          <Button onClick={() => { resetForm(); setShowCreateModal(true); }}><Plus className="mr-2 h-4 w-4" aria-hidden="true" /> {t("userManagement.addUser")}</Button>
+        )}
       </div>
 
       {/* Users Table */}
@@ -253,24 +260,32 @@ function UsersTab() {
                       <td className="px-4 py-3 text-sm text-muted-foreground">{user.creationTime ? formatDateTime(user.creationTime as string) : ""}</td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="sm" title={t("common.edit")} aria-label={t("common.edit")} onClick={() => {
-                            setEditingUser(user);
-                            setUserForm({ userName: user.userName as string, email: user.email as string, password: "", name: (user.name as string) || "", surname: (user.surname as string) || "", phoneNumber: (user.phoneNumber as string) || "", isActive: user.isActive as boolean, roleNames: (user.roles as string[]) || [] });
-                          }}><Edit className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="sm" title={t("userManagement.assignRoles")} aria-label={t("userManagement.assignRoles")} onClick={() => { setRoleModalUser(user); setSelectedRoles((user.roles as string[]) || []); }}>
-                            <Shield className="h-4 w-4" />
-                          </Button>
-                          {!!user.isLockedOut ? (
+                          {canUpdateUser && (
+                            <Button variant="ghost" size="sm" title={t("common.edit")} aria-label={t("common.edit")} onClick={() => {
+                              setEditingUser(user);
+                              setUserForm({ userName: user.userName as string, email: user.email as string, password: "", name: (user.name as string) || "", surname: (user.surname as string) || "", phoneNumber: (user.phoneNumber as string) || "", isActive: user.isActive as boolean, roleNames: (user.roles as string[]) || [] });
+                            }}><Edit className="h-4 w-4" /></Button>
+                          )}
+                          {canUpdateUser && (
+                            <Button variant="ghost" size="sm" title={t("userManagement.assignRoles")} aria-label={t("userManagement.assignRoles")} onClick={() => { setRoleModalUser(user); setSelectedRoles((user.roles as string[]) || []); }}>
+                              <Shield className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {canUpdateUser && (!!user.isLockedOut ? (
                             <Button variant="ghost" size="sm" title={t("userManagement.unlock")} aria-label={t("userManagement.unlock")} onClick={() => unlockMutation.mutate(user.id as string)}><Unlock className="h-4 w-4" /></Button>
                           ) : (
                             <Button variant="ghost" size="sm" title={t("userManagement.lock")} aria-label={t("userManagement.lock")} onClick={() => lockMutation.mutate(user.id as string)}><Lock className="h-4 w-4" /></Button>
+                          ))}
+                          {canUpdateUser && (
+                            <Button variant="ghost" size="sm" title={t("userManagement.resetPassword")} aria-label={t("userManagement.resetPassword")} onClick={() => { setResetPwUser(user); setNewPassword(""); }}>
+                              <Key className="h-4 w-4" />
+                            </Button>
                           )}
-                          <Button variant="ghost" size="sm" title={t("userManagement.resetPassword")} aria-label={t("userManagement.resetPassword")} onClick={() => { setResetPwUser(user); setNewPassword(""); }}>
-                            <Key className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" title={t("common.delete")} aria-label={t("common.delete")} onClick={() => { if (confirm(`${t("userManagement.deleteUserConfirm")} ${user.userName}?`)) deleteMutation.mutate(user.id as string); }}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                          {canDeleteUser && (
+                            <Button variant="ghost" size="sm" title={t("common.delete")} aria-label={t("common.delete")} onClick={() => { if (confirm(`${t("userManagement.deleteUserConfirm")} ${user.userName}?`)) deleteMutation.mutate(user.id as string); }}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -390,6 +405,10 @@ function UsersTab() {
 function RolesTab() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const canCreateRole = useHasPermission("KLC.RoleManagement.Create");
+  const canUpdateRole = useHasPermission("KLC.RoleManagement.Update");
+  const canDeleteRole = useHasPermission("KLC.RoleManagement.Delete");
+  const canManagePermissions = useHasPermission("KLC.RoleManagement.ManagePermissions");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingRole, setEditingRole] = useState<Record<string, unknown> | null>(null);
   const [permissionsRole, setPermissionsRole] = useState<Record<string, unknown> | null>(null);
@@ -615,9 +634,11 @@ function RolesTab() {
     <>
       <div className="flex items-center justify-between mb-4">
         <div />
-        <Button onClick={() => { setRoleForm({ name: "", isDefault: false, isPublic: true }); setShowCreateModal(true); }}>
-          <Plus className="mr-2 h-4 w-4" aria-hidden="true" /> {t("userManagement.addRole")}
-        </Button>
+        {canCreateRole && (
+          <Button onClick={() => { setRoleForm({ name: "", isDefault: false, isPublic: true }); setShowCreateModal(true); }}>
+            <Plus className="mr-2 h-4 w-4" aria-hidden="true" /> {t("userManagement.addRole")}
+          </Button>
+        )}
       </div>
 
       {isLoading ? (
@@ -652,13 +673,17 @@ function RolesTab() {
                       <td className="px-4 py-3"><Badge variant={role.isStatic ? "default" : "secondary"}>{role.isStatic ? t("userManagement.yes") : t("userManagement.no")}</Badge></td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="sm" title={t("common.edit")} aria-label={t("common.edit")} onClick={() => { setEditingRole(role); setRoleForm({ name: role.name as string, isDefault: role.isDefault as boolean, isPublic: (role.isPublic as boolean) ?? true }); }}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" title={t("userManagement.permissions")} aria-label={t("userManagement.permissions")} onClick={() => { setPermissionsRole(role); setPermissionGrants({}); setPermSearch(""); setCollapsedSections({}); setExpandedGroups({}); }}>
-                            <Shield className="h-4 w-4" />
-                          </Button>
-                          {!role.isStatic && (
+                          {canUpdateRole && (
+                            <Button variant="ghost" size="sm" title={t("common.edit")} aria-label={t("common.edit")} onClick={() => { setEditingRole(role); setRoleForm({ name: role.name as string, isDefault: role.isDefault as boolean, isPublic: (role.isPublic as boolean) ?? true }); }}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {canManagePermissions && (
+                            <Button variant="ghost" size="sm" title={t("userManagement.permissions")} aria-label={t("userManagement.permissions")} onClick={() => { setPermissionsRole(role); setPermissionGrants({}); setPermSearch(""); setCollapsedSections({}); setExpandedGroups({}); }}>
+                              <Shield className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {canDeleteRole && !role.isStatic && (
                             <Button variant="ghost" size="sm" title={t("common.delete")} aria-label={t("common.delete")} onClick={() => { if (confirm(`${t("userManagement.deleteRoleConfirm")} ${role.name}?`)) deleteMutation.mutate(role.id as string); }}>
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
@@ -801,8 +826,11 @@ function RolesTab() {
 
 // ---- Main Page ----
 export default function UserManagementPage() {
+  const hasAccess = useRequirePermission("KLC.UserManagement");
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabType>("users");
+
+  if (!hasAccess) return <AccessDenied />;
 
   return (
     <div className="flex flex-col">

@@ -15,6 +15,8 @@ import { PAYMENT_STATUS, PAYMENT_GATEWAY_LABELS } from "@/lib/constants";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
+import { useRequirePermission } from "@/lib/use-permission";
+import { AccessDenied } from "@/components/ui/access-denied";
 import {
   CreditCard,
   DollarSign,
@@ -51,6 +53,7 @@ interface PaymentStats {
 }
 
 export default function PaymentsPage() {
+  const hasAccess = useRequirePermission("KLC.Payments");
   const { t } = useTranslation();
   const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -112,6 +115,8 @@ export default function PaymentsPage() {
     setRefundTarget(null);
     setRefundReason("");
   };
+
+  if (!hasAccess) return <AccessDenied />;
 
   return (
     <div className="space-y-6">

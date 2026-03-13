@@ -32,6 +32,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonCard } from "@/components/ui/skeleton";
 import { CONNECTOR_STATUS } from "@/lib/constants";
 import { useTranslation } from "@/lib/i18n";
+import { useRequirePermission } from "@/lib/use-permission";
+import { AccessDenied } from "@/components/ui/access-denied";
 
 interface DashboardStats {
   totalStations: number;
@@ -96,6 +98,7 @@ function ConnectionIndicator({ status }: { status: ConnectionStatus }) {
 }
 
 export default function MonitoringPage() {
+  const hasAccess = useRequirePermission("KLC.Monitoring");
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [realtimeAlerts, setRealtimeAlerts] = useState<RealtimeAlert[]>([]);
@@ -183,6 +186,8 @@ export default function MonitoringPage() {
   const CONNECTOR_AVAILABLE = 0;
   const CONNECTOR_CHARGING = 2;
   const CONNECTOR_UNAVAILABLE = 7;
+
+  if (!hasAccess) return <AccessDenied />;
 
   return (
     <div className="flex flex-col">
