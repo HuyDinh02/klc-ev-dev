@@ -1,6 +1,9 @@
 import axios from "axios";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://localhost:44305";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
+  || (typeof window !== "undefined" && window.location?.hostname !== "localhost"
+    ? (() => { throw new Error("NEXT_PUBLIC_API_URL must be set in production"); })()
+    : "https://localhost:44305");
 
 export const api = axios.create({
   baseURL: `${API_BASE_URL}/api/v1`,

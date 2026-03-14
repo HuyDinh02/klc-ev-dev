@@ -136,7 +136,7 @@ describe('LoginScreen', () => {
         phoneNumber: '0901234567',
         password: 'driver123',
       });
-      expect(loginMock).toHaveBeenCalledWith('real-access-token', {
+      expect(loginMock).toHaveBeenCalledWith('real-access-token', 'real-refresh-token', {
         id: 'user-123',
         email: 'driver@klc.vn',
         phoneNumber: '0901234567',

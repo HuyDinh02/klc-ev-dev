@@ -79,7 +79,8 @@ builder.Services.AddScoped<IPromotionBffService, PromotionBffService>();
 builder.Services.AddScoped<IFeedbackBffService, FeedbackBffService>();
 
 // Register services from Application layer (not auto-registered since BFF doesn't depend on KLCApplicationModule)
-builder.Services.AddTransient<KLC.Notifications.ISmsService, KLC.Notifications.LogOnlySmsService>();
+// Uses TwilioSmsService which falls back to log-only when Twilio config is missing
+builder.Services.AddTransient<KLC.Notifications.ISmsService, KLC.Notifications.TwilioSmsService>();
 builder.Services.AddTransient<KLC.Files.IFileUploadService, KLC.Files.GcsFileUploadService>();
 builder.Services.AddTransient<KLC.Auditing.IAuditEventLogger, KLC.Auditing.AuditEventLogger>();
 

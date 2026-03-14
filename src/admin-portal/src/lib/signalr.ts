@@ -7,7 +7,7 @@ import {
 } from "@microsoft/signalr";
 
 const HUB_URL =
-  (process.env.NEXT_PUBLIC_API_URL || "https://localhost:44305") +
+  (process.env.NEXT_PUBLIC_API_URL ?? "https://localhost:44305") +
   "/hubs/monitoring";
 
 export type ConnectionStatus = "disconnected" | "connecting" | "connected";

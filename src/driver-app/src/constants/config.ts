@@ -9,8 +9,8 @@ export const Config = {
     ? 'http://localhost:5001/hubs/driver'
     : 'https://bff.ev.odcall.com/hubs/driver',
 
-  // Google Maps (placeholder - need real key)
-  GOOGLE_MAPS_API_KEY: 'YOUR_GOOGLE_MAPS_API_KEY',
+  // Google Maps — set via EAS secrets or .env
+  GOOGLE_MAPS_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? 'YOUR_GOOGLE_MAPS_API_KEY',
 
   // Default map region (Vietnam)
   DEFAULT_REGION: {

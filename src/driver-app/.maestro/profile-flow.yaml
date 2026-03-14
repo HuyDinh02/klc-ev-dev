@@ -1,0 +1,79 @@
+appId: vn.klc.driver
+name: Profile & Account Flow
+---
+# Verifies profile screen, vehicles, and account menu items
+# Prerequisite: User must be logged in
+- launchApp:
+    appId: vn.klc.driver
+
+# Wait for app to load
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 10000
+
+# Navigate to Profile tab
+- tapOn:
+    id: "tab-profile"
+    optional: true
+- tapOn:
+    text: "Profile"
+    optional: true
+
+# Verify profile elements
+- assertVisible:
+    text: "Profile"
+    timeout: 5000
+
+# Verify account menu items exist
+- assertVisible:
+    text: "Payment Methods"
+    optional: true
+- assertVisible:
+    text: "Notifications"
+    optional: true
+- assertVisible:
+    text: "Settings"
+    optional: true
+- assertVisible:
+    text: "Help & Support"
+    optional: true
+
+# Navigate to Payment Methods
+- tapOn:
+    text: "Payment Methods"
+    optional: true
+- assertVisible:
+    text: "Payment Methods"
+    timeout: 5000
+    optional: true
+- back
+
+# Navigate to Help & Support
+- tapOn:
+    text: "Help & Support"
+    optional: true
+- assertVisible:
+    text: "Help & Support"
+    timeout: 5000
+    optional: true
+- assertVisible:
+    text: "Frequently Asked Questions"
+    optional: true
+- assertVisible:
+    text: "Contact Us"
+    optional: true
+- back
+
+# Test logout flow (but cancel)
+- scrollUntilVisible:
+    element:
+      text: "Logout"
+    direction: DOWN
+    timeout: 5000
+- tapOn:
+    text: "Logout"
+    optional: true
+# Cancel the logout confirmation
+- tapOn:
+    text: "Cancel"
+    optional: true

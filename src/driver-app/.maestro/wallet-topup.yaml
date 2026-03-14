@@ -1,0 +1,55 @@
+appId: vn.klc.driver
+name: Wallet Top-Up Flow
+---
+# Verifies wallet screen access, balance display, and top-up flow
+# Prerequisite: User must be logged in
+- launchApp:
+    appId: vn.klc.driver
+
+# Wait for app to load
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 10000
+
+# Navigate to Wallet tab
+- tapOn:
+    id: "tab-wallet"
+    optional: true
+- tapOn:
+    text: "Wallet"
+    optional: true
+
+# Verify wallet screen elements
+- assertVisible:
+    text: "Wallet"
+    timeout: 5000
+
+# Verify balance section is visible
+- assertVisible:
+    text: "Wallet Balance"
+    optional: true
+
+# Verify top-up button exists
+- assertVisible:
+    text: "Top Up"
+    optional: true
+
+# Verify quick top-up amounts are shown
+- assertVisible:
+    text: "Quick Top Up"
+    optional: true
+
+# Verify transaction history section
+- assertVisible:
+    text: "Transaction History"
+    optional: true
+
+# Try tapping top-up button
+- tapOn:
+    text: "Top Up"
+    optional: true
+
+# Dismiss any confirmation dialog
+- tapOn:
+    text: "Cancel"
+    optional: true

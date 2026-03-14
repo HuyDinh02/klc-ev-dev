@@ -50,8 +50,11 @@ public class KLCDomainModule : AbpModule
         // Register domain services
         context.Services.AddTransient<IPowerSharingService, PowerSharingDomainService>();
 
-#if DEBUG
-        context.Services.Replace(ServiceDescriptor.Singleton<IEmailSender, NullEmailSender>());
-#endif
+        // Use NullEmailSender when SMTP is not configured (safe for dev + production without email)
+        var smtpHost = context.Services.GetConfiguration()["Settings:Abp.Mailing.Smtp.Host"];
+        if (string.IsNullOrWhiteSpace(smtpHost))
+        {
+            context.Services.Replace(ServiceDescriptor.Singleton<IEmailSender, NullEmailSender>());
+        }
     }
 }

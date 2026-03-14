@@ -31,7 +31,9 @@
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
-        "CAMERA"
+        "CAMERA",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
       ],
       "predictiveBackGestureEnabled": false
     },
@@ -46,8 +48,24 @@
         {
           "cameraPermission": "Allow K-Charge to access your camera to scan QR codes."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#2D9B3A"
+        }
       ]
     ],
+
+    "updates": {
+      "enabled": true,
+      "fallbackToCacheTimeout": 5000,
+      "url": "https://u.expo.dev/klc-driver"
+    },
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
     "extra": {
       "eas": {
         "projectId": "klc-driver"

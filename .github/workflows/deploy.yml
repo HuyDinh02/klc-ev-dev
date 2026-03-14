@@ -111,6 +111,7 @@ jobs:
           docker push "${{ env.AR_REPO }}/admin-api:latest"
 
       - name: Deploy Admin API to Cloud Run
+        id: deploy-api
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: klc-admin-api
@@ -130,6 +131,19 @@ jobs:
             --cpu-boost
             --set-env-vars=^||^ASPNETCORE_ENVIRONMENT=Production||App__CorsOrigins=https://ev.odcall.com,https://api.ev.odcall.com,http://localhost:3001
             --set-secrets=ConnectionStrings__Default=db-connection-string:latest,ConnectionStrings__Redis=redis-connection-string:latest,Jwt__SecretKey=jwt-secret-key:latest,StringEncryption__DefaultPassPhrase=string-encryption-passphrase:latest,Payment__MoMo__PartnerCode=momo-partner-code:latest,Payment__MoMo__AccessKey=momo-access-key:latest,Payment__MoMo__SecretKey=momo-secret-key:latest,Payment__VnPay__TmnCode=vnpay-tmn-code:latest,Payment__VnPay__HashSecret=vnpay-hash-secret:latest,OPENIDDICT_SIGNING_CERT=openiddict-signing-cert:latest,OPENIDDICT_SIGNING_PASSWORD=openiddict-signing-password:latest,OPENIDDICT_ENCRYPTION_CERT=openiddict-encryption-cert:latest,OPENIDDICT_ENCRYPTION_PASSWORD=openiddict-encryption-password:latest
+
+      - name: Smoke test Admin API
+        run: |
+          URL="${{ steps.deploy-api.outputs.url }}/health"
+          echo "Checking $URL ..."
+          for i in 1 2 3 4 5; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$URL" || true)
+            if [ "$STATUS" = "200" ]; then echo "Admin API healthy"; exit 0; fi
+            echo "Attempt $i: status=$STATUS, retrying..."
+            sleep 5
+          done
+          echo "::error::Admin API smoke test failed after 5 attempts"
+          exit 1
 
   deploy-driver-bff:
     name: Deploy Driver BFF
@@ -164,6 +178,7 @@ jobs:
           docker push "${{ env.AR_REPO }}/driver-bff:latest"
 
       - name: Deploy Driver BFF to Cloud Run
+        id: deploy-bff
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: klc-driver-bff
@@ -180,6 +195,19 @@ jobs:
             --vpc-egress=private-ranges-only
             --set-env-vars=ASPNETCORE_ENVIRONMENT=Production,EnableApiDocs=true
             --set-secrets=ConnectionStrings__Default=db-connection-string:latest,ConnectionStrings__Redis=redis-connection-string:latest,Jwt__SecretKey=jwt-secret-key:latest,Payment__MoMo__PartnerCode=momo-partner-code:latest,Payment__MoMo__AccessKey=momo-access-key:latest,Payment__MoMo__SecretKey=momo-secret-key:latest,Payment__VnPay__TmnCode=vnpay-tmn-code:latest,Payment__VnPay__HashSecret=vnpay-hash-secret:latest
+
+      - name: Smoke test Driver BFF
+        run: |
+          URL="${{ steps.deploy-bff.outputs.url }}/health"
+          echo "Checking $URL ..."
+          for i in 1 2 3 4 5; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$URL" || true)
+            if [ "$STATUS" = "200" ]; then echo "Driver BFF healthy"; exit 0; fi
+            echo "Attempt $i: status=$STATUS, retrying..."
+            sleep 5
+          done
+          echo "::error::Driver BFF smoke test failed after 5 attempts"
+          exit 1
 
   deploy-admin-portal:
     name: Deploy Admin Portal
@@ -214,6 +242,7 @@ jobs:
           docker push "${{ env.AR_REPO }}/admin-portal:latest"
 
       - name: Deploy Admin Portal to Cloud Run
+        id: deploy-portal
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: klc-admin-portal
@@ -227,3 +256,16 @@ jobs:
             --max-instances=3
             --set-env-vars=NODE_ENV=production,BACKEND_API_URL=https://api.ev.odcall.com,OIDC_CLIENT_ID=KLC_Api
             --set-secrets=OIDC_CLIENT_SECRET=oidc-client-secret:latest
+
+      - name: Smoke test Admin Portal
+        run: |
+          URL="${{ steps.deploy-portal.outputs.url }}"
+          echo "Checking $URL ..."
+          for i in 1 2 3 4 5; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$URL" || true)
+            if [ "$STATUS" = "200" ] || [ "$STATUS" = "307" ]; then echo "Admin Portal healthy"; exit 0; fi
+            echo "Attempt $i: status=$STATUS, retrying..."
+            sleep 5
+          done
+          echo "::error::Admin Portal smoke test failed after 5 attempts"
+          exit 1

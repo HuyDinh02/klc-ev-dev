@@ -68,6 +68,7 @@ export function MainNavigator() {
         options={{
           tabBarLabel: t('tabs.stations'),
           tabBarIcon: HomeIcon,
+          tabBarTestID: 'tab-home',
         }}
       />
       <Tab.Screen
@@ -76,6 +77,7 @@ export function MainNavigator() {
         options={{
           tabBarLabel: t('tabs.favorites'),
           tabBarIcon: FavoritesIcon,
+          tabBarTestID: 'tab-favorites',
         }}
       />
       <Tab.Screen
@@ -84,6 +86,7 @@ export function MainNavigator() {
         options={{
           tabBarLabel: t('tabs.history'),
           tabBarIcon: HistoryIcon,
+          tabBarTestID: 'tab-history',
         }}
       />
       <Tab.Screen
@@ -92,6 +95,7 @@ export function MainNavigator() {
         options={{
           tabBarLabel: t('tabs.wallet'),
           tabBarIcon: WalletIcon,
+          tabBarTestID: 'tab-wallet',
         }}
       />
       <Tab.Screen
@@ -100,6 +104,7 @@ export function MainNavigator() {
         options={{
           tabBarLabel: t('tabs.profile'),
           tabBarIcon: ProfileIcon,
+          tabBarTestID: 'tab-profile',
         }}
       />
     </Tab.Navigator>

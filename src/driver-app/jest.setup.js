@@ -48,13 +48,18 @@ jest.mock('@react-navigation/native', () => ({
 
 // Mock react-native-maps
 jest.mock('react-native-maps', () => {
+  const React = require('react');
   const { View } = require('react-native');
-  const MockMapView = (props) => View(props);
-  MockMapView.Marker = (props) => View(props);
+  const MockMapView = React.forwardRef((props, ref) =>
+    React.createElement(View, { ...props, ref })
+  );
+  const MockComponent = (props) => React.createElement(View, props);
+  MockMapView.Marker = MockComponent;
   return {
     __esModule: true,
     default: MockMapView,
-    Marker: MockMapView.Marker,
+    Marker: MockComponent,
+    Callout: MockComponent,
   };
 });
 
@@ -64,6 +69,7 @@ jest.mock('expo-location', () => ({
   getCurrentPositionAsync: jest.fn().mockResolvedValue({
     coords: { latitude: 21.0285, longitude: 105.8542 },
   }),
+  Accuracy: { Balanced: 3, High: 4, Highest: 5, Low: 1, Lowest: 0, BestForNavigation: 6 },
 }));
 
 // Mock expo-camera

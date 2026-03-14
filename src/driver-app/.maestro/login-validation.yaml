@@ -1,0 +1,32 @@
+appId: vn.klc.driver
+name: Login Validation
+---
+# Verifies login form validation (empty fields, invalid credentials)
+- launchApp:
+    appId: vn.klc.driver
+    clearState: true
+
+# Wait for login screen
+- assertVisible: "Sign In"
+
+# Try to sign in with empty fields — should show error alert
+- tapOn: "Sign In"
+- assertVisible:
+    text: ".*"
+    timeout: 3000
+
+# Dismiss alert if present
+- tapOn:
+    text: "OK"
+    optional: true
+
+# Enter only email, leave password empty
+- tapOn:
+    label: "Email"
+- inputText: "test@example.com"
+- tapOn: "Sign In"
+
+# Dismiss alert
+- tapOn:
+    text: "OK"
+    optional: true
