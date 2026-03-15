@@ -404,7 +404,7 @@ export default function FleetsPage() {
 
             {/* Vehicles table */}
             <h3 className="text-sm font-semibold mb-2">{t("fleets.vehicles")}</h3>
-            {detail.vehicles.length > 0 ? (
+            {(detail.vehicles?.length ?? 0) > 0 ? (
               <div className="overflow-x-auto mb-6">
                 <table className="w-full text-sm" role="table">
                   <thead>
@@ -483,7 +483,7 @@ export default function FleetsPage() {
                   <Calendar className="h-4 w-4" />
                   {t("fleets.schedules")}
                 </h3>
-                {detail.schedules.length > 0 ? (
+                {(detail.schedules?.length ?? 0) > 0 ? (
                   <div className="overflow-x-auto mb-6">
                     <table className="w-full text-sm" role="table">
                       <thead>
@@ -541,7 +541,7 @@ export default function FleetsPage() {
                   <MapPin className="h-4 w-4" />
                   {t("fleets.allowedGroups")}
                 </h3>
-                {detail.allowedStationGroups.length > 0 ? (
+                {(detail.allowedStationGroups?.length ?? 0) > 0 ? (
                   <div className="flex flex-wrap gap-2 mb-6">
                     {detail.allowedStationGroups.map((group) => (
                       <Badge key={group.id} variant="outline" className="flex items-center gap-1 px-3 py-1">
