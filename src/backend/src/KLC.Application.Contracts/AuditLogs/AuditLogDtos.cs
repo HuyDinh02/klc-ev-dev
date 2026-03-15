@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace KLC.AuditLogs;
@@ -19,6 +20,19 @@ public class AuditLogDto
     public string Url { get; set; } = string.Empty;
     public int? HttpStatusCode { get; set; }
     public string? Comments { get; set; }
+    public bool HasException { get; set; }
+    public string? ExceptionMessage { get; set; }
+    public List<EntityChangeWithPropertiesDto> EntityChanges { get; set; } = new();
+}
+
+public class EntityChangeWithPropertiesDto
+{
+    public Guid Id { get; set; }
+    public DateTime ChangeTime { get; set; }
+    public string ChangeType { get; set; } = string.Empty;
+    public string EntityTypeFullName { get; set; } = string.Empty;
+    public string EntityId { get; set; } = string.Empty;
+    public List<EntityPropertyChangeDto> PropertyChanges { get; set; } = new();
 }
 
 public class AuditLogListDto
@@ -30,6 +44,9 @@ public class AuditLogListDto
     public string Url { get; set; } = string.Empty;
     public int? HttpStatusCode { get; set; }
     public int ExecutionDuration { get; set; }
+    public string? ClientIpAddress { get; set; }
+    public bool HasException { get; set; }
+    public int EntityChangeCount { get; set; }
 }
 
 public class EntityChangeDto

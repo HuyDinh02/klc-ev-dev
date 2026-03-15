@@ -51,7 +51,8 @@ public class AuditLogAppService : KLCAppService, IAuditLogAppService
             minExecutionDuration: input.MinExecutionDuration,
             maxExecutionDuration: input.MaxExecutionDuration,
             hasException: input.HasException,
-            httpStatusCode: statusCode
+            httpStatusCode: statusCode,
+            includeDetails: true
         );
 
         var dtos = logs.Select(log => new AuditLogListDto
@@ -62,7 +63,10 @@ public class AuditLogAppService : KLCAppService, IAuditLogAppService
             HttpMethod = log.HttpMethod ?? string.Empty,
             Url = log.Url ?? string.Empty,
             HttpStatusCode = log.HttpStatusCode,
-            ExecutionDuration = log.ExecutionDuration
+            ExecutionDuration = log.ExecutionDuration,
+            ClientIpAddress = log.ClientIpAddress,
+            HasException = !string.IsNullOrEmpty(log.Exceptions),
+            EntityChangeCount = log.EntityChanges.Count
         }).ToList();
 
         return new PagedResultDto<AuditLogListDto>(totalCount, dtos);
@@ -70,9 +74,9 @@ public class AuditLogAppService : KLCAppService, IAuditLogAppService
 
     public async Task<AuditLogDto> GetAsync(Guid id)
     {
-        var log = await _auditLogRepository.GetAsync(id);
+        var log = await _auditLogRepository.GetAsync(id, includeDetails: true);
 
-        return new AuditLogDto
+        var dto = new AuditLogDto
         {
             Id = log.Id,
             UserId = log.UserId,
@@ -87,13 +91,33 @@ public class AuditLogAppService : KLCAppService, IAuditLogAppService
             HttpMethod = log.HttpMethod ?? string.Empty,
             Url = log.Url ?? string.Empty,
             HttpStatusCode = log.HttpStatusCode,
-            Comments = log.Comments
+            Comments = log.Comments,
+            HasException = !string.IsNullOrEmpty(log.Exceptions),
+            ExceptionMessage = TruncateException(log.Exceptions),
+            EntityChanges = log.EntityChanges.Select(ec => new EntityChangeWithPropertiesDto
+            {
+                Id = ec.Id,
+                ChangeTime = ec.ChangeTime,
+                ChangeType = ec.ChangeType.ToString(),
+                EntityTypeFullName = ec.EntityTypeFullName,
+                EntityId = ec.EntityId,
+                PropertyChanges = ec.PropertyChanges.Select(pc => new EntityPropertyChangeDto
+                {
+                    Id = pc.Id,
+                    EntityChangeId = pc.EntityChangeId,
+                    PropertyName = pc.PropertyName,
+                    OriginalValue = pc.OriginalValue,
+                    NewValue = pc.NewValue,
+                    PropertyTypeFullName = pc.PropertyTypeFullName
+                }).ToList()
+            }).ToList()
         };
+
+        return dto;
     }
 
     public async Task<PagedResultDto<EntityChangeDto>> GetEntityChangesAsync(GetEntityChangesDto input)
     {
-        // Get entity changes from audit logs
         var logs = await _auditLogRepository.GetListAsync(
             sorting: "ExecutionTime DESC",
             maxResultCount: input.MaxResultCount,
@@ -129,7 +153,6 @@ public class AuditLogAppService : KLCAppService, IAuditLogAppService
 
     public async Task<List<EntityPropertyChangeDto>> GetPropertyChangesAsync(Guid entityChangeId)
     {
-        // Find the entity change across all audit logs
         var logs = await _auditLogRepository.GetListAsync(
             sorting: "ExecutionTime DESC",
             maxResultCount: 1000,
@@ -180,11 +203,11 @@ public class AuditLogAppService : KLCAppService, IAuditLogAppService
         );
 
         var sb = new StringBuilder();
-        sb.AppendLine("Id,UserName,ExecutionTime,HttpMethod,Url,HttpStatusCode,ExecutionDuration,ClientIpAddress");
+        sb.AppendLine("Id,UserName,ExecutionTime,HttpMethod,Url,HttpStatusCode,ExecutionDuration,ClientIpAddress,HasException");
 
         foreach (var log in logs)
         {
-            sb.AppendLine($"\"{log.Id}\",\"{log.UserName}\",\"{log.ExecutionTime:yyyy-MM-dd HH:mm:ss}\",\"{log.HttpMethod}\",\"{EscapeCsv(log.Url)}\",{log.HttpStatusCode},{log.ExecutionDuration},\"{log.ClientIpAddress}\"");
+            sb.AppendLine($"\"{log.Id}\",\"{log.UserName}\",\"{log.ExecutionTime:yyyy-MM-dd HH:mm:ss}\",\"{log.HttpMethod}\",\"{EscapeCsv(log.Url)}\",{log.HttpStatusCode},{log.ExecutionDuration},\"{log.ClientIpAddress}\",{(!string.IsNullOrEmpty(log.Exceptions))}");
         }
 
         return Encoding.UTF8.GetBytes(sb.ToString());
@@ -194,5 +217,13 @@ public class AuditLogAppService : KLCAppService, IAuditLogAppService
     {
         if (string.IsNullOrEmpty(value)) return string.Empty;
         return value.Replace("\"", "\"\"");
+    }
+
+    private static string? TruncateException(string? exceptions)
+    {
+        if (string.IsNullOrEmpty(exceptions)) return null;
+        // Return first line (the exception message) — skip stack trace
+        var firstLine = exceptions.Split('\n', 2)[0].Trim();
+        return firstLine.Length > 500 ? firstLine[..500] + "..." : firstLine;
     }
 }

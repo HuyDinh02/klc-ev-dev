@@ -142,6 +142,25 @@ public class KLCHttpApiHostModule : AbpModule
         ConfigureHealthChecks(context, configuration);
         ConfigureRateLimiting(context);
         ConfigureHttpClients(context);
+        ConfigureAuditing();
+    }
+
+    private void ConfigureAuditing()
+    {
+        Configure<Volo.Abp.Auditing.AbpAuditingOptions>(options =>
+        {
+            options.IsEnabledForGetRequests = true;
+        });
+
+        // Exclude noisy URLs from audit logging
+        Configure<Volo.Abp.AspNetCore.Auditing.AbpAspNetCoreAuditingOptions>(options =>
+        {
+            options.IgnoredUrls.AddIfNotContains("/hubs/");
+            options.IgnoredUrls.AddIfNotContains("/connect/token");
+            options.IgnoredUrls.AddIfNotContains("/health");
+            options.IgnoredUrls.AddIfNotContains("/swagger");
+            options.IgnoredUrls.AddIfNotContains("/api/abp/");
+        });
     }
 
     private static void ConfigureRateLimiting(ServiceConfigurationContext context)
