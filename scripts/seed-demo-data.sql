@@ -155,7 +155,10 @@ VALUES
 (gen_random_uuid(), NULL, 'KLC.Maintenance', 'R', 'admin'),
 (gen_random_uuid(), NULL, 'KLC.Maintenance.Create', 'R', 'admin'),
 (gen_random_uuid(), NULL, 'KLC.Maintenance.Update', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Maintenance.Delete', 'R', 'admin');
+(gen_random_uuid(), NULL, 'KLC.Maintenance.Delete', 'R', 'admin'),
+-- Settings permissions
+(gen_random_uuid(), NULL, 'KLC.Settings', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Settings.Update', 'R', 'admin');
 
 -- Grant Permissions to Operator Role (station management, monitoring, faults)
 INSERT INTO "AbpPermissionGrants" ("Id", "TenantId", "Name", "ProviderName", "ProviderKey")
@@ -189,7 +192,8 @@ VALUES
 (gen_random_uuid(), NULL, 'KLC.Operators', 'R', 'operator'),
 (gen_random_uuid(), NULL, 'KLC.Fleets', 'R', 'operator'),
 (gen_random_uuid(), NULL, 'KLC.Fleets.ViewAnalytics', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KLC.Maintenance', 'R', 'operator');
+(gen_random_uuid(), NULL, 'KLC.Maintenance', 'R', 'operator'),
+(gen_random_uuid(), NULL, 'KLC.Settings', 'R', 'operator');
 
 -- Grant Permissions to Viewer Role (read-only)
 INSERT INTO "AbpPermissionGrants" ("Id", "TenantId", "Name", "ProviderName", "ProviderKey")

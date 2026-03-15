@@ -197,6 +197,9 @@
     "Permission:Maintenance.Update": "Update Maintenance Tasks",
     "Permission:Maintenance.Delete": "Delete Maintenance Tasks",
 
+    "Permission:Settings": "System Settings",
+    "Permission:Settings.Update": "Update System Settings",
+
     "KLC:PowerSharing:NotFound": "Power sharing group not found.",
     "KLC:PowerSharing:InvalidCapacity": "Max capacity must be greater than 0.",
     "KLC:PowerSharing:InvalidMinPower": "Minimum power per connector cannot be negative.",

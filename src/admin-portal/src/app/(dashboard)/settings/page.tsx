@@ -19,8 +19,14 @@ import {
 } from "lucide-react";
 import { settingsApi, type SystemSettings } from "@/lib/api";
 import { useTranslation, type Locale } from "@/lib/i18n";
+import { useRequirePermission, useHasPermission } from "@/lib/use-permission";
+import { AccessDenied } from "@/components/ui/access-denied";
 
 export default function SettingsPage() {
+  const hasAccess = useRequirePermission("KLC.Settings");
+  const canUpdate = useHasPermission("KLC.Settings.Update");
+
+  if (!hasAccess) return <AccessDenied />;
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("general");
   const [localSettings, setLocalSettings] = useState<SystemSettings | null>(null);
@@ -123,7 +129,7 @@ export default function SettingsPage() {
           {saveMutation.isError && (
             <span className="text-sm text-destructive">{t("settings.saveFailed")}</span>
           )}
-          <Button onClick={handleSave} disabled={saveMutation.isPending || !isDirty}>
+          <Button onClick={handleSave} disabled={saveMutation.isPending || !isDirty || !canUpdate}>
             {saveMutation.isPending ? (
               <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
             ) : (
