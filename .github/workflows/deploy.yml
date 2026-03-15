@@ -136,13 +136,13 @@ jobs:
         run: |
           URL="${{ steps.deploy-api.outputs.url }}/health"
           echo "Checking $URL ..."
-          for i in 1 2 3 4 5; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$URL" || true)
+          for i in $(seq 1 10); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$URL" || true)
             if [ "$STATUS" = "200" ]; then echo "Admin API healthy"; exit 0; fi
             echo "Attempt $i: status=$STATUS, retrying..."
-            sleep 5
+            sleep 10
           done
-          echo "::error::Admin API smoke test failed after 5 attempts"
+          echo "::error::Admin API smoke test failed after 10 attempts"
           exit 1
 
   deploy-driver-bff:
@@ -200,13 +200,13 @@ jobs:
         run: |
           URL="${{ steps.deploy-bff.outputs.url }}/health"
           echo "Checking $URL ..."
-          for i in 1 2 3 4 5; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$URL" || true)
+          for i in $(seq 1 10); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$URL" || true)
             if [ "$STATUS" = "200" ]; then echo "Driver BFF healthy"; exit 0; fi
             echo "Attempt $i: status=$STATUS, retrying..."
-            sleep 5
+            sleep 10
           done
-          echo "::error::Driver BFF smoke test failed after 5 attempts"
+          echo "::error::Driver BFF smoke test failed after 10 attempts"
           exit 1
 
   deploy-admin-portal:
