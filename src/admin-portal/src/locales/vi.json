@@ -1057,6 +1057,15 @@
     "newBalance": "Số dư mới",
     "adjustAmountHint": "Dương để cộng, âm để trừ"
   },
+  "permissions": {
+    "grantAll": "Cấp tất cả",
+    "revokeAll": "Thu hồi tất cả",
+    "searchPermissions": "Tìm quyền...",
+    "summary": "{granted}/{total} quyền được cấp",
+    "noResults": "Không tìm thấy quyền phù hợp",
+    "grantAllConfirm": "Cấp tất cả quyền cho vai trò này?",
+    "revokeAllConfirm": "Thu hồi tất cả quyền từ vai trò này?"
+  },
   "errors": {
     "pageNotFound": "Không tìm thấy trang",
     "pageNotFoundDesc": "Trang bạn đang tìm không tồn tại hoặc đã được chuyển.",

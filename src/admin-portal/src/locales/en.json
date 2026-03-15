@@ -1057,6 +1057,15 @@
     "sendFailed": "Unable to send response. Please try again.",
     "connectionFailed": "Unable to connect to server. Please try again."
   },
+  "permissions": {
+    "grantAll": "Grant All",
+    "revokeAll": "Revoke All",
+    "searchPermissions": "Search permissions...",
+    "summary": "{granted}/{total} permissions granted",
+    "noResults": "No matching permissions",
+    "grantAllConfirm": "Grant all permissions to this role?",
+    "revokeAllConfirm": "Revoke all permissions from this role?"
+  },
   "errors": {
     "pageNotFound": "Page not found",
     "pageNotFoundDesc": "The page you are looking for does not exist or has been moved.",
