@@ -295,7 +295,7 @@ export default function MobileUsersPage() {
   if (!hasAccess) return <AccessDenied />;
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col">
       {/* Header */}
       <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <PageHeader
@@ -304,6 +304,7 @@ export default function MobileUsersPage() {
         />
       </div>
 
+      <div className="flex-1 space-y-6 p-6">
       {/* Search */}
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -785,6 +786,7 @@ export default function MobileUsersPage() {
           )}
         </DialogFooter>
       </Dialog>
+      </div>
     </div>
   );
 }

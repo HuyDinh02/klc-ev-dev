@@ -4,6 +4,20 @@
 -- Run with: PGPASSWORD=postgres psql -h localhost -p 5433 -U postgres -d KLC -f scripts/seed-demo-data.sql
 -- ============================================================
 
+-- SAFETY CHECK: Prevent accidental execution against production database
+DO $$
+BEGIN
+  IF current_database() NOT IN ('KLC', 'klc_dev', 'klc_test', 'klc_staging') THEN
+    RAISE EXCEPTION 'SAFETY: Seed script blocked — current database "%" is not a known dev/test database. '
+      'If this is intentional, add the database name to the allowlist in this script.', current_database();
+  END IF;
+
+  -- Extra guard: abort if the database has > 1000 real charging sessions (likely production)
+  IF (SELECT count(*) FROM "ChargingSessions" WHERE "IsDeleted" = false) > 1000 THEN
+    RAISE EXCEPTION 'SAFETY: Seed script blocked — database has > 1000 sessions, which looks like production data.';
+  END IF;
+END $$;
+
 BEGIN;
 
 -- ============================================================
@@ -141,7 +155,10 @@ VALUES
 (gen_random_uuid(), NULL, 'KLC.Maintenance', 'R', 'admin'),
 (gen_random_uuid(), NULL, 'KLC.Maintenance.Create', 'R', 'admin'),
 (gen_random_uuid(), NULL, 'KLC.Maintenance.Update', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Maintenance.Delete', 'R', 'admin');
+(gen_random_uuid(), NULL, 'KLC.Maintenance.Delete', 'R', 'admin'),
+-- Settings permissions
+(gen_random_uuid(), NULL, 'KLC.Settings', 'R', 'admin'),
+(gen_random_uuid(), NULL, 'KLC.Settings.Update', 'R', 'admin');
 
 -- Grant Permissions to Operator Role (station management, monitoring, faults)
 INSERT INTO "AbpPermissionGrants" ("Id", "TenantId", "Name", "ProviderName", "ProviderKey")
@@ -175,7 +192,8 @@ VALUES
 (gen_random_uuid(), NULL, 'KLC.Operators', 'R', 'operator'),
 (gen_random_uuid(), NULL, 'KLC.Fleets', 'R', 'operator'),
 (gen_random_uuid(), NULL, 'KLC.Fleets.ViewAnalytics', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KLC.Maintenance', 'R', 'operator');
+(gen_random_uuid(), NULL, 'KLC.Maintenance', 'R', 'operator'),
+(gen_random_uuid(), NULL, 'KLC.Settings', 'R', 'operator');
 
 -- Grant Permissions to Viewer Role (read-only)
 INSERT INTO "AbpPermissionGrants" ("Id", "TenantId", "Name", "ProviderName", "ProviderKey")

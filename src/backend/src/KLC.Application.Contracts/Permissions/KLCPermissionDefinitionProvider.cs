@@ -119,6 +119,10 @@ public class KLCPermissionDefinitionProvider : PermissionDefinitionProvider
         maintenancePermission.AddChild(KLCPermissions.Maintenance.Update, L("Permission:Maintenance.Update"));
         maintenancePermission.AddChild(KLCPermissions.Maintenance.Delete, L("Permission:Maintenance.Delete"));
 
+        // Settings permissions
+        var settingsPermission = myGroup.AddPermission(KLCPermissions.Settings.Default, L("Permission:Settings"));
+        settingsPermission.AddChild(KLCPermissions.Settings.Update, L("Permission:Settings.Update"));
+
         // Power Sharing permissions
         var powerSharingPermission = myGroup.AddPermission(KLCPermissions.PowerSharing.Default, L("Permission:PowerSharing"));
         powerSharingPermission.AddChild(KLCPermissions.PowerSharing.Create, L("Permission:PowerSharing.Create"));

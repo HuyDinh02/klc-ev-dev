@@ -181,7 +181,7 @@ export default function OperatorsPage() {
   if (!hasAccess) return <AccessDenied />;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <PageHeader
         title={t("operators.title")}
         description={t("operators.description")}

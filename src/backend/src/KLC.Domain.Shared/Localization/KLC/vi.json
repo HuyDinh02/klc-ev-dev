@@ -197,6 +197,9 @@
     "Permission:Maintenance.Update": "Cập nhật tác vụ bảo trì",
     "Permission:Maintenance.Delete": "Xóa tác vụ bảo trì",
 
+    "Permission:Settings": "Cài đặt hệ thống",
+    "Permission:Settings.Update": "Cập nhật cài đặt hệ thống",
+
     "KLC:PowerSharing:NotFound": "Không tìm thấy nhóm chia sẻ công suất.",
     "KLC:PowerSharing:InvalidCapacity": "Công suất tối đa phải lớn hơn 0.",
     "KLC:PowerSharing:InvalidMinPower": "Công suất tối thiểu mỗi đầu sạc không được âm.",

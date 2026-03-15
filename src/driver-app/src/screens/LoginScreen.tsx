@@ -38,7 +38,7 @@ export function LoginScreen() {
       if (result.success && result.accessToken && result.user) {
         const userProfile = mapAuthUserToProfile(result.user);
         if (userProfile) {
-          await login(result.accessToken, userProfile);
+          await login(result.accessToken, result.refreshToken ?? '', userProfile);
         }
       } else {
         Alert.alert(t('common.error'), result.error ?? t('login.errorInvalidCredentials'));
@@ -92,6 +92,7 @@ export function LoginScreen() {
               autoCapitalize="none"
               autoCorrect={false}
               accessibilityLabel="Email"
+              testID="login-email-input"
             />
           </View>
 
@@ -105,6 +106,7 @@ export function LoginScreen() {
               placeholderTextColor={Colors.textLight}
               secureTextEntry
               accessibilityLabel="Password"
+              testID="login-password-input"
             />
           </View>
 
@@ -118,6 +120,7 @@ export function LoginScreen() {
             loading={loading}
             size="large"
             style={styles.loginButton}
+            testID="login-submit-button"
           />
 
           <View style={styles.registerContainer}>

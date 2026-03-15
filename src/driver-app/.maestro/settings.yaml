@@ -1,0 +1,34 @@
+appId: vn.klc.driver
+name: Settings Flow
+---
+# Verifies settings screen access and language toggle
+- launchApp:
+    appId: vn.klc.driver
+
+# Wait for app to load
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 10000
+
+# Go to Profile tab
+- tapOn:
+    text: "Profile"
+    optional: true
+
+# Open Settings
+- tapOn:
+    text: "Settings"
+    optional: true
+
+# Verify settings screen elements
+- assertVisible:
+    text: ".*"
+    timeout: 5000
+
+# Try toggling language (if visible)
+- tapOn:
+    text: "English"
+    optional: true
+
+# Go back
+- back

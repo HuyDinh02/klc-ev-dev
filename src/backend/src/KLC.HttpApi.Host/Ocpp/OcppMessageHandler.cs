@@ -12,6 +12,7 @@ using KLC.Operators;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Guids;
+using Volo.Abp.Settings;
 
 namespace KLC.Ocpp;
 
@@ -31,6 +32,7 @@ public class OcppMessageHandler
     private readonly IAuditEventLogger _auditLogger;
     private readonly PowerBalancingService? _powerBalancingService;
     private readonly IOperatorWebhookService? _webhookService;
+    private readonly ISettingProvider _settingProvider;
 
     public OcppMessageHandler(
         ILogger<OcppMessageHandler> logger,
@@ -42,6 +44,7 @@ public class OcppMessageHandler
         IGuidGenerator guidGenerator,
         OcppMessageParserFactory parserFactory,
         IAuditEventLogger auditLogger,
+        ISettingProvider settingProvider,
         PowerBalancingService? powerBalancingService = null,
         IOperatorWebhookService? webhookService = null)
     {
@@ -54,6 +57,7 @@ public class OcppMessageHandler
         _guidGenerator = guidGenerator;
         _parserFactory = parserFactory;
         _auditLogger = auditLogger;
+        _settingProvider = settingProvider;
         _powerBalancingService = powerBalancingService;
         _webhookService = webhookService;
     }
@@ -213,11 +217,16 @@ public class OcppMessageHandler
         _auditLogger.LogOcppEvent("BootNotification", connection.ChargePointId,
             $"Vendor={request.ChargePointVendor}, Model={request.ChargePointModel}, Status={status}");
 
+        var heartbeatSetting = await _settingProvider.GetOrNullAsync(Settings.KLCSettings.Ocpp.HeartbeatInterval);
+        var heartbeatInterval = int.TryParse(heartbeatSetting, out var parsed) && parsed > 0
+            ? parsed
+            : vendorProfile.HeartbeatIntervalSeconds;
+
         var response = new BootNotificationResponse
         {
             Status = status,
             CurrentTime = DateTime.UtcNow.ToString("o"),
-            Interval = vendorProfile.HeartbeatIntervalSeconds
+            Interval = heartbeatInterval
         };
 
         return parser.SerializeCallResult(uniqueId, response);

@@ -425,6 +425,23 @@ public class KLCHttpApiHostModule : AbpModule
         // which breaks CORS for SPA clients. ABP exception filter returns proper JSON.
 
         app.UseCorrelationId();
+
+        // Security response headers
+        app.Use(async (context, next) =>
+        {
+            var headers = context.Response.Headers;
+            headers["X-Content-Type-Options"] = "nosniff";
+            headers["X-Frame-Options"] = "DENY";
+            headers["X-XSS-Protection"] = "0";
+            headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+            headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
+            if (!context.Request.Path.StartsWithSegments("/ocpp"))
+            {
+                headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'";
+            }
+            await next();
+        });
+
         app.MapAbpStaticAssets();
 
         // Enable WebSockets for OCPP

@@ -18,7 +18,7 @@ import { AccessDenied } from "@/components/ui/access-denied";
 import {
   Plus, Edit, Trash2, Lock, Unlock, Key, Shield, Search, Users, ChevronLeft, ChevronRight,
   MapPin, Activity, Zap, Cable, AlertTriangle, Wrench, DollarSign, CreditCard, Ticket,
-  Building2, Truck, FileText, Bell, ChevronDown, Plug, type LucideIcon,
+  Building2, Truck, FileText, Bell, ChevronDown, Plug, Settings, Smartphone, type LucideIcon,
   Check, Minus,
 } from "lucide-react";
 
@@ -61,7 +61,7 @@ const PERMISSION_SECTIONS: Array<{
     groups: [
       { permissionGroup: "KLC.UserManagement", icon: Users, labelKey: "nav.userManagement" },
       { permissionGroup: "KLC.RoleManagement", icon: Shield, labelKey: "nav.roleManagement" },
-      { permissionGroup: "KLC.MobileUsers", icon: Users, labelKey: "nav.mobileUsers" },
+      { permissionGroup: "KLC.MobileUsers", icon: Smartphone, labelKey: "nav.mobileUsers" },
     ],
   },
   {
@@ -70,6 +70,7 @@ const PERMISSION_SECTIONS: Array<{
       { permissionGroup: "KLC.StationGroups", icon: MapPin, labelKey: "nav.stationGroups" },
       { permissionGroup: "KLC.AuditLogs", icon: FileText, labelKey: "nav.auditLogs" },
       { permissionGroup: "KLC.EInvoices", icon: FileText, labelKey: "nav.eInvoices" },
+      { permissionGroup: "KLC.Settings", icon: Settings, labelKey: "nav.settings" },
       { permissionGroup: "KLC.Notifications", icon: Bell, labelKey: "nav.notifications" },
       { permissionGroup: "KLC.Feedback", icon: FileText, labelKey: "nav.feedback" },
     ],

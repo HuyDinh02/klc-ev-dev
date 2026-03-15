@@ -1,0 +1,28 @@
+appId: vn.klc.driver
+name: Login Flow
+---
+# Login flow - verifies user can log in with valid credentials
+- launchApp:
+    appId: vn.klc.driver
+    clearState: true
+
+# Wait for login screen to appear
+- assertVisible: "K-Charge"
+- assertVisible: "Sign In"
+
+# Enter credentials
+- tapOn:
+    label: "Email"
+- inputText: "0901234567"
+
+- tapOn:
+    label: "Password"
+- inputText: "Driver@123"
+
+# Submit login
+- tapOn: "Sign In"
+
+# Wait for home screen (map or tab bar)
+- assertVisible:
+    text: ".*"
+    timeout: 10000

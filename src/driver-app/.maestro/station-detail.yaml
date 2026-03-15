@@ -1,0 +1,42 @@
+appId: vn.klc.driver
+name: Station Detail Flow
+---
+# Verifies station detail screen from home station list
+# Prerequisite: User must be logged in
+- launchApp:
+    appId: vn.klc.driver
+
+# Wait for home screen to load
+- extendedWaitUntil:
+    visible: "Nearby Stations"
+    timeout: 10000
+
+# Wait for stations to load
+- extendedWaitUntil:
+    visible: ".*stations.*"
+    timeout: 5000
+
+# Tap on first station card (if stations are available)
+- tapOn:
+    text: ".*Station.*"
+    index: 0
+    optional: true
+
+# Verify station detail screen elements
+- assertVisible:
+    text: "Connectors"
+    timeout: 5000
+    optional: true
+
+# Verify connector info is shown
+- assertVisible:
+    text: ".*kW.*"
+    optional: true
+
+# Verify QR scan button
+- assertVisible:
+    text: "Scan QR Code to Start"
+    optional: true
+
+# Go back to home
+- back

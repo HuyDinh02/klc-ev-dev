@@ -151,6 +151,12 @@ public static class KLCPermissions
         public const string Delete = Default + ".Delete";
     }
 
+    public static class Settings
+    {
+        public const string Default = GroupName + ".Settings";
+        public const string Update = Default + ".Update";
+    }
+
     public static class PowerSharing
     {
         public const string Default = GroupName + ".PowerSharing";

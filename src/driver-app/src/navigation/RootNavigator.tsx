@@ -9,6 +9,10 @@ import { LoginScreen, StationDetailScreen, SessionScreen, VehiclesScreen, Notifi
 import { useAuthStore, useSessionStore } from '../stores';
 import { Colors } from '../constants/colors';
 import type { RootStackParamList } from './types';
+import {
+  addNotificationResponseReceivedListener,
+  getLastNotificationResponse,
+} from '../services/notifications';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -29,6 +33,52 @@ function SessionResumeHandler() {
   }, [checkActiveSession, navigation]);
 
   return null;
+}
+
+function NotificationHandler() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const hasHandledInitial = useRef(false);
+
+  useEffect(() => {
+    // Handle notification taps when the app is running
+    const subscription = addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data;
+      navigateFromNotification(navigation, data);
+    });
+
+    // Handle the case where the app was opened from a killed state via notification
+    if (!hasHandledInitial.current) {
+      hasHandledInitial.current = true;
+      getLastNotificationResponse().then((response) => {
+        if (response) {
+          const data = response.notification.request.content.data;
+          navigateFromNotification(navigation, data);
+        }
+      });
+    }
+
+    return () => subscription.remove();
+  }, [navigation]);
+
+  return null;
+}
+
+function navigateFromNotification(
+  navigation: NativeStackNavigationProp<RootStackParamList>,
+  data: Record<string, unknown> | undefined
+) {
+  if (!data) {
+    navigation.navigate('Notifications');
+    return;
+  }
+
+  if (data.sessionId && typeof data.sessionId === 'string') {
+    navigation.navigate('Session');
+  } else if (data.stationId && typeof data.stationId === 'string') {
+    navigation.navigate('StationDetail', { stationId: data.stationId as string });
+  } else {
+    navigation.navigate('Notifications');
+  }
 }
 
 export function RootNavigator() {
@@ -149,6 +199,7 @@ function MainNavigatorWithSessionResume() {
   return (
     <>
       <SessionResumeHandler />
+      <NotificationHandler />
       <MainNavigator />
     </>
   );

@@ -22,8 +22,12 @@ export const notificationsApi = {
     await api.put('/notifications/read-all');
   },
 
-  registerDevice: async (fcmToken: string): Promise<void> => {
-    await api.post('/devices/register', { fcmToken });
+  registerDevice: async (fcmToken: string, platform?: string): Promise<void> => {
+    await api.post('/devices/register', { fcmToken, platform });
+  },
+
+  unregisterDevice: async (token: string): Promise<void> => {
+    await api.delete(`/devices/${encodeURIComponent(token)}`);
   },
 
   getPreferences: async (): Promise<NotificationPreferences> => {

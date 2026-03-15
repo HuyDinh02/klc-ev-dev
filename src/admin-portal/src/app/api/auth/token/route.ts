@@ -2,9 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 
 const API_BASE_URL = process.env.BACKEND_API_URL || "https://localhost:44305";
 const CLIENT_ID = process.env.OIDC_CLIENT_ID || "KLC_Api";
-const CLIENT_SECRET = process.env.OIDC_CLIENT_SECRET || "1q2w3e*";
+function getClientSecret(): string {
+  if (process.env.NODE_ENV === "production") {
+    const secret = process.env.OIDC_CLIENT_SECRET;
+    if (!secret) {
+      throw new Error("OIDC_CLIENT_SECRET is required in production");
+    }
+    return secret;
+  }
+  return process.env.OIDC_CLIENT_SECRET || "1q2w3e*";
+}
 
 export async function POST(request: NextRequest) {
+  const clientSecret = getClientSecret();
   const body = await request.json();
   const { username, password } = body;
 
@@ -23,7 +33,7 @@ export async function POST(request: NextRequest) {
       username,
       password,
       client_id: CLIENT_ID,
-      client_secret: CLIENT_SECRET,
+      client_secret: clientSecret,
       scope: "KLC",
     }),
   });

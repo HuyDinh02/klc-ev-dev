@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
+using Volo.Abp.Settings;
 
 namespace KLC.Notifications;
 
@@ -21,14 +22,17 @@ public class FirebasePushNotificationService : IPushNotificationService, ITransi
 {
     private readonly IRepository<DeviceToken, Guid> _deviceTokenRepository;
     private readonly ILogger<FirebasePushNotificationService> _logger;
+    private readonly ISettingProvider _settingProvider;
 
     public FirebasePushNotificationService(
         IRepository<DeviceToken, Guid> deviceTokenRepository,
         ILogger<FirebasePushNotificationService> logger,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        ISettingProvider settingProvider)
     {
         _deviceTokenRepository = deviceTokenRepository;
         _logger = logger;
+        _settingProvider = settingProvider;
 
         // Initialize Firebase App once
         if (FirebaseApp.DefaultInstance == null)
@@ -94,6 +98,14 @@ public class FirebasePushNotificationService : IPushNotificationService, ITransi
 
     public async Task SendToDevicesAsync(IEnumerable<string> deviceTokens, string title, string body, Dictionary<string, string>? data = null)
     {
+        // Check if push notifications are enabled in system settings
+        var pushEnabled = await _settingProvider.GetOrNullAsync(Settings.KLCSettings.Notifications.PushEnabled);
+        if (pushEnabled?.Equals("false", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            _logger.LogDebug("[FCM] Push notifications disabled in settings. Skipping: Title={Title}", title);
+            return;
+        }
+
         if (FirebaseApp.DefaultInstance == null)
         {
             _logger.LogWarning("[FCM] Firebase not initialized. Logging only: Title={Title}, Body={Body}", title, body);

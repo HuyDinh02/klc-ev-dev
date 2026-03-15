@@ -93,3 +93,26 @@ jobs:
         working-directory: src/admin-portal
         env:
           NEXT_PUBLIC_API_URL: https://api.example.com
+
+  driver-app-test:
+    name: Driver App Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: src/driver-app/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: src/driver-app
+
+      - name: Unit tests
+        run: npx jest --ci --coverage
+        working-directory: src/driver-app

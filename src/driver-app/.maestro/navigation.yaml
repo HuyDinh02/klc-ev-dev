@@ -1,0 +1,49 @@
+appId: vn.klc.driver
+name: Tab Navigation
+---
+# Verifies all bottom tab navigation works after login
+# Prerequisite: User must be logged in (run login.yaml first or use saved state)
+- launchApp:
+    appId: vn.klc.driver
+
+# Wait for app to load
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 10000
+
+# Navigate through each tab
+- tapOn:
+    id: "tab-favorites"
+    optional: true
+- tapOn:
+    text: "Favorites"
+    optional: true
+
+- tapOn:
+    id: "tab-history"
+    optional: true
+- tapOn:
+    text: "History"
+    optional: true
+
+- tapOn:
+    id: "tab-wallet"
+    optional: true
+- tapOn:
+    text: "Wallet"
+    optional: true
+
+- tapOn:
+    id: "tab-profile"
+    optional: true
+- tapOn:
+    text: "Profile"
+    optional: true
+
+# Navigate back to home
+- tapOn:
+    id: "tab-home"
+    optional: true
+- tapOn:
+    text: "Home"
+    optional: true

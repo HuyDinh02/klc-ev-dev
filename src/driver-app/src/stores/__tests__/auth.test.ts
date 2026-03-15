@@ -9,6 +9,7 @@ beforeEach(() => {
     isLoading: true,
     user: null,
     token: null,
+    refreshToken: null,
   });
   jest.clearAllMocks();
 });
@@ -29,26 +30,32 @@ describe('useAuthStore', () => {
       expect(state.isLoading).toBe(true);
       expect(state.user).toBeNull();
       expect(state.token).toBeNull();
+      expect(state.refreshToken).toBeNull();
     });
   });
 
   describe('login', () => {
-    it('should set token, user, and isAuthenticated on login', async () => {
-      await useAuthStore.getState().login('test-token-123', mockUser);
+    it('should set token, refreshToken, user, and isAuthenticated on login', async () => {
+      await useAuthStore.getState().login('test-token-123', 'refresh-token-456', mockUser);
 
       const state = useAuthStore.getState();
       expect(state.isAuthenticated).toBe(true);
       expect(state.isLoading).toBe(false);
       expect(state.token).toBe('test-token-123');
+      expect(state.refreshToken).toBe('refresh-token-456');
       expect(state.user).toEqual(mockUser);
     });
 
-    it('should persist token to SecureStore on login', async () => {
-      await useAuthStore.getState().login('test-token-123', mockUser);
+    it('should persist tokens to SecureStore on login', async () => {
+      await useAuthStore.getState().login('test-token-123', 'refresh-token-456', mockUser);
 
       expect(SecureStore.setItemAsync).toHaveBeenCalledWith(
         'authToken',
         'test-token-123'
+      );
+      expect(SecureStore.setItemAsync).toHaveBeenCalledWith(
+        'refreshToken',
+        'refresh-token-456'
       );
     });
   });
@@ -56,7 +63,7 @@ describe('useAuthStore', () => {
   describe('logout', () => {
     it('should clear auth state on logout', async () => {
       // Login first
-      await useAuthStore.getState().login('test-token-123', mockUser);
+      await useAuthStore.getState().login('test-token-123', 'refresh-token-456', mockUser);
       expect(useAuthStore.getState().isAuthenticated).toBe(true);
 
       // Logout
@@ -65,28 +72,31 @@ describe('useAuthStore', () => {
       const state = useAuthStore.getState();
       expect(state.isAuthenticated).toBe(false);
       expect(state.token).toBeNull();
+      expect(state.refreshToken).toBeNull();
       expect(state.user).toBeNull();
     });
 
-    it('should remove token from SecureStore on logout', async () => {
-      await useAuthStore.getState().login('test-token-123', mockUser);
+    it('should remove tokens from SecureStore on logout', async () => {
+      await useAuthStore.getState().login('test-token-123', 'refresh-token-456', mockUser);
       await useAuthStore.getState().logout();
 
       expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('authToken');
+      expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('refreshToken');
     });
   });
 
   describe('checkAuth', () => {
     it('should set isAuthenticated to true when token exists in SecureStore', async () => {
-      (SecureStore.getItemAsync as jest.Mock).mockResolvedValueOnce(
-        'stored-token'
-      );
+      (SecureStore.getItemAsync as jest.Mock)
+        .mockResolvedValueOnce('stored-token')
+        .mockResolvedValueOnce('stored-refresh-token');
 
       await useAuthStore.getState().checkAuth();
 
       const state = useAuthStore.getState();
       expect(state.isAuthenticated).toBe(true);
       expect(state.token).toBe('stored-token');
+      expect(state.refreshToken).toBe('stored-refresh-token');
       expect(state.isLoading).toBe(false);
     });
 
@@ -140,6 +150,18 @@ describe('useAuthStore', () => {
       const state = useAuthStore.getState();
       expect(state.token).toBeNull();
       expect(state.isAuthenticated).toBe(false);
+    });
+  });
+
+  describe('updateTokens', () => {
+    it('should update both tokens in store and SecureStore', async () => {
+      await useAuthStore.getState().updateTokens('new-access', 'new-refresh');
+
+      const state = useAuthStore.getState();
+      expect(state.token).toBe('new-access');
+      expect(state.refreshToken).toBe('new-refresh');
+      expect(SecureStore.setItemAsync).toHaveBeenCalledWith('authToken', 'new-access');
+      expect(SecureStore.setItemAsync).toHaveBeenCalledWith('refreshToken', 'new-refresh');
     });
   });
 });

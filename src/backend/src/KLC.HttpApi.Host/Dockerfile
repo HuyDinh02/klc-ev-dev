@@ -22,6 +22,8 @@ WORKDIR /src/src/KLC.HttpApi.Host
 RUN dotnet publish -c Release -o /app/publish --no-restore
 
 FROM base AS final
+RUN useradd --no-create-home --uid 1001 appuser
 WORKDIR /app
 COPY --from=build /app/publish .
+USER appuser
 ENTRYPOINT ["dotnet", "KLC.HttpApi.Host.dll"]

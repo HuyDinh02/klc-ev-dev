@@ -1,4 +1,7 @@
+using System;
+using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
+using KLC.Permissions;
 using KLC.Settings;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -7,7 +10,7 @@ using Volo.Abp.Settings;
 
 namespace KLC.Controllers;
 
-[Authorize]
+[Authorize(KLCPermissions.Settings.Default)]
 [Route("api/v1/settings")]
 public class SettingsController : KLCController
 {
@@ -50,8 +53,21 @@ public class SettingsController : KLCController
     }
 
     [HttpPut]
+    [Authorize(KLCPermissions.Settings.Update)]
     public async Task UpdateAsync([FromBody] SystemSettingsDto input)
     {
+        // Server-side validation
+        if (input.OcppHeartbeatInterval < 10 || input.OcppHeartbeatInterval > 3600)
+            throw new ArgumentException("Heartbeat interval must be between 10 and 3600 seconds.");
+        if (input.OcppMeterValueInterval < 5 || input.OcppMeterValueInterval > 3600)
+            throw new ArgumentException("Meter value interval must be between 5 and 3600 seconds.");
+        if (input.OcppWebSocketPort < 1 || input.OcppWebSocketPort > 65535)
+            throw new ArgumentException("WebSocket port must be between 1 and 65535.");
+        if (input.SessionTimeout < 5 || input.SessionTimeout > 1440)
+            throw new ArgumentException("Session timeout must be between 5 and 1440 minutes.");
+        if (input.PasswordMinLength < 6 || input.PasswordMinLength > 24)
+            throw new ArgumentException("Password minimum length must be between 6 and 24.");
+
         await _settingManager.SetGlobalAsync(KLCSettings.General.SiteName, input.SiteName);
         await _settingManager.SetGlobalAsync(KLCSettings.General.Timezone, input.Timezone);
         await _settingManager.SetGlobalAsync(KLCSettings.General.Currency, input.Currency);
