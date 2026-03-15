@@ -81,4 +81,11 @@ public class OperatorController : KLCController
         await _operatorAppService.RemoveStationAsync(id, stationId);
         return NoContent();
     }
+
+    [HttpGet("{id:guid}/webhook-logs")]
+    public async Task<ActionResult<List<OperatorWebhookLogDto>>> GetWebhookLogsAsync(Guid id, [FromQuery] GetWebhookLogsDto input)
+    {
+        var result = await _operatorAppService.GetWebhookLogsAsync(id, input);
+        return Ok(result);
+    }
 }

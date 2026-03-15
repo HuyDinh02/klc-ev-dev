@@ -198,7 +198,20 @@
     "photoSizeError": "Ảnh phải nhỏ hơn 5MB",
     "photoTypeError": "Chỉ chấp nhận ảnh JPEG, PNG, GIF và WebP",
     "photoUploadFailed": "Tải ảnh thất bại. Vui lòng thử lại.",
-    "uploading": "Đang tải lên..."
+    "uploading": "Đang tải lên...",
+    "amenities": "Tiện ích",
+    "addAmenity": "Thêm tiện ích",
+    "noAmenities": "Chưa có tiện ích nào",
+    "amenityWifi": "WiFi",
+    "amenityRestroom": "Nhà vệ sinh",
+    "amenityCoffeeShop": "Quán cà phê",
+    "amenityParking": "Bãi đỗ xe",
+    "amenityRestaurant": "Nhà hàng",
+    "amenityConvenienceStore": "Cửa hàng tiện lợi",
+    "amenityWaitingRoom": "Phòng chờ",
+    "amenityCanopy": "Mái che",
+    "amenitySecurity24h": "Bảo vệ 24h",
+    "removeAmenity": "Xóa tiện ích"
   },
   "sessions": {
     "title": "Phiên sạc",
@@ -1044,6 +1057,15 @@
     "newBalance": "Số dư mới",
     "adjustAmountHint": "Dương để cộng, âm để trừ"
   },
+  "permissions": {
+    "grantAll": "Cấp tất cả",
+    "revokeAll": "Thu hồi tất cả",
+    "searchPermissions": "Tìm quyền...",
+    "summary": "{granted}/{total} quyền được cấp",
+    "noResults": "Không tìm thấy quyền phù hợp",
+    "grantAllConfirm": "Cấp tất cả quyền cho vai trò này?",
+    "revokeAllConfirm": "Thu hồi tất cả quyền từ vai trò này?"
+  },
   "errors": {
     "pageNotFound": "Không tìm thấy trang",
     "pageNotFoundDesc": "Trang bạn đang tìm không tồn tại hoặc đã được chuyển.",
@@ -1078,7 +1100,18 @@
     "stationCodeColumn": "Mã trạm",
     "addStation": "Thêm trạm",
     "searchStations": "Tìm trạm...",
-    "noStationsAvailable": "Không có trạm khả dụng"
+    "noStationsAvailable": "Không có trạm khả dụng",
+    "webhookLogs": "Nhật ký Webhook",
+    "webhookLogsDesc": "Các lần gửi webhook gần đây",
+    "noWebhookLogs": "Chưa có nhật ký webhook",
+    "eventType": "Sự kiện",
+    "httpStatus": "HTTP Status",
+    "attempts": "Số lần thử",
+    "deliveredAt": "Gửi lúc",
+    "success": "Thành công",
+    "failed": "Thất bại",
+    "showLogs": "Xem nhật ký",
+    "hideLogs": "Ẩn nhật ký"
   },
   "fleets": {
     "title": "Quản lý đội xe",

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using KLC.Enums;
 using KLC.Permissions;
 using KLC.Stations;
 using Microsoft.AspNetCore.Authorization;
@@ -17,13 +18,16 @@ public class OperatorAppService : KLCAppService, IOperatorAppService
 {
     private readonly IRepository<Operator, Guid> _operatorRepository;
     private readonly IRepository<ChargingStation, Guid> _stationRepository;
+    private readonly IRepository<OperatorWebhookLog, Guid> _webhookLogRepository;
 
     public OperatorAppService(
         IRepository<Operator, Guid> operatorRepository,
-        IRepository<ChargingStation, Guid> stationRepository)
+        IRepository<ChargingStation, Guid> stationRepository,
+        IRepository<OperatorWebhookLog, Guid> webhookLogRepository)
     {
         _operatorRepository = operatorRepository;
         _stationRepository = stationRepository;
+        _webhookLogRepository = webhookLogRepository;
     }
 
     public async Task<List<OperatorDto>> GetListAsync(GetOperatorListDto input)
@@ -197,6 +201,39 @@ public class OperatorAppService : KLCAppService, IOperatorAppService
         using var rng = RandomNumberGenerator.Create();
         rng.GetBytes(bytes);
         return Convert.ToHexString(bytes).ToLowerInvariant();
+    }
+
+    public async Task<List<OperatorWebhookLogDto>> GetWebhookLogsAsync(Guid operatorId, GetWebhookLogsDto input)
+    {
+        // Verify operator exists
+        await _operatorRepository.GetAsync(operatorId);
+
+        var query = await _webhookLogRepository.GetQueryableAsync();
+        query = query.Where(l => l.OperatorId == operatorId);
+
+        if (!string.IsNullOrWhiteSpace(input.EventType) && Enum.TryParse<WebhookEventType>(input.EventType, out var eventType))
+            query = query.Where(l => l.EventType == eventType);
+        if (input.Success.HasValue)
+            query = query.Where(l => l.Success == input.Success.Value);
+
+        if (!string.IsNullOrWhiteSpace(input.Cursor) && Guid.TryParse(input.Cursor, out var cursorId))
+            query = query.Where(l => l.Id.CompareTo(cursorId) > 0);
+
+        query = query.OrderByDescending(l => l.CreationTime);
+
+        var logs = await AsyncExecuter.ToListAsync(query.Take(input.PageSize));
+
+        return logs.Select(l => new OperatorWebhookLogDto
+        {
+            Id = l.Id,
+            OperatorId = l.OperatorId,
+            EventType = l.EventType.ToString(),
+            HttpStatusCode = l.HttpStatusCode,
+            Success = l.Success,
+            ErrorMessage = l.ErrorMessage,
+            AttemptCount = l.AttemptCount,
+            CreationTime = l.CreationTime
+        }).ToList();
     }
 
     internal static string HashApiKey(string apiKey)

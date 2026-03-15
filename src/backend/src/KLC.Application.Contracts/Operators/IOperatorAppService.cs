@@ -15,4 +15,5 @@ public interface IOperatorAppService : IApplicationService
     Task<OperatorApiKeyDto> RegenerateApiKeyAsync(Guid id);
     Task AddStationAsync(Guid operatorId, Guid stationId);
     Task RemoveStationAsync(Guid operatorId, Guid stationId);
+    Task<List<OperatorWebhookLogDto>> GetWebhookLogsAsync(Guid operatorId, GetWebhookLogsDto input);
 }

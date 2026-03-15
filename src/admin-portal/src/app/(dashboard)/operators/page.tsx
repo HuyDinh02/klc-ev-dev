@@ -27,6 +27,11 @@ import {
   Mail,
   Globe,
   Gauge,
+  FileText,
+  ChevronDown,
+  ChevronUp,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 
 // --- Types ---
@@ -67,6 +72,7 @@ export default function OperatorsPage() {
   const [selectedOperator, setSelectedOperator] = useState<string | null>(null);
   const [showAddStation, setShowAddStation] = useState(false);
   const [addStationSearch, setAddStationSearch] = useState("");
+  const [showWebhookLogs, setShowWebhookLogs] = useState(false);
   const [form, setForm] = useState({ name: "", contactEmail: "", description: "" });
   const [editForm, setEditForm] = useState({
     name: "",
@@ -182,6 +188,16 @@ export default function OperatorsPage() {
       setShowAddStation(false);
       setAddStationSearch("");
     },
+  });
+
+  const { data: webhookLogs } = useQuery({
+    queryKey: ["operator-webhook-logs", selectedOperator],
+    queryFn: async () => {
+      if (!selectedOperator) return [];
+      const res = await operatorsApi.getWebhookLogs(selectedOperator, { pageSize: 20 });
+      return res.data as { id: string; eventType: string; httpStatusCode?: number; success: boolean; errorMessage?: string; attemptCount: number; creationTime: string }[];
+    },
+    enabled: !!selectedOperator && showWebhookLogs,
   });
 
   const assignedStationIds = new Set(detail?.stations?.map((s) => s.id) ?? []);
@@ -422,6 +438,56 @@ export default function OperatorsPage() {
                 {t("operators.noOperatorsDesc")}
               </p>
             )}
+
+            {/* Webhook Logs */}
+            <div className="mt-6 border-t pt-4">
+              <button
+                className="flex items-center gap-2 text-sm font-semibold hover:text-primary transition-colors"
+                onClick={() => setShowWebhookLogs(!showWebhookLogs)}
+              >
+                <FileText className="h-4 w-4" />
+                {t("operators.webhookLogs")}
+                {showWebhookLogs ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </button>
+              {showWebhookLogs && (
+                <div className="mt-3">
+                  {(webhookLogs?.length ?? 0) > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm" role="table">
+                        <thead>
+                          <tr className="border-b bg-muted/50">
+                            <th className="text-left py-2 px-3" scope="col">{t("operators.eventType")}</th>
+                            <th className="text-left py-2 px-3" scope="col">{t("common.status")}</th>
+                            <th className="text-left py-2 px-3" scope="col">{t("operators.httpStatus")}</th>
+                            <th className="text-left py-2 px-3" scope="col">{t("operators.attempts")}</th>
+                            <th className="text-left py-2 px-3" scope="col">{t("operators.deliveredAt")}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {webhookLogs!.map((log) => (
+                            <tr key={log.id} className="border-b last:border-0 hover:bg-muted/30" title={log.errorMessage || undefined}>
+                              <td className="py-2 px-3 font-mono text-xs">{log.eventType}</td>
+                              <td className="py-2 px-3">
+                                {log.success ? (
+                                  <span className="flex items-center gap-1 text-green-600"><CheckCircle2 className="h-3.5 w-3.5" />{t("operators.success")}</span>
+                                ) : (
+                                  <span className="flex items-center gap-1 text-red-600"><XCircle className="h-3.5 w-3.5" />{t("operators.failed")}</span>
+                                )}
+                              </td>
+                              <td className="py-2 px-3">{log.httpStatusCode ?? "—"}</td>
+                              <td className="py-2 px-3">{log.attemptCount}</td>
+                              <td className="py-2 px-3 text-muted-foreground">{new Date(log.creationTime).toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">{t("operators.noWebhookLogs")}</p>
+                  )}
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}

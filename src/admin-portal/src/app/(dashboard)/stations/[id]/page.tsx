@@ -26,12 +26,34 @@ import {
   AlertTriangle,
   ImageIcon,
   Star,
+  MapPin,
+  Wifi,
+  Coffee,
+  Car,
+  UtensilsCrossed,
+  Store,
+  Armchair,
+  Umbrella,
+  ShieldCheck,
+  X,
 } from "lucide-react";
 
 const ConnectorTypeLabels: Record<number | string, string> = {
   0: "Type 2", 1: "CCS2", 2: "CHAdeMO", 3: "GBT", 4: "Type 1", 5: "NACS",
   "Type1": "Type 1", "Type2": "Type 2", "CCS2": "CCS2", "CHAdeMO": "CHAdeMO", "GBT": "GBT", "NACS": "NACS",
 };
+
+const AMENITY_TYPES = [
+  { value: 0, labelKey: "stations.amenityWifi", icon: Wifi },
+  { value: 1, labelKey: "stations.amenityRestroom", icon: MapPin },
+  { value: 2, labelKey: "stations.amenityCoffeeShop", icon: Coffee },
+  { value: 3, labelKey: "stations.amenityParking", icon: Car },
+  { value: 4, labelKey: "stations.amenityRestaurant", icon: UtensilsCrossed },
+  { value: 5, labelKey: "stations.amenityConvenienceStore", icon: Store },
+  { value: 6, labelKey: "stations.amenityWaitingRoom", icon: Armchair },
+  { value: 7, labelKey: "stations.amenityCanopy", icon: Umbrella },
+  { value: 8, labelKey: "stations.amenitySecurity24h", icon: ShieldCheck },
+];
 
 export default function StationDetailPage() {
   const hasAccess = useRequirePermission("KLC.Stations");
@@ -46,6 +68,7 @@ export default function StationDetailPage() {
   const { t } = useTranslation();
   const [showAddConnector, setShowAddConnector] = useState(false);
   const [newConnector, setNewConnector] = useState({ connectorNumber: 1, connectorType: 0, maxPowerKw: 22 });
+  const [showAddAmenity, setShowAddAmenity] = useState(false);
 
   const { data: station, isLoading } = useQuery({
     queryKey: ["station", id],
@@ -69,6 +92,27 @@ export default function StationDetailPage() {
       const { data } = await stationsApi.getPhotos(id);
       return data;
     },
+  });
+
+  const { data: amenitiesData } = useQuery({
+    queryKey: ["station-amenities", id],
+    queryFn: async () => {
+      const { data } = await stationsApi.getAmenities(id);
+      return data as { id: string; stationId: string; amenityType: number }[];
+    },
+  });
+
+  const addAmenityMutation = useMutation({
+    mutationFn: (amenityType: number) => stationsApi.addAmenity(id, { amenityType }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["station-amenities", id] });
+      setShowAddAmenity(false);
+    },
+  });
+
+  const removeAmenityMutation = useMutation({
+    mutationFn: (amenityId: string) => stationsApi.removeAmenity(id, amenityId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["station-amenities", id] }),
   });
 
   const enableMutation = useMutation({
@@ -353,6 +397,66 @@ export default function StationDetailPage() {
             </CardContent>
           </Card>
         )}
+
+        {/* Amenities */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2"><MapPin className="h-5 w-5" /> {t("stations.amenities")} ({amenitiesData?.length ?? 0})</CardTitle>
+            {canUpdate && (
+              <Button size="sm" onClick={() => setShowAddAmenity(!showAddAmenity)}>
+                <Plus className="mr-2 h-4 w-4" /> {t("stations.addAmenity")}
+              </Button>
+            )}
+          </CardHeader>
+          <CardContent>
+            {showAddAmenity && (
+              <div className="mb-4 rounded-lg border p-4 bg-muted/30">
+                <h4 className="font-medium mb-3">{t("stations.addAmenity")}</h4>
+                <div className="grid gap-2 grid-cols-3 sm:grid-cols-4 md:grid-cols-5">
+                  {AMENITY_TYPES.filter(a => !(amenitiesData ?? []).some(ea => ea.amenityType === a.value)).map((amenity) => (
+                    <button
+                      key={amenity.value}
+                      className="flex flex-col items-center gap-1 rounded-lg border p-3 hover:bg-primary/10 hover:border-primary transition-colors text-sm"
+                      onClick={() => addAmenityMutation.mutate(amenity.value)}
+                      disabled={addAmenityMutation.isPending}
+                    >
+                      <amenity.icon className="h-5 w-5" />
+                      <span className="text-xs text-center">{t(amenity.labelKey)}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-3">
+                  <Button size="sm" variant="outline" onClick={() => setShowAddAmenity(false)}>{t("common.cancel")}</Button>
+                </div>
+              </div>
+            )}
+            {(amenitiesData?.length ?? 0) > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {amenitiesData!.map((amenity) => {
+                  const type = AMENITY_TYPES.find(a => a.value === amenity.amenityType);
+                  const Icon = type?.icon ?? MapPin;
+                  return (
+                    <div key={amenity.id} className="flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm bg-muted/30">
+                      <Icon className="h-4 w-4" />
+                      <span>{t(type?.labelKey ?? "stations.amenities")}</span>
+                      {canUpdate && (
+                        <button
+                          onClick={() => removeAmenityMutation.mutate(amenity.id)}
+                          className="ml-1 text-muted-foreground hover:text-red-500 transition-colors"
+                          title={t("stations.removeAmenity")}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">{t("stations.noAmenities")}</p>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Recent Faults */}
         <Card>
