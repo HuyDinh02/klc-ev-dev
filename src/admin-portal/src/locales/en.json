@@ -615,7 +615,15 @@
     "broadcastBody": "Message body",
     "broadcastType": "Notification type",
     "broadcastSend": "Send Notification",
-    "broadcastSuccess": "Notification sent successfully"
+    "broadcastSuccess": "Notification sent successfully",
+    "broadcastHistory": "Broadcast History",
+    "totalBroadcasts": "Broadcasts Sent",
+    "totalRecipients": "Total Recipients",
+    "avgRecipients": "Avg. Recipients",
+    "recipients": "recipients",
+    "sentAt": "Sent at",
+    "noBroadcasts": "No broadcasts yet",
+    "noBroadcastsDescription": "Send your first broadcast notification to mobile app users."
   },
   "userManagement": {
     "title": "User Management",

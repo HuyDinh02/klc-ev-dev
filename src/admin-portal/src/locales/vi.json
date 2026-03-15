@@ -615,7 +615,15 @@
     "broadcastBody": "Nội dung thông báo",
     "broadcastType": "Loại thông báo",
     "broadcastSend": "Gửi thông báo",
-    "broadcastSuccess": "Gửi thông báo thành công"
+    "broadcastSuccess": "Gửi thông báo thành công",
+    "broadcastHistory": "Lịch sử phát thông báo",
+    "totalBroadcasts": "Đã phát",
+    "totalRecipients": "Tổng người nhận",
+    "avgRecipients": "TB người nhận",
+    "recipients": "người nhận",
+    "sentAt": "Gửi lúc",
+    "noBroadcasts": "Chưa có thông báo nào",
+    "noBroadcastsDescription": "Gửi thông báo đầu tiên đến người dùng ứng dụng di động."
   },
   "userManagement": {
     "title": "Quản lý người dùng",
