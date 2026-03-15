@@ -1075,7 +1075,10 @@
     "namePlaceholder": "Tên nhà vận hành",
     "emailPlaceholder": "operator@example.com",
     "webhookUrlPlaceholder": "https://...",
-    "stationCodeColumn": "Mã trạm"
+    "stationCodeColumn": "Mã trạm",
+    "addStation": "Thêm trạm",
+    "searchStations": "Tìm trạm...",
+    "noStationsAvailable": "Không có trạm khả dụng"
   },
   "fleets": {
     "title": "Quản lý đội xe",
