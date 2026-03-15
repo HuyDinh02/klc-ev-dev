@@ -14,70 +14,41 @@ vi.mock('next/link', () => ({
   ),
 }));
 
-const mockGetAll = vi.fn();
-const mockGetById = vi.fn();
-const mockGetUnreadCount = vi.fn();
-const mockMarkAsRead = vi.fn();
-const mockMarkAllAsRead = vi.fn();
 const mockBroadcastSend = vi.fn();
+const mockGetHistory = vi.fn();
 
 vi.mock('@/lib/api', () => ({
-  notificationsApi: {
-    getAll: (params: unknown) => mockGetAll(params),
-    getById: (id: string) => mockGetById(id),
-    getUnreadCount: () => mockGetUnreadCount(),
-    markAsRead: (id: string) => mockMarkAsRead(id),
-    markAllAsRead: () => mockMarkAllAsRead(),
-  },
   broadcastApi: {
     send: (data: unknown) => mockBroadcastSend(data),
+    getHistory: (params: unknown) => mockGetHistory(params),
   },
 }));
 
 import NotificationsPage from '../page';
 
-const mockNotifications = [
+const mockBroadcasts = [
   {
-    id: 'notif-1',
-    type: 0,
-    title: 'Charging session started at Station Alpha',
-    body: 'Your vehicle is now charging.',
-    isRead: false,
-    createdAt: '2026-03-08T10:00:00Z',
-    referenceId: 'session-1',
-  },
-  {
-    id: 'notif-2',
-    type: 3,
-    title: 'Payment of 250,000d successful',
-    body: 'Transaction completed.',
-    isRead: true,
-    createdAt: '2026-03-07T14:00:00Z',
-    referenceId: 'pay-1',
-  },
-  {
-    id: 'notif-3',
-    type: 8,
     title: 'System maintenance scheduled',
     body: 'Maintenance window: 2am-4am on March 10.',
-    isRead: false,
-    createdAt: '2026-03-06T09:00:00Z',
-    referenceId: null,
+    type: 8,
+    recipientCount: 10,
+    sentAt: '2026-03-06T09:00:00Z',
+  },
+  {
+    title: 'New promotion available',
+    body: 'Get 20% off your next charge!',
+    type: 7,
+    recipientCount: 8,
+    sentAt: '2026-03-05T14:00:00Z',
   },
 ];
 
 describe('NotificationsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetAll.mockResolvedValue({
-      data: { items: mockNotifications, totalCount: 3 },
-    });
-    mockGetUnreadCount.mockResolvedValue({ data: 2 });
-    mockGetById.mockResolvedValue({ data: mockNotifications[0] });
-    mockMarkAsRead.mockResolvedValue({ data: {} });
-    mockMarkAllAsRead.mockResolvedValue({ data: {} });
+    mockGetHistory.mockResolvedValue({ data: mockBroadcasts });
     mockBroadcastSend.mockResolvedValue({
-      data: { message: 'Broadcast sent', recipientCount: 100 },
+      data: { message: 'Broadcast sent', recipientCount: 10 },
     });
   });
 
@@ -86,58 +57,48 @@ describe('NotificationsPage', () => {
     expect(screen.getByText('Notifications')).toBeInTheDocument();
   });
 
-  it('renders notification list with data', async () => {
+  it('renders broadcast history with data', async () => {
     renderWithProviders(<NotificationsPage />);
     await waitFor(() => {
-      expect(screen.getByText('Charging session started at Station Alpha')).toBeInTheDocument();
+      expect(screen.getByText('System maintenance scheduled')).toBeInTheDocument();
     });
-    expect(screen.getByText('Payment of 250,000d successful')).toBeInTheDocument();
-    expect(screen.getByText('System maintenance scheduled')).toBeInTheDocument();
+    expect(screen.getByText('New promotion available')).toBeInTheDocument();
   });
 
   it('renders notification type labels', async () => {
     renderWithProviders(<NotificationsPage />);
     await waitFor(() => {
-      expect(screen.getByText('Charging Started')).toBeInTheDocument();
+      expect(screen.getByText('System Announcement')).toBeInTheDocument();
     });
-    expect(screen.getByText('Payment Successful')).toBeInTheDocument();
-    expect(screen.getByText('System Announcement')).toBeInTheDocument();
+    expect(screen.getByText('Promotion')).toBeInTheDocument();
   });
 
   it('renders stat cards', async () => {
     renderWithProviders(<NotificationsPage />);
     await waitFor(() => {
-      expect(screen.getByText('Total')).toBeInTheDocument();
+      expect(screen.getByText('Broadcasts Sent')).toBeInTheDocument();
     });
-    // "Unread" appears both as stat card label and filter button
-    expect(screen.getAllByText('Unread').length).toBeGreaterThanOrEqual(1);
-    // "Read" appears both as stat card label and filter button
-    expect(screen.getAllByText('Read').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('Total Recipients')).toBeInTheDocument();
+    expect(screen.getByText('Avg. Recipients')).toBeInTheDocument();
   });
 
-  it('renders filter buttons', async () => {
+  it('renders broadcast button', async () => {
     renderWithProviders(<NotificationsPage />);
-    expect(screen.getAllByText('All').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('Broadcast')).toBeInTheDocument();
   });
 
-  it('renders mark all as read button', async () => {
-    renderWithProviders(<NotificationsPage />);
-    expect(screen.getByText('Mark All as Read')).toBeInTheDocument();
-  });
-
-  it('shows empty state when no notifications', async () => {
-    mockGetAll.mockResolvedValue({ data: { items: [], totalCount: 0 } });
+  it('shows empty state when no broadcasts', async () => {
+    mockGetHistory.mockResolvedValue({ data: [] });
     renderWithProviders(<NotificationsPage />);
     await waitFor(() => {
-      expect(screen.getByText('No notifications')).toBeInTheDocument();
+      expect(screen.getByText('No broadcasts yet')).toBeInTheDocument();
     });
   });
 
-  it('calls API on page load', async () => {
+  it('calls broadcast history API on page load', async () => {
     renderWithProviders(<NotificationsPage />);
     await waitFor(() => {
-      expect(mockGetAll).toHaveBeenCalled();
+      expect(mockGetHistory).toHaveBeenCalled();
     });
-    expect(mockGetUnreadCount).toHaveBeenCalled();
   });
 });
