@@ -35,7 +35,8 @@ const mockLogs = [
     executionDuration: 45,
     clientIpAddress: '192.168.1.1',
     browserInfo: 'Chrome/120.0',
-    entityChanges: [],
+    hasException: false,
+    entityChangeCount: 0,
     executionTime: '2026-03-08T10:00:00Z',
   },
   {
@@ -48,17 +49,8 @@ const mockLogs = [
     executionDuration: 120,
     clientIpAddress: '10.0.0.5',
     browserInfo: 'Firefox/115.0',
-    entityChanges: [
-      {
-        id: 'change-1',
-        entityTypeFullName: 'KLC.Domain.Stations.ChargingStation',
-        changeType: 'Created',
-        entityId: 'station-new',
-        propertyChanges: [
-          { propertyName: 'Name', originalValue: undefined, newValue: 'New Station' },
-        ],
-      },
-    ],
+    hasException: false,
+    entityChangeCount: 1,
     executionTime: '2026-03-08T11:00:00Z',
   },
   {
@@ -71,7 +63,8 @@ const mockLogs = [
     executionDuration: 2500,
     clientIpAddress: '172.16.0.1',
     browserInfo: 'Safari/17.0',
-    entityChanges: [],
+    hasException: true,
+    entityChangeCount: 0,
     executionTime: '2026-03-08T12:00:00Z',
   },
 ];
@@ -114,7 +107,6 @@ describe('AuditLogsPage', () => {
   it('renders URLs in the table', async () => {
     renderWithProviders(<AuditLogsPage />);
     await waitFor(() => {
-      // /api/v1/stations appears for both GET and POST rows
       expect(screen.getAllByText('/api/v1/stations').length).toBe(2);
     });
     expect(screen.getByText('/api/v1/faults/fault-old')).toBeInTheDocument();
@@ -129,12 +121,12 @@ describe('AuditLogsPage', () => {
     expect(screen.getByText('500')).toBeInTheDocument();
   });
 
-  it('renders IP addresses', async () => {
+  it('shows entity change count badge', async () => {
     renderWithProviders(<AuditLogsPage />);
     await waitFor(() => {
-      expect(screen.getByText('192.168.1.1')).toBeInTheDocument();
+      // log-2 has entityChangeCount: 1
+      expect(screen.getByText('1')).toBeInTheDocument();
     });
-    expect(screen.getByText('10.0.0.5')).toBeInTheDocument();
   });
 
   it('shows empty state when no logs', async () => {
@@ -153,6 +145,7 @@ describe('AuditLogsPage', () => {
   it('renders search and filter inputs', async () => {
     renderWithProviders(<AuditLogsPage />);
     expect(screen.getByPlaceholderText('Search by URL...')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Search by user...')).toBeInTheDocument();
   });
 
   it('calls API on page load', async () => {

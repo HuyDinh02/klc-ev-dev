@@ -23,6 +23,8 @@ import {
   ChevronRight,
   Clock,
   Eye,
+  AlertTriangle,
+  Database,
 } from "lucide-react";
 
 interface AuditLog {
@@ -35,8 +37,12 @@ interface AuditLog {
   executionDuration: number;
   clientIpAddress: string;
   browserInfo: string;
+  hasException: boolean;
+  exceptionMessage?: string;
   entityChanges?: EntityChange[];
+  entityChangeCount: number;
   executionTime: string;
+  comments?: string;
 }
 
 interface EntityChange {
@@ -73,11 +79,19 @@ const CHANGE_TYPE_VARIANT: Record<string, "success" | "destructive" | "warning">
   Updated: "warning",
 };
 
+// Extract short entity name from full namespace
+function shortEntityName(fullName: string): string {
+  const parts = fullName.split(".");
+  return parts[parts.length - 1];
+}
+
 export default function AuditLogsPage() {
   const hasAccess = useRequirePermission("KLC.AuditLogs");
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const [httpMethod, setHttpMethod] = useState("all");
+  const [userName, setUserName] = useState("");
+  const [hasException, setHasException] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [cursor, setCursor] = useState<string | null>(null);
@@ -85,17 +99,18 @@ export default function AuditLogsPage() {
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
   const pageSize = 20;
 
-  const resetPagination = () => { setCursor(null); setCursorStack([]); };
-
   // Fetch audit logs
   const { data: logsData, isLoading } = useQuery({
-    queryKey: ["audit-logs", searchQuery, httpMethod, dateFrom, dateTo, cursor],
+    queryKey: ["audit-logs", searchQuery, httpMethod, userName, hasException, dateFrom, dateTo, cursor],
     queryFn: async () => {
-      const params: Record<string, string | number> = {
+      const params: Record<string, string | number | boolean> = {
         maxResultCount: pageSize,
       };
       if (searchQuery) params.url = searchQuery;
       if (httpMethod !== "all") params.httpMethod = httpMethod;
+      if (userName) params.userName = userName;
+      if (hasException === "yes") params.hasException = true;
+      if (hasException === "no") params.hasException = false;
       if (dateFrom) params.startTime = dateFrom;
       if (dateTo) params.endTime = dateTo;
       if (cursor) params.cursor = cursor;
@@ -105,12 +120,26 @@ export default function AuditLogsPage() {
     },
   });
 
+  // Fetch detail with entity changes when log is selected
+  const { data: detailData } = useQuery({
+    queryKey: ["audit-log-detail", selectedLog?.id],
+    queryFn: async () => {
+      if (!selectedLog) return null;
+      const res = await api.get(`/audit-logs/${selectedLog.id}`);
+      return res.data as AuditLog;
+    },
+    enabled: !!selectedLog,
+  });
+
   // Export audit logs
   const handleExport = async () => {
     try {
       const params: Record<string, string> = {};
       if (dateFrom) params.startTime = dateFrom;
       if (dateTo) params.endTime = dateTo;
+      if (searchQuery) params.url = searchQuery;
+      if (httpMethod !== "all") params.httpMethod = httpMethod;
+      if (userName) params.userName = userName;
 
       const res = await api.get("/audit-logs/export", {
         params,
@@ -129,6 +158,7 @@ export default function AuditLogsPage() {
 
   const logs: AuditLog[] = logsData?.items || [];
   const totalCount = logsData?.totalCount || 0;
+  const detail = detailData || selectedLog;
 
   const formatDuration = (ms: number) => {
     if (ms < 1000) return `${ms}ms`;
@@ -165,15 +195,28 @@ export default function AuditLogsPage() {
                   type="text"
                   placeholder={t("auditLogs.searchByUrl")}
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => { setSearchQuery(e.target.value); setCursor(null); setCursorStack([]); }}
                   className="w-full rounded-md border pl-10 pr-3 py-2"
                   aria-label={t("auditLogs.searchByUrl")}
                 />
               </div>
             </div>
+            <div className="min-w-[140px]">
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                <input
+                  type="text"
+                  placeholder={t("auditLogs.searchByUser")}
+                  value={userName}
+                  onChange={(e) => { setUserName(e.target.value); setCursor(null); setCursorStack([]); }}
+                  className="w-full rounded-md border pl-10 pr-3 py-2"
+                  aria-label={t("auditLogs.searchByUser")}
+                />
+              </div>
+            </div>
             <select
               value={httpMethod}
-              onChange={(e) => setHttpMethod(e.target.value)}
+              onChange={(e) => { setHttpMethod(e.target.value); setCursor(null); setCursorStack([]); }}
               className="rounded-md border px-3 py-2"
               aria-label={t("auditLogs.filterByMethod")}
             >
@@ -183,12 +226,22 @@ export default function AuditLogsPage() {
               <option value="PUT">PUT</option>
               <option value="DELETE">DELETE</option>
             </select>
+            <select
+              value={hasException}
+              onChange={(e) => { setHasException(e.target.value); setCursor(null); setCursorStack([]); }}
+              className="rounded-md border px-3 py-2"
+              aria-label={t("auditLogs.filterByStatus")}
+            >
+              <option value="all">{t("auditLogs.allStatuses")}</option>
+              <option value="no">{t("auditLogs.successOnly")}</option>
+              <option value="yes">{t("auditLogs.errorsOnly")}</option>
+            </select>
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               <input
                 type="date"
                 value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
+                onChange={(e) => { setDateFrom(e.target.value); setCursor(null); setCursorStack([]); }}
                 className="rounded-md border px-3 py-2"
                 aria-label={t("auditLogs.dateFrom")}
               />
@@ -196,7 +249,7 @@ export default function AuditLogsPage() {
               <input
                 type="date"
                 value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
+                onChange={(e) => { setDateTo(e.target.value); setCursor(null); setCursorStack([]); }}
                 className="rounded-md border px-3 py-2"
                 aria-label={t("auditLogs.dateTo")}
               />
@@ -244,7 +297,7 @@ export default function AuditLogsPage() {
                       {t("auditLogs.duration")}
                     </th>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-medium">
-                      {t("auditLogs.ip")}
+                      {t("auditLogs.changes")}
                     </th>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-medium">
                       {t("common.actions")}
@@ -253,7 +306,10 @@ export default function AuditLogsPage() {
                 </thead>
                 <tbody>
                   {logs.map((log) => (
-                    <tr key={log.id} className="border-b hover:bg-muted/50">
+                    <tr
+                      key={log.id}
+                      className={`border-b hover:bg-muted/50 ${log.hasException ? "bg-destructive/5" : ""}`}
+                    >
                       <td className="px-4 py-3 text-sm">
                         <div className="flex items-center gap-2">
                           <Clock className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
@@ -272,20 +328,30 @@ export default function AuditLogsPage() {
                         </Badge>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="font-mono text-sm truncate max-w-[300px] block">
+                        <span className="font-mono text-sm truncate max-w-[300px] block" title={log.url}>
                           {log.url}
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <Badge variant={getHttpStatusVariant(log.httpStatusCode)}>
-                          {log.httpStatusCode}
-                        </Badge>
+                        <div className="flex items-center gap-1">
+                          <Badge variant={getHttpStatusVariant(log.httpStatusCode)}>
+                            {log.httpStatusCode}
+                          </Badge>
+                          {log.hasException && (
+                            <AlertTriangle className="h-4 w-4 text-destructive" />
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-sm text-right tabular-nums">
                         {formatDuration(log.executionDuration)}
                       </td>
-                      <td className="px-4 py-3 text-sm font-mono">
-                        {log.clientIpAddress}
+                      <td className="px-4 py-3">
+                        {log.entityChangeCount > 0 && (
+                          <Badge variant="secondary" className="gap-1">
+                            <Database className="h-3 w-3" />
+                            {log.entityChangeCount}
+                          </Badge>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <Button
@@ -353,58 +419,81 @@ export default function AuditLogsPage() {
         <DialogHeader onClose={() => setSelectedLog(null)}>
           {t("auditLogs.logDetails")}
         </DialogHeader>
-        <DialogContent className="max-h-[60vh] overflow-y-auto space-y-4">
-          {selectedLog && (
+        <DialogContent className="max-h-[70vh] overflow-y-auto space-y-4">
+          {detail && (
             <>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <p className="text-sm text-muted-foreground">{t("auditLogs.time")}</p>
                   <p className="font-medium">
-                    {formatDate(selectedLog.executionTime)}
+                    {formatDate(detail.executionTime)}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">{t("auditLogs.user")}</p>
-                  <p className="font-medium">{selectedLog.userName || t("auditLogs.system")}</p>
+                  <p className="font-medium">{detail.userName || t("auditLogs.system")}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">{t("auditLogs.method")}</p>
-                  <Badge variant={METHOD_VARIANT[selectedLog.httpMethod] ?? "secondary"}>
-                    {selectedLog.httpMethod}
+                  <Badge variant={METHOD_VARIANT[detail.httpMethod] ?? "secondary"}>
+                    {detail.httpMethod}
                   </Badge>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">{t("auditLogs.statusCode")}</p>
-                  <Badge variant={getHttpStatusVariant(selectedLog.httpStatusCode)}>
-                    {selectedLog.httpStatusCode}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={getHttpStatusVariant(detail.httpStatusCode)}>
+                      {detail.httpStatusCode}
+                    </Badge>
+                    {detail.hasException && (
+                      <Badge variant="destructive">{t("auditLogs.error")}</Badge>
+                    )}
+                  </div>
                 </div>
                 <div className="col-span-2">
                   <p className="text-sm text-muted-foreground">{t("auditLogs.url")}</p>
-                  <p className="font-mono text-sm break-all">{selectedLog.url}</p>
+                  <p className="font-mono text-sm break-all">{detail.url}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">{t("auditLogs.duration")}</p>
                   <p className="font-medium tabular-nums">
-                    {formatDuration(selectedLog.executionDuration)}
+                    {formatDuration(detail.executionDuration)}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">{t("auditLogs.ipAddress")}</p>
-                  <p className="font-mono">{selectedLog.clientIpAddress}</p>
+                  <p className="font-mono">{detail.clientIpAddress || "—"}</p>
                 </div>
-                <div className="col-span-2">
-                  <p className="text-sm text-muted-foreground">{t("auditLogs.browser")}</p>
-                  <p className="text-sm truncate">{selectedLog.browserInfo}</p>
-                </div>
+                {detail.browserInfo && (
+                  <div className="col-span-2">
+                    <p className="text-sm text-muted-foreground">{t("auditLogs.browser")}</p>
+                    <p className="text-sm truncate">{detail.browserInfo}</p>
+                  </div>
+                )}
               </div>
 
-              {/* Entity Changes */}
-              {selectedLog.entityChanges && selectedLog.entityChanges.length > 0 && (
+              {/* Exception Message */}
+              {detail.hasException && detail.exceptionMessage && (
                 <div className="border-t pt-4">
-                  <h4 className="font-medium mb-2">{t("auditLogs.entityChanges")}</h4>
+                  <h4 className="font-medium mb-2 flex items-center gap-2 text-destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    {t("auditLogs.exception")}
+                  </h4>
+                  <pre className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm font-mono whitespace-pre-wrap break-all">
+                    {detail.exceptionMessage}
+                  </pre>
+                </div>
+              )}
+
+              {/* Entity Changes */}
+              {detail.entityChanges && detail.entityChanges.length > 0 && (
+                <div className="border-t pt-4">
+                  <h4 className="font-medium mb-3 flex items-center gap-2">
+                    <Database className="h-4 w-4" />
+                    {t("auditLogs.entityChanges")} ({detail.entityChanges.length})
+                  </h4>
                   <div className="space-y-3">
-                    {selectedLog.entityChanges.map((change) => (
+                    {detail.entityChanges.map((change) => (
                       <div
                         key={change.id}
                         className="rounded-lg border p-3 bg-muted/30"
@@ -413,26 +502,32 @@ export default function AuditLogsPage() {
                           <Badge variant={CHANGE_TYPE_VARIANT[change.changeType] ?? "secondary"}>
                             {change.changeType}
                           </Badge>
-                          <span className="font-mono text-sm">
-                            {change.entityTypeFullName.split(".").pop()}
+                          <span className="font-mono text-sm font-medium">
+                            {shortEntityName(change.entityTypeFullName)}
+                          </span>
+                          <span className="text-xs text-muted-foreground font-mono">
+                            #{change.entityId.slice(0, 8)}
                           </span>
                         </div>
                         {change.propertyChanges &&
                           change.propertyChanges.length > 0 && (
-                            <div className="space-y-1">
+                            <div className="space-y-1 mt-2">
                               {change.propertyChanges.map((prop, idx) => (
-                                <div key={idx} className="text-sm">
-                                  <span className="font-medium">
-                                    {prop.propertyName}:
-                                  </span>{" "}
+                                <div key={idx} className="text-sm flex gap-2 items-baseline">
+                                  <span className="font-medium text-muted-foreground min-w-[120px]">
+                                    {prop.propertyName}
+                                  </span>
                                   {prop.originalValue && (
-                                    <span className="text-destructive line-through">
-                                      {prop.originalValue}
+                                    <span className="text-destructive line-through text-xs">
+                                      {prop.originalValue.length > 100 ? prop.originalValue.slice(0, 100) + "..." : prop.originalValue}
                                     </span>
-                                  )}{" "}
+                                  )}
+                                  {prop.originalValue && prop.newValue && (
+                                    <span className="text-muted-foreground">→</span>
+                                  )}
                                   {prop.newValue && (
-                                    <span className="text-green-600 dark:text-green-400">
-                                      {prop.newValue}
+                                    <span className="text-green-600 dark:text-green-400 text-xs">
+                                      {prop.newValue.length > 100 ? prop.newValue.slice(0, 100) + "..." : prop.newValue}
                                     </span>
                                   )}
                                 </div>
