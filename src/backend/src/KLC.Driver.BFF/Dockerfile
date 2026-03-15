@@ -26,5 +26,6 @@ FROM base AS final
 RUN useradd --no-create-home --uid 1001 appuser
 WORKDIR /app
 COPY --from=build /app/publish .
+ENV HOME=/tmp
 USER appuser
 ENTRYPOINT ["dotnet", "KLC.Driver.BFF.dll"]
