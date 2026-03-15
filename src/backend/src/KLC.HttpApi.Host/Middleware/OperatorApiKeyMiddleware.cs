@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using KLC.Operators;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.Domain.Repositories;
@@ -78,6 +79,31 @@ public class OperatorApiKeyMiddleware
             await WriteErrorResponse(context, StatusCodes.Status403Forbidden,
                 "KLC:Operator:NotActive", "Operator account is not active.");
             return;
+        }
+
+        // Per-operator rate limiting via distributed cache
+        if (op.RateLimitPerMinute > 0)
+        {
+            var cache = scope.ServiceProvider.GetService<IDistributedCache>();
+            if (cache != null)
+            {
+                var rateLimitKey = $"operator-rate:{op.Id}";
+                var countStr = await cache.GetStringAsync(rateLimitKey);
+                var count = string.IsNullOrEmpty(countStr) ? 0 : int.Parse(countStr);
+
+                if (count >= op.RateLimitPerMinute)
+                {
+                    _logger.LogWarning("Operator {OperatorId} ({OperatorName}) rate limit exceeded: {Count}/{Limit}",
+                        op.Id, op.Name, count, op.RateLimitPerMinute);
+                    context.Response.Headers["Retry-After"] = "60";
+                    await WriteErrorResponse(context, StatusCodes.Status429TooManyRequests,
+                        "KLC:Operator:RateLimitExceeded", $"Rate limit exceeded ({op.RateLimitPerMinute} req/min).");
+                    return;
+                }
+
+                await cache.SetStringAsync(rateLimitKey, (count + 1).ToString(),
+                    new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(1) });
+            }
         }
 
         // Set operator ID in HttpContext for controller access

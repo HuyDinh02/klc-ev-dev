@@ -10,7 +10,7 @@ import { StatCard } from "@/components/ui/stat-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonCard } from "@/components/ui/skeleton";
 import { Dialog, DialogHeader, DialogContent, DialogFooter } from "@/components/ui/dialog";
-import { operatorsApi } from "@/lib/api";
+import { operatorsApi, stationsApi } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
 import { useRequirePermission, useHasPermission } from "@/lib/use-permission";
 import { AccessDenied } from "@/components/ui/access-denied";
@@ -65,6 +65,8 @@ export default function OperatorsPage() {
   const [showEdit, setShowEdit] = useState(false);
   const [showRegenConfirm, setShowRegenConfirm] = useState(false);
   const [selectedOperator, setSelectedOperator] = useState<string | null>(null);
+  const [showAddStation, setShowAddStation] = useState(false);
+  const [addStationSearch, setAddStationSearch] = useState("");
   const [form, setForm] = useState({ name: "", contactEmail: "", description: "" });
   const [editForm, setEditForm] = useState({
     name: "",
@@ -160,6 +162,36 @@ export default function OperatorsPage() {
       queryClient.invalidateQueries({ queryKey: ["operators"] });
     },
   });
+
+  const { data: allStations } = useQuery({
+    queryKey: ["all-stations-for-operator"],
+    queryFn: async () => {
+      const res = await stationsApi.getAll({ maxResultCount: 200 });
+      const data = res.data;
+      return (Array.isArray(data) ? data : data?.items ?? []) as { id: string; stationCode: string; name: string }[];
+    },
+    enabled: showAddStation,
+  });
+
+  const addStationMutation = useMutation({
+    mutationFn: ({ operatorId, stationId }: { operatorId: string; stationId: string }) =>
+      operatorsApi.addStation(operatorId, stationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["operator-detail"] });
+      queryClient.invalidateQueries({ queryKey: ["operators"] });
+      setShowAddStation(false);
+      setAddStationSearch("");
+    },
+  });
+
+  const assignedStationIds = new Set(detail?.stations?.map((s) => s.id) ?? []);
+  const filteredStations = (allStations ?? []).filter(
+    (s) =>
+      !assignedStationIds.has(s.id) &&
+      (addStationSearch === "" ||
+        s.name.toLowerCase().includes(addStationSearch.toLowerCase()) ||
+        s.stationCode.toLowerCase().includes(addStationSearch.toLowerCase()))
+  );
 
   const totalOperators = operators?.length ?? 0;
   const activeOperators = operators?.filter((o) => o.isActive).length ?? 0;
@@ -334,8 +366,19 @@ export default function OperatorsPage() {
             </div>
 
             {/* Assigned stations table */}
-            <h3 className="text-sm font-semibold mb-2">{t("operators.stationsAssigned")}</h3>
-            {detail.stations.length > 0 ? (
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold">{t("operators.stationsAssigned")}</h3>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAddStation(true)}
+                aria-label={t("operators.addStation")}
+              >
+                <Plus className="mr-1 h-4 w-4" />
+                {t("operators.addStation")}
+              </Button>
+            </div>
+            {(detail.stations?.length ?? 0) > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm" role="table">
                   <thead>
@@ -530,6 +573,53 @@ export default function OperatorsPage() {
         </DialogContent>
         <DialogFooter>
           <Button onClick={() => setShowApiKey(null)}>{t("common.close")}</Button>
+        </DialogFooter>
+      </Dialog>
+
+      {/* Add Station Dialog */}
+      <Dialog open={showAddStation} onClose={() => { setShowAddStation(false); setAddStationSearch(""); }} title={t("operators.addStation")}>
+        <DialogHeader onClose={() => { setShowAddStation(false); setAddStationSearch(""); }}>
+          {t("operators.addStation")}
+        </DialogHeader>
+        <DialogContent>
+          <div className="space-y-3">
+            <input
+              type="text"
+              value={addStationSearch}
+              onChange={(e) => setAddStationSearch(e.target.value)}
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              placeholder={t("operators.searchStations")}
+            />
+            <div className="max-h-64 overflow-y-auto border rounded-md">
+              {filteredStations.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">{t("operators.noStationsAvailable")}</p>
+              ) : (
+                filteredStations.map((station) => (
+                  <button
+                    key={station.id}
+                    className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-muted border-b last:border-0 text-left"
+                    onClick={() => {
+                      if (selectedOperator) {
+                        addStationMutation.mutate({ operatorId: selectedOperator, stationId: station.id });
+                      }
+                    }}
+                    disabled={addStationMutation.isPending}
+                  >
+                    <div>
+                      <span className="font-medium">{station.name}</span>
+                      <span className="ml-2 text-muted-foreground">{station.stationCode}</span>
+                    </div>
+                    <Plus className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => { setShowAddStation(false); setAddStationSearch(""); }}>
+            {t("common.close")}
+          </Button>
         </DialogFooter>
       </Dialog>
 

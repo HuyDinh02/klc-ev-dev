@@ -1075,7 +1075,10 @@
     "namePlaceholder": "Operator name",
     "emailPlaceholder": "operator@example.com",
     "webhookUrlPlaceholder": "https://...",
-    "stationCodeColumn": "Code"
+    "stationCodeColumn": "Code",
+    "addStation": "Add Station",
+    "searchStations": "Search stations...",
+    "noStationsAvailable": "No available stations"
   },
   "fleets": {
     "title": "Fleet Management",

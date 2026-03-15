@@ -91,7 +91,7 @@ public class FleetChargingPolicyService : DomainService, IFleetChargingPolicySer
             s => s.FleetId == fleetId && s.DayOfWeek == currentDayOfWeek);
 
         var isWithinSchedule = schedules.Any(s =>
-            currentTime >= s.StartTimeUtc && currentTime <= s.EndTimeUtc);
+            currentTime >= s.StartTimeUtc && currentTime < s.EndTimeUtc);
 
         return isWithinSchedule
             ? new FleetChargingValidationResult(true)
