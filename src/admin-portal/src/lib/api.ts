@@ -91,6 +91,12 @@ export const stationsApi = {
     api.delete(`/stations/${stationId}/photos/${photoId}`),
   setPrimaryPhoto: (stationId: string, photoId: string) =>
     api.post(`/stations/${stationId}/photos/${photoId}/set-primary`),
+  // Amenities
+  getAmenities: (stationId: string) => api.get(`/stations/${stationId}/amenities`),
+  addAmenity: (stationId: string, data: { amenityType: number }) =>
+    api.post(`/stations/${stationId}/amenities`, data),
+  removeAmenity: (stationId: string, amenityId: string) =>
+    api.delete(`/stations/${stationId}/amenities/${amenityId}`),
 };
 
 export const connectorsApi = {
@@ -437,6 +443,8 @@ export const operatorsApi = {
   regenerateApiKey: (id: string) => api.post(`/operators/${id}/regenerate-api-key`),
   addStation: (id: string, stationId: string) => api.post(`/operators/${id}/stations/${stationId}`),
   removeStation: (id: string, stationId: string) => api.delete(`/operators/${id}/stations/${stationId}`),
+  getWebhookLogs: (id: string, params?: { cursor?: string; pageSize?: number; eventType?: string; success?: boolean }) =>
+    api.get(`/operators/${id}/webhook-logs`, { params }),
 };
 
 // --- Fleets ---

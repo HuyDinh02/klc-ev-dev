@@ -94,3 +94,23 @@ public class GetOperatorListDto
     public string? Search { get; set; }
     public bool? IsActive { get; set; }
 }
+
+public class OperatorWebhookLogDto
+{
+    public Guid Id { get; set; }
+    public Guid OperatorId { get; set; }
+    public string EventType { get; set; } = string.Empty;
+    public int? HttpStatusCode { get; set; }
+    public bool Success { get; set; }
+    public string? ErrorMessage { get; set; }
+    public int AttemptCount { get; set; }
+    public DateTime CreationTime { get; set; }
+}
+
+public class GetWebhookLogsDto
+{
+    public string? Cursor { get; set; }
+    public int PageSize { get; set; } = 20;
+    public string? EventType { get; set; }
+    public bool? Success { get; set; }
+}

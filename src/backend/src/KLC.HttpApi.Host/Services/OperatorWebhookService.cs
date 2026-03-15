@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -16,6 +17,7 @@ namespace KLC.Services;
 
 /// <summary>
 /// Delivers webhook notifications to external operators when key events occur.
+/// Includes HMAC-SHA256 signature and retry with exponential backoff.
 /// Fire-and-forget with logging — failures never break the main flow.
 /// </summary>
 public class OperatorWebhookService : IOperatorWebhookService
@@ -25,6 +27,9 @@ public class OperatorWebhookService : IOperatorWebhookService
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IGuidGenerator _guidGenerator;
     private readonly ILogger<OperatorWebhookService> _logger;
+
+    private const int MaxRetries = 3;
+    private static readonly int[] RetryDelaysMs = [0, 2000, 5000];
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -50,7 +55,6 @@ public class OperatorWebhookService : IOperatorWebhookService
     {
         try
         {
-            // Find all active operators with a webhook URL
             var operators = await GetTargetOperatorsAsync(stationId);
 
             if (operators.Count == 0)
@@ -64,13 +68,11 @@ public class OperatorWebhookService : IOperatorWebhookService
                 "Delivering webhook {EventType} to {OperatorCount} operator(s) for station {StationId}",
                 eventType, operators.Count, stationId);
 
-            // Deliver to each operator in parallel (fire-and-forget per operator)
-            var tasks = operators.Select(op => DeliverWebhookAsync(op, eventType, stationId, payload));
+            var tasks = operators.Select(op => DeliverWithRetryAsync(op, eventType, stationId, payload));
             await Task.WhenAll(tasks);
         }
         catch (Exception ex)
         {
-            // Top-level catch — webhook failures must never break the main flow
             _logger.LogError(ex, "Unexpected error in EnqueueWebhookAsync for event {EventType}, station {StationId}",
                 eventType, stationId);
         }
@@ -79,13 +81,10 @@ public class OperatorWebhookService : IOperatorWebhookService
     private async Task<List<Operator>> GetTargetOperatorsAsync(Guid? stationId)
     {
         var queryable = await _operatorRepository.GetQueryableAsync();
-
-        // Filter: active operators with a webhook URL configured
         var query = queryable.Where(o => o.IsActive && o.WebhookUrl != null && o.WebhookUrl != "");
 
         if (stationId.HasValue)
         {
-            // Only operators that have access to this specific station
             query = query.Where(o =>
                 o.AllowedStations.Any(s => s.StationId == stationId.Value && !s.IsDeleted));
         }
@@ -93,7 +92,7 @@ public class OperatorWebhookService : IOperatorWebhookService
         return query.ToList();
     }
 
-    private async Task DeliverWebhookAsync(
+    private async Task DeliverWithRetryAsync(
         Operator op,
         WebhookEventType eventType,
         Guid? stationId,
@@ -111,53 +110,77 @@ public class OperatorWebhookService : IOperatorWebhookService
         int? httpStatusCode = null;
         bool success = false;
         string? errorMessage = null;
+        int attempt = 0;
 
-        try
+        for (attempt = 1; attempt <= MaxRetries; attempt++)
         {
-            var client = _httpClientFactory.CreateClient("OperatorWebhook");
-            var content = new StringContent(payloadJson, Encoding.UTF8, "application/json");
-
-            var response = await client.PostAsync(op.WebhookUrl, content);
-            httpStatusCode = (int)response.StatusCode;
-            success = response.IsSuccessStatusCode;
-
-            if (!success)
+            if (attempt > 1)
             {
+                await Task.Delay(RetryDelaysMs[attempt - 1]);
+            }
+
+            try
+            {
+                var client = _httpClientFactory.CreateClient("OperatorWebhook");
+                var content = new StringContent(payloadJson, Encoding.UTF8, "application/json");
+
+                // HMAC-SHA256 signature using operator's API key hash as secret
+                var signature = ComputeHmacSignature(payloadJson, op.ApiKeyHash);
+                content.Headers.Add("X-Webhook-Signature", $"sha256={signature}");
+                content.Headers.Add("X-Webhook-Event", eventType.ToString());
+
+                var response = await client.PostAsync(op.WebhookUrl, content);
+                httpStatusCode = (int)response.StatusCode;
+                success = response.IsSuccessStatusCode;
+
+                if (success)
+                {
+                    _logger.LogInformation(
+                        "Webhook delivered to operator {OperatorId} ({OperatorName}): {EventType} (attempt {Attempt})",
+                        op.Id, op.Name, eventType, attempt);
+                    break;
+                }
+
                 errorMessage = $"HTTP {httpStatusCode}: {response.ReasonPhrase}";
+
+                // Don't retry on 4xx client errors (except 429)
+                if (httpStatusCode >= 400 && httpStatusCode < 500 && httpStatusCode != 429)
+                {
+                    _logger.LogWarning(
+                        "Webhook delivery failed (no retry) for operator {OperatorId}: {Error}",
+                        op.Id, errorMessage);
+                    break;
+                }
+
                 _logger.LogWarning(
-                    "Webhook delivery failed for operator {OperatorId} ({OperatorName}): {Error}",
-                    op.Id, op.Name, errorMessage);
+                    "Webhook delivery failed for operator {OperatorId} (attempt {Attempt}/{MaxRetries}): {Error}",
+                    op.Id, attempt, MaxRetries, errorMessage);
             }
-            else
+            catch (TaskCanceledException)
             {
-                _logger.LogInformation(
-                    "Webhook delivered to operator {OperatorId} ({OperatorName}): {EventType}",
-                    op.Id, op.Name, eventType);
+                errorMessage = "Request timed out (10s)";
+                _logger.LogWarning(
+                    "Webhook timed out for operator {OperatorId} (attempt {Attempt}/{MaxRetries})",
+                    op.Id, attempt, MaxRetries);
             }
-        }
-        catch (TaskCanceledException)
-        {
-            errorMessage = "Request timed out (10s)";
-            _logger.LogWarning(
-                "Webhook delivery timed out for operator {OperatorId} ({OperatorName})",
-                op.Id, op.Name);
-        }
-        catch (HttpRequestException ex)
-        {
-            errorMessage = $"HTTP error: {ex.Message}";
-            _logger.LogWarning(ex,
-                "Webhook delivery HTTP error for operator {OperatorId} ({OperatorName})",
-                op.Id, op.Name);
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"Unexpected error: {ex.Message}";
-            _logger.LogError(ex,
-                "Unexpected webhook delivery error for operator {OperatorId} ({OperatorName})",
-                op.Id, op.Name);
+            catch (HttpRequestException ex)
+            {
+                errorMessage = $"HTTP error: {ex.Message}";
+                _logger.LogWarning(ex,
+                    "Webhook HTTP error for operator {OperatorId} (attempt {Attempt}/{MaxRetries})",
+                    op.Id, attempt, MaxRetries);
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Unexpected error: {ex.Message}";
+                _logger.LogError(ex,
+                    "Unexpected webhook error for operator {OperatorId} (attempt {Attempt})",
+                    op.Id, attempt);
+                break; // Don't retry unexpected errors
+            }
         }
 
-        // Log the delivery attempt
+        // Persist audit log
         try
         {
             var log = new OperatorWebhookLog(
@@ -167,15 +190,23 @@ public class OperatorWebhookService : IOperatorWebhookService
                 payloadJson,
                 httpStatusCode,
                 success,
-                errorMessage);
+                errorMessage,
+                attempt);
 
             await _webhookLogRepository.InsertAsync(log, autoSave: false);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
-                "Failed to persist webhook log for operator {OperatorId}",
-                op.Id);
+            _logger.LogError(ex, "Failed to persist webhook log for operator {OperatorId}", op.Id);
         }
+    }
+
+    private static string ComputeHmacSignature(string payload, string secret)
+    {
+        var keyBytes = Encoding.UTF8.GetBytes(secret);
+        var payloadBytes = Encoding.UTF8.GetBytes(payload);
+        using var hmac = new HMACSHA256(keyBytes);
+        var hash = hmac.ComputeHash(payloadBytes);
+        return Convert.ToHexString(hash).ToLowerInvariant();
     }
 }
