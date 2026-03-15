@@ -23,7 +23,7 @@ WORKDIR /src/src/KLC.Driver.BFF
 RUN dotnet publish -c Release -o /app/publish --no-restore
 
 FROM base AS final
-RUN adduser --disabled-password --gecos "" --uid 1001 appuser
+RUN useradd --no-create-home --uid 1001 appuser
 WORKDIR /app
 COPY --from=build /app/publish .
 USER appuser
