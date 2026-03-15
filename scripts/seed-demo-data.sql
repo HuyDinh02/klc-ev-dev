@@ -58,161 +58,82 @@ VALUES
 ('aaaaaaaa-0001-0001-0001-000000000002', '22222222-aaaa-aaaa-aaaa-222222222222', NULL), -- operator -> operator role
 ('aaaaaaaa-0001-0001-0001-000000000003', '33333333-aaaa-aaaa-aaaa-333333333333', NULL); -- viewer -> viewer role
 
--- Grant Permissions to Admin Role (all permissions)
+-- Grant Permissions to Admin Role (all permissions) — idempotent
 INSERT INTO "AbpPermissionGrants" ("Id", "TenantId", "Name", "ProviderName", "ProviderKey")
-VALUES
--- Admin gets all KLC permissions
-(gen_random_uuid(), NULL, 'KLC.Stations', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Stations.Create', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Stations.Update', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Stations.Delete', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Stations.Decommission', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Connectors', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Connectors.Create', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Connectors.Update', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Connectors.Delete', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Connectors.Enable', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Connectors.Disable', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Tariffs', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Tariffs.Create', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Tariffs.Update', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Tariffs.Activate', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Tariffs.Deactivate', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Sessions', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Sessions.ViewAll', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Faults', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Faults.Update', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Alerts', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Alerts.Acknowledge', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Monitoring', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Monitoring.Dashboard', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Monitoring.StatusHistory', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Monitoring.EnergySummary', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.StationGroups', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.StationGroups.Create', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.StationGroups.Update', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.StationGroups.Delete', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.StationGroups.Assign', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Payments', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Payments.ViewAll', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Payments.Refund', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.AuditLogs', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.AuditLogs.Export', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.EInvoices', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.EInvoices.Generate', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.EInvoices.Retry', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.EInvoices.Cancel', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.UserManagement', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.UserManagement.Create', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.UserManagement.Update', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.UserManagement.Delete', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.UserManagement.ManageRoles', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.UserManagement.ManagePermissions', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.RoleManagement', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.RoleManagement.Create', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.RoleManagement.Update', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.RoleManagement.Delete', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.RoleManagement.ManagePermissions', 'R', 'admin'),
--- New module permissions for admin
-(gen_random_uuid(), NULL, 'KLC.Vouchers', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Vouchers.Create', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Vouchers.Update', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Vouchers.Delete', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Promotions', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Promotions.Create', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Promotions.Update', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Promotions.Delete', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Feedback', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Feedback.Respond', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.MobileUsers', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.MobileUsers.ViewAll', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.MobileUsers.Suspend', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.MobileUsers.WalletAdjust', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Notifications', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Notifications.Broadcast', 'R', 'admin'),
--- Phase 2 Module: Power Sharing permissions
-(gen_random_uuid(), NULL, 'KLC.PowerSharing', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.PowerSharing.Create', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.PowerSharing.Update', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.PowerSharing.Delete', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.PowerSharing.ManageMembers', 'R', 'admin'),
--- Phase 2 Module: Operators permissions
-(gen_random_uuid(), NULL, 'KLC.Operators', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Operators.Create', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Operators.Update', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Operators.Delete', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Operators.ManageStations', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Operators.ManageWebhooks', 'R', 'admin'),
--- Phase 2 Module: Fleets permissions
-(gen_random_uuid(), NULL, 'KLC.Fleets', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Fleets.Create', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Fleets.Update', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Fleets.Delete', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Fleets.ManageVehicles', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Fleets.ManageSchedules', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Fleets.ViewAnalytics', 'R', 'admin'),
--- Maintenance permissions
-(gen_random_uuid(), NULL, 'KLC.Maintenance', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Maintenance.Create', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Maintenance.Update', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Maintenance.Delete', 'R', 'admin'),
--- Settings permissions
-(gen_random_uuid(), NULL, 'KLC.Settings', 'R', 'admin'),
-(gen_random_uuid(), NULL, 'KLC.Settings.Update', 'R', 'admin');
+SELECT gen_random_uuid(), NULL, p.name, 'R', 'admin'
+FROM (VALUES
+  ('KLC.Stations'), ('KLC.Stations.Create'), ('KLC.Stations.Update'), ('KLC.Stations.Delete'), ('KLC.Stations.Decommission'),
+  ('KLC.Connectors'), ('KLC.Connectors.Create'), ('KLC.Connectors.Update'), ('KLC.Connectors.Delete'), ('KLC.Connectors.Enable'), ('KLC.Connectors.Disable'),
+  ('KLC.Tariffs'), ('KLC.Tariffs.Create'), ('KLC.Tariffs.Update'), ('KLC.Tariffs.Activate'), ('KLC.Tariffs.Deactivate'),
+  ('KLC.Sessions'), ('KLC.Sessions.ViewAll'),
+  ('KLC.Faults'), ('KLC.Faults.Update'),
+  ('KLC.Alerts'), ('KLC.Alerts.Acknowledge'),
+  ('KLC.Monitoring'), ('KLC.Monitoring.Dashboard'), ('KLC.Monitoring.StatusHistory'), ('KLC.Monitoring.EnergySummary'),
+  ('KLC.StationGroups'), ('KLC.StationGroups.Create'), ('KLC.StationGroups.Update'), ('KLC.StationGroups.Delete'), ('KLC.StationGroups.Assign'),
+  ('KLC.Payments'), ('KLC.Payments.ViewAll'), ('KLC.Payments.Refund'),
+  ('KLC.AuditLogs'), ('KLC.AuditLogs.Export'),
+  ('KLC.EInvoices'), ('KLC.EInvoices.Generate'), ('KLC.EInvoices.Retry'), ('KLC.EInvoices.Cancel'),
+  ('KLC.UserManagement'), ('KLC.UserManagement.Create'), ('KLC.UserManagement.Update'), ('KLC.UserManagement.Delete'), ('KLC.UserManagement.ManageRoles'), ('KLC.UserManagement.ManagePermissions'),
+  ('KLC.RoleManagement'), ('KLC.RoleManagement.Create'), ('KLC.RoleManagement.Update'), ('KLC.RoleManagement.Delete'), ('KLC.RoleManagement.ManagePermissions'),
+  ('KLC.Vouchers'), ('KLC.Vouchers.Create'), ('KLC.Vouchers.Update'), ('KLC.Vouchers.Delete'),
+  ('KLC.Promotions'), ('KLC.Promotions.Create'), ('KLC.Promotions.Update'), ('KLC.Promotions.Delete'),
+  ('KLC.Feedback'), ('KLC.Feedback.Respond'),
+  ('KLC.MobileUsers'), ('KLC.MobileUsers.ViewAll'), ('KLC.MobileUsers.Suspend'), ('KLC.MobileUsers.WalletAdjust'),
+  ('KLC.Notifications'), ('KLC.Notifications.Broadcast'),
+  ('KLC.PowerSharing'), ('KLC.PowerSharing.Create'), ('KLC.PowerSharing.Update'), ('KLC.PowerSharing.Delete'), ('KLC.PowerSharing.ManageMembers'),
+  ('KLC.Operators'), ('KLC.Operators.Create'), ('KLC.Operators.Update'), ('KLC.Operators.Delete'), ('KLC.Operators.ManageStations'), ('KLC.Operators.ManageWebhooks'),
+  ('KLC.Fleets'), ('KLC.Fleets.Create'), ('KLC.Fleets.Update'), ('KLC.Fleets.Delete'), ('KLC.Fleets.ManageVehicles'), ('KLC.Fleets.ManageSchedules'), ('KLC.Fleets.ViewAnalytics'),
+  ('KLC.Maintenance'), ('KLC.Maintenance.Create'), ('KLC.Maintenance.Update'), ('KLC.Maintenance.Delete'),
+  ('KLC.Settings'), ('KLC.Settings.Update')
+) AS p(name)
+WHERE NOT EXISTS (
+  SELECT 1 FROM "AbpPermissionGrants"
+  WHERE "Name" = p.name AND "ProviderName" = 'R' AND "ProviderKey" = 'admin'
+);
 
--- Grant Permissions to Operator Role (station management, monitoring, faults)
+-- Grant Permissions to Operator Role (station management, monitoring, faults) — idempotent
 INSERT INTO "AbpPermissionGrants" ("Id", "TenantId", "Name", "ProviderName", "ProviderKey")
-VALUES
-(gen_random_uuid(), NULL, 'KLC.Stations', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KLC.Stations.Update', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KLC.Connectors', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KLC.Connectors.Update', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KLC.Connectors.Enable', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KLC.Connectors.Disable', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KLC.Tariffs', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KLC.Sessions', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KLC.Sessions.ViewAll', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KLC.Faults', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KLC.Faults.Update', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KLC.Alerts', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KLC.Alerts.Acknowledge', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KLC.Monitoring', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KLC.Monitoring.Dashboard', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KLC.Monitoring.StatusHistory', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KLC.Monitoring.EnergySummary', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KLC.StationGroups', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KLC.Payments', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KLC.Payments.ViewAll', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KLC.Feedback', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KLC.Feedback.Respond', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KLC.MobileUsers', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KLC.MobileUsers.ViewAll', 'R', 'operator'),
--- Phase 2: operator read-only access
-(gen_random_uuid(), NULL, 'KLC.PowerSharing', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KLC.Operators', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KLC.Fleets', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KLC.Fleets.ViewAnalytics', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KLC.Maintenance', 'R', 'operator'),
-(gen_random_uuid(), NULL, 'KLC.Settings', 'R', 'operator');
+SELECT gen_random_uuid(), NULL, p.name, 'R', 'operator'
+FROM (VALUES
+  ('KLC.Stations'), ('KLC.Stations.Update'),
+  ('KLC.Connectors'), ('KLC.Connectors.Update'), ('KLC.Connectors.Enable'), ('KLC.Connectors.Disable'),
+  ('KLC.Tariffs'),
+  ('KLC.Sessions'), ('KLC.Sessions.ViewAll'),
+  ('KLC.Faults'), ('KLC.Faults.Update'),
+  ('KLC.Alerts'), ('KLC.Alerts.Acknowledge'),
+  ('KLC.Monitoring'), ('KLC.Monitoring.Dashboard'), ('KLC.Monitoring.StatusHistory'), ('KLC.Monitoring.EnergySummary'),
+  ('KLC.StationGroups'),
+  ('KLC.Payments'), ('KLC.Payments.ViewAll'),
+  ('KLC.Feedback'), ('KLC.Feedback.Respond'),
+  ('KLC.MobileUsers'), ('KLC.MobileUsers.ViewAll'),
+  ('KLC.PowerSharing'), ('KLC.Operators'), ('KLC.Fleets'), ('KLC.Fleets.ViewAnalytics'),
+  ('KLC.Maintenance'), ('KLC.Settings')
+) AS p(name)
+WHERE NOT EXISTS (
+  SELECT 1 FROM "AbpPermissionGrants"
+  WHERE "Name" = p.name AND "ProviderName" = 'R' AND "ProviderKey" = 'operator'
+);
 
--- Grant Permissions to Viewer Role (read-only)
+-- Grant Permissions to Viewer Role (read-only) — idempotent
 INSERT INTO "AbpPermissionGrants" ("Id", "TenantId", "Name", "ProviderName", "ProviderKey")
-VALUES
-(gen_random_uuid(), NULL, 'KLC.Stations', 'R', 'viewer'),
-(gen_random_uuid(), NULL, 'KLC.Connectors', 'R', 'viewer'),
-(gen_random_uuid(), NULL, 'KLC.Tariffs', 'R', 'viewer'),
-(gen_random_uuid(), NULL, 'KLC.Sessions', 'R', 'viewer'),
-(gen_random_uuid(), NULL, 'KLC.Faults', 'R', 'viewer'),
-(gen_random_uuid(), NULL, 'KLC.Alerts', 'R', 'viewer'),
-(gen_random_uuid(), NULL, 'KLC.Monitoring', 'R', 'viewer'),
-(gen_random_uuid(), NULL, 'KLC.Monitoring.Dashboard', 'R', 'viewer'),
-(gen_random_uuid(), NULL, 'KLC.StationGroups', 'R', 'viewer'),
-(gen_random_uuid(), NULL, 'KLC.Payments', 'R', 'viewer'),
--- Phase 2: viewer read-only access
-(gen_random_uuid(), NULL, 'KLC.PowerSharing', 'R', 'viewer'),
-(gen_random_uuid(), NULL, 'KLC.Operators', 'R', 'viewer'),
-(gen_random_uuid(), NULL, 'KLC.Fleets', 'R', 'viewer'),
-(gen_random_uuid(), NULL, 'KLC.Maintenance', 'R', 'viewer');
+SELECT gen_random_uuid(), NULL, p.name, 'R', 'viewer'
+FROM (VALUES
+  ('KLC.Stations'), ('KLC.Connectors'), ('KLC.Tariffs'),
+  ('KLC.Sessions'), ('KLC.Sessions.ViewAll'),
+  ('KLC.Faults'), ('KLC.Alerts'),
+  ('KLC.Monitoring'), ('KLC.Monitoring.Dashboard'), ('KLC.Monitoring.StatusHistory'), ('KLC.Monitoring.EnergySummary'),
+  ('KLC.StationGroups'),
+  ('KLC.Payments'), ('KLC.Payments.ViewAll'),
+  ('KLC.AuditLogs'), ('KLC.EInvoices'),
+  ('KLC.MobileUsers'), ('KLC.MobileUsers.ViewAll'),
+  ('KLC.Feedback'), ('KLC.Notifications'),
+  ('KLC.PowerSharing'), ('KLC.Operators'), ('KLC.Fleets'), ('KLC.Maintenance'),
+  ('KLC.Settings')
+) AS p(name)
+WHERE NOT EXISTS (
+  SELECT 1 FROM "AbpPermissionGrants"
+  WHERE "Name" = p.name AND "ProviderName" = 'R' AND "ProviderKey" = 'viewer'
+);
 
 -- ============================================================
 -- 1. STATION GROUPS (3 groups)
