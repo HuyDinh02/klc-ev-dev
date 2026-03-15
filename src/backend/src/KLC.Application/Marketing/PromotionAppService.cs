@@ -8,6 +8,7 @@ using KLC.Permissions;
 using Microsoft.AspNetCore.Authorization;
 using Volo.Abp;
 using Volo.Abp.Domain.Repositories;
+using Volo.Abp.Validation;
 
 namespace KLC.Marketing;
 
@@ -124,6 +125,7 @@ public class PromotionAppService : KLCAppService, IPromotionAppService
     }
 
     [Authorize(KLCPermissions.Promotions.Create)]
+    [DisableValidation]
     public async Task<ImageUploadResultDto> UploadImageAsync(Stream stream, string fileName)
     {
         var result = await _fileUploadService.UploadAsync(stream, fileName, "promotions");

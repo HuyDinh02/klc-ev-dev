@@ -15,6 +15,7 @@ import {
   Save,
   RefreshCw,
   AlertCircle,
+  CheckCircle2,
 } from "lucide-react";
 import { settingsApi, type SystemSettings } from "@/lib/api";
 import { useTranslation, type Locale } from "@/lib/i18n";
@@ -23,6 +24,7 @@ export default function SettingsPage() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("general");
   const [localSettings, setLocalSettings] = useState<SystemSettings | null>(null);
+  const [showSaved, setShowSaved] = useState(false);
   const { t, setLocale } = useTranslation();
 
   const { data, isLoading, error } = useQuery({
@@ -46,6 +48,8 @@ export default function SettingsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["settings"] });
       setLocalSettings(null);
+      setShowSaved(true);
+      setTimeout(() => setShowSaved(false), 3000);
     },
   });
 
@@ -106,10 +110,16 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col">
       {/* Header */}
       <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <PageHeader title={t("settings.title")} description={t("settings.description")}>
+          {showSaved && (
+            <span className="flex items-center gap-1 text-sm text-green-600">
+              <CheckCircle2 className="h-4 w-4" />
+              {t("settings.saved")}
+            </span>
+          )}
           {saveMutation.isError && (
             <span className="text-sm text-destructive">{t("settings.saveFailed")}</span>
           )}
@@ -124,7 +134,7 @@ export default function SettingsPage() {
         </PageHeader>
       </div>
 
-      <div className="flex gap-6">
+      <div className="flex gap-6 p-6">
         {/* Sidebar */}
         <nav className="w-64 space-y-1" role="tablist" aria-label={t("settings.title")}>
           {tabs.map((tab) => {
@@ -337,10 +347,12 @@ export default function SettingsPage() {
                       value={settings.ocppWebSocketPort}
                       onChange={(e) =>
                         updateSettings({
-                          ocppWebSocketPort: parseInt(e.target.value),
+                          ocppWebSocketPort: parseInt(e.target.value) || 0,
                         })
                       }
                       className="mt-1 w-full rounded-md border px-3 py-2"
+                      min={1}
+                      max={65535}
                     />
                   </div>
                   <div>
@@ -352,10 +364,12 @@ export default function SettingsPage() {
                       value={settings.ocppHeartbeatInterval}
                       onChange={(e) =>
                         updateSettings({
-                          ocppHeartbeatInterval: parseInt(e.target.value),
+                          ocppHeartbeatInterval: parseInt(e.target.value) || 0,
                         })
                       }
                       className="mt-1 w-full rounded-md border px-3 py-2"
+                      min={10}
+                      max={3600}
                     />
                   </div>
                   <div>
@@ -367,10 +381,12 @@ export default function SettingsPage() {
                       value={settings.ocppMeterValueInterval}
                       onChange={(e) =>
                         updateSettings({
-                          ocppMeterValueInterval: parseInt(e.target.value),
+                          ocppMeterValueInterval: parseInt(e.target.value) || 0,
                         })
                       }
                       className="mt-1 w-full rounded-md border px-3 py-2"
+                      min={5}
+                      max={3600}
                     />
                   </div>
                 </div>
@@ -478,10 +494,12 @@ export default function SettingsPage() {
                       value={settings.sessionTimeout}
                       onChange={(e) =>
                         updateSettings({
-                          sessionTimeout: parseInt(e.target.value),
+                          sessionTimeout: parseInt(e.target.value) || 0,
                         })
                       }
                       className="mt-1 w-full rounded-md border px-3 py-2"
+                      min={5}
+                      max={1440}
                     />
                   </div>
                   <div>

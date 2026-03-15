@@ -170,13 +170,14 @@ export default function StationMapPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col">
       <div className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <PageHeader title={t("map.title")} description={t("map.description")} />
       </div>
 
+      <div className="flex-1 space-y-6 p-6">
       {/* Legend & Stats */}
-      <div className="flex flex-wrap gap-3 px-6">
+      <div className="flex flex-wrap gap-3">
         <Badge variant={STATION_STATUS[1].badgeVariant} className="gap-1">
           <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: STATION_STATUS[1].dotColor }} />
           {STATION_STATUS[1].label} ({statusCounts.online})
@@ -250,6 +251,7 @@ export default function StationMapPage() {
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

@@ -230,7 +230,7 @@ export default function OcppManagementPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <PageHeader
         title={t("ocpp.title")}
         description={t("ocpp.connectedChargers").replace("{count}", String(connections.length))}

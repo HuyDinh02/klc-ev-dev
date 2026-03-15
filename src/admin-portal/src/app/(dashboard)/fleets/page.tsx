@@ -130,7 +130,8 @@ export default function FleetsPage() {
     queryKey: ["fleets"],
     queryFn: async () => {
       const res = await fleetsApi.getList({ pageSize: 50 });
-      return res.data as FleetListItem[];
+      const data = res.data;
+      return (Array.isArray(data) ? data : data?.items ?? []) as FleetListItem[];
     },
   });
 
@@ -238,7 +239,7 @@ export default function FleetsPage() {
   if (!hasAccess) return <AccessDenied />;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <PageHeader
         title={t("fleets.title")}
         description={t("fleets.description")}

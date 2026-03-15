@@ -100,7 +100,7 @@ const navigation: NavSection[] = [
     items: [
       { href: "/tariffs", labelKey: "nav.tariffs", icon: DollarSign, permission: "KLC.Tariffs" },
       { href: "/payments", labelKey: "nav.payments", icon: CreditCard, permission: "KLC.Payments" },
-      { href: "/vouchers", labelKey: "nav.marketing", icon: Ticket, permission: "KLC.Vouchers" },
+      { href: "/vouchers", labelKey: "nav.vouchers", icon: Ticket, permission: "KLC.Vouchers" },
       { href: "/promotions", labelKey: "nav.promotions", icon: Gift, permission: "KLC.Promotions" },
       { href: "/operators", labelKey: "nav.operators", icon: Building2, permission: "KLC.Operators" },
       { href: "/fleets", labelKey: "nav.fleets", icon: Truck, permission: "KLC.Fleets" },

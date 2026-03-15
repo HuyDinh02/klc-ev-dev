@@ -15,6 +15,7 @@ using NSubstitute;
 using Shouldly;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Guids;
+using Volo.Abp.Settings;
 using Xunit;
 
 namespace KLC.EntityFrameworkCore.Ocpp;
@@ -48,6 +49,7 @@ public class OcppMessageHandlerTests
         var parserFactory = new OcppMessageParserFactory();
 
         var auditLogger = Substitute.For<IAuditEventLogger>();
+        var settingProvider = Substitute.For<ISettingProvider>();
 
         _handler = new OcppMessageHandler(
             NullLogger<OcppMessageHandler>.Instance,
@@ -59,6 +61,7 @@ public class OcppMessageHandlerTests
             guidGenerator,
             parserFactory,
             auditLogger,
+            settingProvider,
             powerBalancingService: null);
     }
 
