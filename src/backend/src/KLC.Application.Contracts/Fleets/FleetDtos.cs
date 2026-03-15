@@ -35,6 +35,8 @@ public class FleetDetailDto
     public decimal BudgetUtilizationPercent { get; set; }
     public DateTime CreationTime { get; set; }
     public List<FleetVehicleDto> Vehicles { get; set; } = new();
+    public List<FleetChargingScheduleDto> Schedules { get; set; } = new();
+    public List<FleetAllowedStationGroupDto> AllowedStationGroups { get; set; } = new();
 }
 
 public class FleetVehicleDto

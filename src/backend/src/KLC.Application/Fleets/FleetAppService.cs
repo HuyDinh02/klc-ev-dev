@@ -114,6 +114,31 @@ public class FleetAppService : KLCAppService, IFleetAppService
             detail.Vehicles.Add(vehicleDto);
         }
 
+        // Load schedules
+        var schedules = await _scheduleRepository.GetListAsync(s => s.FleetId == id);
+        detail.Schedules = schedules.Select(s => new FleetChargingScheduleDto
+        {
+            Id = s.Id,
+            FleetId = s.FleetId,
+            DayOfWeek = s.DayOfWeek,
+            StartTimeUtc = s.StartTimeUtc,
+            EndTimeUtc = s.EndTimeUtc
+        }).ToList();
+
+        // Load allowed station groups
+        var allowedStations = await _allowedStationRepository.GetListAsync(a => a.FleetId == id);
+        foreach (var allowed in allowedStations)
+        {
+            var group = await _stationGroupRepository.FirstOrDefaultAsync(sg => sg.Id == allowed.StationGroupId);
+            detail.AllowedStationGroups.Add(new FleetAllowedStationGroupDto
+            {
+                Id = allowed.Id,
+                FleetId = allowed.FleetId,
+                StationGroupId = allowed.StationGroupId,
+                StationGroupName = group?.Name ?? "Unknown"
+            });
+        }
+
         return detail;
     }
 
