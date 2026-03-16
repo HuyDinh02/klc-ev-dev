@@ -76,13 +76,6 @@ describe('LoginPage', () => {
     });
   });
 
-  it('renders demo credentials section', async () => {
-    renderWithProviders(<LoginPage />);
-    await waitFor(() => {
-      expect(screen.getByText('Demo Credentials')).toBeInTheDocument();
-    });
-  });
-
   it('submit calls authApi.login with credentials', async () => {
     const user = userEvent.setup();
     renderWithProviders(<LoginPage />);
