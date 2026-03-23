@@ -20,7 +20,7 @@ RUN dotnet restore src/KLC.HttpApi.Host/KLC.HttpApi.Host.csproj
 # Copy source and build
 COPY . .
 WORKDIR /src/src/KLC.HttpApi.Host
-RUN dotnet publish -c Release -o /app/publish --no-restore
+RUN dotnet publish -c Release -o /app/publish
 
 FROM base AS final
 RUN useradd --no-create-home --uid 1001 appuser

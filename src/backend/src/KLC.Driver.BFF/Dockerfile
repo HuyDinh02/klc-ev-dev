@@ -21,7 +21,7 @@ RUN dotnet restore src/KLC.Driver.BFF/KLC.Driver.BFF.csproj
 # Copy source and build
 COPY . .
 WORKDIR /src/src/KLC.Driver.BFF
-RUN dotnet publish -c Release -o /app/publish --no-restore
+RUN dotnet publish -c Release -o /app/publish
 
 FROM base AS final
 RUN useradd --no-create-home --uid 1001 appuser
