@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Cors;
@@ -335,19 +336,26 @@ public class KLCHttpApiHostModule : AbpModule
         {
             Configure<AbpVirtualFileSystemOptions>(options =>
             {
-                options.FileSets.ReplaceEmbeddedByPhysical<KLCDomainSharedModule>(
-                    Path.Combine(hostingEnvironment.ContentRootPath,
-                        $"..{Path.DirectorySeparatorChar}KLC.Domain.Shared"));
-                options.FileSets.ReplaceEmbeddedByPhysical<KLCDomainModule>(
-                    Path.Combine(hostingEnvironment.ContentRootPath,
-                        $"..{Path.DirectorySeparatorChar}KLC.Domain"));
-                options.FileSets.ReplaceEmbeddedByPhysical<KLCApplicationContractsModule>(
-                    Path.Combine(hostingEnvironment.ContentRootPath,
-                        $"..{Path.DirectorySeparatorChar}KLC.Application.Contracts"));
-                options.FileSets.ReplaceEmbeddedByPhysical<KLCApplicationModule>(
-                    Path.Combine(hostingEnvironment.ContentRootPath,
-                        $"..{Path.DirectorySeparatorChar}KLC.Application"));
+                ReplaceEmbeddedFileSetIfPresent<KLCDomainSharedModule>(options, hostingEnvironment, "KLC.Domain.Shared");
+                ReplaceEmbeddedFileSetIfPresent<KLCDomainModule>(options, hostingEnvironment, "KLC.Domain");
+                ReplaceEmbeddedFileSetIfPresent<KLCApplicationContractsModule>(options, hostingEnvironment, "KLC.Application.Contracts");
+                ReplaceEmbeddedFileSetIfPresent<KLCApplicationModule>(options, hostingEnvironment, "KLC.Application");
             });
+        }
+    }
+
+    private static void ReplaceEmbeddedFileSetIfPresent<TModule>(
+        AbpVirtualFileSystemOptions options,
+        IWebHostEnvironment hostingEnvironment,
+        string projectFolder)
+    {
+        var physicalPath = Path.Combine(
+            hostingEnvironment.ContentRootPath,
+            $"..{Path.DirectorySeparatorChar}{projectFolder}");
+
+        if (Directory.Exists(physicalPath))
+        {
+            options.FileSets.ReplaceEmbeddedByPhysical<TModule>(physicalPath);
         }
     }
 
