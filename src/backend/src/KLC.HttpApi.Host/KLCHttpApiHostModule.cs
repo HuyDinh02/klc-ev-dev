@@ -214,11 +214,16 @@ public class KLCHttpApiHostModule : AbpModule
             options.Map(KLCDomainErrorCodes.Session.InvalidStatus, HttpStatusCode.UnprocessableEntity);
             options.Map(KLCDomainErrorCodes.Session.InvalidStateTransition, HttpStatusCode.UnprocessableEntity);
             options.Map(KLCDomainErrorCodes.Session.NoDefaultVehicle, HttpStatusCode.UnprocessableEntity);
+            options.Map(KLCDomainErrorCodes.Station.CannotEnableDecommissioned, HttpStatusCode.UnprocessableEntity);
             options.Map(KLCDomainErrorCodes.EInvoiceCannotRetry, HttpStatusCode.UnprocessableEntity);
             options.Map(KLCDomainErrorCodes.Payment.InvalidRefund, HttpStatusCode.UnprocessableEntity);
             options.Map(KLCDomainErrorCodes.Payment.CannotCancel, HttpStatusCode.UnprocessableEntity);
             options.Map(KLCDomainErrorCodes.Payment.SessionNotCompleted, HttpStatusCode.UnprocessableEntity);
             options.Map(KLCDomainErrorCodes.Wallet.InsufficientBalance, HttpStatusCode.UnprocessableEntity);
+
+            // 503 Service Unavailable (downstream charger command dispatch failed)
+            options.Map(KLCDomainErrorCodes.Session.StartCommandFailed, HttpStatusCode.ServiceUnavailable);
+            options.Map(KLCDomainErrorCodes.Session.StopCommandFailed, HttpStatusCode.ServiceUnavailable);
 
             // 400 Bad Request (input/validation)
             options.Map(KLCDomainErrorCodes.Station.InvalidLatitude, HttpStatusCode.BadRequest);

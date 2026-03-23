@@ -48,12 +48,12 @@ public interface IOcppRemoteCommandService
     /// <summary>
     /// Send RemoteStartTransaction to a Charge Point.
     /// </summary>
-    Task<bool> SendRemoteStartTransactionAsync(string stationCode, int connectorId, string idTag);
+    Task<RemoteCommandResult> SendRemoteStartTransactionAsync(string stationCode, int connectorId, string idTag);
 
     /// <summary>
     /// Send RemoteStopTransaction to a Charge Point.
     /// </summary>
-    Task<bool> SendRemoteStopTransactionAsync(string stationCode, int transactionId);
+    Task<RemoteCommandResult> SendRemoteStopTransactionAsync(string stationCode, int transactionId);
 
     /// <summary>
     /// Send Reset (Soft or Hard) to a Charge Point.

@@ -10,6 +10,7 @@
     "KLC:Station:NotFound": "Không tìm thấy trạm sạc.",
     "KLC:Station:InvalidLatitude": "Vĩ độ phải nằm trong khoảng -90 đến 90.",
     "KLC:Station:InvalidLongitude": "Kinh độ phải nằm trong khoảng -180 đến 180.",
+    "KLC:Station:CannotEnableDecommissioned": "Không thể bật lại trạm sạc đã ngừng hoạt động vĩnh viễn.",
 
     "KLC:Connector:StationNotFound": "Không tìm thấy trạm sạc.",
     "KLC:Connector:DuplicateNumber": "Đầu sạc #{connectorNumber} đã tồn tại trên trạm này.",
@@ -41,6 +42,8 @@
     "KLC:Session:NotOwned": "Bạn không có quyền truy cập phiên sạc này.",
     "KLC:Session:InvalidStatus": "Phiên sạc không ở trạng thái phù hợp cho thao tác này.",
     "KLC:Session:InvalidStateTransition": "Không thể chuyển phiên sạc từ trạng thái '{currentStatus}' sang '{expectedStatus}'.",
+    "KLC:Session:StartCommandFailed": "Không thể gửi lệnh bắt đầu sạc đến trạm sạc.",
+    "KLC:Session:StopCommandFailed": "Không thể gửi lệnh dừng sạc đến trạm sạc.",
 
     "KLC:Profile:EmailAlreadyUsed": "Địa chỉ email này đã được sử dụng.",
     "KLC:Profile:PhoneAlreadyUsed": "Số điện thoại này đã được sử dụng.",

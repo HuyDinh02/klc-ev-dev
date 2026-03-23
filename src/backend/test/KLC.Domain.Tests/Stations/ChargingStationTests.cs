@@ -112,6 +112,19 @@ public class ChargingStationTests
     }
 
     [Fact]
+    public void Enable_Should_Throw_For_Decommissioned_Station()
+    {
+        var station = CreateStation();
+        station.Decommission();
+
+        var ex = Should.Throw<BusinessException>(() => station.Enable());
+
+        ex.Code.ShouldBe(KLCDomainErrorCodes.Station.CannotEnableDecommissioned);
+        station.IsEnabled.ShouldBeFalse();
+        station.Status.ShouldBe(StationStatus.Decommissioned);
+    }
+
+    [Fact]
     public void MarkOffline_Should_Set_Status()
     {
         var station = CreateStation();
@@ -133,6 +146,29 @@ public class ChargingStationTests
         station.Connectors.Count.ShouldBe(1);
         connector.Id.ShouldBe(connectorId);
         connector.ConnectorNumber.ShouldBe(1);
+    }
+
+    [Fact]
+    public void Decommission_Should_Set_Terminal_Status_And_Disable()
+    {
+        var station = CreateStation();
+
+        station.Decommission();
+
+        station.IsEnabled.ShouldBeFalse();
+        station.Status.ShouldBe(StationStatus.Decommissioned);
+    }
+
+    [Fact]
+    public void Disable_Should_Not_Overwrite_Decommissioned_Status()
+    {
+        var station = CreateStation();
+        station.Decommission();
+
+        station.Disable();
+
+        station.IsEnabled.ShouldBeFalse();
+        station.Status.ShouldBe(StationStatus.Decommissioned);
     }
 
     private static ChargingStation CreateStation()

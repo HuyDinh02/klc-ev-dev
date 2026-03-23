@@ -196,11 +196,21 @@ public class StationAppServiceTests
     {
         var station = CreateTestStation();
 
-        station.UpdateStatus(StationStatus.Decommissioned);
-        station.Disable();
+        station.Decommission();
 
-        station.Status.ShouldBe(StationStatus.Disabled); // Disable overrides to Disabled
+        station.Status.ShouldBe(StationStatus.Decommissioned);
         station.IsEnabled.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Enable_Should_Throw_For_Decommissioned_Station()
+    {
+        var station = CreateTestStation();
+        station.Decommission();
+
+        var ex = Should.Throw<BusinessException>(() => station.Enable());
+
+        ex.Code.ShouldBe(KLCDomainErrorCodes.Station.CannotEnableDecommissioned);
     }
 
     [Fact]

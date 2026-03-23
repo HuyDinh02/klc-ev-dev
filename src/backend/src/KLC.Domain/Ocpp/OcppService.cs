@@ -91,6 +91,16 @@ public class OcppService : DomainService, IOcppService
             return null;
         }
 
+        if (!station.IsEnabled || station.Status == StationStatus.Disabled || station.Status == StationStatus.Decommissioned)
+        {
+            _logger.LogWarning(
+                "BootNotification rejected for unavailable station {ChargePointId}: enabled={IsEnabled}, status={Status}",
+                chargePointId,
+                station.IsEnabled,
+                station.Status);
+            return null;
+        }
+
         station.SetStationInfo(vendor, model, serialNumber, firmwareVersion);
         station.RecordHeartbeat();
 

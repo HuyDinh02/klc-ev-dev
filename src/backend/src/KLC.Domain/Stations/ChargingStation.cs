@@ -233,6 +233,11 @@ public class ChargingStation : FullAuditedAggregateRoot<Guid>
 
     public void Enable()
     {
+        if (Status == StationStatus.Decommissioned)
+        {
+            throw new BusinessException(KLCDomainErrorCodes.Station.CannotEnableDecommissioned);
+        }
+
         IsEnabled = true;
         if (Status == StationStatus.Disabled)
             Status = StationStatus.Offline; // Will become Online on next BootNotification
@@ -241,7 +246,16 @@ public class ChargingStation : FullAuditedAggregateRoot<Guid>
     public void Disable()
     {
         IsEnabled = false;
-        Status = StationStatus.Disabled;
+        if (Status != StationStatus.Decommissioned)
+        {
+            Status = StationStatus.Disabled;
+        }
+    }
+
+    public void Decommission()
+    {
+        IsEnabled = false;
+        Status = StationStatus.Decommissioned;
     }
 
     public void UpdateFirmwareStatus(string status)

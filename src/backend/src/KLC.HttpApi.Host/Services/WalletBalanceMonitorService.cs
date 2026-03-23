@@ -111,7 +111,7 @@ public class WalletBalanceMonitorService : BackgroundService
         IRepository<ChargingStation, Guid> stationRepository,
         IOcppRemoteCommandService remoteCommandService)
     {
-        var user = await userRepository.FirstOrDefaultAsync(u => u.Id == session.UserId);
+        var user = await userRepository.FirstOrDefaultAsync(u => u.IdentityUserId == session.UserId);
         if (user == null)
         {
             _logger.LogWarning(
@@ -162,11 +162,11 @@ public class WalletBalanceMonitorService : BackgroundService
             station.StationCode,
             session.OcppTransactionId.Value);
 
-        var accepted = await remoteCommandService.SendRemoteStopTransactionAsync(
+        var result = await remoteCommandService.SendRemoteStopTransactionAsync(
             station.StationCode,
             session.OcppTransactionId.Value);
 
-        if (accepted)
+        if (result.Accepted)
         {
             _logger.LogInformation(
                 "RemoteStopTransaction accepted for session {SessionId} on station {StationCode}",
@@ -175,8 +175,8 @@ public class WalletBalanceMonitorService : BackgroundService
         else
         {
             _logger.LogWarning(
-                "RemoteStopTransaction rejected for session {SessionId} on station {StationCode}",
-                session.Id, station.StationCode);
+                "RemoteStopTransaction rejected for session {SessionId} on station {StationCode}: {ErrorMessage}",
+                session.Id, station.StationCode, result.ErrorMessage ?? "Unknown failure");
         }
     }
 }

@@ -14,6 +14,8 @@ using Volo.Abp.PermissionManagement;
 using Volo.Abp.SettingManagement;
 using KLC.PowerSharing;
 using Volo.Abp.Uow;
+using KLC.Ocpp;
+using KLC.TestDoubles;
 
 namespace KLC.EntityFrameworkCore;
 
@@ -56,6 +58,8 @@ public class KLCEntityFrameworkCoreTestModule : AbpModule
 
         // Explicit registration for domain services with non-conventional naming
         context.Services.AddTransient<IPowerSharingService, PowerSharingDomainService>();
+        context.Services.AddSingleton<FakeOcppRemoteCommandService>();
+        context.Services.AddSingleton<IOcppRemoteCommandService>(sp => sp.GetRequiredService<FakeOcppRemoteCommandService>());
 
         ConfigureInMemorySqlite(context.Services);
     }

@@ -10,6 +10,7 @@
     "KLC:Station:NotFound": "Station not found.",
     "KLC:Station:InvalidLatitude": "Latitude must be between -90 and 90.",
     "KLC:Station:InvalidLongitude": "Longitude must be between -180 and 180.",
+    "KLC:Station:CannotEnableDecommissioned": "Decommissioned stations cannot be re-enabled.",
 
     "KLC:Connector:StationNotFound": "Station not found.",
     "KLC:Connector:DuplicateNumber": "Connector #{connectorNumber} already exists on this station.",
@@ -41,6 +42,8 @@
     "KLC:Session:NotOwned": "You do not have access to this session.",
     "KLC:Session:InvalidStatus": "Session is not in the required status for this operation.",
     "KLC:Session:InvalidStateTransition": "Cannot transition session from '{currentStatus}' to '{expectedStatus}'.",
+    "KLC:Session:StartCommandFailed": "Failed to dispatch the remote start command to the charger.",
+    "KLC:Session:StopCommandFailed": "Failed to dispatch the remote stop command to the charger.",
 
     "KLC:Profile:EmailAlreadyUsed": "This email address is already in use.",
     "KLC:Profile:PhoneAlreadyUsed": "This phone number is already in use.",

@@ -25,23 +25,21 @@ public class OcppRemoteCommandService : IOcppRemoteCommandService
         _logger = logger;
     }
 
-    public async Task<bool> SendRemoteStartTransactionAsync(string stationCode, int connectorId, string idTag)
+    public async Task<RemoteCommandResult> SendRemoteStartTransactionAsync(string stationCode, int connectorId, string idTag)
     {
-        var result = await SendCommandAsync(stationCode, "RemoteStartTransaction", new
+        return await SendCommandAsync(stationCode, "RemoteStartTransaction", new
         {
             connectorId,
             idTag
         });
-        return result.Accepted;
     }
 
-    public async Task<bool> SendRemoteStopTransactionAsync(string stationCode, int transactionId)
+    public async Task<RemoteCommandResult> SendRemoteStopTransactionAsync(string stationCode, int transactionId)
     {
-        var result = await SendCommandAsync(stationCode, "RemoteStopTransaction", new
+        return await SendCommandAsync(stationCode, "RemoteStopTransaction", new
         {
             transactionId
         });
-        return result.Accepted;
     }
 
     public async Task<RemoteCommandResult> SendResetAsync(string stationCode, string resetType)

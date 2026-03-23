@@ -56,7 +56,11 @@ public class SessionAppService : KLCAppService, ISessionAppService
         // Check for existing active session (BR-010-03)
         var existingSession = await _sessionRepository.FirstOrDefaultAsync(
             s => s.UserId == userId &&
-                 (s.Status == SessionStatus.Pending || s.Status == SessionStatus.InProgress));
+                 (s.Status == SessionStatus.Pending ||
+                  s.Status == SessionStatus.Starting ||
+                  s.Status == SessionStatus.InProgress ||
+                  s.Status == SessionStatus.Suspended ||
+                  s.Status == SessionStatus.Stopping));
         if (existingSession != null)
         {
             throw new BusinessException(KLCDomainErrorCodes.Session.AlreadyActive);
@@ -110,25 +114,40 @@ public class SessionAppService : KLCAppService, ISessionAppService
             ratePerKwh
         );
 
-        session.MarkStarting();
-
         await _sessionRepository.InsertAsync(session);
+        await CurrentUnitOfWork.SaveChangesAsync();
 
         // Send RemoteStartTransaction via OCPP
+        RemoteCommandResult startResult;
         try
         {
-            var accepted = await _ocppRemoteCommandService.SendRemoteStartTransactionAsync(
+            startResult = await _ocppRemoteCommandService.SendRemoteStartTransactionAsync(
                 station.StationCode, input.ConnectorNumber, userId.ToString());
-
-            if (!accepted)
-            {
-                Logger.LogWarning("RemoteStartTransaction not accepted for station {StationCode}", station.StationCode);
-            }
         }
         catch (Exception ex)
         {
             Logger.LogWarning(ex, "Failed to send RemoteStartTransaction to {StationCode}", station.StationCode);
+            session.MarkFailed("RemoteStartTransaction dispatch failed");
+            await _sessionRepository.UpdateAsync(session);
+            await CurrentUnitOfWork.SaveChangesAsync();
+            throw CreateSessionCommandException(KLCDomainErrorCodes.Session.StartCommandFailed, "RemoteStartTransaction dispatch failed");
         }
+
+        if (!startResult.Accepted)
+        {
+            Logger.LogWarning(
+                "RemoteStartTransaction not accepted for station {StationCode}: {ErrorMessage}",
+                station.StationCode,
+                startResult.ErrorMessage ?? "Unknown failure");
+            session.MarkFailed(startResult.ErrorMessage ?? "RemoteStartTransaction rejected");
+            await _sessionRepository.UpdateAsync(session);
+            await CurrentUnitOfWork.SaveChangesAsync();
+            throw CreateSessionCommandException(KLCDomainErrorCodes.Session.StartCommandFailed, startResult.ErrorMessage);
+        }
+
+        session.MarkStarting();
+        await _sessionRepository.UpdateAsync(session);
+        await CurrentUnitOfWork.SaveChangesAsync();
 
         return await MapToDtoAsync(session);
     }
@@ -143,33 +162,42 @@ public class SessionAppService : KLCAppService, ISessionAppService
             throw new BusinessException(KLCDomainErrorCodes.Session.NotOwned);
         }
 
-        if (session.Status != SessionStatus.InProgress)
+        if (session.Status != SessionStatus.InProgress && session.Status != SessionStatus.Suspended)
         {
             throw new BusinessException(KLCDomainErrorCodes.Session.InvalidStatus);
         }
 
+        // Send RemoteStopTransaction via OCPP
+        if (!session.OcppTransactionId.HasValue)
+        {
+            throw CreateSessionCommandException(KLCDomainErrorCodes.Session.StopCommandFailed, "Session has no OCPP transaction id");
+        }
+
+        var station = await _stationRepository.GetAsync(session.StationId);
+        RemoteCommandResult stopResult;
+        try
+        {
+            stopResult = await _ocppRemoteCommandService.SendRemoteStopTransactionAsync(
+                station.StationCode, session.OcppTransactionId.Value);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to send RemoteStopTransaction for session {SessionId}", session.Id);
+            throw CreateSessionCommandException(KLCDomainErrorCodes.Session.StopCommandFailed, "RemoteStopTransaction dispatch failed");
+        }
+
+        if (!stopResult.Accepted)
+        {
+            Logger.LogWarning(
+                "RemoteStopTransaction not accepted for station {StationCode}: {ErrorMessage}",
+                station.StationCode,
+                stopResult.ErrorMessage ?? "Unknown failure");
+            throw CreateSessionCommandException(KLCDomainErrorCodes.Session.StopCommandFailed, stopResult.ErrorMessage);
+        }
+
         session.MarkStopping();
         await _sessionRepository.UpdateAsync(session);
-
-        // Send RemoteStopTransaction via OCPP
-        if (session.OcppTransactionId.HasValue)
-        {
-            try
-            {
-                var station = await _stationRepository.GetAsync(session.StationId);
-                var accepted = await _ocppRemoteCommandService.SendRemoteStopTransactionAsync(
-                    station.StationCode, session.OcppTransactionId.Value);
-
-                if (!accepted)
-                {
-                    Logger.LogWarning("RemoteStopTransaction not accepted for station {StationCode}", station.StationCode);
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.LogWarning(ex, "Failed to send RemoteStopTransaction for session {SessionId}", session.Id);
-            }
-        }
+        await CurrentUnitOfWork.SaveChangesAsync();
 
         return await MapToDtoAsync(session);
     }
@@ -342,5 +370,16 @@ public class SessionAppService : KLCAppService, ISessionAppService
             LastModificationTime = session.LastModificationTime,
             LastModifierId = session.LastModifierId
         };
+    }
+
+    private static BusinessException CreateSessionCommandException(string code, string? reason)
+    {
+        var exception = new BusinessException(code);
+        if (!string.IsNullOrWhiteSpace(reason))
+        {
+            exception.WithData("reason", reason);
+        }
+
+        return exception;
     }
 }
