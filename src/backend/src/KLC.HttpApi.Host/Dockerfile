@@ -19,6 +19,7 @@ RUN dotnet restore src/KLC.HttpApi.Host/KLC.HttpApi.Host.csproj
 
 # Copy source and build
 COPY . .
+RUN ls -la src/KLC.EntityFrameworkCore/Properties/ && cat src/KLC.EntityFrameworkCore/Properties/Resources.resx
 WORKDIR /src/src/KLC.HttpApi.Host
 RUN dotnet publish -c Release -o /app/publish --no-restore
 
