@@ -3,6 +3,8 @@
     <LangVersion>latest</LangVersion>
     <Version>1.0.0</Version>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <!-- Disable default **/*.resx glob to prevent MSB3552 in .NET 10 Docker builds -->
+    <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
 	<AbpProjectType>app</AbpProjectType>
   </PropertyGroup>
 
