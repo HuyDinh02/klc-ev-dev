@@ -1,0 +1,7 @@
+<Project>
+  <!-- MSB3552 workaround: .NET 10 SDK expects **/*.resx to match files.
+       Remove the default resx glob to prevent build failures when no resx files exist. -->
+  <ItemGroup>
+    <EmbeddedResource Remove="**/*.resx" />
+  </ItemGroup>
+</Project>
