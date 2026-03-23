@@ -2,10 +2,11 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 WORKDIR /app
 EXPOSE 8080
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0.101 AS build
 WORKDIR /src
 
 # Copy solution and project files for restore
+COPY global.json .
 COPY common.props .
 COPY src/KLC.Domain.Shared/KLC.Domain.Shared.csproj src/KLC.Domain.Shared/
 COPY src/KLC.Domain/KLC.Domain.csproj src/KLC.Domain/
