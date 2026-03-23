@@ -211,7 +211,7 @@ jobs:
             --max-instances=3
             --timeout=3600
             --session-affinity
-            --vpc-connector=evcms-dev-vpc-connector
+            --vpc-connector=klc-connector
             --vpc-egress=private-ranges-only
             --set-env-vars=ASPNETCORE_ENVIRONMENT=Development
             --set-secrets=ConnectionStrings__Default=evcms-dev-db-connection-string:latest,ConnectionStrings__Redis=evcms-dev-redis-auth-string:latest,Jwt__SecretKey=evcms-dev-jwt-secret-key:latest,StringEncryption__DefaultPassPhrase=evcms-dev-string-encryption-passphrase:latest,Payment__MoMo__PartnerCode=evcms-dev-momo-partner-code:latest,Payment__MoMo__AccessKey=evcms-dev-momo-access-key:latest,Payment__MoMo__SecretKey=evcms-dev-momo-secret-key:latest,Payment__VnPay__TmnCode=evcms-dev-vnpay-tmn-code:latest,Payment__VnPay__HashSecret=evcms-dev-vnpay-hash-secret:latest
@@ -248,7 +248,7 @@ jobs:
             --cpu=1
             --min-instances=0
             --max-instances=5
-            --vpc-connector=evcms-dev-vpc-connector
+            --vpc-connector=klc-connector
             --vpc-egress=private-ranges-only
             --set-env-vars=ASPNETCORE_ENVIRONMENT=Development
             --set-secrets=ConnectionStrings__Default=evcms-dev-db-connection-string:latest,ConnectionStrings__Redis=evcms-dev-redis-auth-string:latest,Jwt__SecretKey=evcms-dev-jwt-secret-key:latest,StringEncryption__DefaultPassPhrase=evcms-dev-string-encryption-passphrase:latest,Payment__MoMo__PartnerCode=evcms-dev-momo-partner-code:latest,Payment__MoMo__AccessKey=evcms-dev-momo-access-key:latest,Payment__MoMo__SecretKey=evcms-dev-momo-secret-key:latest,Payment__VnPay__TmnCode=evcms-dev-vnpay-tmn-code:latest,Payment__VnPay__HashSecret=evcms-dev-vnpay-hash-secret:latest
@@ -287,7 +287,7 @@ jobs:
             --max-instances=3
             --timeout=3600
             --session-affinity
-            --vpc-connector=evcms-dev-vpc-connector
+            --vpc-connector=klc-connector
             --vpc-egress=private-ranges-only
             --set-env-vars=ASPNETCORE_ENVIRONMENT=Development
             --set-secrets=ConnectionStrings__Default=evcms-dev-db-connection-string:latest,ConnectionStrings__Redis=evcms-dev-redis-auth-string:latest,Jwt__SecretKey=evcms-dev-jwt-secret-key:latest,StringEncryption__DefaultPassPhrase=evcms-dev-string-encryption-passphrase:latest,Payment__MoMo__PartnerCode=evcms-dev-momo-partner-code:latest,Payment__MoMo__AccessKey=evcms-dev-momo-access-key:latest,Payment__MoMo__SecretKey=evcms-dev-momo-secret-key:latest,Payment__VnPay__TmnCode=evcms-dev-vnpay-tmn-code:latest,Payment__VnPay__HashSecret=evcms-dev-vnpay-hash-secret:latest,Ocpp__AuthKey=evcms-dev-ocpp-auth-key:latest
