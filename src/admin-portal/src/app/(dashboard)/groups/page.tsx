@@ -110,11 +110,9 @@ const GROUP_TYPE_STYLES: Record<number, { bg: string; text: string; iconColor: s
 /** Map string-based station status to numeric value for StatusBadge */
 const STATION_STATUS_NAME_TO_VALUE: Record<string, number> = {
   Offline: 0,
-  Available: 1,
-  Occupied: 2,
-  Unavailable: 3,
-  Faulted: 4,
-  Decommissioned: 5,
+  Online: 1,
+  Disabled: 2,
+  Decommissioned: 3,
 };
 
 // --- Components ---

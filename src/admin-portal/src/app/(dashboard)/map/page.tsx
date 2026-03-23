@@ -163,10 +163,10 @@ export default function StationMapPage() {
   const validStations = stations.filter((s) => s.latitude && s.longitude);
 
   const statusCounts = {
-    online: stations.filter((s) => s.status === 1 || s.status === 2).length,
+    online: stations.filter((s) => s.status === 1).length,
     offline: stations.filter((s) => s.status === 0).length,
-    faulted: stations.filter((s) => s.status === 4).length,
-    other: stations.filter((s) => s.status === 3 || s.status === 5).length,
+    faulted: 0, // Faults tracked at connector level
+    other: stations.filter((s) => s.status === 2 || s.status === 3).length,
   };
 
   return (

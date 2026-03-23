@@ -137,14 +137,14 @@ public class StationAppServiceTests
     }
 
     [Fact]
-    public void Disable_Should_Set_IsEnabled_False_And_Status_Unavailable()
+    public void Disable_Should_Set_Disabled()
     {
         var station = CreateTestStation();
 
         station.Disable();
 
         station.IsEnabled.ShouldBeFalse();
-        station.Status.ShouldBe(StationStatus.Unavailable);
+        station.Status.ShouldBe(StationStatus.Disabled);
     }
 
     [Fact]
@@ -159,22 +159,22 @@ public class StationAppServiceTests
     }
 
     [Fact]
-    public void RecordHeartbeat_Should_Transition_Offline_To_Available()
+    public void RecordHeartbeat_Should_Transition_Offline_To_Online()
     {
         var station = CreateTestStation();
         station.Status.ShouldBe(StationStatus.Offline);
 
         station.RecordHeartbeat();
 
-        station.Status.ShouldBe(StationStatus.Available);
+        station.Status.ShouldBe(StationStatus.Online);
     }
 
     [Fact]
     public void MarkOffline_Should_Set_Status_Offline()
     {
         var station = CreateTestStation();
-        station.RecordHeartbeat(); // Goes Available
-        station.Status.ShouldBe(StationStatus.Available);
+        station.RecordHeartbeat(); // Goes Online
+        station.Status.ShouldBe(StationStatus.Online);
 
         station.MarkOffline();
 
@@ -186,9 +186,9 @@ public class StationAppServiceTests
     {
         var station = CreateTestStation();
 
-        station.UpdateStatus(StationStatus.Faulted);
+        station.UpdateStatus(StationStatus.Disabled);
 
-        station.Status.ShouldBe(StationStatus.Faulted);
+        station.Status.ShouldBe(StationStatus.Disabled);
     }
 
     [Fact]
@@ -199,7 +199,7 @@ public class StationAppServiceTests
         station.UpdateStatus(StationStatus.Decommissioned);
         station.Disable();
 
-        station.Status.ShouldBe(StationStatus.Unavailable); // Disable overrides to Unavailable
+        station.Status.ShouldBe(StationStatus.Disabled); // Disable overrides to Disabled
         station.IsEnabled.ShouldBeFalse();
     }
 

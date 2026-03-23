@@ -101,7 +101,7 @@ public class HeartbeatMonitorService : BackgroundService
                 }
 
                 // Mark station as offline
-                station.UpdateStatus(StationStatus.Unavailable);
+                station.MarkOffline();
                 await stationRepository.UpdateAsync(station);
 
                 // Mark orphaned sessions as failed

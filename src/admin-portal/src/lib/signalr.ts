@@ -102,7 +102,7 @@ export function useMonitoringHub(callbacks: MonitoringCallbacks) {
           localStorage.getItem("access_token") || "",
       })
       .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
-      .configureLogging(LogLevel.None)
+      .configureLogging(LogLevel.Information)
       .build();
 
     connection.on("OnStationStatusChanged", (update: StationStatusUpdate) => {

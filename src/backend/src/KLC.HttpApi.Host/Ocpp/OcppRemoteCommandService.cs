@@ -306,6 +306,22 @@ public class OcppRemoteCommandService : IOcppRemoteCommandService
         }
     }
 
+    public async Task<RemoteCommandResult> SendReserveNowAsync(string stationCode, int connectorId, DateTime expiryDate, string idTag, int reservationId)
+    {
+        return await SendCommandAsync(stationCode, "ReserveNow", new
+        {
+            connectorId,
+            expiryDate = expiryDate.ToString("o"),
+            idTag,
+            reservationId
+        });
+    }
+
+    public async Task<RemoteCommandResult> SendCancelReservationAsync(string stationCode, int reservationId)
+    {
+        return await SendCommandAsync(stationCode, "CancelReservation", new { reservationId });
+    }
+
     private async Task<RemoteCommandResult> SendCommandAsync(string stationCode, string action, object payload)
     {
         var connection = _connectionManager.GetConnection(stationCode);

@@ -27,6 +27,7 @@ public class SessionAppService : KLCAppService, ISessionAppService
     private readonly IRepository<TariffPlan, Guid> _tariffRepository;
     private readonly IRepository<MeterValue, Guid> _meterValueRepository;
     private readonly IOcppRemoteCommandService _ocppRemoteCommandService;
+    private readonly IRepository<Users.AppUser, Guid> _userRepository;
 
     public SessionAppService(
         IRepository<ChargingSession, Guid> sessionRepository,
@@ -35,7 +36,8 @@ public class SessionAppService : KLCAppService, ISessionAppService
         IRepository<Vehicle, Guid> vehicleRepository,
         IRepository<TariffPlan, Guid> tariffRepository,
         IRepository<MeterValue, Guid> meterValueRepository,
-        IOcppRemoteCommandService ocppRemoteCommandService)
+        IOcppRemoteCommandService ocppRemoteCommandService,
+        IRepository<Users.AppUser, Guid> userRepository)
     {
         _sessionRepository = sessionRepository;
         _stationRepository = stationRepository;
@@ -44,6 +46,7 @@ public class SessionAppService : KLCAppService, ISessionAppService
         _tariffRepository = tariffRepository;
         _meterValueRepository = meterValueRepository;
         _ocppRemoteCommandService = ocppRemoteCommandService;
+        _userRepository = userRepository;
     }
 
     public async Task<ChargingSessionDto> StartAsync(StartSessionDto input)
@@ -279,10 +282,18 @@ public class SessionAppService : KLCAppService, ISessionAppService
         var stations = await _stationRepository.GetListAsync(st => stationIds.Contains(st.Id));
         var stationMap = stations.ToDictionary(st => st.Id, st => st.Name);
 
+        // Resolve user names from AppUser table
+        var userIds = sessions.Where(s => s.UserId != Guid.Empty).Select(s => s.UserId).Distinct().ToList();
+        var users = userIds.Count > 0
+            ? await _userRepository.GetListAsync(u => userIds.Contains(u.IdentityUserId))
+            : new List<Users.AppUser>();
+        var userMap = users.ToDictionary(u => u.IdentityUserId, u => u.FullName);
+
         var dtos = sessions.Select(s => new SessionListDto
         {
             Id = s.Id,
             StationName = stationMap.TryGetValue(s.StationId, out var sName) ? sName : "Unknown",
+            UserName = s.UserId != Guid.Empty && userMap.TryGetValue(s.UserId, out var uName) ? uName : null,
             ConnectorNumber = s.ConnectorNumber,
             Status = s.Status,
             StartTime = s.StartTime,

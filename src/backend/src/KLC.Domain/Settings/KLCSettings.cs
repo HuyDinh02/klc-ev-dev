@@ -28,6 +28,11 @@ public static class KLCSettings
         public const string WebSocketPort = GroupPrefix + ".WebSocketPort";
         public const string HeartbeatInterval = GroupPrefix + ".HeartbeatInterval";
         public const string MeterValueInterval = GroupPrefix + ".MeterValueInterval";
+        public const string ClockAlignedDataInterval = GroupPrefix + ".ClockAlignedDataInterval";
+        public const string MeterValuesSampledData = GroupPrefix + ".MeterValuesSampledData";
+        public const string StopTxnSampledData = GroupPrefix + ".StopTxnSampledData";
+        public const string StopTransactionOnEVSideDisconnect = GroupPrefix + ".StopTransactionOnEVSideDisconnect";
+        public const string AutoConfigOnBoot = GroupPrefix + ".AutoConfigOnBoot";
     }
 
     public static class Payments
@@ -44,5 +49,13 @@ public static class KLCSettings
         public const string SessionTimeout = GroupPrefix + ".SessionTimeout";
         public const string RequireMfa = GroupPrefix + ".RequireMfa";
         public const string PasswordMinLength = GroupPrefix + ".PasswordMinLength";
+    }
+
+    public static class Wallet
+    {
+        private const string GroupPrefix = Prefix + ".Wallet";
+        public const string MinBalanceToStart = GroupPrefix + ".MinBalanceToStart";
+        public const string AutoStopThreshold = GroupPrefix + ".AutoStopThreshold";
+        public const string MonitorIntervalSeconds = GroupPrefix + ".MonitorIntervalSeconds";
     }
 }

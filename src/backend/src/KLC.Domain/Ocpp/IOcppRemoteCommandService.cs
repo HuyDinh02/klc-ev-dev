@@ -114,6 +114,16 @@ public interface IOcppRemoteCommandService
     /// Send SendLocalList to push a local authorization list to the Charge Point.
     /// </summary>
     Task<SendLocalListResult> SendSendLocalListAsync(string stationCode, int listVersion, string updateType, List<LocalAuthEntry>? localAuthorizationList = null);
+
+    /// <summary>
+    /// Send ReserveNow to reserve a connector on a Charge Point.
+    /// </summary>
+    Task<RemoteCommandResult> SendReserveNowAsync(string stationCode, int connectorId, DateTime expiryDate, string idTag, int reservationId);
+
+    /// <summary>
+    /// Send CancelReservation to cancel an existing reservation on a Charge Point.
+    /// </summary>
+    Task<RemoteCommandResult> SendCancelReservationAsync(string stationCode, int reservationId);
 }
 
 /// <summary>

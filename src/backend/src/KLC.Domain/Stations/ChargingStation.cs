@@ -215,24 +215,33 @@ public class ChargingStation : FullAuditedAggregateRoot<Guid>
         LastHeartbeat = DateTime.UtcNow;
         if (Status == StationStatus.Offline)
         {
-            Status = StationStatus.Available;
+            Status = StationStatus.Online;
         }
     }
 
     public void MarkOffline()
     {
-        Status = StationStatus.Offline;
+        if (Status != StationStatus.Decommissioned)
+            Status = StationStatus.Offline;
+    }
+
+    public void MarkOnline()
+    {
+        if (Status == StationStatus.Offline)
+            Status = StationStatus.Online;
     }
 
     public void Enable()
     {
         IsEnabled = true;
+        if (Status == StationStatus.Disabled)
+            Status = StationStatus.Offline; // Will become Online on next BootNotification
     }
 
     public void Disable()
     {
         IsEnabled = false;
-        Status = StationStatus.Unavailable;
+        Status = StationStatus.Disabled;
     }
 
     public void UpdateFirmwareStatus(string status)

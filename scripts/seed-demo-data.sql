@@ -13,7 +13,7 @@ BEGIN
   END IF;
 
   -- Extra guard: abort if the database has > 1000 real charging sessions (likely production)
-  IF (SELECT count(*) FROM "ChargingSessions" WHERE "IsDeleted" = false) > 1000 THEN
+  IF (SELECT count(*) FROM "AppChargingSessions" WHERE "IsDeleted" = false) > 1000 THEN
     RAISE EXCEPTION 'SAFETY: Seed script blocked — database has > 1000 sessions, which looks like production data.';
   END IF;
 END $$;

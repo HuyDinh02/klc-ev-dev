@@ -2,36 +2,31 @@ namespace KLC.Enums;
 
 /// <summary>
 /// Represents the operational status of a charging station.
+/// Simplified to 4 states — connector-level detail comes from ConnectorStatus.
 /// </summary>
 public enum StationStatus
 {
     /// <summary>
-    /// Station is offline and not communicating with CSMS.
+    /// Station is offline (WebSocket disconnected, heartbeat timeout).
+    /// Auto-set by system. Recovers automatically on reconnect.
     /// </summary>
     Offline = 0,
 
     /// <summary>
-    /// Station is online and available for charging.
+    /// Station is online (WebSocket connected, BootNotification accepted).
+    /// Auto-set by system on successful connection.
     /// </summary>
-    Available = 1,
+    Online = 1,
 
     /// <summary>
-    /// Station is online but at least one connector is occupied.
+    /// Station is disabled by admin. No charging allowed.
+    /// Manually set by admin. Requires admin to re-enable.
     /// </summary>
-    Occupied = 2,
-
-    /// <summary>
-    /// Station is online but temporarily unavailable (maintenance, reserved, etc.).
-    /// </summary>
-    Unavailable = 3,
-
-    /// <summary>
-    /// Station has a fault and cannot be used.
-    /// </summary>
-    Faulted = 4,
+    Disabled = 2,
 
     /// <summary>
     /// Station has been decommissioned and retired from service.
+    /// Terminal state — cannot be re-enabled.
     /// </summary>
-    Decommissioned = 5
+    Decommissioned = 3
 }

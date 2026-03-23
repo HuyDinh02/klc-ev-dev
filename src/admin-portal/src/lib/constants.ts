@@ -50,11 +50,9 @@ export const CONNECTOR_STATUS: Record<number, StatusConfig> = {
 // --- Station Status ---
 export const STATION_STATUS: Record<number, StatusConfig> = {
   0: { label: "Offline",         color: "text-gray-500",   bgColor: "bg-gray-50",    dotColor: "#9CA3AF", icon: WifiOff,        badgeVariant: "secondary" },
-  1: { label: "Available",       color: "text-green-600",  bgColor: "bg-green-50",   dotColor: "#22C55E", icon: CheckCircle,    badgeVariant: "success" },
-  2: { label: "Occupied",        color: "text-blue-600",   bgColor: "bg-blue-50",    dotColor: "#3B82F6", icon: Zap,            badgeVariant: "info" },
-  3: { label: "Unavailable",     color: "text-stone-600",  bgColor: "bg-stone-50",   dotColor: "#78716C", icon: MinusCircle,    badgeVariant: "secondary" },
-  4: { label: "Faulted",         color: "text-red-600",    bgColor: "bg-red-50",     dotColor: "#EF4444", icon: XCircle,        badgeVariant: "destructive" },
-  5: { label: "Decommissioned",  color: "text-gray-400",   bgColor: "bg-gray-50",    dotColor: "#D1D5DB", icon: Ban,            badgeVariant: "secondary" },
+  1: { label: "Online",          color: "text-green-600",  bgColor: "bg-green-50",   dotColor: "#22C55E", icon: CheckCircle,    badgeVariant: "success" },
+  2: { label: "Disabled",        color: "text-stone-600",  bgColor: "bg-stone-50",   dotColor: "#78716C", icon: MinusCircle,    badgeVariant: "secondary" },
+  3: { label: "Decommissioned",  color: "text-gray-400",   bgColor: "bg-gray-50",    dotColor: "#D1D5DB", icon: Ban,            badgeVariant: "secondary" },
 };
 
 // --- Session Status ---

@@ -73,31 +73,31 @@ public class ChargingStationTests
         station.RecordHeartbeat();
 
         station.LastHeartbeat.ShouldNotBeNull();
-        station.Status.ShouldBe(StationStatus.Available);
+        station.Status.ShouldBe(StationStatus.Online);
     }
 
     [Fact]
     public void RecordHeartbeat_Should_Not_Change_Status_If_Not_Offline()
     {
         var station = CreateStation();
-        station.RecordHeartbeat(); // Now Available
-        station.UpdateStatus(StationStatus.Faulted);
+        station.RecordHeartbeat(); // Now Online
+        station.UpdateStatus(StationStatus.Disabled);
 
         station.RecordHeartbeat();
 
-        station.Status.ShouldBe(StationStatus.Faulted);
+        station.Status.ShouldBe(StationStatus.Disabled);
     }
 
     [Fact]
-    public void Disable_Should_Set_Unavailable_And_Disabled()
+    public void Disable_Should_Set_Disabled()
     {
         var station = CreateStation();
-        station.RecordHeartbeat(); // Now Available
+        station.RecordHeartbeat(); // Now Online
 
         station.Disable();
 
         station.IsEnabled.ShouldBeFalse();
-        station.Status.ShouldBe(StationStatus.Unavailable);
+        station.Status.ShouldBe(StationStatus.Disabled);
     }
 
     [Fact]

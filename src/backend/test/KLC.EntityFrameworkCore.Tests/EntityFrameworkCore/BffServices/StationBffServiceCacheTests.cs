@@ -45,7 +45,7 @@ public class StationBffServiceCacheTests : KLCEntityFrameworkCoreTestBase
             Address = "123 Cache St",
             Latitude = 21.0,
             Longitude = 105.8,
-            Status = StationStatus.Available,
+            Status = StationStatus.Online,
             IsEnabled = true,
             RatePerKwh = 3500,
             Connectors = new List<ConnectorStatusDto>
@@ -81,7 +81,7 @@ public class StationBffServiceCacheTests : KLCEntityFrameworkCoreTestBase
         await WithUnitOfWorkAsync(async () =>
         {
             var station = new ChargingStation(stationId, "DB-001", "DB Station", "456 DB St", 21.0, 105.8);
-            station.UpdateStatus(StationStatus.Available);
+            station.UpdateStatus(StationStatus.Online);
             station.AddConnector(Guid.NewGuid(), 1, ConnectorType.CCS2, 50);
             await _dbContext.ChargingStations.AddAsync(station);
             await _dbContext.SaveChangesAsync();

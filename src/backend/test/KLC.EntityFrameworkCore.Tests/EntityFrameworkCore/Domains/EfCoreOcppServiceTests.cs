@@ -180,7 +180,7 @@ public class EfCoreOcppServiceTests : KLCEntityFrameworkCoreTestBase
         await WithUnitOfWorkAsync(async () =>
         {
             var station = await _dbContext.ChargingStations.FirstAsync(s => s.Id == stationId);
-            station.Status.ShouldBe(StationStatus.Faulted);
+            station.Status.ShouldBe(StationStatus.Offline);
         });
     }
 

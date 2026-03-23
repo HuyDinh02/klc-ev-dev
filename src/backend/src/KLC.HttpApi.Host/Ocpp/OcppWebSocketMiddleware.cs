@@ -230,6 +230,39 @@ public class OcppWebSocketMiddleware
                         {
                             await SendMessageAsync(connection.WebSocket, response);
                         }
+
+                        // After sending BootNotification response, push configuration to the charger
+                        if (connection.PendingPostBootConfig)
+                        {
+                            connection.PendingPostBootConfig = false;
+                            var scopeFactory = _scopeFactory;
+                            var conn = connection;
+                            _ = Task.Run(async () =>
+                            {
+                                try
+                                {
+                                    // Brief delay to let the charger process BootNotification.conf
+                                    await Task.Delay(500);
+
+                                    using var configScope = scopeFactory.CreateScope();
+                                    var uowManager = configScope.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
+                                    var configService = configScope.ServiceProvider.GetRequiredService<OcppPostBootConfigService>();
+
+                                    using var uow = uowManager.Begin(requiresNew: true);
+                                    await configService.SendPostBootConfigurationAsync(conn);
+                                    await uow.CompleteAsync();
+                                }
+                                catch (Exception ex)
+                                {
+                                    // Log but don't crash — post-boot config is best-effort
+                                    var logger = scopeFactory.CreateScope().ServiceProvider
+                                        .GetRequiredService<ILogger<OcppWebSocketMiddleware>>();
+                                    logger.LogWarning(ex,
+                                        "Failed to send post-boot configuration to {ChargePointId}",
+                                        conn.ChargePointId);
+                                }
+                            });
+                        }
                     }
                 }
             }

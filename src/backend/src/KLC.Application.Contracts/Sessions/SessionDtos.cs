@@ -35,6 +35,7 @@ public class ChargingSessionDto : FullAuditedEntityDto<Guid>
 public class SessionListDto : EntityDto<Guid>
 {
     public string StationName { get; set; } = string.Empty;
+    public string? UserName { get; set; }
     public int ConnectorNumber { get; set; }
     public SessionStatus Status { get; set; }
     public DateTime? StartTime { get; set; }

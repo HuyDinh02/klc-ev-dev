@@ -32,11 +32,7 @@ export function StationBoardView({ stations, onEnable, onDisable, isMutating }: 
                   <span className="line-clamp-1">{station.address}</span>
                 </div>
               </div>
-              {!station.isEnabled ? (
-                <Badge variant="secondary">{t("stations.disabled")}</Badge>
-              ) : (
-                <StatusBadge type="station" value={station.status} />
-              )}
+              <StatusBadge type="station" value={station.status} />
             </div>
           </CardHeader>
           <CardContent>

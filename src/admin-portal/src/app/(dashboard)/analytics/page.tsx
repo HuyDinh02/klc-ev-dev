@@ -84,9 +84,13 @@ function getDateRange(range: DateRange): { fromDate: string; toDate: string } {
       from.setDate(from.getDate() - 90);
       break;
   }
+  // Use date-only strings (YYYY-MM-DD) to avoid UTC vs local timezone mismatch.
+  // Backend stores CreationTime without timezone (server local = UTC+7).
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   return {
-    fromDate: from.toISOString(),
-    toDate: to.toISOString(),
+    fromDate: fmt(from),
+    toDate: fmt(to),
   };
 }
 
