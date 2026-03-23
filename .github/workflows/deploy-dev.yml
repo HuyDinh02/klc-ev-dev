@@ -34,7 +34,7 @@ jobs:
   # ---------------------------------------------------------------------------
   changes:
     name: Detect changes
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, gce]
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       admin-portal: ${{ steps.filter.outputs.admin-portal }}
@@ -54,7 +54,7 @@ jobs:
   # ---------------------------------------------------------------------------
   test:
     name: Backend Tests
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, gce]
     needs: changes
     if: needs.changes.outputs.backend == 'true'
     timeout-minutes: 15
@@ -103,7 +103,7 @@ jobs:
   # ---------------------------------------------------------------------------
   build-and-push:
     name: Build & Push Images
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, gce]
     needs: [changes, test]
     if: |
       always() &&
@@ -182,7 +182,7 @@ jobs:
   # ---------------------------------------------------------------------------
   deploy-backend-api:
     name: Deploy Backend API
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, gce]
     needs: [changes, build-and-push]
     if: needs.changes.outputs.backend == 'true'
     timeout-minutes: 10
@@ -221,7 +221,7 @@ jobs:
   # ---------------------------------------------------------------------------
   deploy-bff-socket:
     name: Deploy BFF Socket
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, gce]
     needs: [changes, build-and-push]
     if: needs.changes.outputs.backend == 'true'
     timeout-minutes: 10
@@ -258,7 +258,7 @@ jobs:
   # ---------------------------------------------------------------------------
   deploy-ocpp-gateway:
     name: Deploy OCPP Gateway
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, gce]
     needs: [changes, build-and-push]
     if: needs.changes.outputs.backend == 'true'
     timeout-minutes: 10
@@ -297,7 +297,7 @@ jobs:
   # ---------------------------------------------------------------------------
   deploy-admin-portal:
     name: Deploy Admin Portal
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, gce]
     needs: [changes, build-and-push]
     if: needs.changes.outputs.admin-portal == 'true'
     timeout-minutes: 10
@@ -332,7 +332,7 @@ jobs:
   # ---------------------------------------------------------------------------
   db-migrate:
     name: Run Database Migrations
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, gce]
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.run_migrations == 'true'
     timeout-minutes: 10
 
