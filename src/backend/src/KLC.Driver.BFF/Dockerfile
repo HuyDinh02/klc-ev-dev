@@ -16,15 +16,15 @@ COPY src/KLC.EntityFrameworkCore/KLC.EntityFrameworkCore.csproj src/KLC.EntityFr
 COPY src/KLC.HttpApi/KLC.HttpApi.csproj src/KLC.HttpApi/
 COPY src/KLC.HttpApi.Host/KLC.HttpApi.Host.csproj src/KLC.HttpApi.Host/
 COPY src/KLC.Driver.BFF/KLC.Driver.BFF.csproj src/KLC.Driver.BFF/
+# MSB3552 workaround: .NET 10 SDK requires **/*.resx glob to match at least one file
+RUN mkdir -p src/KLC.EntityFrameworkCore/Properties && \
+    printf '<?xml version="1.0" encoding="utf-8"?>\n<root>\n  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>\n  <resheader name="version"><value>2.0</value></resheader>\n</root>\n' > src/KLC.EntityFrameworkCore/Properties/Resources.resx
 RUN dotnet restore src/KLC.Driver.BFF/KLC.Driver.BFF.csproj
 
 # Copy source and build
 COPY . .
-# Ensure resx file exists for MSB3552 workaround (.NET 10 SDK glob requirement)
-RUN mkdir -p src/KLC.EntityFrameworkCore/Properties && \
-    echo '<?xml version="1.0" encoding="utf-8"?><root><resheader name="resmimetype"><value>text/microsoft-resx</value></resheader><resheader name="version"><value>2.0</value></resheader></root>' > src/KLC.EntityFrameworkCore/Properties/Resources.resx
 WORKDIR /src/src/KLC.Driver.BFF
-RUN dotnet publish -c Release -o /app/publish
+RUN dotnet publish -c Release -o /app/publish --no-restore
 
 FROM base AS final
 RUN useradd --no-create-home --uid 1001 appuser
