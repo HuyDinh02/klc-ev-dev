@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Security.Claims;
 using KLC.Driver.Services;
 using KLC.Enums;
@@ -28,11 +29,13 @@ public static class WalletEndpoints
 
         // POST /api/v1/wallet/topup
         group.MapPost("/topup", async (
+            HttpContext httpContext,
             [FromBody] TopUpRequest request,
             ClaimsPrincipal user,
             IWalletBffService walletService) =>
         {
             var userId = GetUserId(user);
+            request = request with { ClientIpAddress = httpContext.Connection.RemoteIpAddress?.ToString() };
             var result = await walletService.TopUpAsync(userId, request);
 
             return result.Success
@@ -43,6 +46,21 @@ public static class WalletEndpoints
         .WithSummary("Initiate a wallet top-up")
         .Produces<TopUpResultDto>(201)
         .Produces(400);
+
+        // GET /api/v1/wallet/topup/vnpay-ipn — VNPay IPN callback (GET with query params)
+        group.MapGet("/topup/vnpay-ipn", async (
+            HttpContext httpContext,
+            IWalletBffService walletService) =>
+        {
+            var queryParams = httpContext.Request.Query
+                .ToDictionary(q => q.Key, q => q.Value.ToString());
+            var result = await walletService.ProcessVnPayIpnAsync(queryParams);
+            return Results.Json(result);
+        })
+        .WithName("VnPayTopUpIpn")
+        .WithSummary("VNPay IPN callback for wallet top-up")
+        .Produces<KLC.Payments.VnPayIpnResponse>(200)
+        .AllowAnonymous();
 
         // POST /api/v1/wallet/topup/callback
         group.MapPost("/topup/callback", async (

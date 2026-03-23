@@ -189,7 +189,7 @@ public class VnPayPaymentServiceTests
     public async Task CreateTopUp_Without_Credentials_Returns_Stub_Url()
     {
         var config = BuildConfig(new() { { "Payment:VnPay:TmnCode", "" } });
-        var svc = new VnPayPaymentService(_logger, config);
+        var svc = new VnPayPaymentService(_logger, config, new StubHttpClientFactory());
 
         var result = await svc.CreateTopUpAsync(new CreateTopUpRequest
         {
@@ -215,7 +215,7 @@ public class VnPayPaymentServiceTests
             { "Payment:VnPay:Version", "2.1.0" }
         });
 
-        var svc = new VnPayPaymentService(_logger, config);
+        var svc = new VnPayPaymentService(_logger, config, new StubHttpClientFactory());
         var result = await svc.CreateTopUpAsync(new CreateTopUpRequest
         {
             ReferenceCode = "REF002",
@@ -244,7 +244,7 @@ public class VnPayPaymentServiceTests
             { "Payment:VnPay:Version", "2.1.0" }
         });
 
-        var svc = new VnPayPaymentService(_logger, config);
+        var svc = new VnPayPaymentService(_logger, config, new StubHttpClientFactory());
         var result = await svc.CreateTopUpAsync(new CreateTopUpRequest
         {
             ReferenceCode = "REF003",
@@ -268,7 +268,7 @@ public class VnPayPaymentServiceTests
     public async Task VerifyCallback_Without_HashSecret_Accepts_All()
     {
         var config = BuildConfig(new() { { "Payment:VnPay:HashSecret", "" } });
-        var svc = new VnPayPaymentService(_logger, config);
+        var svc = new VnPayPaymentService(_logger, config, new StubHttpClientFactory());
 
         var result = await svc.VerifyCallbackAsync("vnp_TxnRef=REF001&vnp_ResponseCode=00", null);
 
@@ -280,7 +280,7 @@ public class VnPayPaymentServiceTests
     public async Task VerifyCallback_With_Missing_Signature_Rejects()
     {
         var config = BuildConfig(new() { { "Payment:VnPay:HashSecret", "secret123" } });
-        var svc = new VnPayPaymentService(_logger, config);
+        var svc = new VnPayPaymentService(_logger, config, new StubHttpClientFactory());
 
         var result = await svc.VerifyCallbackAsync("vnp_TxnRef=REF001", null);
 
@@ -292,7 +292,7 @@ public class VnPayPaymentServiceTests
     public async Task VerifyCallback_With_Invalid_Signature_Rejects()
     {
         var config = BuildConfig(new() { { "Payment:VnPay:HashSecret", "secret123" } });
-        var svc = new VnPayPaymentService(_logger, config);
+        var svc = new VnPayPaymentService(_logger, config, new StubHttpClientFactory());
 
         var rawData = "vnp_Amount=5000000&vnp_TxnRef=REF001&vnp_SecureHash=invalid_hash";
         var result = await svc.VerifyCallbackAsync(rawData, null);
@@ -305,7 +305,7 @@ public class VnPayPaymentServiceTests
     public void Gateway_Should_Be_VnPay()
     {
         var config = BuildConfig(new());
-        var svc = new VnPayPaymentService(_logger, config);
+        var svc = new VnPayPaymentService(_logger, config, new StubHttpClientFactory());
 
         svc.Gateway.ShouldBe(PaymentGateway.VnPay);
     }

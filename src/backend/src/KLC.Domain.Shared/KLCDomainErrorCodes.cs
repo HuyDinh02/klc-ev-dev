@@ -44,6 +44,7 @@ public static class KLCDomainErrorCodes
         public const string InvalidRefund = "KLC:Payment:InvalidRefund";
         public const string CannotCancel = "KLC:Payment:CannotCancel";
         public const string InvalidSignature = "KLC:Payment:InvalidSignature";
+        public const string InvalidAmount = "KLC:Payment:InvalidAmount";
         public const string GatewayNotSupported = "KLC:Payment:GatewayNotSupported";
     }
 

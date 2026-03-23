@@ -176,16 +176,6 @@ function LoginForm() {
             </Button>
           </form>
 
-          {/* Demo credentials */}
-          <div className="mt-6 rounded-lg border border-dashed p-4 text-sm">
-            <p className="font-medium text-foreground mb-2">{t("auth.demoCredentials")}</p>
-            <div className="space-y-1 text-muted-foreground text-xs">
-              <p><span className="font-medium text-foreground">{t("auth.admin")}:</span> admin / Admin@123</p>
-              <p><span className="font-medium text-foreground">{t("auth.operator")}:</span> operator / Admin@123</p>
-              <p><span className="font-medium text-foreground">{t("auth.viewer")}:</span> viewer / Admin@123</p>
-            </div>
-          </div>
-
           {/* Footer */}
           <p className="mt-6 text-center text-xs text-muted-foreground">
             {t("common.poweredBy")}

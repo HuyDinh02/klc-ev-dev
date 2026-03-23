@@ -15,11 +15,13 @@ public static class PaymentEndpoints
 
         // POST /api/v1/payments/process
         paymentGroup.MapPost("/process", async (
+            HttpContext httpContext,
             [FromBody] ProcessPaymentRequest request,
             ClaimsPrincipal user,
             IPaymentBffService paymentService) =>
         {
             var userId = GetUserId(user);
+            request = request with { ClientIpAddress = httpContext.Connection.RemoteIpAddress?.ToString() };
             var result = await paymentService.ProcessPaymentAsync(userId, request);
 
             return result.Success

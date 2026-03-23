@@ -30,7 +30,7 @@ public class VnPaySignatureTests
             })
             .Build();
 
-        return new VnPayPaymentService(_logger, config);
+        return new VnPayPaymentService(_logger, config, new StubHttpClientFactory());
     }
 
     /// <summary>
@@ -339,5 +339,91 @@ public class VnPaySignatureTests
         result.IsValid.ShouldBeTrue();
         result.IsSuccess.ShouldBeFalse();
         result.ErrorMessage.ShouldContain("24");
+    }
+
+    [Fact]
+    public async Task VerifyCallbackAsync_ExtractsCallbackAmount()
+    {
+        var service = CreateService();
+
+        var parameters = new Dictionary<string, string>
+        {
+            { "vnp_Amount", "5000000" },  // 50,000 VND * 100
+            { "vnp_ResponseCode", "00" },
+            { "vnp_TmnCode", "VNPAY_TMN" },
+            { "vnp_TransactionNo", "14257896" },
+            { "vnp_TxnRef", "REF_013" }
+        };
+
+        var validSignature = ComputeExpectedVnPaySignature(parameters, TestHashSecret);
+
+        var queryParts = new List<string>();
+        foreach (var kvp in parameters)
+        {
+            queryParts.Add($"{kvp.Key}={HttpUtility.UrlEncode(kvp.Value)}");
+        }
+        queryParts.Add($"vnp_SecureHash={validSignature}");
+        var rawData = string.Join("&", queryParts);
+
+        var result = await service.VerifyCallbackAsync(rawData, null);
+
+        result.IsValid.ShouldBeTrue();
+        result.CallbackAmount.ShouldNotBeNull();
+        result.CallbackAmount.Value.ShouldBe(50_000m); // 5000000 / 100
+    }
+
+    [Fact]
+    public async Task CreateTopUp_IncludesExpireDate()
+    {
+        var service = CreateService();
+
+        var result = await service.CreateTopUpAsync(new CreateTopUpRequest
+        {
+            ReferenceCode = "REF_014",
+            Amount = 100_000,
+            Description = "Test top-up",
+            ReturnUrl = "https://example.com/return",
+            NotifyUrl = "https://example.com/notify"
+        });
+
+        result.Success.ShouldBeTrue();
+        result.RedirectUrl.ShouldContain("vnp_ExpireDate=");
+    }
+
+    [Fact]
+    public async Task CreateTopUp_UsesClientIpAddress()
+    {
+        var service = CreateService();
+
+        var result = await service.CreateTopUpAsync(new CreateTopUpRequest
+        {
+            ReferenceCode = "REF_015",
+            Amount = 100_000,
+            Description = "Test",
+            ReturnUrl = "https://example.com/return",
+            NotifyUrl = "https://example.com/notify",
+            ClientIpAddress = "192.168.1.100"
+        });
+
+        result.Success.ShouldBeTrue();
+        result.RedirectUrl.ShouldContain("vnp_IpAddr=192.168.1.100");
+    }
+
+    [Fact]
+    public async Task CreateTopUp_DefaultsIpTo127001_WhenNotProvided()
+    {
+        var service = CreateService();
+
+        var result = await service.CreateTopUpAsync(new CreateTopUpRequest
+        {
+            ReferenceCode = "REF_016",
+            Amount = 100_000,
+            Description = "Test",
+            ReturnUrl = "https://example.com/return",
+            NotifyUrl = "https://example.com/notify"
+        });
+
+        result.Success.ShouldBeTrue();
+        result.RedirectUrl.ShouldContain("vnp_IpAddr=127.0.0.1");
     }
 }
