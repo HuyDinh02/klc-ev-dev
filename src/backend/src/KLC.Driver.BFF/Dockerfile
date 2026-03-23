@@ -20,6 +20,9 @@ RUN dotnet restore src/KLC.Driver.BFF/KLC.Driver.BFF.csproj
 
 # Copy source and build
 COPY . .
+# Ensure resx file exists for MSB3552 workaround (.NET 10 SDK glob requirement)
+RUN mkdir -p src/KLC.EntityFrameworkCore/Properties && \
+    echo '<?xml version="1.0" encoding="utf-8"?><root><resheader name="resmimetype"><value>text/microsoft-resx</value></resheader><resheader name="version"><value>2.0</value></resheader></root>' > src/KLC.EntityFrameworkCore/Properties/Resources.resx
 WORKDIR /src/src/KLC.Driver.BFF
 RUN dotnet publish -c Release -o /app/publish
 
