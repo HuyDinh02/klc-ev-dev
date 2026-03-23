@@ -12,7 +12,9 @@ KLC EV Charging Station Management System
 - [ ] Rate limiting enabled: BFF auth 10/min, BFF API 60/min, Admin API 100/min
 - [ ] `[Authorize]` on all admin API controllers
 - [ ] `Ocpp:AllowTestIdTags` set to `false`
-- [ ] Payment callback HMAC-SHA256 signature verification enabled (MoMo/VnPay)
+- [ ] Payment callback HMAC signature verification enabled (VnPay: SHA512, MoMo: SHA256)
+- [ ] VNPay IPN URLs registered in VNPay merchant portal (api.ev.odcall.com, bff.ev.odcall.com)
+- [ ] VNPay production credentials stored in GCP Secret Manager (not appsettings)
 - [ ] Security headers configured (X-Content-Type-Options, X-Frame-Options, Strict-Transport-Security)
 - [ ] Firebase service account key not committed to repository
 - [ ] Pre-commit hook installed to prevent secret commits

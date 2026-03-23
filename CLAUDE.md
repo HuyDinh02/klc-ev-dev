@@ -128,21 +128,37 @@ cd src/admin-portal && npm run dev
 # Run Mobile App
 cd src/driver-app && npx expo start
 
-# Run all backend tests
-dotnet test src/backend
+# Backend tests (xUnit + NSubstitute + Shouldly)
+dotnet test src/backend                              # all tests
+dotnet test src/backend/test/KLC.Domain.Tests        # single project
+dotnet test src/backend --filter "FullyQualifiedName~ClassName.MethodName"  # single test
 
-# Run a single test project
-dotnet test src/backend/test/KLC.Domain.Tests
+# Admin Portal tests (Vitest + Testing Library)
+cd src/admin-portal && npm test                      # run once
+cd src/admin-portal && npm run test:watch            # watch mode
 
-# DB migration (apply)
-dotnet ef database update -p src/backend/src/KLC.EntityFrameworkCore
+# Admin Portal lint & type-check
+cd src/admin-portal && npm run lint                  # ESLint
+cd src/admin-portal && npx tsc --noEmit              # TypeScript check
+
+# DB migration (apply) — startup project required
+dotnet ef database update -p src/backend/src/KLC.EntityFrameworkCore -s src/backend/src/KLC.HttpApi.Host
 
 # DB migration (create new)
-dotnet ef migrations add <MigrationName> -p src/backend/src/KLC.EntityFrameworkCore
+dotnet ef migrations add <MigrationName> -p src/backend/src/KLC.EntityFrameworkCore -s src/backend/src/KLC.HttpApi.Host
 
 # Seed demo data (users: admin/Admin@123, operator/Admin@123, viewer/Admin@123)
 PGPASSWORD=postgres psql -h localhost -p 5433 -U postgres -d KLC -f scripts/seed-demo-data.sql
 ```
+
+## CI/CD
+
+- **CI** (`.github/workflows/ci.yml`): Runs on PR to main/develop — builds backend, runs `dotnet test`, builds admin portal, runs `npm test` + `tsc --noEmit`
+- **Deploy Dev** (`.github/workflows/deploy-dev.yml`): Push to `develop` → builds Docker images → deploys to Cloud Run (dev)
+- **Deploy Prod** (`.github/workflows/deploy.yml`): Push to `main` → builds Docker images → deploys to Cloud Run (prod)
+- **Cloud Run services**: `backend-api` (Admin API), `bff-socket` (Driver BFF), `ocpp-gateway`, `admin-portal`
+- **Artifact Registry**: `asia-southeast1-docker.pkg.dev/klc-ev-charging/`
+- DB migrations can be triggered manually via `workflow_dispatch` on deploy workflows
 
 ## Key Conventions
 

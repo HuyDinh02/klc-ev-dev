@@ -43,6 +43,28 @@ public class ProcessPaymentDto
     public PaymentGateway Gateway { get; set; }
 
     public Guid? PaymentMethodId { get; set; }
+
+    /// <summary>
+    /// Client IP address for payment gateway (set by controller, not by client).
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string? ClientIpAddress { get; set; }
+}
+
+/// <summary>
+/// VNPay IPN response format. VNPay expects exactly this JSON shape.
+/// </summary>
+public class VnPayIpnResponse
+{
+    public string RspCode { get; set; } = "99";
+    public string Message { get; set; } = "Unknown error";
+
+    public static VnPayIpnResponse Success() => new() { RspCode = "00", Message = "Confirm Success" };
+    public static VnPayIpnResponse OrderNotFound() => new() { RspCode = "01", Message = "Order not found" };
+    public static VnPayIpnResponse AlreadyConfirmed() => new() { RspCode = "02", Message = "Order already confirmed" };
+    public static VnPayIpnResponse InvalidAmount() => new() { RspCode = "04", Message = "Invalid amount" };
+    public static VnPayIpnResponse InvalidSignature() => new() { RspCode = "97", Message = "Invalid signature" };
+    public static VnPayIpnResponse UnknownError() => new() { RspCode = "99", Message = "Unknown error" };
 }
 
 public class PaymentResultDto

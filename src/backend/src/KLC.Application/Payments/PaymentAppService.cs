@@ -115,7 +115,8 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
                 Amount = session.TotalCost,
                 Description = $"Session payment: {payment.ReferenceCode}",
                 ReturnUrl = $"/payments/{payment.Id}/result",
-                NotifyUrl = $"/api/payments/callback/{input.Gateway}"
+                NotifyUrl = $"/api/payments/callback/{input.Gateway}",
+                ClientIpAddress = input.ClientIpAddress
             });
             redirectUrl = gatewayResult.RedirectUrl;
         }
@@ -354,6 +355,18 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
                 throw new BusinessException(KLCDomainErrorCodes.Payment.InvalidSignature)
                     .WithData("gateway", payment.Gateway.ToString());
             }
+
+            // Verify amount matches (if callback provides amount)
+            if (verifyResult.CallbackAmount.HasValue && verifyResult.CallbackAmount.Value != payment.Amount)
+            {
+                Logger.LogWarning(
+                    "Payment callback amount mismatch: Expected={Expected}, Got={Got}, Ref={ReferenceCode}",
+                    payment.Amount, verifyResult.CallbackAmount.Value, callback.ReferenceCode);
+
+                throw new BusinessException(KLCDomainErrorCodes.Payment.InvalidAmount)
+                    .WithData("expected", payment.Amount)
+                    .WithData("actual", verifyResult.CallbackAmount.Value);
+            }
         }
         else
         {
@@ -392,6 +405,129 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
         await _paymentRepository.UpdateAsync(payment);
     }
 
+    [AllowAnonymous]
+    public async Task<VnPayIpnResponse> HandleVnPayIpnAsync(Dictionary<string, string> queryParams)
+    {
+        // Build raw query string for signature verification
+        var rawData = string.Join("&", queryParams.Select(kvp => $"{kvp.Key}={kvp.Value}"));
+
+        var vnpayGateway = _gateways.FirstOrDefault(g => g.Gateway == PaymentGateway.VnPay);
+        if (vnpayGateway == null)
+        {
+            Logger.LogWarning("[VnPay IPN] VnPay gateway service not registered");
+            return VnPayIpnResponse.UnknownError();
+        }
+
+        // Step 1: Verify signature
+        var verifyResult = await vnpayGateway.VerifyCallbackAsync(rawData, null);
+        if (!verifyResult.IsValid)
+        {
+            Logger.LogWarning("[VnPay IPN] Invalid signature");
+            return VnPayIpnResponse.InvalidSignature();
+        }
+
+        // Step 2: Find payment by TxnRef (= ReferenceCode)
+        var txnRef = queryParams.GetValueOrDefault("vnp_TxnRef");
+        if (string.IsNullOrEmpty(txnRef))
+        {
+            return VnPayIpnResponse.OrderNotFound();
+        }
+
+        var payment = await _paymentRepository.FirstOrDefaultAsync(p => p.ReferenceCode == txnRef);
+        if (payment == null)
+        {
+            Logger.LogWarning("[VnPay IPN] Order not found: TxnRef={TxnRef}", txnRef);
+            return VnPayIpnResponse.OrderNotFound();
+        }
+
+        // Step 3: Idempotency — already confirmed
+        if (payment.Status == PaymentStatus.Completed)
+        {
+            return VnPayIpnResponse.AlreadyConfirmed();
+        }
+
+        // Step 4: Verify amount (VNPay sends amount * 100)
+        if (verifyResult.CallbackAmount.HasValue && verifyResult.CallbackAmount.Value != payment.Amount)
+        {
+            Logger.LogWarning(
+                "[VnPay IPN] Amount mismatch: Expected={Expected}, Got={Got}, TxnRef={TxnRef}",
+                payment.Amount, verifyResult.CallbackAmount.Value, txnRef);
+            return VnPayIpnResponse.InvalidAmount();
+        }
+
+        // Step 5: Update payment status
+        var responseCode = queryParams.GetValueOrDefault("vnp_ResponseCode");
+        if (responseCode == "00")
+        {
+            payment.MarkCompleted(verifyResult.GatewayTransactionId ?? "");
+            _auditLogger.LogPaymentEvent("PaymentCompleted", payment.Id, payment.Amount, payment.Gateway.ToString(), payment.UserId.ToString());
+
+            // Generate invoice
+            var session = await _sessionRepository.GetAsync(payment.SessionId);
+            var invoiceNumber = Invoice.GenerateInvoiceNumber(await GetNextInvoiceSequenceAsync());
+            var invoice = new Invoice(
+                GuidGenerator.Create(),
+                payment.Id,
+                invoiceNumber,
+                session.TotalEnergyKwh,
+                session.RatePerKwh,
+                10m // 10% VAT
+            );
+            await _invoiceRepository.InsertAsync(invoice);
+        }
+        else
+        {
+            payment.MarkFailed($"VnPay response code: {responseCode}");
+            _auditLogger.LogPaymentEvent("PaymentFailed", payment.Id, payment.Amount, payment.Gateway.ToString(), payment.UserId.ToString());
+        }
+
+        await _paymentRepository.UpdateAsync(payment);
+
+        Logger.LogInformation(
+            "[VnPay IPN] Processed: TxnRef={TxnRef}, ResponseCode={ResponseCode}, PaymentStatus={Status}",
+            txnRef, responseCode, payment.Status);
+
+        return VnPayIpnResponse.Success();
+    }
+
+    public async Task<PaymentTransactionDto> QueryVnPayTransactionAsync(Guid paymentId)
+    {
+        var payment = await _paymentRepository.GetAsync(paymentId);
+
+        var vnpayGateway = _gateways.FirstOrDefault(g => g.Gateway == PaymentGateway.VnPay);
+        if (vnpayGateway == null)
+        {
+            throw new BusinessException(KLCDomainErrorCodes.Payment.GatewayNotSupported)
+                .WithData("gateway", "VnPay");
+        }
+
+        var queryResult = await vnpayGateway.QueryTransactionAsync(new QueryTransactionRequest
+        {
+            TxnRef = payment.ReferenceCode,
+            TransactionDate = payment.CreationTime.AddHours(7).ToString("yyyyMMddHHmmss"),
+            GatewayTransactionId = payment.GatewayTransactionId,
+            OrderInfo = $"Query for {payment.ReferenceCode}"
+        });
+
+        // If the query reveals a completed transaction but our record is still pending, update it
+        if (queryResult.IsValid && queryResult.IsSuccess && payment.Status == PaymentStatus.Pending)
+        {
+            payment.MarkCompleted(queryResult.GatewayTransactionId ?? "");
+            await _paymentRepository.UpdateAsync(payment);
+
+            _auditLogger.LogPaymentEvent("PaymentReconciled", payment.Id, payment.Amount, payment.Gateway.ToString(), payment.UserId.ToString());
+
+            Logger.LogInformation(
+                "[VnPay] Payment reconciled via querydr: PaymentId={PaymentId}, TxnRef={TxnRef}",
+                payment.Id, payment.ReferenceCode);
+        }
+
+        var session = await _sessionRepository.GetAsync(payment.SessionId);
+        var station = await _stationRepository.GetAsync(session.StationId);
+
+        return MapToDto(payment, station.Name, session.TotalEnergyKwh);
+    }
+
     [Authorize(KLCPermissions.Payments.Refund)]
     public async Task<RefundResultDto> RefundAsync(Guid transactionId, RefundInput input)
     {
@@ -415,6 +551,31 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
         await _paymentRepository.UpdateAsync(payment);
 
         _auditLogger.LogPaymentEvent("RefundProcessed", payment.Id, payment.Amount, payment.Gateway.ToString(), payment.UserId.ToString());
+
+        // Call VNPay refund API if payment was made via VnPay
+        if (payment.Gateway == PaymentGateway.VnPay && !string.IsNullOrEmpty(payment.GatewayTransactionId))
+        {
+            var vnpayGateway = _gateways.FirstOrDefault(g => g.Gateway == PaymentGateway.VnPay);
+            if (vnpayGateway != null)
+            {
+                var refundResult = await vnpayGateway.RefundAsync(new RefundGatewayRequest
+                {
+                    TxnRef = payment.ReferenceCode,
+                    GatewayTransactionId = payment.GatewayTransactionId,
+                    Amount = payment.Amount,
+                    TransactionDate = payment.CreationTime.AddHours(7).ToString("yyyyMMddHHmmss"),
+                    CreatedBy = CurrentUser.UserName ?? "admin",
+                    OrderInfo = input.Reason ?? $"Refund for {payment.ReferenceCode}"
+                });
+
+                if (!refundResult.Success)
+                {
+                    Logger.LogWarning(
+                        "[VnPay] Gateway refund failed (wallet already credited): PaymentId={PaymentId}, Error={Error}",
+                        payment.Id, refundResult.ErrorMessage);
+                }
+            }
+        }
 
         return new RefundResultDto
         {

@@ -218,7 +218,8 @@ public class PaymentBffService : IPaymentBffService
                 Amount = finalAmount,
                 Description = $"Session payment #{gatewayPayment.ReferenceCode}",
                 ReturnUrl = "klc://payment/callback",
-                NotifyUrl = "/api/v1/payments/callback"
+                NotifyUrl = "/api/v1/payments/callback",
+                ClientIpAddress = request.ClientIpAddress
             });
 
             if (gatewayResult.Success)
@@ -430,6 +431,8 @@ public record ProcessPaymentRequest
     public PaymentGateway Gateway { get; init; }
     public Guid? PaymentMethodId { get; init; }
     public string? VoucherCode { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string? ClientIpAddress { get; init; }
 }
 
 public record PaymentResultDto
