@@ -82,7 +82,7 @@ public class OcppWebSocketMiddleware
             return;
         }
 
-        // Authenticate via HTTP Basic Auth if station has OcppPassword set
+        // Resolve station and enforce admission before accepting the WebSocket.
         using (var authScope = _scopeFactory.CreateScope())
         {
             var uowManager = authScope.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
@@ -90,6 +90,26 @@ public class OcppWebSocketMiddleware
 
             using var uow = uowManager.Begin(requiresNew: true);
             var station = await stationRepo.FirstOrDefaultAsync(s => s.StationCode == chargePointId);
+
+            if (station == null)
+            {
+                _logger.LogWarning("OCPP handshake rejected: unknown station {ChargePointId}", chargePointId);
+                context.Response.StatusCode = StatusCodes.Status404NotFound;
+                await context.Response.WriteAsync("Unknown station");
+                return;
+            }
+
+            if (!station.IsEnabled || station.Status == StationStatus.Disabled || station.Status == StationStatus.Decommissioned)
+            {
+                _logger.LogWarning(
+                    "OCPP handshake rejected: station {ChargePointId} is not allowed to connect (enabled={IsEnabled}, status={Status})",
+                    chargePointId,
+                    station.IsEnabled,
+                    station.Status);
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                await context.Response.WriteAsync("Station is not allowed to connect");
+                return;
+            }
 
             if (station?.OcppPassword != null)
             {
@@ -106,7 +126,7 @@ public class OcppWebSocketMiddleware
                 {
                     var credentials = Encoding.UTF8.GetString(Convert.FromBase64String(authHeader[6..]));
                     var parts = credentials.Split(':', 2);
-                    if (parts.Length != 2 || parts[1] != station.OcppPassword)
+                    if (parts.Length != 2 || !string.Equals(parts[0], chargePointId, StringComparison.Ordinal) || parts[1] != station.OcppPassword)
                     {
                         _logger.LogWarning("OCPP auth failed: invalid credentials for {ChargePointId}", chargePointId);
                         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -118,6 +138,7 @@ public class OcppWebSocketMiddleware
                 {
                     _logger.LogWarning("OCPP auth failed: malformed Basic Auth for {ChargePointId}", chargePointId);
                     context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    context.Response.Headers["WWW-Authenticate"] = "Basic realm=\"OCPP\"";
                     return;
                 }
             }
@@ -229,6 +250,39 @@ public class OcppWebSocketMiddleware
                         if (!string.IsNullOrEmpty(response))
                         {
                             await SendMessageAsync(connection.WebSocket, response);
+                        }
+
+                        // After sending BootNotification response, push configuration to the charger
+                        if (connection.PendingPostBootConfig)
+                        {
+                            connection.PendingPostBootConfig = false;
+                            var scopeFactory = _scopeFactory;
+                            var conn = connection;
+                            _ = Task.Run(async () =>
+                            {
+                                try
+                                {
+                                    // Brief delay to let the charger process BootNotification.conf
+                                    await Task.Delay(500);
+
+                                    using var configScope = scopeFactory.CreateScope();
+                                    var uowManager = configScope.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
+                                    var configService = configScope.ServiceProvider.GetRequiredService<OcppPostBootConfigService>();
+
+                                    using var uow = uowManager.Begin(requiresNew: true);
+                                    await configService.SendPostBootConfigurationAsync(conn);
+                                    await uow.CompleteAsync();
+                                }
+                                catch (Exception ex)
+                                {
+                                    // Log but don't crash — post-boot config is best-effort
+                                    var logger = scopeFactory.CreateScope().ServiceProvider
+                                        .GetRequiredService<ILogger<OcppWebSocketMiddleware>>();
+                                    logger.LogWarning(ex,
+                                        "Failed to send post-boot configuration to {ChargePointId}",
+                                        conn.ChargePointId);
+                                }
+                            });
                         }
                     }
                 }

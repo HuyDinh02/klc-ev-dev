@@ -8,22 +8,24 @@ EV Charging Station Management System (CSMS) — B2C platform for EV charging st
 
 ## Tech Stack
 
-- Backend: .NET 10, C#, ABP Framework (LeptonX Lite theme, OpenIddict auth)
-- Database: PostgreSQL 16 (port 5433) + Read Replicas
+- Backend: .NET 10 (SDK pinned to 10.0.101 via `global.json`), C#, ABP Framework 10.1 (LeptonX Lite theme)
+- Database: PostgreSQL 16 (port 5433) + PostGIS + Read Replicas
 - Cache: Redis 7 (port 6379)
 - Real-time: SignalR (MonitoringHub for admin, DriverHub for mobile)
-- Admin Portal: Next.js (App Router), TypeScript, TanStack Query, Zustand, Recharts
-- Mobile: React Native (Expo 50), TypeScript, React Navigation, react-native-maps
-- OCPP: OCPP.Core (1.6J/2.0/2.1) via WebSocket at `/ocpp/{chargePointId}`
+- Admin Portal: Next.js (App Router), TypeScript, TanStack Query, Zustand, Recharts, Leaflet maps
+- Mobile: React Native (Expo 50), TypeScript, React Navigation, react-native-maps (Google Maps), i18next, Zustand
+- OCPP: OCPP.Core (1.6J/2.0/2.1) via WebSocket at `/ocpp/{chargePointId}`. Simulator: `ocpp-simulator/` (git submodule)
 - CQRS: MediatR (IQuery/ICommand pattern)
 - Localization: VI (default) + EN
+- Monitoring: Sentry (admin portal + Driver BFF), Serilog (backend structured logging)
+- Testing: xUnit + NSubstitute + Shouldly (backend), Vitest + Testing Library (admin portal), Jest (mobile), Playwright (e2e), Maestro (mobile automation)
 
 ## Architecture
 
 Dual-API modular monolith (Phase 1), designed for microservices evolution:
 
-- **Admin API** (port 44305, HTTPS): Full ABP layered DDD — controllers, app services, domain, EF Core. Auth via OpenIddict (`/connect/token`, client_id: `KLC_Api`).
-- **Driver BFF** (port 5001, HTTP): .NET Minimal API, Redis cache-first, read replicas. Lightweight endpoints for mobile.
+- **Admin API** (port 44305, HTTPS): Full ABP layered DDD — controllers, app services, domain, EF Core. Auth via OpenIddict (`/connect/token`, client_id: `KLC_Api`). Swagger UI client: `KLC_Swagger`.
+- **Driver BFF** (port 5001, HTTP): .NET Minimal API, Redis cache-first, read replicas. Auth via JWT Bearer (not OpenIddict). Uses Scalar for API docs (not Swagger).
 - **Admin Portal** (port 3001): Next.js frontend consuming Admin API. State: Zustand (auth, sidebar, alerts). Data fetching: TanStack Query (1min stale).
 - **Driver App**: React Native/Expo, consuming Driver BFF. Default map region: Hanoi.
 - **Shared layers**: `KLC.Domain`, `KLC.Domain.Shared`, `KLC.Application`, `KLC.EntityFrameworkCore` are shared between both APIs.
@@ -149,16 +151,37 @@ dotnet ef migrations add <MigrationName> -p src/backend/src/KLC.EntityFrameworkC
 
 # Seed demo data (users: admin/Admin@123, operator/Admin@123, viewer/Admin@123)
 PGPASSWORD=postgres psql -h localhost -p 5433 -U postgres -d KLC -f scripts/seed-demo-data.sql
+
+# Admin Portal e2e tests (Playwright)
+cd src/admin-portal && npx playwright test
+
+# Mobile automation tests (Maestro)
+cd src/driver-app && maestro test .maestro/login.yaml
+
+# Dev environment bootstrap
+./scripts/bootstrap-dev.sh
+
+# DB backup/restore
+./scripts/db-backup.sh
+./scripts/db-restore.sh <backup-file>
 ```
+
+### Environment Variables
+
+Admin Portal requires `.env.local` (see `src/admin-portal/.env.example`):
+- `NEXT_PUBLIC_API_URL` — Admin API base URL
+- `NEXT_PUBLIC_SIGNALR_URL` — SignalR hub URL
 
 ## CI/CD
 
+- **Runner**: Self-hosted GCE (`[self-hosted, linux, x64, gce]`) — not GitHub-hosted
 - **CI** (`.github/workflows/ci.yml`): Runs on PR to main/develop — builds backend, runs `dotnet test`, builds admin portal, runs `npm test` + `tsc --noEmit`
 - **Deploy Dev** (`.github/workflows/deploy-dev.yml`): Push to `develop` → builds Docker images → deploys to Cloud Run (dev)
 - **Deploy Prod** (`.github/workflows/deploy.yml`): Push to `main` → builds Docker images → deploys to Cloud Run (prod)
 - **Cloud Run services**: `backend-api` (Admin API), `bff-socket` (Driver BFF), `ocpp-gateway`, `admin-portal`
 - **Artifact Registry**: `asia-southeast1-docker.pkg.dev/klc-ev-charging/`
 - DB migrations can be triggered manually via `workflow_dispatch` on deploy workflows
+- **Dockerfiles**: `src/backend/src/KLC.HttpApi.Host/Dockerfile`, `src/backend/src/KLC.Driver.BFF/Dockerfile`, `src/admin-portal/Dockerfile` (all multi-stage builds)
 
 ## Key Conventions
 

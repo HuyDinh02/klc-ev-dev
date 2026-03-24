@@ -209,6 +209,7 @@ public class OcppMessageHandler
         if (stationId.HasValue)
         {
             connection.SetRegistered(stationId.Value);
+            connection.PendingPostBootConfig = true;
         }
 
         // Reject unknown stations (BR-006-02)

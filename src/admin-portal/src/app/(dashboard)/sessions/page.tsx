@@ -49,7 +49,7 @@ export default function SessionsPage() {
       const { data } = await sessionsApi.getAll(params as Parameters<typeof sessionsApi.getAll>[0]);
       return data;
     },
-    refetchInterval: 10000,
+    refetchInterval: 3000,
   });
 
   const sessions = sessionsData?.items || [];

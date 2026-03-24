@@ -34,7 +34,7 @@ public class StationBffServiceTests : KLCEntityFrameworkCoreTestBase
         await WithUnitOfWorkAsync(async () =>
         {
             var station = new ChargingStation(stationId, "STN-001", "Station 1", "123 Test St", 21.0, 105.8);
-            station.UpdateStatus(StationStatus.Available);
+            station.UpdateStatus(StationStatus.Online);
             var c1 = station.AddConnector(Guid.NewGuid(), 1, ConnectorType.CCS2, 50);
             c1.UpdateStatus(ConnectorStatus.Available);
             station.AddConnector(Guid.NewGuid(), 2, ConnectorType.CHAdeMO, 50);

@@ -46,7 +46,7 @@ public class FavoriteBffServiceCacheTests : KLCEntityFrameworkCoreTestBase
                 Address = "123 Cached St",
                 Latitude = 21.0,
                 Longitude = 105.8,
-                Status = StationStatus.Available,
+                Status = StationStatus.Online,
                 AvailableConnectors = 2,
                 TotalConnectors = 4,
                 AddedAt = DateTime.UtcNow.AddDays(-1)
@@ -64,7 +64,7 @@ public class FavoriteBffServiceCacheTests : KLCEntityFrameworkCoreTestBase
         result.ShouldNotBeNull();
         result.Count.ShouldBe(1);
         result[0].Name.ShouldBe("Cached Station");
-        result[0].Status.ShouldBe(StationStatus.Available);
+        result[0].Status.ShouldBe(StationStatus.Online);
         result[0].AvailableConnectors.ShouldBe(2);
 
         await _cache.Received(1).GetOrSetAsync(cacheKey, Arg.Any<Func<Task<List<FavoriteStationDto>>>>(), Arg.Any<TimeSpan?>());
@@ -80,7 +80,7 @@ public class FavoriteBffServiceCacheTests : KLCEntityFrameworkCoreTestBase
         await WithUnitOfWorkAsync(async () =>
         {
             var station = new ChargingStation(stationId, "FAV-001", "Favorite Station", "456 Fav St", 21.0, 105.8);
-            station.UpdateStatus(StationStatus.Available);
+            station.UpdateStatus(StationStatus.Online);
             var connector = station.AddConnector(Guid.NewGuid(), 1, ConnectorType.CCS2, 50);
             connector.UpdateStatus(ConnectorStatus.Available);
             await _dbContext.ChargingStations.AddAsync(station);
@@ -121,7 +121,7 @@ public class FavoriteBffServiceCacheTests : KLCEntityFrameworkCoreTestBase
         await WithUnitOfWorkAsync(async () =>
         {
             var station = new ChargingStation(stationId, "FAV-ADD", "Add Favorite Station", "789 Add St", 21.0, 105.8);
-            station.UpdateStatus(StationStatus.Available);
+            station.UpdateStatus(StationStatus.Online);
             station.AddConnector(Guid.NewGuid(), 1, ConnectorType.CCS2, 50);
             await _dbContext.ChargingStations.AddAsync(station);
             await _dbContext.SaveChangesAsync();

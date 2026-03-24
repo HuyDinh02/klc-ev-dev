@@ -53,9 +53,9 @@ public class MonitoringAppService : KLCAppService, IMonitoringAppService
         var dashboard = new DashboardDto
         {
             TotalStations = stations.Count,
-            OnlineStations = stations.Count(s => s.Status == StationStatus.Available || s.Status == StationStatus.Occupied),
-            OfflineStations = stations.Count(s => s.Status == StationStatus.Offline),
-            FaultedStations = stations.Count(s => s.Status == StationStatus.Faulted),
+            OnlineStations = stations.Count(s => s.Status == StationStatus.Online),
+            OfflineStations = stations.Count(s => s.Status == StationStatus.Offline || s.Status == StationStatus.Disabled),
+            FaultedStations = 0, // Faults are tracked at connector level, not station level
             TotalConnectors = connectors.Count,
             AvailableConnectors = connectors.Count(c => c.Status == ConnectorStatus.Available),
             ChargingConnectors = connectors.Count(c => c.Status == ConnectorStatus.Charging),
@@ -279,7 +279,7 @@ public class MonitoringAppService : KLCAppService, IMonitoringAppService
         .ToList();
 
         // Uptime: % of stations that are not Faulted/Offline
-        var onlineStations = stations.Count(s => s.Status == StationStatus.Available || s.Status == StationStatus.Occupied);
+        var onlineStations = stations.Count(s => s.Status == StationStatus.Online);
         var activeStations = stations.Count(s => s.Status != StationStatus.Decommissioned);
         var uptimePercent = activeStations > 0 ? Math.Round((decimal)onlineStations / activeStations * 100, 1) : 0;
 
@@ -338,15 +338,14 @@ public class MonitoringAppService : KLCAppService, IMonitoringAppService
         if (logs == null || logs.Count == 0)
         {
             // No logs in period — use current status as best estimate
-            var isOnline = station.Status == StationStatus.Available || station.Status == StationStatus.Occupied;
+            var isOnline = station.Status == StationStatus.Online;
             return isOnline ? 100m : 0m;
         }
 
         // Walk through status transitions to accumulate online time
         var onlineStatuses = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            nameof(StationStatus.Available),
-            nameof(StationStatus.Occupied)
+            nameof(StationStatus.Online)
         };
 
         double onlineSeconds = 0;

@@ -22,6 +22,11 @@ public class KLCSettingDefinitionProvider : SettingDefinitionProvider
         context.Add(new SettingDefinition(KLCSettings.Ocpp.WebSocketPort, "5002"));
         context.Add(new SettingDefinition(KLCSettings.Ocpp.HeartbeatInterval, "60"));
         context.Add(new SettingDefinition(KLCSettings.Ocpp.MeterValueInterval, "30"));
+        context.Add(new SettingDefinition(KLCSettings.Ocpp.ClockAlignedDataInterval, "0"));
+        context.Add(new SettingDefinition(KLCSettings.Ocpp.MeterValuesSampledData, "Energy.Active.Import.Register,Current.Import,Voltage,Power.Active.Import,SoC"));
+        context.Add(new SettingDefinition(KLCSettings.Ocpp.StopTxnSampledData, "Energy.Active.Import.Register,Current.Import,Voltage,Power.Active.Import,SoC"));
+        context.Add(new SettingDefinition(KLCSettings.Ocpp.StopTransactionOnEVSideDisconnect, "true"));
+        context.Add(new SettingDefinition(KLCSettings.Ocpp.AutoConfigOnBoot, "true"));
 
         // Payments
         context.Add(new SettingDefinition(KLCSettings.Payments.DefaultGateway, "VNPay"));
@@ -32,5 +37,10 @@ public class KLCSettingDefinitionProvider : SettingDefinitionProvider
         context.Add(new SettingDefinition(KLCSettings.Security.SessionTimeout, "30"));
         context.Add(new SettingDefinition(KLCSettings.Security.RequireMfa, "false"));
         context.Add(new SettingDefinition(KLCSettings.Security.PasswordMinLength, "8"));
+
+        // Wallet
+        context.Add(new SettingDefinition(KLCSettings.Wallet.MinBalanceToStart, "10000"));
+        context.Add(new SettingDefinition(KLCSettings.Wallet.AutoStopThreshold, "10000"));
+        context.Add(new SettingDefinition(KLCSettings.Wallet.MonitorIntervalSeconds, "30"));
     }
 }

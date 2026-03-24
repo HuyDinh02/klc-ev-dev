@@ -73,31 +73,31 @@ public class ChargingStationTests
         station.RecordHeartbeat();
 
         station.LastHeartbeat.ShouldNotBeNull();
-        station.Status.ShouldBe(StationStatus.Available);
+        station.Status.ShouldBe(StationStatus.Online);
     }
 
     [Fact]
     public void RecordHeartbeat_Should_Not_Change_Status_If_Not_Offline()
     {
         var station = CreateStation();
-        station.RecordHeartbeat(); // Now Available
-        station.UpdateStatus(StationStatus.Faulted);
+        station.RecordHeartbeat(); // Now Online
+        station.UpdateStatus(StationStatus.Disabled);
 
         station.RecordHeartbeat();
 
-        station.Status.ShouldBe(StationStatus.Faulted);
+        station.Status.ShouldBe(StationStatus.Disabled);
     }
 
     [Fact]
-    public void Disable_Should_Set_Unavailable_And_Disabled()
+    public void Disable_Should_Set_Disabled()
     {
         var station = CreateStation();
-        station.RecordHeartbeat(); // Now Available
+        station.RecordHeartbeat(); // Now Online
 
         station.Disable();
 
         station.IsEnabled.ShouldBeFalse();
-        station.Status.ShouldBe(StationStatus.Unavailable);
+        station.Status.ShouldBe(StationStatus.Disabled);
     }
 
     [Fact]
@@ -109,6 +109,19 @@ public class ChargingStationTests
         station.Enable();
 
         station.IsEnabled.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Enable_Should_Throw_For_Decommissioned_Station()
+    {
+        var station = CreateStation();
+        station.Decommission();
+
+        var ex = Should.Throw<BusinessException>(() => station.Enable());
+
+        ex.Code.ShouldBe(KLCDomainErrorCodes.Station.CannotEnableDecommissioned);
+        station.IsEnabled.ShouldBeFalse();
+        station.Status.ShouldBe(StationStatus.Decommissioned);
     }
 
     [Fact]
@@ -133,6 +146,29 @@ public class ChargingStationTests
         station.Connectors.Count.ShouldBe(1);
         connector.Id.ShouldBe(connectorId);
         connector.ConnectorNumber.ShouldBe(1);
+    }
+
+    [Fact]
+    public void Decommission_Should_Set_Terminal_Status_And_Disable()
+    {
+        var station = CreateStation();
+
+        station.Decommission();
+
+        station.IsEnabled.ShouldBeFalse();
+        station.Status.ShouldBe(StationStatus.Decommissioned);
+    }
+
+    [Fact]
+    public void Disable_Should_Not_Overwrite_Decommissioned_Status()
+    {
+        var station = CreateStation();
+        station.Decommission();
+
+        station.Disable();
+
+        station.IsEnabled.ShouldBeFalse();
+        station.Status.ShouldBe(StationStatus.Decommissioned);
     }
 
     private static ChargingStation CreateStation()

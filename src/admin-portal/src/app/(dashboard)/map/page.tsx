@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { monitoringApi } from "@/lib/api";
-import { STATION_STATUS } from "@/lib/constants";
+import { STATION_STATUS, CONNECTOR_STATUS } from "@/lib/constants";
 import { useTranslation } from "@/lib/i18n";
 import { MapPin, WifiOff } from "lucide-react";
 
@@ -115,9 +115,9 @@ function StationMapInner({ stations }: { stations: StationSummary[] }) {
           </div>
           <div style="font-size: 12px; color: #555; line-height: 1.6;">
             <div><strong>Connectors:</strong> ${station.totalConnectors}</div>
-            <div style="color: ${STATION_STATUS[1].dotColor};">Available: ${station.availableConnectors}</div>
-            <div style="color: ${STATION_STATUS[2].dotColor};">Charging: ${station.chargingConnectors}</div>
-            ${faulted > 0 ? `<div style="color: ${STATION_STATUS[4].dotColor};">Faulted/Other: ${faulted}</div>` : ""}
+            <div style="color: ${CONNECTOR_STATUS[0].dotColor};">Available: ${station.availableConnectors}</div>
+            <div style="color: ${CONNECTOR_STATUS[2].dotColor};">Charging: ${station.chargingConnectors}</div>
+            ${faulted > 0 ? `<div style="color: ${CONNECTOR_STATUS[8].dotColor};">Faulted/Other: ${faulted}</div>` : ""}
             <div style="margin-top: 4px; color: #888;">Last heartbeat: ${heartbeat}</div>
           </div>
         </div>
@@ -163,10 +163,10 @@ export default function StationMapPage() {
   const validStations = stations.filter((s) => s.latitude && s.longitude);
 
   const statusCounts = {
-    online: stations.filter((s) => s.status === 1 || s.status === 2).length,
+    online: stations.filter((s) => s.status === 1).length,
     offline: stations.filter((s) => s.status === 0).length,
-    faulted: stations.filter((s) => s.status === 4).length,
-    other: stations.filter((s) => s.status === 3 || s.status === 5).length,
+    disabled: stations.filter((s) => s.status === 2).length,
+    decommissioned: stations.filter((s) => s.status === 3).length,
   };
 
   return (
@@ -182,17 +182,17 @@ export default function StationMapPage() {
           <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: STATION_STATUS[1].dotColor }} />
           {STATION_STATUS[1].label} ({statusCounts.online})
         </Badge>
-        <Badge variant={STATION_STATUS[2].badgeVariant} className="gap-1">
-          <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: STATION_STATUS[2].dotColor }} />
-          {STATION_STATUS[2].label} ({stations.filter((s) => s.status === 2).length})
-        </Badge>
         <Badge variant={STATION_STATUS[0].badgeVariant} className="gap-1">
           <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: STATION_STATUS[0].dotColor }} />
           {STATION_STATUS[0].label} ({statusCounts.offline})
         </Badge>
-        <Badge variant={STATION_STATUS[4].badgeVariant} className="gap-1">
-          <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: STATION_STATUS[4].dotColor }} />
-          {STATION_STATUS[4].label} ({statusCounts.faulted})
+        <Badge variant={STATION_STATUS[2].badgeVariant} className="gap-1">
+          <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: STATION_STATUS[2].dotColor }} />
+          {STATION_STATUS[2].label} ({statusCounts.disabled})
+        </Badge>
+        <Badge variant={STATION_STATUS[3].badgeVariant} className="gap-1">
+          <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: STATION_STATUS[3].dotColor }} />
+          {STATION_STATUS[3].label} ({statusCounts.decommissioned})
         </Badge>
         <div className="ml-auto text-sm text-muted-foreground flex items-center gap-1">
           <MapPin className="h-4 w-4" />

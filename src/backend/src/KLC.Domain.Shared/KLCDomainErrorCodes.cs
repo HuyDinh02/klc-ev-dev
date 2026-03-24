@@ -11,6 +11,7 @@ public static class KLCDomainErrorCodes
         public const string InvalidLatitude = "KLC:Station:InvalidLatitude";
         public const string InvalidLongitude = "KLC:Station:InvalidLongitude";
         public const string HasActiveSessions = "KLC:Station:HasActiveSessions";
+        public const string CannotEnableDecommissioned = "KLC:Station:CannotEnableDecommissioned";
     }
 
     public static class Connector
@@ -63,6 +64,8 @@ public static class KLCDomainErrorCodes
         public const string NotOwned = "KLC:Session:NotOwned";
         public const string InvalidStatus = "KLC:Session:InvalidStatus";
         public const string InvalidStateTransition = "KLC:Session:InvalidStateTransition";
+        public const string StartCommandFailed = "KLC:Session:StartCommandFailed";
+        public const string StopCommandFailed = "KLC:Session:StopCommandFailed";
     }
 
     public static class Profile

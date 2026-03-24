@@ -184,8 +184,7 @@ public class StationAppService : KLCAppService, IStationAppService
                 .WithData("stationId", id);
         }
 
-        station.UpdateStatus(StationStatus.Decommissioned);
-        station.Disable();
+        station.Decommission();
 
         await _stationRepository.UpdateAsync(station);
     }
