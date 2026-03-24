@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using KLC.Enums;
+using KLC.Hubs;
 using KLC.Stations;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -180,10 +181,27 @@ public class OcppWebSocketMiddleware
                 using var cleanupScope = _scopeFactory.CreateScope();
                 var uowManager = cleanupScope.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
                 var ocppService = cleanupScope.ServiceProvider.GetRequiredService<IOcppService>();
+                var notifier = cleanupScope.ServiceProvider.GetRequiredService<IMonitoringNotifier>();
+                var stationRepo = cleanupScope.ServiceProvider.GetRequiredService<IRepository<Stations.ChargingStation, Guid>>();
 
                 using var uow = uowManager.Begin(requiresNew: true);
+
+                // Capture status before disconnect processing
+                var station = await stationRepo.FirstOrDefaultAsync(s => s.StationCode == chargePointId);
+                var previousStatus = station?.Status;
+
                 await ocppService.HandleStationDisconnectAsync(chargePointId);
                 await uow.CompleteAsync();
+
+                // Broadcast station status change via SignalR
+                if (station != null && previousStatus.HasValue && previousStatus.Value != StationStatus.Offline)
+                {
+                    await notifier.NotifyStationStatusChangedAsync(
+                        station.Id,
+                        station.Name,
+                        previousStatus.Value,
+                        StationStatus.Offline);
+                }
             }
             catch (Exception ex)
             {

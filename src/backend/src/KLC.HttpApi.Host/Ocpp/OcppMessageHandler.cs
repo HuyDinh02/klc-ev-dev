@@ -185,6 +185,10 @@ public class OcppMessageHandler
         _logger.LogInformation("Vendor profile for {ChargePointId}: {VendorProfile}",
             connection.ChargePointId, vendorProfile.ProfileType);
 
+        // Capture previous status before BootNotification changes it
+        var stationBefore = await _ocppService.GetStationByChargePointIdAsync(connection.ChargePointId);
+        var previousStationStatus = stationBefore?.Status;
+
         // Persist to database (including vendor profile)
         var stationId = await _ocppService.HandleBootNotificationAsync(
             connection.ChargePointId,
@@ -193,13 +197,26 @@ public class OcppMessageHandler
             request.ChargePointSerialNumber,
             request.FirmwareVersion);
 
-        // Persist vendor profile on station entity
+        // Persist vendor profile on station entity and notify status change
         if (stationId.HasValue)
         {
             var station = await _ocppService.GetStationByChargePointIdAsync(connection.ChargePointId);
-            if (station != null && station.VendorProfile != vendorProfile.ProfileType)
+            if (station != null)
             {
-                station.SetVendorProfile(vendorProfile.ProfileType);
+                if (station.VendorProfile != vendorProfile.ProfileType)
+                {
+                    station.SetVendorProfile(vendorProfile.ProfileType);
+                }
+
+                // Broadcast station status change via SignalR (Offline → Online)
+                if (previousStationStatus.HasValue && previousStationStatus.Value != station.Status)
+                {
+                    await _notifier.NotifyStationStatusChangedAsync(
+                        station.Id,
+                        station.Name,
+                        previousStationStatus.Value,
+                        station.Status);
+                }
             }
         }
 

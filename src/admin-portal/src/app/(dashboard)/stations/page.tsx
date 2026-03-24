@@ -139,11 +139,10 @@ export default function StationsPage() {
             aria-label={t("common.status")}
           >
             <option value="all">{t("stations.allStatuses")}</option>
-            <option value="0">{t("stations.available")}</option>
-            <option value="1">{t("stations.occupied")}</option>
-            <option value="2">{t("stations.offline")}</option>
-            <option value="3">{t("stations.faulted")}</option>
-            <option value="4">{t("stations.unavailable")}</option>
+            <option value="0">{t("stations.offline")}</option>
+            <option value="1">{t("stations.online")}</option>
+            <option value="2">{t("stations.disabled")}</option>
+            <option value="3">{t("stations.decommissioned")}</option>
           </select>
           <div className="flex items-center rounded-md border">
             <Button
