@@ -106,6 +106,18 @@ export default function PaymentsPage() {
   const walletTxns = walletData?.items || [];
   const walletTotal = walletData?.totalCount || 0;
 
+  const queryVnPayMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await api.post(`/admin/wallet-transactions/${id}/query-vnpay`);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["wallet-transactions"] });
+      alert(data.isSuccess ? `VnPay confirms: Payment successful. ${data.reconciled ? "Wallet credited." : ""}` : `VnPay status: ${data.errorMessage || "Not completed"}`);
+    },
+    onError: (err: Error) => alert(`Query failed: ${err.message}`),
+  });
+
   const WALLET_TYPE_LABELS: Record<number, string> = { 0: "Top-up", 1: "Session Payment", 2: "Refund", 3: "Adjustment", 4: "Voucher Credit" };
   const TRANSACTION_STATUS: Record<number, { label: string; color: string }> = {
     0: { label: "Pending", color: "bg-amber-100 text-amber-800" },
@@ -453,11 +465,13 @@ export default function PaymentsPage() {
                         <th className="px-4 py-3 text-left text-sm font-medium">Gateway</th>
                         <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
                         <th className="px-4 py-3 text-left text-sm font-medium">Date</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {walletTxns.map((t: Record<string, unknown>) => {
                         const status = TRANSACTION_STATUS[t.status as number] || { label: "Unknown", color: "bg-gray-100" };
+                        const isPendingVnPay = (t.status as number) === 0 && (t.paymentGateway as number) === 4;
                         return (
                           <tr key={t.id as string} className="border-b hover:bg-muted/50">
                             <td className="px-4 py-3 font-mono text-sm">{(t.referenceCode as string) || (t.id as string).slice(0, 8)}</td>
@@ -483,6 +497,20 @@ export default function PaymentsPage() {
                             </td>
                             <td className="px-4 py-3 text-sm text-muted-foreground">
                               {formatDateTime(t.creationTime as string)}
+                            </td>
+                            <td className="px-4 py-3">
+                              {isPendingVnPay && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={queryVnPayMutation.isPending}
+                                  onClick={() => queryVnPayMutation.mutate(t.id as string)}
+                                  title="Query VnPay for transaction status"
+                                >
+                                  <RotateCcw className="h-3 w-3 mr-1" />
+                                  Query
+                                </Button>
+                              )}
                             </td>
                           </tr>
                         );

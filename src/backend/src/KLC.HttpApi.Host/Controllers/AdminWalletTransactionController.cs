@@ -79,6 +79,56 @@ public class AdminWalletTransactionController : AbpController
 
         return Ok(new PagedResultDto<AdminWalletTransactionDto>(totalCount, dtos));
     }
+
+    [HttpPost("{id:guid}/query-vnpay")]
+    public async Task<ActionResult<VnPayQueryResultDto>> QueryVnPayAsync(
+        Guid id,
+        [FromServices] IEnumerable<IPaymentGatewayService> gateways,
+        [FromServices] IRepository<AppUser, Guid> userRepo,
+        [FromServices] WalletDomainService walletDomainService)
+    {
+        var txn = await _walletTransactionRepository.FirstOrDefaultAsync(t => t.Id == id);
+        if (txn == null) return NotFound();
+        if (txn.PaymentGateway != PaymentGateway.VnPay)
+            return BadRequest(new { error = "Transaction is not a VnPay payment" });
+
+        var vnpay = gateways.FirstOrDefault(g => g.Gateway == PaymentGateway.VnPay);
+        if (vnpay == null) return BadRequest(new { error = "VnPay gateway not configured" });
+
+        var result = await vnpay.QueryTransactionAsync(new QueryTransactionRequest
+        {
+            TxnRef = txn.ReferenceCode,
+            TransactionDate = txn.CreationTime.AddHours(7).ToString("yyyyMMddHHmmss")
+        });
+
+        // Auto-reconcile if VnPay confirms success and transaction is still pending
+        if (result.IsValid && result.IsSuccess && txn.Status == TransactionStatus.Pending)
+        {
+            var user = await userRepo.FirstOrDefaultAsync(u => u.Id == txn.UserId);
+            if (user != null)
+            {
+                user.AddToWallet(txn.Amount);
+                txn.MarkCompleted(result.GatewayTransactionId);
+                await userRepo.UpdateAsync(user);
+                await _walletTransactionRepository.UpdateAsync(txn);
+            }
+        }
+        else if (result.IsValid && !result.IsSuccess && txn.Status == TransactionStatus.Pending)
+        {
+            txn.MarkFailed();
+            await _walletTransactionRepository.UpdateAsync(txn);
+        }
+
+        return Ok(new VnPayQueryResultDto
+        {
+            IsValid = result.IsValid,
+            IsSuccess = result.IsSuccess,
+            GatewayTransactionId = result.GatewayTransactionId,
+            ErrorMessage = result.ErrorMessage,
+            TransactionStatus = txn.Status,
+            Reconciled = txn.Status != TransactionStatus.Pending
+        });
+    }
 }
 
 public class AdminWalletTransactionDto
@@ -95,4 +145,14 @@ public class AdminWalletTransactionDto
     public string? Description { get; set; }
     public string? ReferenceCode { get; set; }
     public DateTime CreationTime { get; set; }
+}
+
+public class VnPayQueryResultDto
+{
+    public bool IsValid { get; set; }
+    public bool IsSuccess { get; set; }
+    public string? GatewayTransactionId { get; set; }
+    public string? ErrorMessage { get; set; }
+    public TransactionStatus TransactionStatus { get; set; }
+    public bool Reconciled { get; set; }
 }

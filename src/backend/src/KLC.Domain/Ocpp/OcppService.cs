@@ -37,6 +37,7 @@ public class OcppService : DomainService, IOcppService
     private readonly IRepository<AppUser, Guid> _userRepository;
     private readonly WalletDomainService _walletDomainService;
     private readonly IRepository<WalletTransaction, Guid> _walletTransactionRepository;
+    private readonly IRepository<PaymentTransaction, Guid> _paymentTransactionRepository;
     private readonly IConfiguration _configuration;
     private readonly ILogger<OcppService> _logger;
 
@@ -55,6 +56,7 @@ public class OcppService : DomainService, IOcppService
         IRepository<AppUser, Guid> userRepository,
         WalletDomainService walletDomainService,
         IRepository<WalletTransaction, Guid> walletTransactionRepository,
+        IRepository<PaymentTransaction, Guid> paymentTransactionRepository,
         IConfiguration configuration,
         ILogger<OcppService> logger)
     {
@@ -72,6 +74,7 @@ public class OcppService : DomainService, IOcppService
         _userRepository = userRepository;
         _walletDomainService = walletDomainService;
         _walletTransactionRepository = walletTransactionRepository;
+        _paymentTransactionRepository = paymentTransactionRepository;
         _configuration = configuration;
         _logger = logger;
     }
@@ -404,7 +407,7 @@ public class OcppService : DomainService, IOcppService
             }
         }
 
-        // Auto-deduct session cost from user's wallet
+        // Auto-deduct session cost from user's wallet and create PaymentTransaction
         if (session.TotalCost > 0 && session.UserId != Guid.Empty)
         {
             try
@@ -421,15 +424,57 @@ public class OcppService : DomainService, IOcppService
                     await _userRepository.UpdateAsync(user);
                     await _walletTransactionRepository.InsertAsync(walletTx);
 
+                    // Create PaymentTransaction so session payment is visible in admin portal
+                    var paymentTx = new PaymentTransaction(
+                        Guid.NewGuid(),
+                        session.Id,
+                        session.UserId,
+                        PaymentGateway.Wallet,
+                        deductAmount);
+                    paymentTx.MarkCompleted($"WALLET-{walletTx.Id.ToString("N")[..8].ToUpper()}");
+                    await _paymentTransactionRepository.InsertAsync(paymentTx);
+
                     _logger.LogInformation(
-                        "Wallet deducted for session {SessionId}: Amount={Amount}, NewBalance={NewBalance}, UserId={UserId}",
-                        session.Id, deductAmount, newBalance, session.UserId);
+                        "Wallet deducted for session {SessionId}: Amount={Amount}, NewBalance={NewBalance}, PaymentId={PaymentId}",
+                        session.Id, deductAmount, newBalance, paymentTx.Id);
+
+                    // If wallet didn't cover full cost, create pending payment for remainder
+                    if (deductAmount < session.TotalCost)
+                    {
+                        var remainingAmount = session.TotalCost - deductAmount;
+                        var pendingPayment = new PaymentTransaction(
+                            Guid.NewGuid(),
+                            session.Id,
+                            session.UserId,
+                            PaymentGateway.VnPay,
+                            remainingAmount);
+                        await _paymentTransactionRepository.InsertAsync(pendingPayment);
+
+                        _logger.LogWarning(
+                            "Partial payment for session {SessionId}: Wallet={WalletAmount}, Remaining={Remaining} (pending VnPay)",
+                            session.Id, deductAmount, remainingAmount);
+                    }
+                }
+                else if (user != null)
+                {
+                    // No wallet balance — create pending payment for full amount
+                    var pendingPayment = new PaymentTransaction(
+                        Guid.NewGuid(),
+                        session.Id,
+                        session.UserId,
+                        PaymentGateway.VnPay,
+                        session.TotalCost);
+                    await _paymentTransactionRepository.InsertAsync(pendingPayment);
+
+                    _logger.LogWarning(
+                        "No wallet balance for session {SessionId}: Pending VnPay payment for {Amount} VND",
+                        session.Id, session.TotalCost);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to deduct wallet for session {SessionId}. Manual billing required.", session.Id);
-                // Do NOT rethrow - session completion must not fail due to wallet issues
+                _logger.LogError(ex, "Failed to process payment for session {SessionId}. Manual billing required.", session.Id);
+                // Do NOT rethrow - session completion must not fail due to payment issues
             }
         }
 

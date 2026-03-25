@@ -356,6 +356,16 @@ public class WalletBffService : IWalletBffService
                     Timestamp = DateTime.UtcNow
                 });
 
+            // Create in-app notification for successful top-up
+            var successNotification = new KLC.Notifications.Notification(
+                Guid.NewGuid(),
+                transaction.UserId,
+                KLC.Enums.NotificationType.WalletTopUp,
+                "Nạp ví thành công",
+                $"Bạn đã nạp thành công {transaction.Amount:N0}đ vào ví. Số dư hiện tại: {newBalance:N0}đ.");
+            _dbContext.Notifications.Add(successNotification);
+            await _dbContext.SaveChangesAsync();
+
             _logger.LogInformation(
                 "[VnPay IPN] Wallet top-up completed: UserId={UserId}, Amount={Amount}, NewBalance={NewBalance}",
                 transaction.UserId, transaction.Amount, newBalance);
@@ -363,7 +373,35 @@ public class WalletBffService : IWalletBffService
         else
         {
             transaction.MarkFailed();
+
+            // Create in-app notification for payment failure
+            var failNotification = new KLC.Notifications.Notification(
+                Guid.NewGuid(),
+                transaction.UserId,
+                KLC.Enums.NotificationType.PaymentFailed,
+                "Nạp ví thất bại",
+                $"Giao dịch nạp {transaction.Amount:N0}đ qua VnPay không thành công (mã: {responseCode}). Vui lòng thử lại.");
+            _dbContext.Notifications.Add(failNotification);
+
             await _dbContext.SaveChangesAsync();
+
+            // Notify via SignalR (in-app real-time)
+            try
+            {
+                await _driverNotifier.NotifyWalletBalanceChangedAsync(transaction.UserId,
+                    new WalletBalanceChangedMessage
+                    {
+                        UserId = transaction.UserId,
+                        NewBalance = 0, // unchanged
+                        ChangeAmount = 0,
+                        Reason = $"Top-up failed (VnPay code: {responseCode})",
+                        Timestamp = DateTime.UtcNow
+                    });
+            }
+            catch (Exception notifyEx)
+            {
+                _logger.LogWarning(notifyEx, "Failed to send failure notification via SignalR");
+            }
 
             _logger.LogWarning(
                 "[VnPay IPN] Wallet top-up failed: TxnRef={TxnRef}, ResponseCode={ResponseCode}",
