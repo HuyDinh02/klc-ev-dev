@@ -269,6 +269,23 @@ public class OcppService : DomainService, IOcppService
             }
         }
 
+        // For test/demo idTags, assign the first active AppUser when AllowTestIdTags is enabled
+        if (userId == Guid.Empty && (idTag.StartsWith("TEST") || idTag.StartsWith("DEMO")))
+        {
+            var allowTestIdTags = _configuration.GetValue<bool>("Ocpp:AllowTestIdTags", false);
+            if (allowTestIdTags)
+            {
+                var firstUser = await _userRepository.FirstOrDefaultAsync(u => u.IsActive);
+                if (firstUser != null)
+                {
+                    userId = firstUser.Id;
+                    _logger.LogInformation(
+                        "Test idTag {IdTag} assigned to user {UserId} (Ocpp:AllowTestIdTags enabled)",
+                        idTag, userId);
+                }
+            }
+        }
+
         // Reject transaction if idTag could not be resolved to a valid user
         if (userId == Guid.Empty)
         {
