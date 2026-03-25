@@ -76,7 +76,7 @@ public static class WalletEndpoints
             if (!string.IsNullOrEmpty(signature))
             {
                 var gateway = paymentGateways.FirstOrDefault(g =>
-                    g.Gateway == (request.Gateway ?? PaymentGateway.MoMo));
+                    g.Gateway == (request.Gateway ?? PaymentGateway.VnPay));
 
                 if (gateway != null)
                 {
