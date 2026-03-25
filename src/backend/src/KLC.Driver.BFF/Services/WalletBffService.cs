@@ -4,6 +4,7 @@ using KLC.EntityFrameworkCore;
 using KLC.Enums;
 using KLC.Payments;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace KLC.Driver.Services;
 
@@ -32,6 +33,7 @@ public class WalletBffService : IWalletBffService
     private readonly WalletDomainService _walletDomainService;
     private readonly IEnumerable<IPaymentGatewayService> _paymentGateways;
     private readonly IDriverHubNotifier _driverNotifier;
+    private readonly IConfiguration _configuration;
 
     public WalletBffService(
         KLCDbContext dbContext,
@@ -39,7 +41,8 @@ public class WalletBffService : IWalletBffService
         ILogger<WalletBffService> logger,
         WalletDomainService walletDomainService,
         IEnumerable<IPaymentGatewayService> paymentGateways,
-        IDriverHubNotifier driverNotifier)
+        IDriverHubNotifier driverNotifier,
+        IConfiguration configuration)
     {
         _dbContext = dbContext;
         _cache = cache;
@@ -47,6 +50,7 @@ public class WalletBffService : IWalletBffService
         _walletDomainService = walletDomainService;
         _paymentGateways = paymentGateways;
         _driverNotifier = driverNotifier;
+        _configuration = configuration;
     }
 
     public async Task<WalletBalanceDto> GetBalanceAsync(Guid userId)
@@ -152,7 +156,7 @@ public class WalletBffService : IWalletBffService
                     ReferenceCode = transaction.ReferenceCode,
                     Amount = request.Amount,
                     Description = $"Top-up via {request.Gateway}",
-                    ReturnUrl = "klc://wallet/topup/callback",
+                    ReturnUrl = _configuration["Payment:VnPay:ReturnUrl"] ?? "klc://wallet/topup/callback",
                     NotifyUrl = "/api/v1/wallet/topup/callback",
                     ClientIpAddress = request.ClientIpAddress
                 })

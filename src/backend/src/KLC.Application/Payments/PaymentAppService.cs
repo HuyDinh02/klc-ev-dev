@@ -533,26 +533,7 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
     {
         var payment = await _paymentRepository.GetAsync(transactionId);
 
-        // Only completed payments can be refunded — domain entity enforces this
-        payment.MarkRefunded();
-
-        // Credit wallet
-        var user = await _appUserRepository.FirstOrDefaultAsync(u => u.IdentityUserId == payment.UserId)
-            ?? throw new BusinessException(KLCDomainErrorCodes.EntityNotFound);
-
-        var (newBalance, walletTransaction) = _walletDomainService.Refund(
-            user,
-            payment.Amount,
-            sessionId: payment.SessionId,
-            description: input.Reason ?? $"Refund for payment {payment.ReferenceCode}");
-
-        await _walletTransactionRepository.InsertAsync(walletTransaction);
-        await _appUserRepository.UpdateAsync(user);
-        await _paymentRepository.UpdateAsync(payment);
-
-        _auditLogger.LogPaymentEvent("RefundProcessed", payment.Id, payment.Amount, payment.Gateway.ToString(), payment.UserId.ToString());
-
-        // Call VNPay refund API if payment was made via VnPay
+        // Call VnPay refund API FIRST — if it fails, do not credit wallet
         if (payment.Gateway == PaymentGateway.VnPay && !string.IsNullOrEmpty(payment.GatewayTransactionId))
         {
             var vnpayGateway = _gateways.FirstOrDefault(g => g.Gateway == PaymentGateway.VnPay);
@@ -570,12 +551,34 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
 
                 if (!refundResult.Success)
                 {
-                    Logger.LogWarning(
-                        "[VnPay] Gateway refund failed (wallet already credited): PaymentId={PaymentId}, Error={Error}",
-                        payment.Id, refundResult.ErrorMessage);
+                    throw new BusinessException(KLCDomainErrorCodes.Payment.RefundFailed)
+                        .WithData("paymentId", payment.Id)
+                        .WithData("error", refundResult.ErrorMessage);
                 }
+
+                Logger.LogInformation(
+                    "[VnPay] Gateway refund succeeded: PaymentId={PaymentId}, TxnRef={TxnRef}",
+                    payment.Id, payment.ReferenceCode);
             }
         }
+
+        // Only credit wallet after gateway confirms refund (or for non-VnPay payments)
+        payment.MarkRefunded();
+
+        var user = await _appUserRepository.FirstOrDefaultAsync(u => u.IdentityUserId == payment.UserId)
+            ?? throw new BusinessException(KLCDomainErrorCodes.EntityNotFound);
+
+        var (newBalance, walletTransaction) = _walletDomainService.Refund(
+            user,
+            payment.Amount,
+            sessionId: payment.SessionId,
+            description: input.Reason ?? $"Refund for payment {payment.ReferenceCode}");
+
+        await _walletTransactionRepository.InsertAsync(walletTransaction);
+        await _appUserRepository.UpdateAsync(user);
+        await _paymentRepository.UpdateAsync(payment);
+
+        _auditLogger.LogPaymentEvent("RefundProcessed", payment.Id, payment.Amount, payment.Gateway.ToString(), payment.UserId.ToString());
 
         return new RefundResultDto
         {

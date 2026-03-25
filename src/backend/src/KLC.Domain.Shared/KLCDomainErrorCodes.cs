@@ -47,6 +47,7 @@ public static class KLCDomainErrorCodes
         public const string InvalidSignature = "KLC:Payment:InvalidSignature";
         public const string InvalidAmount = "KLC:Payment:InvalidAmount";
         public const string GatewayNotSupported = "KLC:Payment:GatewayNotSupported";
+        public const string RefundFailed = "KLC:Payment:RefundFailed";
     }
 
     public static class Vehicle

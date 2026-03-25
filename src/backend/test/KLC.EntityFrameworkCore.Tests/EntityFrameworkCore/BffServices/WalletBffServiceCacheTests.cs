@@ -39,8 +39,9 @@ public class WalletBffServiceCacheTests : KLCEntityFrameworkCoreTestBase
         var walletDomainService = CreateWalletDomainService();
         var paymentGateways = CreateMockPaymentGateways();
 
+        var configuration = new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build();
         _service = new WalletBffService(
-            _dbContext, _cache, logger, walletDomainService, paymentGateways, _driverNotifier);
+            _dbContext, _cache, logger, walletDomainService, paymentGateways, _driverNotifier, configuration);
     }
 
     [Fact]

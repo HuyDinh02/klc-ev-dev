@@ -274,6 +274,7 @@ public class KLCHttpApiHostModule : AbpModule
         context.Services.AddHostedService<HeartbeatMonitorService>();
         context.Services.AddHostedService<FleetResetBackgroundService>();
         context.Services.AddHostedService<WalletBalanceMonitorService>();
+        context.Services.AddHostedService<PaymentReconciliationService>();
         context.Services.AddSingleton<PowerBalancingService>();
         context.Services.AddHostedService<PowerBalancingService>(sp => sp.GetRequiredService<PowerBalancingService>());
         context.Services.AddScoped<IOcppRemoteCommandService, OcppRemoteCommandService>();
