@@ -753,9 +753,9 @@ DELETE FROM "AppFleets" WHERE "Id"::text LIKE 'cc000001-%';
 INSERT INTO "AppFleets" ("Id", "Name", "OperatorUserId", "Description", "MaxMonthlyBudgetVnd", "CurrentMonthSpentVnd", "ChargingPolicy", "IsActive", "BudgetAlertThresholdPercent", "ExtraProperties", "ConcurrencyStamp", "CreationTime", "IsDeleted")
 VALUES
 -- ABC Corp fleet: DailyEnergyLimit policy, 50M VND budget, 35% spent this month
-('cc000001-0001-0001-0001-000000000001', 'ABC Corp - Đội xe doanh nghiệp', 'e1111111-1111-1111-1111-111111111118', 'Đội xe điện công ty ABC Corp. 3 xe VinFast phục vụ nhân viên đi công tác khu vực Hà Nội và TP.HCM.', 50000000.00, 17500000.00, 3, 80, true, '{}', 'seed-fl001', NOW() - INTERVAL '20 days', false),
+('cc000001-0001-0001-0001-000000000001', 'ABC Corp - Đội xe doanh nghiệp', 'e1111111-1111-1111-1111-111111111118', 'Đội xe điện công ty ABC Corp. 3 xe VinFast phục vụ nhân viên đi công tác khu vực Hà Nội và TP.HCM.', 50000000.00, 17500000.00, 3, true, 80, '{}', 'seed-fl001', NOW() - INTERVAL '20 days', false),
 -- Grab EV fleet: ApprovedStationsOnly policy, 200M VND budget, 62% spent
-('cc000001-0001-0001-0001-000000000002', 'Grab Vietnam - Đội xe điện', 'e1111111-1111-1111-1111-111111111119', 'Đội xe điện Grab phục vụ dịch vụ đặt xe tại TP.HCM. Chỉ sạc tại các trạm được phê duyệt.', 200000000.00, 124000000.00, 2, 75, true, '{}', 'seed-fl002', NOW() - INTERVAL '15 days', false);
+('cc000001-0001-0001-0001-000000000002', 'Grab Vietnam - Đội xe điện', 'e1111111-1111-1111-1111-111111111119', 'Đội xe điện Grab phục vụ dịch vụ đặt xe tại TP.HCM. Chỉ sạc tại các trạm được phê duyệt.', 200000000.00, 124000000.00, 2, true, 75, '{}', 'seed-fl002', NOW() - INTERVAL '15 days', false);
 
 -- Fleet vehicles
 INSERT INTO "AppFleetVehicles" ("Id", "FleetId", "VehicleId", "DriverUserId", "DailyChargingLimitKwh", "CurrentDayEnergyKwh", "CurrentMonthEnergyKwh", "IsActive", "CreationTime", "IsDeleted")
@@ -846,3 +846,5 @@ SELECT '=== Admin User Credentials ===' AS info;
 SELECT 'admin@klc.vn / Admin@123 (Full access)' AS credentials;
 SELECT 'operator@klc.vn / Admin@123 (Station management)' AS credentials;
 SELECT 'viewer@klc.vn / Admin@123 (Read-only)' AS credentials;
+
+COMMIT;
