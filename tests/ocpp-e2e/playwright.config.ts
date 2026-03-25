@@ -12,7 +12,6 @@ export default defineConfig({
     ignoreHTTPSErrors: true,
     screenshot: "only-on-failure",
     trace: "on-first-retry",
-    // Serve the simulator HTML locally
     baseURL: `file://${path.resolve(__dirname, "../../ocpp-simulator")}`,
   },
   projects: [
