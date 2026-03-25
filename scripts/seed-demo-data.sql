@@ -185,6 +185,11 @@ VALUES
 ('b3333333-3333-3333-3333-333333333331', 'KC-DN-001', 'KLC Vincom Đà Nẵng', 'Vincom Plaza, Ngô Quyền, Đà Nẵng', 16.0572, 108.2200, 1, 'v1.5.0', 'ABB Terra AC', 'ABB', 'ABB-DN-001', 'a0000001-0001-0001-0001-000000000003', 'd1111111-1111-1111-1111-111111111111', NOW() - INTERVAL '8 minutes', true, '{}', 'seed-cs007', NOW() - INTERVAL '30 days', false),
 ('b3333333-3333-3333-3333-333333333332', 'KC-DN-002', 'KLC Indochina Riverside', 'Indochina Riverside Tower, Đà Nẵng', 16.0656, 108.2248, 3, 'v1.4.5', 'Schneider EVlink', 'Schneider', 'SCH-DN-002', 'a0000001-0001-0001-0001-000000000003', 'd3333333-3333-3333-3333-333333333333', NULL, false, '{}', 'seed-cs008', NOW() - INTERVAL '25 days', false);
 
+-- Populate PostGIS Location column from Latitude/Longitude
+UPDATE "AppChargingStations"
+SET "Location" = ST_SetSRID(ST_MakePoint("Longitude", "Latitude"), 4326)::geography
+WHERE "Location" IS NULL AND "Latitude" != 0 AND "Longitude" != 0;
+
 -- ============================================================
 -- 4. CONNECTORS (16 connectors across 8 stations)
 -- ============================================================
