@@ -25,7 +25,7 @@ permissions:
 jobs:
   changes:
     name: Detect changes
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, gce]
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       admin-portal: ${{ steps.filter.outputs.admin-portal }}
@@ -42,7 +42,7 @@ jobs:
 
   test:
     name: Backend Tests
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, gce]
     needs: changes
     if: needs.changes.outputs.backend == 'true'
     timeout-minutes: 15
@@ -80,7 +80,7 @@ jobs:
 
   deploy-admin-api:
     name: Deploy Admin API
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, gce]
     needs: [changes, test]
     if: always() && needs.changes.outputs.backend == 'true' && (needs.test.result == 'success')
     timeout-minutes: 15
@@ -147,7 +147,7 @@ jobs:
 
   deploy-driver-bff:
     name: Deploy Driver BFF
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, gce]
     needs: [changes, test]
     if: always() && needs.changes.outputs.backend == 'true' && (needs.test.result == 'success')
     timeout-minutes: 15
@@ -211,7 +211,7 @@ jobs:
 
   deploy-admin-portal:
     name: Deploy Admin Portal
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, gce]
     needs: changes
     if: needs.changes.outputs.admin-portal == 'true'
     timeout-minutes: 15
