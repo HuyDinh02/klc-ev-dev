@@ -154,6 +154,8 @@ export const paymentsApi = {
   getHistory: (params?: { skipCount?: number; maxResultCount?: number; status?: number }) =>
     api.get("/payments/history", { params }),
   getById: (id: string) => api.get(`/payments/${id}`),
+  getWalletTransactions: (params?: { skipCount?: number; maxResultCount?: number; type?: number; status?: number; gateway?: number }) =>
+    api.get("/admin/wallet-transactions", { params }),
 };
 
 export const alertsApi = {
