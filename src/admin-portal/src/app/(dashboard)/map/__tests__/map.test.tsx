@@ -45,11 +45,12 @@ vi.mock('@/lib/api', () => ({
 
 import StationMapPage from '../page';
 
+// Station statuses: 0=Offline, 1=Online, 2=Disabled, 3=Decommissioned
 const mockStationsWithCoords = [
   {
     stationId: 'station-1',
     stationName: 'Station Alpha',
-    status: 1, // Available
+    status: 1, // Online
     latitude: 21.028,
     longitude: 105.854,
     totalConnectors: 4,
@@ -71,7 +72,7 @@ const mockStationsWithCoords = [
   {
     stationId: 'station-5',
     stationName: 'Station Epsilon',
-    status: 2, // Occupied
+    status: 1, // Online
     latitude: 21.040,
     longitude: 105.870,
     totalConnectors: 3,
@@ -84,7 +85,7 @@ const mockStationsWithCoords = [
 const mockStationNoCoords = {
   stationId: 'station-3',
   stationName: 'Station Gamma',
-  status: 4, // Faulted
+  status: 2, // Disabled
   latitude: null,
   longitude: null,
   totalConnectors: 3,
@@ -96,7 +97,7 @@ const mockStationNoCoords = {
 const mockStationNoCoords2 = {
   stationId: 'station-4',
   stationName: 'Station Delta',
-  status: 3, // Unavailable
+  status: 3, // Decommissioned
   latitude: null,
   longitude: null,
   totalConnectors: 1,
@@ -126,10 +127,10 @@ describe('StationMapPage', () => {
   it('renders all status legend badges', async () => {
     renderWithProviders(<StationMapPage />);
     await waitFor(() => {
-      expect(screen.getByText(/Available/)).toBeInTheDocument();
-      expect(screen.getByText(/Occupied/)).toBeInTheDocument();
+      expect(screen.getByText(/Online/)).toBeInTheDocument();
       expect(screen.getByText(/Offline/)).toBeInTheDocument();
-      expect(screen.getByText(/Faulted/)).toBeInTheDocument();
+      expect(screen.getByText(/Disabled/)).toBeInTheDocument();
+      expect(screen.getByText(/Decommissioned/)).toBeInTheDocument();
     });
   });
 
@@ -167,11 +168,11 @@ describe('StationMapPage', () => {
   it('shows status badges for stations without coordinates', async () => {
     renderWithProviders(<StationMapPage />);
     await waitFor(() => {
-      // Station Gamma (status 4 = Faulted), Station Delta (status 3 = Unavailable)
-      const faultedBadges = screen.getAllByText('Faulted');
-      expect(faultedBadges.length).toBeGreaterThanOrEqual(1);
-      const unavailableBadges = screen.getAllByText('Unavailable');
-      expect(unavailableBadges.length).toBeGreaterThanOrEqual(1);
+      // Station Gamma (status 2 = Disabled), Station Delta (status 3 = Decommissioned)
+      const disabledBadges = screen.getAllByText('Disabled');
+      expect(disabledBadges.length).toBeGreaterThanOrEqual(1);
+      const decommissionedBadges = screen.getAllByText('Decommissioned');
+      expect(decommissionedBadges.length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -203,11 +204,11 @@ describe('StationMapPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders online count (status 1 or 2) in Available badge', async () => {
+  it('renders online count (status 1) in Online badge', async () => {
     renderWithProviders(<StationMapPage />);
     await waitFor(() => {
-      // online = status 1 (Station Alpha) + status 2 (Station Epsilon) = 2
-      expect(screen.getByText(/Available \(2\)/)).toBeInTheDocument();
+      // online = status 1 (Station Alpha) + status 1 (Station Epsilon) = 2
+      expect(screen.getByText(/Online \(2\)/)).toBeInTheDocument();
     });
   });
 
@@ -219,11 +220,11 @@ describe('StationMapPage', () => {
     });
   });
 
-  it('renders faulted count (status 4) in Faulted badge', async () => {
+  it('renders disabled count (status 2) in Disabled badge', async () => {
     renderWithProviders(<StationMapPage />);
     await waitFor(() => {
-      // faulted = status 4 (Station Gamma) = 1
-      expect(screen.getByText(/Faulted \(1\)/)).toBeInTheDocument();
+      // disabled = status 2 (Station Gamma) = 1
+      expect(screen.getByText(/Disabled \(1\)/)).toBeInTheDocument();
     });
   });
 });

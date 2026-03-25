@@ -48,12 +48,12 @@ public interface IOcppRemoteCommandService
     /// <summary>
     /// Send RemoteStartTransaction to a Charge Point.
     /// </summary>
-    Task<bool> SendRemoteStartTransactionAsync(string stationCode, int connectorId, string idTag);
+    Task<RemoteCommandResult> SendRemoteStartTransactionAsync(string stationCode, int connectorId, string idTag);
 
     /// <summary>
     /// Send RemoteStopTransaction to a Charge Point.
     /// </summary>
-    Task<bool> SendRemoteStopTransactionAsync(string stationCode, int transactionId);
+    Task<RemoteCommandResult> SendRemoteStopTransactionAsync(string stationCode, int transactionId);
 
     /// <summary>
     /// Send Reset (Soft or Hard) to a Charge Point.
@@ -114,6 +114,16 @@ public interface IOcppRemoteCommandService
     /// Send SendLocalList to push a local authorization list to the Charge Point.
     /// </summary>
     Task<SendLocalListResult> SendSendLocalListAsync(string stationCode, int listVersion, string updateType, List<LocalAuthEntry>? localAuthorizationList = null);
+
+    /// <summary>
+    /// Send ReserveNow to reserve a connector on a Charge Point.
+    /// </summary>
+    Task<RemoteCommandResult> SendReserveNowAsync(string stationCode, int connectorId, DateTime expiryDate, string idTag, int reservationId);
+
+    /// <summary>
+    /// Send CancelReservation to cancel an existing reservation on a Charge Point.
+    /// </summary>
+    Task<RemoteCommandResult> SendCancelReservationAsync(string stationCode, int reservationId);
 }
 
 /// <summary>

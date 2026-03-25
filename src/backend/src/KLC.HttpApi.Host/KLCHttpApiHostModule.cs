@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Cors;
@@ -214,11 +215,16 @@ public class KLCHttpApiHostModule : AbpModule
             options.Map(KLCDomainErrorCodes.Session.InvalidStatus, HttpStatusCode.UnprocessableEntity);
             options.Map(KLCDomainErrorCodes.Session.InvalidStateTransition, HttpStatusCode.UnprocessableEntity);
             options.Map(KLCDomainErrorCodes.Session.NoDefaultVehicle, HttpStatusCode.UnprocessableEntity);
+            options.Map(KLCDomainErrorCodes.Station.CannotEnableDecommissioned, HttpStatusCode.UnprocessableEntity);
             options.Map(KLCDomainErrorCodes.EInvoiceCannotRetry, HttpStatusCode.UnprocessableEntity);
             options.Map(KLCDomainErrorCodes.Payment.InvalidRefund, HttpStatusCode.UnprocessableEntity);
             options.Map(KLCDomainErrorCodes.Payment.CannotCancel, HttpStatusCode.UnprocessableEntity);
             options.Map(KLCDomainErrorCodes.Payment.SessionNotCompleted, HttpStatusCode.UnprocessableEntity);
             options.Map(KLCDomainErrorCodes.Wallet.InsufficientBalance, HttpStatusCode.UnprocessableEntity);
+
+            // 503 Service Unavailable (downstream charger command dispatch failed)
+            options.Map(KLCDomainErrorCodes.Session.StartCommandFailed, HttpStatusCode.ServiceUnavailable);
+            options.Map(KLCDomainErrorCodes.Session.StopCommandFailed, HttpStatusCode.ServiceUnavailable);
 
             // 400 Bad Request (input/validation)
             options.Map(KLCDomainErrorCodes.Station.InvalidLatitude, HttpStatusCode.BadRequest);
@@ -267,9 +273,12 @@ public class KLCHttpApiHostModule : AbpModule
         context.Services.AddScoped<OcppMessageHandler>();
         context.Services.AddHostedService<HeartbeatMonitorService>();
         context.Services.AddHostedService<FleetResetBackgroundService>();
+        context.Services.AddHostedService<WalletBalanceMonitorService>();
+        context.Services.AddHostedService<PaymentReconciliationService>();
         context.Services.AddSingleton<PowerBalancingService>();
         context.Services.AddHostedService<PowerBalancingService>(sp => sp.GetRequiredService<PowerBalancingService>());
         context.Services.AddScoped<IOcppRemoteCommandService, OcppRemoteCommandService>();
+        context.Services.AddScoped<OcppPostBootConfigService>();
 
         // Vendor profiles
         context.Services.AddSingleton<IVendorProfile, GenericProfile>();
@@ -328,19 +337,26 @@ public class KLCHttpApiHostModule : AbpModule
         {
             Configure<AbpVirtualFileSystemOptions>(options =>
             {
-                options.FileSets.ReplaceEmbeddedByPhysical<KLCDomainSharedModule>(
-                    Path.Combine(hostingEnvironment.ContentRootPath,
-                        $"..{Path.DirectorySeparatorChar}KLC.Domain.Shared"));
-                options.FileSets.ReplaceEmbeddedByPhysical<KLCDomainModule>(
-                    Path.Combine(hostingEnvironment.ContentRootPath,
-                        $"..{Path.DirectorySeparatorChar}KLC.Domain"));
-                options.FileSets.ReplaceEmbeddedByPhysical<KLCApplicationContractsModule>(
-                    Path.Combine(hostingEnvironment.ContentRootPath,
-                        $"..{Path.DirectorySeparatorChar}KLC.Application.Contracts"));
-                options.FileSets.ReplaceEmbeddedByPhysical<KLCApplicationModule>(
-                    Path.Combine(hostingEnvironment.ContentRootPath,
-                        $"..{Path.DirectorySeparatorChar}KLC.Application"));
+                ReplaceEmbeddedFileSetIfPresent<KLCDomainSharedModule>(options, hostingEnvironment, "KLC.Domain.Shared");
+                ReplaceEmbeddedFileSetIfPresent<KLCDomainModule>(options, hostingEnvironment, "KLC.Domain");
+                ReplaceEmbeddedFileSetIfPresent<KLCApplicationContractsModule>(options, hostingEnvironment, "KLC.Application.Contracts");
+                ReplaceEmbeddedFileSetIfPresent<KLCApplicationModule>(options, hostingEnvironment, "KLC.Application");
             });
+        }
+    }
+
+    private static void ReplaceEmbeddedFileSetIfPresent<TModule>(
+        AbpVirtualFileSystemOptions options,
+        IWebHostEnvironment hostingEnvironment,
+        string projectFolder)
+    {
+        var physicalPath = Path.Combine(
+            hostingEnvironment.ContentRootPath,
+            $"..{Path.DirectorySeparatorChar}{projectFolder}");
+
+        if (Directory.Exists(physicalPath))
+        {
+            options.FileSets.ReplaceEmbeddedByPhysical<TModule>(physicalPath);
         }
     }
 

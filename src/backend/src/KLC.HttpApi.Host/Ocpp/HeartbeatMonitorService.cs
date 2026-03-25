@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using KLC.Enums;
+using KLC.Hubs;
 using KLC.Notifications;
 using KLC.Ocpp;
 using KLC.Operators;
@@ -101,8 +102,20 @@ public class HeartbeatMonitorService : BackgroundService
                 }
 
                 // Mark station as offline
-                station.UpdateStatus(StationStatus.Unavailable);
+                var previousStatus = station.Status;
+                station.MarkOffline();
                 await stationRepository.UpdateAsync(station);
+
+                // Broadcast station status change via SignalR (Online → Offline)
+                if (previousStatus != station.Status)
+                {
+                    var notifier = scope.ServiceProvider.GetRequiredService<IMonitoringNotifier>();
+                    await notifier.NotifyStationStatusChangedAsync(
+                        station.Id,
+                        station.Name,
+                        previousStatus,
+                        station.Status);
+                }
 
                 // Mark orphaned sessions as failed
                 var ocppService = scope.ServiceProvider.GetRequiredService<IOcppService>();

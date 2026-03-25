@@ -13,7 +13,7 @@ concurrency:
 jobs:
   backend-build-test:
     name: Backend Build & Test
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, gce]
     timeout-minutes: 15
 
     services:
@@ -40,7 +40,6 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
-          dotnet-quality: "preview"
 
       - name: Restore dependencies
         run: dotnet restore src/backend
@@ -63,7 +62,7 @@ jobs:
 
   admin-portal-build:
     name: Admin Portal Build
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, gce]
     timeout-minutes: 10
 
     steps:
@@ -96,7 +95,7 @@ jobs:
 
   driver-app-test:
     name: Driver App Tests
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, gce]
     timeout-minutes: 10
 
     steps:

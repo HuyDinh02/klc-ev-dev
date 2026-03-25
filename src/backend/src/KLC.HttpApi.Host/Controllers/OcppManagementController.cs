@@ -103,13 +103,15 @@ public class OcppManagementController : AbpControllerBase
         string chargePointId,
         [FromBody] RemoteStartRequest request)
     {
-        var success = await _remoteCommandService.SendRemoteStartTransactionAsync(
+        var result = await _remoteCommandService.SendRemoteStartTransactionAsync(
             chargePointId, request.ConnectorId, request.IdTag);
 
         return Ok(new RemoteCommandResultDto
         {
-            Success = success,
-            Message = success ? "RemoteStartTransaction accepted" : "RemoteStartTransaction failed or timed out"
+            Success = result.Accepted,
+            Message = result.Accepted
+                ? "RemoteStartTransaction accepted"
+                : result.ErrorMessage ?? "RemoteStartTransaction failed or timed out"
         });
     }
 
@@ -121,13 +123,15 @@ public class OcppManagementController : AbpControllerBase
         string chargePointId,
         [FromBody] RemoteStopRequest request)
     {
-        var success = await _remoteCommandService.SendRemoteStopTransactionAsync(
+        var result = await _remoteCommandService.SendRemoteStopTransactionAsync(
             chargePointId, request.TransactionId);
 
         return Ok(new RemoteCommandResultDto
         {
-            Success = success,
-            Message = success ? "RemoteStopTransaction accepted" : "RemoteStopTransaction failed or timed out"
+            Success = result.Accepted,
+            Message = result.Accepted
+                ? "RemoteStopTransaction accepted"
+                : result.ErrorMessage ?? "RemoteStopTransaction failed or timed out"
         });
     }
 

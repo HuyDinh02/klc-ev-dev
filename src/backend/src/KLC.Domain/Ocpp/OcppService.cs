@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using KLC.Enums;
 using KLC.Faults;
 using KLC.Fleets;
+using KLC.Payments;
 using KLC.Sessions;
 using KLC.Stations;
 using KLC.Tariffs;
@@ -33,6 +34,10 @@ public class OcppService : DomainService, IOcppService
     private readonly IRepository<FleetVehicle, Guid> _fleetVehicleRepository;
     private readonly IRepository<Fleet, Guid> _fleetRepository;
     private readonly IFleetChargingPolicyService _fleetChargingPolicyService;
+    private readonly IRepository<AppUser, Guid> _userRepository;
+    private readonly WalletDomainService _walletDomainService;
+    private readonly IRepository<WalletTransaction, Guid> _walletTransactionRepository;
+    private readonly IRepository<PaymentTransaction, Guid> _paymentTransactionRepository;
     private readonly IConfiguration _configuration;
     private readonly ILogger<OcppService> _logger;
 
@@ -48,6 +53,10 @@ public class OcppService : DomainService, IOcppService
         IRepository<FleetVehicle, Guid> fleetVehicleRepository,
         IRepository<Fleet, Guid> fleetRepository,
         IFleetChargingPolicyService fleetChargingPolicyService,
+        IRepository<AppUser, Guid> userRepository,
+        WalletDomainService walletDomainService,
+        IRepository<WalletTransaction, Guid> walletTransactionRepository,
+        IRepository<PaymentTransaction, Guid> paymentTransactionRepository,
         IConfiguration configuration,
         ILogger<OcppService> logger)
     {
@@ -62,6 +71,10 @@ public class OcppService : DomainService, IOcppService
         _fleetVehicleRepository = fleetVehicleRepository;
         _fleetRepository = fleetRepository;
         _fleetChargingPolicyService = fleetChargingPolicyService;
+        _userRepository = userRepository;
+        _walletDomainService = walletDomainService;
+        _walletTransactionRepository = walletTransactionRepository;
+        _paymentTransactionRepository = paymentTransactionRepository;
         _configuration = configuration;
         _logger = logger;
     }
@@ -78,6 +91,16 @@ public class OcppService : DomainService, IOcppService
         if (station == null)
         {
             _logger.LogWarning("BootNotification from unknown station: {ChargePointId}", chargePointId);
+            return null;
+        }
+
+        if (!station.IsEnabled || station.Status == StationStatus.Disabled || station.Status == StationStatus.Decommissioned)
+        {
+            _logger.LogWarning(
+                "BootNotification rejected for unavailable station {ChargePointId}: enabled={IsEnabled}, status={Status}",
+                chargePointId,
+                station.IsEnabled,
+                station.Status);
             return null;
         }
 
@@ -114,16 +137,10 @@ public class OcppService : DomainService, IOcppService
         // ConnectorId 0 means the station itself
         if (connectorId == 0)
         {
-            // Map connector status to station status
-            var stationStatus = status switch
-            {
-                ConnectorStatus.Available => StationStatus.Available,
-                ConnectorStatus.Faulted => StationStatus.Faulted,
-                ConnectorStatus.Unavailable => StationStatus.Unavailable,
-                _ => StationStatus.Available
-            };
-            station.UpdateStatus(stationStatus);
-            await _stationRepository.UpdateAsync(station);
+            // ConnectorId 0 = overall charger status in OCPP.
+            // Station status is managed by connect/disconnect lifecycle, not by StatusNotification.
+            // Just log it — don't change station status.
+            _logger.LogDebug("Overall charger status for {ChargePointId}: {Status}", chargePointId, status);
         }
         else
         {
@@ -255,6 +272,23 @@ public class OcppService : DomainService, IOcppService
             }
         }
 
+        // For test/demo idTags, assign the first active AppUser when AllowTestIdTags is enabled
+        if (userId == Guid.Empty && (idTag.StartsWith("TEST") || idTag.StartsWith("DEMO")))
+        {
+            var allowTestIdTags = _configuration.GetValue<bool>("Ocpp:AllowTestIdTags", false);
+            if (allowTestIdTags)
+            {
+                var firstUser = await _userRepository.FirstOrDefaultAsync(u => u.IsActive);
+                if (firstUser != null)
+                {
+                    userId = firstUser.Id;
+                    _logger.LogInformation(
+                        "Test idTag {IdTag} assigned to user {UserId} (Ocpp:AllowTestIdTags enabled)",
+                        idTag, userId);
+                }
+            }
+        }
+
         // Reject transaction if idTag could not be resolved to a valid user
         if (userId == Guid.Empty)
         {
@@ -370,6 +404,77 @@ public class OcppService : DomainService, IOcppService
                         "Fleet {FleetId} recorded: Energy={EnergyKwh}kWh on vehicle {VehicleId}, Spending={Cost}VND",
                         fleet.Id, session.TotalEnergyKwh, session.VehicleId, session.TotalCost);
                 }
+            }
+        }
+
+        // Auto-deduct session cost from user's wallet and create PaymentTransaction
+        if (session.TotalCost > 0 && session.UserId != Guid.Empty)
+        {
+            try
+            {
+                var user = await _userRepository.FirstOrDefaultAsync(
+                    u => u.IdentityUserId == session.UserId);
+
+                if (user != null && user.WalletBalance > 0)
+                {
+                    var deductAmount = Math.Min(session.TotalCost, user.WalletBalance);
+                    var (newBalance, walletTx) = _walletDomainService.DeductForSession(
+                        user, deductAmount, session.Id);
+
+                    await _userRepository.UpdateAsync(user);
+                    await _walletTransactionRepository.InsertAsync(walletTx);
+
+                    // Create PaymentTransaction so session payment is visible in admin portal
+                    var paymentTx = new PaymentTransaction(
+                        Guid.NewGuid(),
+                        session.Id,
+                        session.UserId,
+                        PaymentGateway.Wallet,
+                        deductAmount);
+                    paymentTx.MarkCompleted($"WALLET-{walletTx.Id.ToString("N")[..8].ToUpper()}");
+                    await _paymentTransactionRepository.InsertAsync(paymentTx);
+
+                    _logger.LogInformation(
+                        "Wallet deducted for session {SessionId}: Amount={Amount}, NewBalance={NewBalance}, PaymentId={PaymentId}",
+                        session.Id, deductAmount, newBalance, paymentTx.Id);
+
+                    // If wallet didn't cover full cost, create pending payment for remainder
+                    if (deductAmount < session.TotalCost)
+                    {
+                        var remainingAmount = session.TotalCost - deductAmount;
+                        var pendingPayment = new PaymentTransaction(
+                            Guid.NewGuid(),
+                            session.Id,
+                            session.UserId,
+                            PaymentGateway.VnPay,
+                            remainingAmount);
+                        await _paymentTransactionRepository.InsertAsync(pendingPayment);
+
+                        _logger.LogWarning(
+                            "Partial payment for session {SessionId}: Wallet={WalletAmount}, Remaining={Remaining} (pending VnPay)",
+                            session.Id, deductAmount, remainingAmount);
+                    }
+                }
+                else if (user != null)
+                {
+                    // No wallet balance — create pending payment for full amount
+                    var pendingPayment = new PaymentTransaction(
+                        Guid.NewGuid(),
+                        session.Id,
+                        session.UserId,
+                        PaymentGateway.VnPay,
+                        session.TotalCost);
+                    await _paymentTransactionRepository.InsertAsync(pendingPayment);
+
+                    _logger.LogWarning(
+                        "No wallet balance for session {SessionId}: Pending VnPay payment for {Amount} VND",
+                        session.Id, session.TotalCost);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to process payment for session {SessionId}. Manual billing required.", session.Id);
+                // Do NOT rethrow - session completion must not fail due to payment issues
             }
         }
 
@@ -582,6 +687,25 @@ public class OcppService : DomainService, IOcppService
         {
             return;
         }
+
+        // Mark station as offline immediately on WebSocket disconnect
+        station.MarkOffline();
+
+        // Reset all connectors to Unavailable when station goes offline
+        var connectors = await AsyncExecuter.ToListAsync(
+            (await _connectorRepository.GetQueryableAsync())
+                .Where(c => c.StationId == station.Id && c.Status != ConnectorStatus.Unavailable));
+
+        foreach (var connector in connectors)
+        {
+            connector.UpdateStatus(ConnectorStatus.Unavailable);
+            await _connectorRepository.UpdateAsync(connector);
+        }
+
+        await _stationRepository.UpdateAsync(station);
+        _logger.LogInformation(
+            "Station {ChargePointId} marked Offline, {ConnectorCount} connectors set to Unavailable",
+            chargePointId, connectors.Count);
 
         // Find all active sessions for this station
         var activeSessions = await AsyncExecuter.ToListAsync(

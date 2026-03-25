@@ -199,9 +199,7 @@ public class OperatorApiAppService : KLCAppService, IOperatorApiAppService
         return new OperatorAnalyticsSummaryDto
         {
             TotalStations = stationIds.Count,
-            OnlineStations = stations.Count(s =>
-                s.Status != StationStatus.Offline &&
-                s.Status != StationStatus.Decommissioned),
+            OnlineStations = stations.Count(s => s.Status == StationStatus.Online),
             TotalSessionsLast30Days = sessions.Count,
             CompletedSessionsLast30Days = completedSessions.Count,
             ActiveSessions = activeSessions.Count,

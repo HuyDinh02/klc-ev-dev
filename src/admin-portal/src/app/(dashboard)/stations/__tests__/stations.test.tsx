@@ -56,7 +56,7 @@ const mockStations = [
     stationCode: 'CS-002',
     name: 'Station Beta',
     address: '456 Le Loi, District 3, HCMC',
-    status: 0,
+    status: 2,
     isEnabled: false,
     connectorCount: 2,
     lastHeartbeat: null,

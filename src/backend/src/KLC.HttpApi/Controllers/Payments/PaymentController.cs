@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using KLC.Payments;
 using KLC.Permissions;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Volo.Abp.Application.Dtos;
 
@@ -24,6 +26,7 @@ public class PaymentController : KLCController
     [HttpPost("process")]
     public async Task<ActionResult<PaymentResultDto>> ProcessPaymentAsync([FromBody] ProcessPaymentDto input)
     {
+        input.ClientIpAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
         var result = await _paymentAppService.ProcessPaymentAsync(input);
         return Ok(result);
     }
@@ -50,10 +53,33 @@ public class PaymentController : KLCController
         return Ok();
     }
 
+    /// <summary>
+    /// VNPay IPN endpoint. VNPay sends GET requests with query params and expects JSON response.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpGet("vnpay-ipn")]
+    public async Task<ActionResult<VnPayIpnResponse>> VnPayIpnAsync()
+    {
+        var queryParams = HttpContext.Request.Query
+            .ToDictionary(q => q.Key, q => q.Value.ToString());
+        var result = await _paymentAppService.HandleVnPayIpnAsync(queryParams);
+        return Ok(result);
+    }
+
     [HttpPost("{id:guid}/refund")]
     public async Task<ActionResult<RefundResultDto>> RefundAsync(Guid id, [FromBody] RefundInput input)
     {
         var result = await _paymentAppService.RefundAsync(id, input);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Query VNPay for transaction status (admin reconciliation).
+    /// </summary>
+    [HttpGet("{id:guid}/query-vnpay")]
+    public async Task<ActionResult<PaymentTransactionDto>> QueryVnPayAsync(Guid id)
+    {
+        var result = await _paymentAppService.QueryVnPayTransactionAsync(id);
         return Ok(result);
     }
 }
@@ -124,3 +150,4 @@ public class InvoiceController : KLCController
         return Ok(result);
     }
 }
+

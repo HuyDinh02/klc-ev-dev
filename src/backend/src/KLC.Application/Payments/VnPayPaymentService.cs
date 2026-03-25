@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
+using System.Net;
 using System.Web;
 using KLC.Enums;
 using Microsoft.Extensions.Configuration;
@@ -21,13 +24,16 @@ public class VnPayPaymentService : IPaymentGatewayService, ITransientDependency
 {
     private readonly ILogger<VnPayPaymentService> _logger;
     private readonly IConfiguration _configuration;
+    private readonly IHttpClientFactory _httpClientFactory;
 
     public VnPayPaymentService(
         ILogger<VnPayPaymentService> logger,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHttpClientFactory httpClientFactory)
     {
         _logger = logger;
         _configuration = configuration;
+        _httpClientFactory = httpClientFactory;
     }
 
     public PaymentGateway Gateway => PaymentGateway.VnPay;
@@ -56,7 +62,9 @@ public class VnPayPaymentService : IPaymentGatewayService, ITransientDependency
 
         // VnPay uses smallest currency unit (VND * 100)
         var vnpAmount = ((long)(request.Amount * 100)).ToString();
-        var createDate = DateTime.UtcNow.AddHours(7).ToString("yyyyMMddHHmmss");
+        var now = DateTime.UtcNow.AddHours(7);
+        var createDate = now.ToString("yyyyMMddHHmmss");
+        var expireDate = now.AddMinutes(15).ToString("yyyyMMddHHmmss");
 
         // Build sorted parameter dictionary (VnPay requires alphabetical order)
         var vnpParams = new SortedDictionary<string, string>(StringComparer.Ordinal)
@@ -65,9 +73,10 @@ public class VnPayPaymentService : IPaymentGatewayService, ITransientDependency
             { "vnp_Command", "pay" },
             { "vnp_CreateDate", createDate },
             { "vnp_CurrCode", "VND" },
-            { "vnp_IpAddr", "127.0.0.1" },
+            { "vnp_ExpireDate", expireDate },
+            { "vnp_IpAddr", request.ClientIpAddress ?? "127.0.0.1" },
             { "vnp_Locale", "vn" },
-            { "vnp_OrderInfo", request.Description },
+            { "vnp_OrderInfo", SanitizeOrderInfo(request.Description) },
             { "vnp_OrderType", "topup" },
             { "vnp_ReturnUrl", request.ReturnUrl },
             { "vnp_TmnCode", tmnCode },
@@ -173,9 +182,17 @@ public class VnPayPaymentService : IPaymentGatewayService, ITransientDependency
         var gatewayTxId = queryParams["vnp_TransactionNo"];
         var isSuccess = responseCode == "00";
 
+        // Extract amount (VNPay stores amount * 100)
+        decimal? callbackAmount = null;
+        var vnpAmountStr = queryParams["vnp_Amount"];
+        if (long.TryParse(vnpAmountStr, out var vnpAmountRaw))
+        {
+            callbackAmount = vnpAmountRaw / 100m;
+        }
+
         _logger.LogInformation(
-            "[VnPay] Callback verified: TxnRef={TxnRef}, ResponseCode={ResponseCode}, Success={IsSuccess}",
-            txnRef, responseCode, isSuccess);
+            "[VnPay] Callback verified: TxnRef={TxnRef}, ResponseCode={ResponseCode}, Amount={Amount}, Success={IsSuccess}",
+            txnRef, responseCode, callbackAmount, isSuccess);
 
         return Task.FromResult(new PaymentCallbackResult
         {
@@ -183,6 +200,7 @@ public class VnPayPaymentService : IPaymentGatewayService, ITransientDependency
             IsSuccess = isSuccess,
             ReferenceCode = txnRef,
             GatewayTransactionId = gatewayTxId,
+            CallbackAmount = callbackAmount,
             ErrorMessage = isSuccess ? null : $"VnPay response code: {responseCode}"
         });
     }
@@ -228,9 +246,181 @@ public class VnPayPaymentService : IPaymentGatewayService, ITransientDependency
         return ConstantTimeEquals(expectedHash, signature);
     }
 
+    public async Task<PaymentCallbackResult> QueryTransactionAsync(QueryTransactionRequest request)
+    {
+        var tmnCode = _configuration["Payment:VnPay:TmnCode"];
+        var hashSecret = _configuration["Payment:VnPay:HashSecret"];
+        var apiUrl = _configuration["Payment:VnPay:QueryApiUrl"]
+                     ?? "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction";
+        var version = _configuration["Payment:VnPay:Version"] ?? "2.1.0";
+
+        if (string.IsNullOrEmpty(tmnCode) || string.IsNullOrEmpty(hashSecret))
+        {
+            _logger.LogWarning("[VnPay] QueryTransaction: credentials not configured (dev mode)");
+            return new PaymentCallbackResult { IsValid = false, ErrorMessage = "VnPay not configured" };
+        }
+
+        var requestId = Guid.NewGuid().ToString("N");
+        var createDate = DateTime.UtcNow.AddHours(7).ToString("yyyyMMddHHmmss");
+        var ipAddr = request.ClientIpAddress;
+        var orderInfo = request.OrderInfo;
+
+        // VNPay querydr uses pipe-delimited hash
+        var hashData = $"{requestId}|{version}|querydr|{tmnCode}|{request.TxnRef}|{request.TransactionDate}|{createDate}|{ipAddr}|{orderInfo}";
+        var secureHash = ComputeHmacSha512(hashData, hashSecret);
+
+        var payload = new Dictionary<string, string>
+        {
+            { "vnp_RequestId", requestId },
+            { "vnp_Version", version },
+            { "vnp_Command", "querydr" },
+            { "vnp_TmnCode", tmnCode },
+            { "vnp_TxnRef", request.TxnRef },
+            { "vnp_OrderInfo", orderInfo },
+            { "vnp_TransactionDate", request.TransactionDate },
+            { "vnp_CreateDate", createDate },
+            { "vnp_IpAddr", ipAddr },
+            { "vnp_SecureHash", secureHash }
+        };
+
+        if (!string.IsNullOrEmpty(request.GatewayTransactionId))
+        {
+            payload["vnp_TransactionNo"] = request.GatewayTransactionId;
+        }
+
+        try
+        {
+            var client = _httpClientFactory.CreateClient("VnPay");
+            var json = JsonSerializer.Serialize(payload);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await client.PostAsync(apiUrl, content);
+            var responseBody = await response.Content.ReadAsStringAsync();
+
+            _logger.LogInformation("[VnPay] QueryTransaction response: {Response}", responseBody);
+
+            var result = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(responseBody);
+            if (result == null)
+            {
+                return new PaymentCallbackResult { IsValid = false, ErrorMessage = "Empty response" };
+            }
+
+            var responseCode = result.TryGetValue("vnp_ResponseCode", out var rc) ? rc.GetString() : null;
+            var transactionStatus = result.TryGetValue("vnp_TransactionStatus", out var ts) ? ts.GetString() : null;
+            var transactionNo = result.TryGetValue("vnp_TransactionNo", out var tn) ? tn.GetString() : null;
+
+            decimal? amount = null;
+            if (result.TryGetValue("vnp_Amount", out var amtEl))
+            {
+                var amtStr = amtEl.ValueKind == JsonValueKind.Number ? amtEl.GetInt64().ToString() : amtEl.GetString();
+                if (long.TryParse(amtStr, out var amtRaw))
+                {
+                    amount = amtRaw / 100m;
+                }
+            }
+
+            return new PaymentCallbackResult
+            {
+                IsValid = responseCode == "00",
+                IsSuccess = transactionStatus == "00",
+                ReferenceCode = request.TxnRef,
+                GatewayTransactionId = transactionNo,
+                CallbackAmount = amount,
+                ErrorMessage = responseCode != "00" ? $"VnPay query response code: {responseCode}" : null
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[VnPay] QueryTransaction failed for TxnRef={TxnRef}", request.TxnRef);
+            return new PaymentCallbackResult { IsValid = false, ErrorMessage = ex.Message };
+        }
+    }
+
+    public async Task<PaymentGatewayResult> RefundAsync(RefundGatewayRequest request)
+    {
+        var tmnCode = _configuration["Payment:VnPay:TmnCode"];
+        var hashSecret = _configuration["Payment:VnPay:HashSecret"];
+        var apiUrl = _configuration["Payment:VnPay:QueryApiUrl"]
+                     ?? "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction";
+        var version = _configuration["Payment:VnPay:Version"] ?? "2.1.0";
+
+        if (string.IsNullOrEmpty(tmnCode) || string.IsNullOrEmpty(hashSecret))
+        {
+            _logger.LogWarning("[VnPay] Refund: credentials not configured (dev mode)");
+            return PaymentGatewayResult.Fail("VnPay not configured");
+        }
+
+        var requestId = Guid.NewGuid().ToString("N");
+        var createDate = DateTime.UtcNow.AddHours(7).ToString("yyyyMMddHHmmss");
+        var transactionType = request.IsFullRefund ? "02" : "03";
+        var vnpAmount = ((long)(request.Amount * 100)).ToString();
+
+        // VNPay refund uses pipe-delimited hash
+        var hashData = $"{requestId}|{version}|refund|{tmnCode}|{transactionType}|{request.TxnRef}|{vnpAmount}|{request.GatewayTransactionId}|{request.TransactionDate}|{request.CreatedBy}|{createDate}|{request.ClientIpAddress}|{request.OrderInfo}";
+        var secureHash = ComputeHmacSha512(hashData, hashSecret);
+
+        var payload = new Dictionary<string, string>
+        {
+            { "vnp_RequestId", requestId },
+            { "vnp_Version", version },
+            { "vnp_Command", "refund" },
+            { "vnp_TmnCode", tmnCode },
+            { "vnp_TransactionType", transactionType },
+            { "vnp_TxnRef", request.TxnRef },
+            { "vnp_Amount", vnpAmount },
+            { "vnp_TransactionNo", request.GatewayTransactionId },
+            { "vnp_TransactionDate", request.TransactionDate },
+            { "vnp_CreateBy", request.CreatedBy },
+            { "vnp_CreateDate", createDate },
+            { "vnp_IpAddr", request.ClientIpAddress },
+            { "vnp_OrderInfo", request.OrderInfo },
+            { "vnp_SecureHash", secureHash }
+        };
+
+        try
+        {
+            var client = _httpClientFactory.CreateClient("VnPay");
+            var json = JsonSerializer.Serialize(payload);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await client.PostAsync(apiUrl, content);
+            var responseBody = await response.Content.ReadAsStringAsync();
+
+            _logger.LogInformation("[VnPay] Refund response: {Response}", responseBody);
+
+            var result = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(responseBody);
+            if (result == null)
+            {
+                return PaymentGatewayResult.Fail("Empty response from VnPay");
+            }
+
+            var responseCode = result.TryGetValue("vnp_ResponseCode", out var rc) ? rc.GetString() : null;
+            var refundTxnNo = result.TryGetValue("vnp_TransactionNo", out var tn) ? tn.GetString() : null;
+
+            if (responseCode == "00")
+            {
+                _logger.LogInformation(
+                    "[VnPay] Refund successful: TxnRef={TxnRef}, RefundTxnNo={RefundTxnNo}",
+                    request.TxnRef, refundTxnNo);
+                return PaymentGatewayResult.Ok(string.Empty, refundTxnNo);
+            }
+
+            var message = result.TryGetValue("vnp_Message", out var msg) ? msg.GetString() : "Unknown error";
+            _logger.LogWarning(
+                "[VnPay] Refund failed: TxnRef={TxnRef}, ResponseCode={Code}, Message={Message}",
+                request.TxnRef, responseCode, message);
+            return PaymentGatewayResult.Fail($"VnPay refund error {responseCode}: {message}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[VnPay] Refund failed for TxnRef={TxnRef}", request.TxnRef);
+            return PaymentGatewayResult.Fail(ex.Message);
+        }
+    }
+
     /// <summary>
     /// Build a URL-encoded query string from sorted parameters.
-    /// Format: key1=value1&amp;key2=value2 (values are URL-encoded).
+    /// Uses WebUtility.UrlEncode matching VNPay's official C# SDK (VnPayLibrary.cs).
     /// </summary>
     private static string BuildQueryString(SortedDictionary<string, string> parameters)
     {
@@ -239,14 +429,16 @@ public class VnPayPaymentService : IPaymentGatewayService, ITransientDependency
 
         foreach (var kvp in parameters)
         {
+            if (string.IsNullOrEmpty(kvp.Value)) continue;
+
             if (!first)
             {
                 sb.Append('&');
             }
 
-            sb.Append(HttpUtility.UrlEncode(kvp.Key));
+            sb.Append(WebUtility.UrlEncode(kvp.Key));
             sb.Append('=');
-            sb.Append(HttpUtility.UrlEncode(kvp.Value));
+            sb.Append(WebUtility.UrlEncode(kvp.Value));
             first = false;
         }
 
@@ -261,6 +453,45 @@ public class VnPayPaymentService : IPaymentGatewayService, ITransientDependency
         using var hmac = new HMACSHA512(Encoding.UTF8.GetBytes(key));
         var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(data));
         return Convert.ToHexString(hash).ToLowerInvariant();
+    }
+
+    /// <summary>
+    /// VNPay requires vnp_OrderInfo to be Vietnamese without diacritics and no special characters.
+    /// Remove diacritics and strip non-alphanumeric chars (except spaces, hyphens, underscores).
+    /// </summary>
+    private static string SanitizeOrderInfo(string input)
+    {
+        if (string.IsNullOrEmpty(input)) return "Payment";
+
+        // Normalize and remove diacritics
+        var normalized = input.Normalize(System.Text.NormalizationForm.FormD);
+        var sb = new StringBuilder();
+        foreach (var c in normalized)
+        {
+            var category = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c);
+            if (category != System.Globalization.UnicodeCategory.NonSpacingMark)
+            {
+                sb.Append(c);
+            }
+        }
+
+        var withoutDiacritics = sb.ToString().Normalize(System.Text.NormalizationForm.FormC);
+
+        // Replace special Vietnamese characters
+        withoutDiacritics = withoutDiacritics.Replace("đ", "d").Replace("Đ", "D");
+
+        // Keep only safe characters (alphanumeric, space, hyphen, colon, hash)
+        var result = new StringBuilder();
+        foreach (var c in withoutDiacritics)
+        {
+            if (char.IsLetterOrDigit(c) || c == ' ' || c == '-' || c == ':' || c == '#')
+            {
+                result.Append(c);
+            }
+        }
+
+        var sanitized = result.ToString().Trim();
+        return string.IsNullOrEmpty(sanitized) ? "Payment" : sanitized;
     }
 
     /// <summary>

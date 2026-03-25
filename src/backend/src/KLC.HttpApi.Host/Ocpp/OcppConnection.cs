@@ -56,6 +56,11 @@ public class OcppConnection
     public VendorProfileType VendorProfileType { get; private set; } = VendorProfileType.Generic;
 
     /// <summary>
+    /// Whether post-boot configuration needs to be sent after BootNotification response.
+    /// </summary>
+    public bool PendingPostBootConfig { get; set; }
+
+    /// <summary>
     /// Pending requests awaiting response from Charge Point.
     /// </summary>
     private readonly Dictionary<string, TaskCompletionSource<string>> _pendingRequests = new();

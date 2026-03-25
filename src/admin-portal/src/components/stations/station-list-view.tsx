@@ -69,11 +69,7 @@ export function StationListView({ stations, sortBy, sortOrder, onSort, onEnable,
                   <td className="px-4 py-3 font-medium">{station.name}</td>
                   <td className="px-4 py-3 text-sm max-w-xs truncate">{station.address}</td>
                   <td className="px-4 py-3">
-                    {!station.isEnabled ? (
-                      <Badge variant="secondary">{t("stations.disabled")}</Badge>
-                    ) : (
-                      <StatusBadge type="station" value={station.status} />
-                    )}
+                    <StatusBadge type="station" value={station.status} />
                   </td>
                   <td className="px-4 py-3 text-center tabular-nums">{station.connectorCount || 0}</td>
                   <td className="px-4 py-3 text-sm">

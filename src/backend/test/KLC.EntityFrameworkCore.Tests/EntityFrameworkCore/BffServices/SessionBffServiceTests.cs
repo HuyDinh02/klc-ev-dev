@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using KLC.Driver.Services;
 using KLC.EntityFrameworkCore;
@@ -6,6 +7,8 @@ using KLC.Enums;
 using KLC.Fleets;
 using KLC.Sessions;
 using KLC.Stations;
+using KLC.Users;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -29,7 +32,10 @@ public class SessionBffServiceTests : KLCEntityFrameworkCoreTestBase
         fleetPolicyService.ValidateChargingAsync(Arg.Any<Guid>(), Arg.Any<Guid>())
             .Returns(new FleetChargingValidationResult(true));
         var logger = Substitute.For<ILogger<SessionBffService>>();
-        _service = new SessionBffService(_dbContext, _cache, fleetPolicyService, logger);
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Wallet:MinBalanceToStart"] = "10000" })
+            .Build();
+        _service = new SessionBffService(_dbContext, _cache, fleetPolicyService, configuration, logger);
     }
 
     [Fact]
@@ -45,6 +51,12 @@ public class SessionBffServiceTests : KLCEntityFrameworkCoreTestBase
             var connector = station.AddConnector(connectorId, 1, ConnectorType.CCS2, 50);
             connector.UpdateStatus(ConnectorStatus.Available);
             await _dbContext.ChargingStations.AddAsync(station);
+
+            // Seed AppUser with wallet balance for wallet check
+            var appUser = new AppUser(Guid.NewGuid(), userId, "Test User", "0900000002");
+            appUser.AddToWallet(100_000m);
+            await _dbContext.AppUsers.AddAsync(appUser);
+
             await _dbContext.SaveChangesAsync();
         });
 

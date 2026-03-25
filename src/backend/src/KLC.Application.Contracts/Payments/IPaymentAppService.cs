@@ -32,6 +32,12 @@ public interface IPaymentAppService : IApplicationService
     // Callback (internal/webhook)
     Task HandleCallbackAsync(string gateway, PaymentCallbackDto callback);
 
+    // VNPay IPN (GET-based callback from VNPay servers)
+    Task<VnPayIpnResponse> HandleVnPayIpnAsync(Dictionary<string, string> queryParams);
+
+    // Query VNPay transaction status (admin reconciliation)
+    Task<PaymentTransactionDto> QueryVnPayTransactionAsync(Guid paymentId);
+
     // Refund
     Task<RefundResultDto> RefundAsync(Guid transactionId, RefundInput input);
 }

@@ -30,6 +30,7 @@ import {
   MapPin,
   Zap,
   RotateCcw,
+  Wallet,
 } from "lucide-react";
 
 interface Payment {
@@ -64,6 +65,8 @@ export default function PaymentsPage() {
   const [cursorStack, setCursorStack] = useState<(string | null)[]>([]);
   const [refundTarget, setRefundTarget] = useState<Payment | null>(null);
   const [refundReason, setRefundReason] = useState("");
+  const [activeTab, setActiveTab] = useState<"sessions" | "wallet">("sessions");
+  const [walletSkip, setWalletSkip] = useState(0);
   const pageSize = 20;
   const queryClient = useQueryClient();
 
@@ -88,6 +91,40 @@ export default function PaymentsPage() {
 
   const payments: Payment[] = paymentsData?.items || [];
   const totalCount = paymentsData?.totalCount || 0;
+
+  // Wallet transactions query
+  const { data: walletData, isLoading: walletLoading } = useQuery({
+    queryKey: ["wallet-transactions", walletSkip],
+    queryFn: async () => {
+      const res = await api.get("/admin/wallet-transactions", {
+        params: { maxResultCount: pageSize, skipCount: walletSkip },
+      });
+      return res.data;
+    },
+    enabled: activeTab === "wallet",
+  });
+  const walletTxns = walletData?.items || [];
+  const walletTotal = walletData?.totalCount || 0;
+
+  const queryVnPayMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await api.post(`/admin/wallet-transactions/${id}/query-vnpay`);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["wallet-transactions"] });
+      alert(data.isSuccess ? `VnPay confirms: Payment successful. ${data.reconciled ? "Wallet credited." : ""}` : `VnPay status: ${data.errorMessage || "Not completed"}`);
+    },
+    onError: (err: Error) => alert(`Query failed: ${err.message}`),
+  });
+
+  const WALLET_TYPE_LABELS: Record<number, string> = { 0: "Top-up", 1: "Session Payment", 2: "Refund", 3: "Adjustment", 4: "Voucher Credit" };
+  const TRANSACTION_STATUS: Record<number, { label: string; color: string }> = {
+    0: { label: "Pending", color: "bg-amber-100 text-amber-800" },
+    1: { label: "Completed", color: "bg-green-100 text-green-800" },
+    2: { label: "Failed", color: "bg-red-100 text-red-800" },
+    3: { label: "Cancelled", color: "bg-gray-100 text-gray-800" },
+  };
 
   // Compute stats from fetched data
   const stats: PaymentStats = {
@@ -176,6 +213,33 @@ export default function PaymentsPage() {
         />
       </div>
 
+      {/* Tab Switcher */}
+      <div className="flex gap-2 border-b pb-0">
+        <button
+          onClick={() => setActiveTab("sessions")}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            activeTab === "sessions"
+              ? "border-green-600 text-green-600"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Zap className="h-4 w-4" />
+          Session Payments
+        </button>
+        <button
+          onClick={() => setActiveTab("wallet")}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            activeTab === "wallet"
+              ? "border-green-600 text-green-600"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Wallet className="h-4 w-4" />
+          Wallet Transactions
+        </button>
+      </div>
+
+      {activeTab === "sessions" && <>
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
@@ -369,6 +433,105 @@ export default function PaymentsPage() {
                   )}
                 </div>
               </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      </>}
+
+      {/* Wallet Transactions Tab */}
+      {activeTab === "wallet" && (
+        <Card>
+          <CardContent className="p-0">
+            {walletLoading ? (
+              <SkeletonTable rows={8} cols={7} />
+            ) : walletTxns.length === 0 ? (
+              <EmptyState
+                icon={Wallet}
+                title="No wallet transactions"
+                description="Wallet top-ups, session payments, and refunds will appear here"
+              />
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="border-b bg-muted/50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-sm font-medium">Reference</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium">User</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium">Type</th>
+                        <th className="px-4 py-3 text-right text-sm font-medium">Amount</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium">Gateway</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium">Date</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {walletTxns.map((t: Record<string, unknown>) => {
+                        const status = TRANSACTION_STATUS[t.status as number] || { label: "Unknown", color: "bg-gray-100" };
+                        const isPendingVnPay = (t.status as number) === 0 && (t.paymentGateway as number) === 4;
+                        return (
+                          <tr key={t.id as string} className="border-b hover:bg-muted/50">
+                            <td className="px-4 py-3 font-mono text-sm">{(t.referenceCode as string) || (t.id as string).slice(0, 8)}</td>
+                            <td className="px-4 py-3 text-sm">{t.userName as string}</td>
+                            <td className="px-4 py-3">
+                              <span className="rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
+                                {WALLET_TYPE_LABELS[t.type as number] || "Unknown"}
+                              </span>
+                            </td>
+                            <td className={`px-4 py-3 text-right tabular-nums font-semibold ${(t.amount as number) > 0 ? "text-green-600" : "text-red-600"}`}>
+                              {(t.amount as number) > 0 ? "+" : ""}{formatCurrency(Math.abs(t.amount as number))}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <CreditCard className="h-4 w-4 text-muted-foreground" />
+                                <span>{PAYMENT_GATEWAY_LABELS[t.paymentGateway as number] ?? "—"}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`rounded-full px-2 py-1 text-xs font-medium ${status.color}`}>
+                                {status.label}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-muted-foreground">
+                              {formatDateTime(t.creationTime as string)}
+                            </td>
+                            <td className="px-4 py-3">
+                              {isPendingVnPay && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={queryVnPayMutation.isPending}
+                                  onClick={() => queryVnPayMutation.mutate(t.id as string)}
+                                  title="Query VnPay for transaction status"
+                                >
+                                  <RotateCcw className="h-3 w-3 mr-1" />
+                                  Query
+                                </Button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                {walletTotal > pageSize && (
+                  <div className="flex items-center justify-between border-t px-4 py-3">
+                    <span className="text-sm text-muted-foreground">{walletTotal} total</span>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" disabled={walletSkip === 0} onClick={() => setWalletSkip(Math.max(0, walletSkip - pageSize))}>
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <Button variant="outline" size="sm" disabled={walletSkip + pageSize >= walletTotal} onClick={() => setWalletSkip(walletSkip + pageSize)}>
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>

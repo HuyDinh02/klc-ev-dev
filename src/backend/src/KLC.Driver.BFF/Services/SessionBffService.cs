@@ -3,6 +3,7 @@ using KLC.Enums;
 using KLC.Fleets;
 using KLC.Sessions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace KLC.Driver.Services;
 
@@ -20,17 +21,20 @@ public class SessionBffService : ISessionBffService
     private readonly KLCDbContext _dbContext;
     private readonly ICacheService _cache;
     private readonly IFleetChargingPolicyService _fleetChargingPolicyService;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<SessionBffService> _logger;
 
     public SessionBffService(
         KLCDbContext dbContext,
         ICacheService cache,
         IFleetChargingPolicyService fleetChargingPolicyService,
+        IConfiguration configuration,
         ILogger<SessionBffService> logger)
     {
         _dbContext = dbContext;
         _cache = cache;
         _fleetChargingPolicyService = fleetChargingPolicyService;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -63,6 +67,27 @@ public class SessionBffService : ISessionBffService
         if (existingSession != null)
         {
             return new SessionResponseDto { Success = false, Error = "You already have an active session" };
+        }
+
+        // Validate wallet balance before starting session
+        var minBalance = decimal.Parse(
+            _configuration.GetValue<string>("Wallet:MinBalanceToStart") ?? "10000");
+        var user = await _dbContext.AppUsers
+            .AsNoTracking()
+            .Where(u => u.IdentityUserId == userId)
+            .Select(u => new { u.WalletBalance })
+            .FirstOrDefaultAsync();
+
+        if (user == null || user.WalletBalance < minBalance)
+        {
+            _logger.LogWarning(
+                "Session start denied: insufficient wallet balance. UserId={UserId}, Balance={Balance}, MinRequired={MinBalance}",
+                userId, user?.WalletBalance ?? 0, minBalance);
+            return new SessionResponseDto
+            {
+                Success = false,
+                Error = $"Số dư ví không đủ. Tối thiểu {minBalance:N0}đ để bắt đầu sạc"
+            };
         }
 
         // Validate fleet charging policy if vehicle is specified

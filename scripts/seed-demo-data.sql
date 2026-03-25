@@ -13,7 +13,7 @@ BEGIN
   END IF;
 
   -- Extra guard: abort if the database has > 1000 real charging sessions (likely production)
-  IF (SELECT count(*) FROM "ChargingSessions" WHERE "IsDeleted" = false) > 1000 THEN
+  IF (SELECT count(*) FROM "AppChargingSessions" WHERE "IsDeleted" = false) > 1000 THEN
     RAISE EXCEPTION 'SAFETY: Seed script blocked — database has > 1000 sessions, which looks like production data.';
   END IF;
 END $$;
@@ -185,6 +185,11 @@ VALUES
 ('b3333333-3333-3333-3333-333333333331', 'KC-DN-001', 'KLC Vincom Đà Nẵng', 'Vincom Plaza, Ngô Quyền, Đà Nẵng', 16.0572, 108.2200, 1, 'v1.5.0', 'ABB Terra AC', 'ABB', 'ABB-DN-001', 'a0000001-0001-0001-0001-000000000003', 'd1111111-1111-1111-1111-111111111111', NOW() - INTERVAL '8 minutes', true, '{}', 'seed-cs007', NOW() - INTERVAL '30 days', false),
 ('b3333333-3333-3333-3333-333333333332', 'KC-DN-002', 'KLC Indochina Riverside', 'Indochina Riverside Tower, Đà Nẵng', 16.0656, 108.2248, 3, 'v1.4.5', 'Schneider EVlink', 'Schneider', 'SCH-DN-002', 'a0000001-0001-0001-0001-000000000003', 'd3333333-3333-3333-3333-333333333333', NULL, false, '{}', 'seed-cs008', NOW() - INTERVAL '25 days', false);
 
+-- Populate PostGIS Location column from Latitude/Longitude
+UPDATE "AppChargingStations"
+SET "Location" = ST_SetSRID(ST_MakePoint("Longitude", "Latitude"), 4326)::geography
+WHERE "Location" IS NULL AND "Latitude" != 0 AND "Longitude" != 0;
+
 -- ============================================================
 -- 4. CONNECTORS (16 connectors across 8 stations)
 -- ============================================================
@@ -216,7 +221,7 @@ VALUES
 ('c1000000-0001-0001-0001-000000000016', 'b3333333-3333-3333-3333-333333333332', 2, 0, 22.00, 7, false, NOW() - INTERVAL '25 days', false);
 
 -- ============================================================
--- 5. APP USERS (10 users)
+-- 5. APP USERS (10 users) + matching ABP Identity users for auth
 -- ============================================================
 DELETE FROM "AppAppUsers" WHERE "Email" LIKE '%@demo.klc.vn' OR "Email" LIKE '%@abc-corp.vn' OR "Email" LIKE '%@grab.vn';
 DELETE FROM "AppAppUsers" WHERE "Id" IN (
@@ -225,6 +230,26 @@ DELETE FROM "AppAppUsers" WHERE "Id" IN (
   'e1111111-1111-1111-1111-111111111117', 'e1111111-1111-1111-1111-111111111118', 'e1111111-1111-1111-1111-111111111119',
   'e1111111-1111-1111-1111-111111111120'
 );
+DELETE FROM "AbpUsers" WHERE "Id" IN (
+  'e1111111-1111-1111-1111-111111111111', 'e1111111-1111-1111-1111-111111111112', 'e1111111-1111-1111-1111-111111111113',
+  'e1111111-1111-1111-1111-111111111114', 'e1111111-1111-1111-1111-111111111115', 'e1111111-1111-1111-1111-111111111116',
+  'e1111111-1111-1111-1111-111111111117', 'e1111111-1111-1111-1111-111111111118', 'e1111111-1111-1111-1111-111111111119',
+  'e1111111-1111-1111-1111-111111111120'
+);
+
+-- ABP Identity users for driver app login (password: Admin@123 for all)
+INSERT INTO "AbpUsers" ("Id", "TenantId", "UserName", "NormalizedUserName", "Name", "Surname", "Email", "NormalizedEmail", "EmailConfirmed", "PasswordHash", "SecurityStamp", "IsExternal", "PhoneNumber", "PhoneNumberConfirmed", "IsActive", "TwoFactorEnabled", "LockoutEnd", "LockoutEnabled", "AccessFailedCount", "ShouldChangePasswordOnNextLogin", "EntityVersion", "LastPasswordChangeTime", "ExtraProperties", "ConcurrencyStamp", "CreationTime", "IsDeleted")
+VALUES
+('e1111111-1111-1111-1111-111111111111', NULL, '0901234001', '0901234001', 'An', 'Nguyễn Văn', 'nguyen.an@demo.klc.vn', 'NGUYEN.AN@DEMO.KLC.VN', true, 'AQAAAAIAAYagAAAAEBU9tr2cNLRUx4IZ+LyvffX2xVYLIM156L5jEOTYPQ6ihyvDGP4kDIToS7WhmeJMmw==', 'SEED-DRV-001', false, '0901234001', true, true, false, NULL, true, 0, false, 0, NOW(), '{}', 'seed-drv-01', NOW() - INTERVAL '30 days', false),
+('e1111111-1111-1111-1111-111111111112', NULL, '0901234002', '0901234002', 'Bình', 'Trần Thị', 'tran.binh@demo.klc.vn', 'TRAN.BINH@DEMO.KLC.VN', true, 'AQAAAAIAAYagAAAAEBU9tr2cNLRUx4IZ+LyvffX2xVYLIM156L5jEOTYPQ6ihyvDGP4kDIToS7WhmeJMmw==', 'SEED-DRV-002', false, '0901234002', true, true, false, NULL, true, 0, false, 0, NOW(), '{}', 'seed-drv-02', NOW() - INTERVAL '25 days', false),
+('e1111111-1111-1111-1111-111111111113', NULL, '0901234003', '0901234003', 'Cường', 'Lê Văn', 'le.cuong@demo.klc.vn', 'LE.CUONG@DEMO.KLC.VN', true, 'AQAAAAIAAYagAAAAEBU9tr2cNLRUx4IZ+LyvffX2xVYLIM156L5jEOTYPQ6ihyvDGP4kDIToS7WhmeJMmw==', 'SEED-DRV-003', false, '0901234003', true, true, false, NULL, true, 0, false, 0, NOW(), '{}', 'seed-drv-03', NOW() - INTERVAL '20 days', false),
+('e1111111-1111-1111-1111-111111111114', NULL, '0901234004', '0901234004', 'Dung', 'Phạm Thị', 'pham.dung@demo.klc.vn', 'PHAM.DUNG@DEMO.KLC.VN', true, 'AQAAAAIAAYagAAAAEBU9tr2cNLRUx4IZ+LyvffX2xVYLIM156L5jEOTYPQ6ihyvDGP4kDIToS7WhmeJMmw==', 'SEED-DRV-004', false, '0901234004', true, true, false, NULL, true, 0, false, 0, NOW(), '{}', 'seed-drv-04', NOW() - INTERVAL '15 days', false),
+('e1111111-1111-1111-1111-111111111115', NULL, '0901234005', '0901234005', 'Em', 'Hoàng Văn', 'hoang.em@demo.klc.vn', 'HOANG.EM@DEMO.KLC.VN', true, 'AQAAAAIAAYagAAAAEBU9tr2cNLRUx4IZ+LyvffX2xVYLIM156L5jEOTYPQ6ihyvDGP4kDIToS7WhmeJMmw==', 'SEED-DRV-005', false, '0901234005', true, true, false, NULL, true, 0, false, 0, NOW(), '{}', 'seed-drv-05', NOW() - INTERVAL '10 days', false),
+('e1111111-1111-1111-1111-111111111116', NULL, '0901234006', '0901234006', 'John', 'Smith', 'john.smith@demo.klc.vn', 'JOHN.SMITH@DEMO.KLC.VN', true, 'AQAAAAIAAYagAAAAEBU9tr2cNLRUx4IZ+LyvffX2xVYLIM156L5jEOTYPQ6ihyvDGP4kDIToS7WhmeJMmw==', 'SEED-DRV-006', false, '0901234006', true, true, false, NULL, true, 0, false, 0, NOW(), '{}', 'seed-drv-06', NOW() - INTERVAL '28 days', false),
+('e1111111-1111-1111-1111-111111111117', NULL, '0901234007', '0901234007', 'Sarah', 'Johnson', 'sarah.j@demo.klc.vn', 'SARAH.J@DEMO.KLC.VN', true, 'AQAAAAIAAYagAAAAEBU9tr2cNLRUx4IZ+LyvffX2xVYLIM156L5jEOTYPQ6ihyvDGP4kDIToS7WhmeJMmw==', 'SEED-DRV-007', false, '0901234007', true, true, false, NULL, true, 0, false, 0, NOW(), '{}', 'seed-drv-07', NOW() - INTERVAL '22 days', false),
+('e1111111-1111-1111-1111-111111111118', NULL, '0901234008', '0901234008', 'ABC Corp', 'Fleet', 'fleet@abc-corp.vn', 'FLEET@ABC-CORP.VN', true, 'AQAAAAIAAYagAAAAEBU9tr2cNLRUx4IZ+LyvffX2xVYLIM156L5jEOTYPQ6ihyvDGP4kDIToS7WhmeJMmw==', 'SEED-DRV-008', false, '0901234008', true, true, false, NULL, true, 0, false, 0, NOW(), '{}', 'seed-drv-08', NOW() - INTERVAL '60 days', false),
+('e1111111-1111-1111-1111-111111111119', NULL, '0901234009', '0901234009', 'Grab', 'Vietnam', 'ev-fleet@grab.vn', 'EV-FLEET@GRAB.VN', true, 'AQAAAAIAAYagAAAAEBU9tr2cNLRUx4IZ+LyvffX2xVYLIM156L5jEOTYPQ6ihyvDGP4kDIToS7WhmeJMmw==', 'SEED-DRV-009', false, '0901234009', true, true, false, NULL, true, 0, false, 0, NOW(), '{}', 'seed-drv-09', NOW() - INTERVAL '90 days', false),
+('e1111111-1111-1111-1111-111111111120', NULL, '0901234010', '0901234010', 'Giang', 'Võ Thị', 'vo.giang@demo.klc.vn', 'VO.GIANG@DEMO.KLC.VN', true, 'AQAAAAIAAYagAAAAEBU9tr2cNLRUx4IZ+LyvffX2xVYLIM156L5jEOTYPQ6ihyvDGP4kDIToS7WhmeJMmw==', 'SEED-DRV-010', false, '0901234010', true, true, false, NULL, true, 0, false, 0, NOW(), '{}', 'seed-drv-10', NOW() - INTERVAL '5 days', false);
 
 INSERT INTO "AppAppUsers" ("Id", "IdentityUserId", "FullName", "PhoneNumber", "Email", "IsPhoneVerified", "IsEmailVerified", "AvatarUrl", "PreferredLanguage", "IsNotificationsEnabled", "FcmToken", "WalletBalance", "IsActive", "LastLoginAt", "CreationTime", "IsDeleted")
 VALUES
@@ -753,9 +778,9 @@ DELETE FROM "AppFleets" WHERE "Id"::text LIKE 'cc000001-%';
 INSERT INTO "AppFleets" ("Id", "Name", "OperatorUserId", "Description", "MaxMonthlyBudgetVnd", "CurrentMonthSpentVnd", "ChargingPolicy", "IsActive", "BudgetAlertThresholdPercent", "ExtraProperties", "ConcurrencyStamp", "CreationTime", "IsDeleted")
 VALUES
 -- ABC Corp fleet: DailyEnergyLimit policy, 50M VND budget, 35% spent this month
-('cc000001-0001-0001-0001-000000000001', 'ABC Corp - Đội xe doanh nghiệp', 'e1111111-1111-1111-1111-111111111118', 'Đội xe điện công ty ABC Corp. 3 xe VinFast phục vụ nhân viên đi công tác khu vực Hà Nội và TP.HCM.', 50000000.00, 17500000.00, 3, 80, true, '{}', 'seed-fl001', NOW() - INTERVAL '20 days', false),
+('cc000001-0001-0001-0001-000000000001', 'ABC Corp - Đội xe doanh nghiệp', 'e1111111-1111-1111-1111-111111111118', 'Đội xe điện công ty ABC Corp. 3 xe VinFast phục vụ nhân viên đi công tác khu vực Hà Nội và TP.HCM.', 50000000.00, 17500000.00, 3, true, 80, '{}', 'seed-fl001', NOW() - INTERVAL '20 days', false),
 -- Grab EV fleet: ApprovedStationsOnly policy, 200M VND budget, 62% spent
-('cc000001-0001-0001-0001-000000000002', 'Grab Vietnam - Đội xe điện', 'e1111111-1111-1111-1111-111111111119', 'Đội xe điện Grab phục vụ dịch vụ đặt xe tại TP.HCM. Chỉ sạc tại các trạm được phê duyệt.', 200000000.00, 124000000.00, 2, 75, true, '{}', 'seed-fl002', NOW() - INTERVAL '15 days', false);
+('cc000001-0001-0001-0001-000000000002', 'Grab Vietnam - Đội xe điện', 'e1111111-1111-1111-1111-111111111119', 'Đội xe điện Grab phục vụ dịch vụ đặt xe tại TP.HCM. Chỉ sạc tại các trạm được phê duyệt.', 200000000.00, 124000000.00, 2, true, 75, '{}', 'seed-fl002', NOW() - INTERVAL '15 days', false);
 
 -- Fleet vehicles
 INSERT INTO "AppFleetVehicles" ("Id", "FleetId", "VehicleId", "DriverUserId", "DailyChargingLimitKwh", "CurrentDayEnergyKwh", "CurrentMonthEnergyKwh", "IsActive", "CreationTime", "IsDeleted")
@@ -846,3 +871,5 @@ SELECT '=== Admin User Credentials ===' AS info;
 SELECT 'admin@klc.vn / Admin@123 (Full access)' AS credentials;
 SELECT 'operator@klc.vn / Admin@123 (Station management)' AS credentials;
 SELECT 'viewer@klc.vn / Admin@123 (Read-only)' AS credentials;
+
+COMMIT;
