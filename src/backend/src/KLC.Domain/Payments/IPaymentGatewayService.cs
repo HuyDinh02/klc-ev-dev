@@ -54,6 +54,7 @@ public class CreateTopUpRequest
     public string ReturnUrl { get; set; } = string.Empty;
     public string NotifyUrl { get; set; } = string.Empty;
     public string? ClientIpAddress { get; set; }
+    public string? BankCode { get; set; }
 }
 
 public class PaymentGatewayResult

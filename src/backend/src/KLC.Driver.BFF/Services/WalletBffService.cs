@@ -158,7 +158,8 @@ public class WalletBffService : IWalletBffService
                     Description = $"Top-up via {request.Gateway}",
                     ReturnUrl = _configuration["Payment:VnPay:ReturnUrl"] ?? "klc://wallet/topup/callback",
                     NotifyUrl = "/api/v1/wallet/topup/callback",
-                    ClientIpAddress = request.ClientIpAddress
+                    ClientIpAddress = request.ClientIpAddress,
+                    BankCode = request.BankCode
                 })
                 : PaymentGatewayResult.Fail($"Gateway {request.Gateway} not supported");
 
@@ -595,6 +596,7 @@ public record TopUpRequest
 {
     public decimal Amount { get; init; }
     public PaymentGateway Gateway { get; init; }
+    public string? BankCode { get; init; }
     [System.Text.Json.Serialization.JsonIgnore]
     public string? ClientIpAddress { get; init; }
 }

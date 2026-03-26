@@ -84,6 +84,12 @@ public class VnPayPaymentService : IPaymentGatewayService, ITransientDependency
             { "vnp_Version", version }
         };
 
+        // Optional: pre-select bank to skip bank selection page
+        if (!string.IsNullOrEmpty(request.BankCode))
+        {
+            vnpParams["vnp_BankCode"] = request.BankCode;
+        }
+
         // Build query string from sorted params
         var queryString = BuildQueryString(vnpParams);
 
