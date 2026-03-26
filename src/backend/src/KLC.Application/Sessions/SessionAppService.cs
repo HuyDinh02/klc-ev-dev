@@ -313,9 +313,15 @@ public class SessionAppService : KLCAppService, ISessionAppService
         // Resolve user names from AppUser table
         var userIds = sessions.Where(s => s.UserId != Guid.Empty).Select(s => s.UserId).Distinct().ToList();
         var users = userIds.Count > 0
-            ? await _userRepository.GetListAsync(u => userIds.Contains(u.IdentityUserId))
+            ? await _userRepository.GetListAsync(u => userIds.Contains(u.IdentityUserId) || userIds.Contains(u.Id))
             : new List<Users.AppUser>();
-        var userMap = users.ToDictionary(u => u.IdentityUserId, u => u.FullName);
+        // Build lookup by both Id and IdentityUserId (OCPP sessions store AppUser.Id, others store IdentityUserId)
+        var userMap = new Dictionary<Guid, string>();
+        foreach (var u in users)
+        {
+            userMap.TryAdd(u.IdentityUserId, u.FullName);
+            userMap.TryAdd(u.Id, u.FullName);
+        }
 
         var dtos = sessions.Select(s => new SessionListDto
         {
