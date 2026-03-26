@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -128,11 +129,12 @@ public class OcppConnection
     {
         lock (_lock)
         {
-            foreach (var tcs in _pendingRequests.Values)
+            var pending = _pendingRequests.Values.ToList();
+            _pendingRequests.Clear();
+            foreach (var tcs in pending)
             {
                 tcs.TrySetCanceled();
             }
-            _pendingRequests.Clear();
         }
     }
 
