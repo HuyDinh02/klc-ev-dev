@@ -627,15 +627,7 @@ public class OcppService : DomainService, IOcppService
             return true;
         }
 
-        // Look up RFID/physical tag in UserIdTag registry
-        var userIdTag = await _userIdTagRepository.FirstOrDefaultAsync(
-            t => t.IdTag == idTag && t.IsActive);
-        if (userIdTag != null && userIdTag.IsValid())
-        {
-            return true;
-        }
-
-        // Accept known test/demo idTags only when explicitly enabled via configuration
+        // Accept known test/demo idTags early (no DB query needed)
         if (idTag.StartsWith("TEST") || idTag.StartsWith("DEMO"))
         {
             var allowTestIdTags = _configuration.GetValue<bool>("Ocpp:AllowTestIdTags", false);
@@ -644,6 +636,21 @@ public class OcppService : DomainService, IOcppService
                 _logger.LogInformation("Accepted test/demo idTag: {IdTag} (Ocpp:AllowTestIdTags is enabled)", idTag);
                 return true;
             }
+        }
+
+        // Look up RFID/physical tag in UserIdTag registry
+        try
+        {
+            var userIdTag = await _userIdTagRepository.FirstOrDefaultAsync(
+                t => t.IdTag == idTag && t.IsActive);
+            if (userIdTag != null && userIdTag.IsValid())
+            {
+                return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to query UserIdTag for {IdTag}, rejecting", idTag);
         }
 
         _logger.LogWarning("IdTag validation failed for: {IdTag}", idTag);
