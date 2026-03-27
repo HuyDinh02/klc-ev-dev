@@ -64,6 +64,34 @@ builder.Services.AddSingleton<ICacheService, RedisCacheService>();
 // Add HttpClient for payment gateways (MoMo API)
 builder.Services.AddHttpClient();
 
+// Initialize Firebase Admin SDK (for Phone Auth + Push Notifications)
+if (FirebaseAdmin.FirebaseApp.DefaultInstance == null)
+{
+    var firebaseCredPath = builder.Configuration["Firebase:CredentialPath"];
+    var firebaseProjectId = builder.Configuration["Firebase:ProjectId"] ?? "klc-ev-charging";
+
+    if (!string.IsNullOrEmpty(firebaseCredPath) && System.IO.File.Exists(firebaseCredPath))
+    {
+        FirebaseAdmin.FirebaseApp.Create(new FirebaseAdmin.AppOptions
+        {
+            Credential = Google.Apis.Auth.OAuth2.GoogleCredential.FromFile(firebaseCredPath),
+            ProjectId = firebaseProjectId
+        });
+    }
+    else
+    {
+        try
+        {
+            FirebaseAdmin.FirebaseApp.Create(new FirebaseAdmin.AppOptions
+            {
+                Credential = Google.Apis.Auth.OAuth2.GoogleCredential.GetApplicationDefault(),
+                ProjectId = firebaseProjectId
+            });
+        }
+        catch { /* Firebase will be unavailable — auth falls back to password login */ }
+    }
+}
+
 // Add BFF services
 builder.Services.AddScoped<IStationBffService, StationBffService>();
 builder.Services.AddScoped<ISessionBffService, SessionBffService>();

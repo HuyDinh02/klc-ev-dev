@@ -140,6 +140,21 @@ public static class AuthEndpoints
         .Produces<object>(200)
         .Produces(400);
 
+        // POST /api/v1/auth/firebase-phone — Login/register with Firebase Phone Auth
+        group.MapPost("/firebase-phone", async (
+            [FromBody] FirebasePhoneLoginRequest request,
+            IAuthBffService authService) =>
+        {
+            var result = await authService.FirebasePhoneLoginAsync(request);
+            return result.Success
+                ? Results.Ok(result)
+                : Results.Unauthorized();
+        })
+        .WithName("FirebasePhoneLogin")
+        .WithSummary("Login or register with Firebase Phone Auth ID token")
+        .Produces<LoginResultDto>(200)
+        .Produces(401);
+
         // POST /api/v1/auth/social-login
         group.MapPost("/social-login", async (
             [FromBody] SocialLoginRequest request,

@@ -20,6 +20,7 @@ public interface IAuthBffService
     Task<VerifyOtpResultDto> VerifyPhoneAsync(VerifyPhoneRequest request);
     Task ResendOtpAsync(ResendOtpRequest request);
     Task<LoginResultDto> LoginAsync(LoginRequest request);
+    Task<LoginResultDto> FirebasePhoneLoginAsync(FirebasePhoneLoginRequest request);
     Task<LoginResultDto> RefreshTokenAsync(RefreshTokenRequest request);
     Task LogoutAsync(Guid userId, string? refreshToken);
     Task ForgotPasswordAsync(ForgotPasswordRequest request);
@@ -193,6 +194,102 @@ public class AuthBffService : IAuthBffService
         await StoreRefreshToken(appUser.IdentityUserId, refreshToken);
 
         _auditLogger.LogAuthEvent("LoginSuccess", appUser.IdentityUserId.ToString());
+
+        return new LoginResultDto
+        {
+            Success = true,
+            AccessToken = accessToken,
+            RefreshToken = refreshToken,
+            ExpiresIn = GetAccessTokenExpirySeconds(),
+            User = MapToUserDto(appUser)
+        };
+    }
+
+    public async Task<LoginResultDto> FirebasePhoneLoginAsync(FirebasePhoneLoginRequest request)
+    {
+        // Step 1: Verify Firebase ID token
+        FirebaseAdmin.Auth.FirebaseToken? firebaseToken;
+        try
+        {
+            var auth = FirebaseAdmin.Auth.FirebaseAuth.DefaultInstance;
+            if (auth == null)
+            {
+                _logger.LogWarning("Firebase not initialized — cannot verify phone auth token");
+                return new LoginResultDto { Success = false, Error = "Firebase Auth not configured" };
+            }
+            firebaseToken = await auth.VerifyIdTokenAsync(request.IdToken);
+        }
+        catch (FirebaseAdmin.Auth.FirebaseAuthException ex)
+        {
+            _logger.LogWarning(ex, "Firebase token verification failed");
+            return new LoginResultDto { Success = false, Error = "Invalid or expired Firebase token" };
+        }
+
+        // Step 2: Extract phone number from Firebase token
+        var firebaseUid = firebaseToken.Uid;
+        var phoneNumber = firebaseToken.Claims.TryGetValue("phone_number", out var phone)
+            ? phone?.ToString()
+            : null;
+
+        if (string.IsNullOrEmpty(phoneNumber))
+        {
+            _logger.LogWarning("Firebase token has no phone_number claim: uid={Uid}", firebaseUid);
+            return new LoginResultDto { Success = false, Error = "Phone number not found in Firebase token" };
+        }
+
+        // Normalize VN phone: +84901234001 → 0901234001
+        var localPhone = phoneNumber.StartsWith("+84")
+            ? "0" + phoneNumber[3..]
+            : phoneNumber;
+
+        _logger.LogInformation("Firebase phone auth: uid={Uid}, phone={Phone}", firebaseUid, localPhone);
+
+        // Step 3: Find or create AppUser
+        var appUser = await _dbContext.AppUsers
+            .FirstOrDefaultAsync(u => u.PhoneNumber == localPhone && !u.IsDeleted);
+
+        if (appUser == null)
+        {
+            // Auto-register new user from Firebase
+            var identityUser = new Volo.Abp.Identity.IdentityUser(
+                Guid.NewGuid(), localPhone, $"{localPhone}@klc.local");
+            identityUser.SetPhoneNumber(localPhone, true);
+            await _userManager.CreateAsync(identityUser, $"Firebase_{Guid.NewGuid():N}"[..20]);
+
+            appUser = new AppUser(
+                Guid.NewGuid(),
+                identityUser.Id,
+                request.FullName ?? localPhone,
+                localPhone);
+            appUser.VerifyPhone();
+            _dbContext.AppUsers.Add(appUser);
+            await _dbContext.SaveChangesAsync();
+
+            _logger.LogInformation("Auto-registered Firebase user: phone={Phone}, appUserId={Id}", localPhone, appUser.Id);
+            _auditLogger.LogAuthEvent("FirebasePhoneRegister", userId: appUser.IdentityUserId.ToString(), details: $"Phone={localPhone}");
+        }
+
+        if (!appUser.IsActive)
+        {
+            return new LoginResultDto { Success = false, Error = "Account is suspended" };
+        }
+
+        // Step 4: Mark phone as verified (if not already)
+        if (!appUser.IsPhoneVerified)
+        {
+            appUser.VerifyPhone();
+            await _dbContext.SaveChangesAsync();
+        }
+
+        // Step 5: Record login + generate KLC tokens
+        appUser.RecordLogin();
+        await _dbContext.SaveChangesAsync();
+
+        var accessToken = GenerateAccessToken(appUser);
+        var refreshToken = GenerateRefreshToken();
+        await StoreRefreshToken(appUser.IdentityUserId, refreshToken);
+
+        _auditLogger.LogAuthEvent("FirebasePhoneLogin", userId: appUser.IdentityUserId.ToString(), details: $"Phone={localPhone}");
 
         return new LoginResultDto
         {
@@ -483,6 +580,14 @@ public record SocialLoginRequest
 {
     public string Provider { get; init; } = string.Empty; // google, apple, facebook
     public string AccessToken { get; init; } = string.Empty;
+}
+
+public record FirebasePhoneLoginRequest
+{
+    /// <summary>Firebase ID token from client-side phone auth</summary>
+    public string IdToken { get; init; } = string.Empty;
+    /// <summary>Optional user name for auto-registration</summary>
+    public string? FullName { get; init; }
 }
 
 public record AuthUserDto
