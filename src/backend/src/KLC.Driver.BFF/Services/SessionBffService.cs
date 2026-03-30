@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using KLC.EntityFrameworkCore;
 using KLC.Enums;
 using KLC.Fleets;
@@ -22,6 +23,7 @@ public class SessionBffService : ISessionBffService
     private readonly ICacheService _cache;
     private readonly IFleetChargingPolicyService _fleetChargingPolicyService;
     private readonly IConfiguration _configuration;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<SessionBffService> _logger;
 
     public SessionBffService(
@@ -29,12 +31,14 @@ public class SessionBffService : ISessionBffService
         ICacheService cache,
         IFleetChargingPolicyService fleetChargingPolicyService,
         IConfiguration configuration,
+        IHttpClientFactory httpClientFactory,
         ILogger<SessionBffService> logger)
     {
         _dbContext = dbContext;
         _cache = cache;
         _fleetChargingPolicyService = fleetChargingPolicyService;
         _configuration = configuration;
+        _httpClientFactory = httpClientFactory;
         _logger = logger;
     }
 
@@ -130,6 +134,39 @@ public class SessionBffService : ISessionBffService
             // Update connector status
             connector.UpdateStatus(ConnectorStatus.Preparing);
             await _dbContext.SaveChangesAsync();
+
+            // Send RemoteStartTransaction to the charger via Admin API
+            try
+            {
+                var adminApiUrl = _configuration["Auth:Authority"] ?? "https://localhost:44305";
+                using var httpClient = _httpClientFactory.CreateClient();
+                httpClient.DefaultRequestHeaders.Accept.Add(
+                    new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+
+                var remoteStartResponse = await httpClient.PostAsJsonAsync(
+                    $"{adminApiUrl}/api/v1/ocpp/connections/{connector.Station!.StationCode}/remote-start",
+                    new { connectorId = request.ConnectorNumber, idTag = userId.ToString() });
+
+                if (remoteStartResponse.IsSuccessStatusCode)
+                {
+                    _logger.LogInformation(
+                        "RemoteStartTransaction sent: Station={StationCode}, Connector={ConnectorNumber}, User={UserId}",
+                        connector.Station.StationCode, request.ConnectorNumber, userId);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "RemoteStartTransaction failed: Station={StationCode}, Status={StatusCode}",
+                        connector.Station.StationCode, remoteStartResponse.StatusCode);
+                }
+            }
+            catch (Exception remoteEx)
+            {
+                _logger.LogWarning(remoteEx,
+                    "Failed to send RemoteStartTransaction for station {StationCode}. Session created but charger not started.",
+                    connector.Station?.StationCode);
+                // Don't fail the session creation — charger may start via local RFID instead
+            }
 
             // Invalidate cache
             await _cache.RemoveAsync($"station:{request.StationId}:connectors");

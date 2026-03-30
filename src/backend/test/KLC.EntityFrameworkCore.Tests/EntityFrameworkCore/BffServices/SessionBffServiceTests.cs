@@ -1,3 +1,4 @@
+using System.Net.Http;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -35,7 +36,7 @@ public class SessionBffServiceTests : KLCEntityFrameworkCoreTestBase
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?> { ["Wallet:MinBalanceToStart"] = "10000" })
             .Build();
-        _service = new SessionBffService(_dbContext, _cache, fleetPolicyService, configuration, logger);
+        _service = new SessionBffService(_dbContext, _cache, fleetPolicyService, configuration, Substitute.For<IHttpClientFactory>(), logger);
     }
 
     [Fact]
