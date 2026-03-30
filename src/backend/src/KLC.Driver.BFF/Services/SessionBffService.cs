@@ -44,12 +44,37 @@ public class SessionBffService : ISessionBffService
 
     public async Task<SessionResponseDto> StartSessionAsync(Guid userId, StartSessionRequest request)
     {
-        // Validate connector availability
-        var connector = await _dbContext.Connectors
-            .Include(c => c.Station)
-            .FirstOrDefaultAsync(c => c.StationId == request.StationId &&
-                                      c.ConnectorNumber == request.ConnectorNumber &&
-                                      !c.IsDeleted);
+        // Resolve connector from flexible input: stationId+connectorNumber, connectorId, or stationCode+connectorNumber
+        Stations.Connector? connector = null;
+
+        if (request.ConnectorId.HasValue)
+        {
+            // Direct connector ID lookup
+            connector = await _dbContext.Connectors
+                .Include(c => c.Station)
+                .FirstOrDefaultAsync(c => c.Id == request.ConnectorId.Value && !c.IsDeleted);
+        }
+        else
+        {
+            // Resolve stationId from stationCode if needed
+            var stationId = request.StationId;
+            if (!stationId.HasValue && !string.IsNullOrEmpty(request.StationCode))
+            {
+                var station = await _dbContext.ChargingStations
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(s => s.StationCode == request.StationCode && !s.IsDeleted);
+                stationId = station?.Id;
+            }
+
+            if (stationId.HasValue && request.ConnectorNumber.HasValue)
+            {
+                connector = await _dbContext.Connectors
+                    .Include(c => c.Station)
+                    .FirstOrDefaultAsync(c => c.StationId == stationId.Value &&
+                                              c.ConnectorNumber == request.ConnectorNumber.Value &&
+                                              !c.IsDeleted);
+            }
+        }
 
         if (connector == null)
         {
@@ -98,7 +123,7 @@ public class SessionBffService : ISessionBffService
         if (request.VehicleId.HasValue)
         {
             var policyResult = await _fleetChargingPolicyService.ValidateChargingAsync(
-                request.VehicleId.Value, request.StationId);
+                request.VehicleId.Value, connector.StationId);
             if (!policyResult.Allowed)
             {
                 _logger.LogWarning(
@@ -123,8 +148,8 @@ public class SessionBffService : ISessionBffService
             var session = new ChargingSession(
                 Guid.NewGuid(),
                 userId,
-                request.StationId,
-                request.ConnectorNumber,
+                connector.StationId,
+                connector.ConnectorNumber,
                 request.VehicleId,
                 tariff?.Id,
                 tariff?.BaseRatePerKwh ?? 0);
@@ -145,13 +170,13 @@ public class SessionBffService : ISessionBffService
 
                 var remoteStartResponse = await httpClient.PostAsJsonAsync(
                     $"{adminApiUrl}/api/v1/ocpp/connections/{connector.Station!.StationCode}/remote-start",
-                    new { connectorId = request.ConnectorNumber, idTag = userId.ToString() });
+                    new { connectorId = connector.ConnectorNumber, idTag = userId.ToString() });
 
                 if (remoteStartResponse.IsSuccessStatusCode)
                 {
                     _logger.LogInformation(
                         "RemoteStartTransaction sent: Station={StationCode}, Connector={ConnectorNumber}, User={UserId}",
-                        connector.Station.StationCode, request.ConnectorNumber, userId);
+                        connector.Station.StationCode, connector.ConnectorNumber, userId);
                 }
                 else
                 {
@@ -169,7 +194,7 @@ public class SessionBffService : ISessionBffService
             }
 
             // Invalidate cache
-            await _cache.RemoveAsync($"station:{request.StationId}:connectors");
+            await _cache.RemoveAsync($"station:{connector.StationId}:connectors");
             await _cache.RemoveAsync($"user:{userId}:active-session");
 
             return new SessionResponseDto
@@ -181,7 +206,7 @@ public class SessionBffService : ISessionBffService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to start session for user {UserId} at station {StationId}", userId, request.StationId);
+            _logger.LogError(ex, "Failed to start session for user {UserId} at station {StationId}", userId, connector.StationId);
             return new SessionResponseDto { Success = false, Error = "Failed to start charging session" };
         }
     }
@@ -417,8 +442,10 @@ public class SessionBffService : ISessionBffService
 // DTOs
 public record StartSessionRequest
 {
-    public Guid StationId { get; init; }
-    public int ConnectorNumber { get; init; }
+    public Guid? StationId { get; init; }
+    public string? StationCode { get; init; }
+    public Guid? ConnectorId { get; init; }
+    public int? ConnectorNumber { get; init; }
     public Guid? VehicleId { get; init; }
 }
 
