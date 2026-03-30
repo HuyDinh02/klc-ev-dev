@@ -427,7 +427,7 @@ public class OcppService : DomainService, IOcppService
             try
             {
                 var user = await _userRepository.FirstOrDefaultAsync(
-                    u => u.IdentityUserId == session.UserId);
+                    u => u.Id == session.UserId || u.IdentityUserId == session.UserId);
 
                 if (user != null && user.WalletBalance > 0)
                 {

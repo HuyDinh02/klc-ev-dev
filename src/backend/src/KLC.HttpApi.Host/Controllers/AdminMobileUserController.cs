@@ -6,6 +6,7 @@ using KLC.Enums;
 using KLC.Payments;
 using KLC.Permissions;
 using KLC.Sessions;
+using KLC.Stations;
 using KLC.Users;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -24,15 +25,18 @@ public class AdminMobileUserController : AbpController
     private readonly IRepository<AppUser, Guid> _appUserRepository;
     private readonly IRepository<ChargingSession, Guid> _sessionRepository;
     private readonly IRepository<WalletTransaction, Guid> _walletTransactionRepository;
+    private readonly IRepository<KLC.Stations.ChargingStation, Guid> _stationRepository;
 
     public AdminMobileUserController(
         IRepository<AppUser, Guid> appUserRepository,
         IRepository<ChargingSession, Guid> sessionRepository,
-        IRepository<WalletTransaction, Guid> walletTransactionRepository)
+        IRepository<WalletTransaction, Guid> walletTransactionRepository,
+        IRepository<KLC.Stations.ChargingStation, Guid> stationRepository)
     {
         _appUserRepository = appUserRepository;
         _sessionRepository = sessionRepository;
         _walletTransactionRepository = walletTransactionRepository;
+        _stationRepository = stationRepository;
     }
 
     [HttpGet]
@@ -126,10 +130,19 @@ public class AdminMobileUserController : AbpController
             .Take(maxResultCount)
             .ToListAsync();
 
+        // Resolve station names
+        var stationIds = sessions.Select(s => s.StationId).Distinct().ToList();
+        var stations = stationIds.Count > 0
+            ? await (await _stationRepository.GetQueryableAsync())
+                .Where(st => stationIds.Contains(st.Id))
+                .ToDictionaryAsync(st => st.Id, st => st.Name)
+            : new Dictionary<Guid, string>();
+
         var dtos = sessions.Select(s => new
         {
             s.Id,
             s.StationId,
+            StationName = stations.GetValueOrDefault(s.StationId, s.StationId.ToString()[..8]),
             s.ConnectorNumber,
             s.Status,
             s.StartTime,
