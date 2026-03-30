@@ -289,11 +289,25 @@ public class OcppService : DomainService, IOcppService
             }
         }
 
-        // Reject transaction if idTag could not be resolved to a valid user
+        // For unregistered RFID cards: accept the transaction when AllowUnregisteredIdTags is enabled
+        // This allows real chargers with physical RFID to start charging sessions
+        // The session is created without a user (walk-in) for billing reconciliation later
         if (userId == Guid.Empty)
         {
-            _logger.LogWarning("StartTransaction rejected: idTag {IdTag} could not be resolved to a valid user", idTag);
-            return null;
+            var allowUnregistered = _configuration.GetValue<bool>("Ocpp:AllowUnregisteredIdTags", true);
+            if (allowUnregistered)
+            {
+                _logger.LogWarning(
+                    "Unregistered idTag {IdTag} accepted (Ocpp:AllowUnregisteredIdTags enabled). " +
+                    "Session will be created without user assignment. Register this RFID card in the admin portal.",
+                    idTag);
+                // userId stays Guid.Empty — session created as walk-in
+            }
+            else
+            {
+                _logger.LogWarning("StartTransaction rejected: idTag {IdTag} could not be resolved to a valid user", idTag);
+                return null;
+            }
         }
 
         // Resolve user's default vehicle for fleet policy validation
@@ -651,6 +665,14 @@ public class OcppService : DomainService, IOcppService
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to query UserIdTag for {IdTag}, rejecting", idTag);
+        }
+
+        // Accept unregistered RFID tags when configured (allows real chargers to start)
+        var allowUnregistered = _configuration.GetValue<bool>("Ocpp:AllowUnregisteredIdTags", true);
+        if (allowUnregistered)
+        {
+            _logger.LogWarning("Accepting unregistered idTag {IdTag} (Ocpp:AllowUnregisteredIdTags enabled)", idTag);
+            return true;
         }
 
         _logger.LogWarning("IdTag validation failed for: {IdTag}", idTag);

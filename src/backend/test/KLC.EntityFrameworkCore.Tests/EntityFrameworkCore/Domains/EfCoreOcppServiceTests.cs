@@ -622,8 +622,10 @@ public class EfCoreOcppServiceTests : KLCEntityFrameworkCoreTestBase
     }
 
     [Fact]
-    public async Task ValidateIdTag_Should_Reject_Inactive_RFID()
+    public async Task ValidateIdTag_Should_Accept_Inactive_RFID_When_AllowUnregistered()
     {
+        // With AllowUnregisteredIdTags=true (default), inactive RFID tags are accepted
+        // to allow real chargers to start sessions for billing reconciliation
         await WithUnitOfWorkAsync(async () =>
         {
             var idTag = new UserIdTag(Guid.NewGuid(), Guid.NewGuid(), "RFID-INACTIVE-001", IdTagType.Rfid);
@@ -635,7 +637,7 @@ public class EfCoreOcppServiceTests : KLCEntityFrameworkCoreTestBase
         await WithUnitOfWorkAsync(async () =>
         {
             var result = await _ocppService.ValidateIdTagAsync("RFID-INACTIVE-001");
-            result.ShouldBeFalse();
+            result.ShouldBeTrue(); // Accepted as walk-in when AllowUnregisteredIdTags=true
         });
     }
 
@@ -670,12 +672,14 @@ public class EfCoreOcppServiceTests : KLCEntityFrameworkCoreTestBase
     }
 
     [Fact]
-    public async Task ValidateIdTag_Should_Reject_Unknown_Tag()
+    public async Task ValidateIdTag_Should_Accept_Unknown_Tag_When_AllowUnregistered()
     {
+        // With AllowUnregisteredIdTags=true (default), unknown RFID tags are accepted
+        // to prevent real chargers from stopping mid-charge
         await WithUnitOfWorkAsync(async () =>
         {
             var result = await _ocppService.ValidateIdTagAsync("UNKNOWN-TAG-XYZ");
-            result.ShouldBeFalse();
+            result.ShouldBeTrue(); // Accepted as walk-in when AllowUnregisteredIdTags=true
         });
     }
 
