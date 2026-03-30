@@ -87,6 +87,7 @@ public class WalletTransaction : CreationAuditedEntity<Guid>
         Description = description;
         Status = TransactionStatus.Pending;
         ReferenceCode = GenerateReferenceCode();
+        CreationTime = DateTime.UtcNow;
     }
 
     private static string GenerateReferenceCode()
