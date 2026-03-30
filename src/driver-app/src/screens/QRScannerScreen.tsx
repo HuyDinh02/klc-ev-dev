@@ -22,30 +22,58 @@ const VIEWFINDER_SIZE = SCREEN_WIDTH * 0.65;
 const DEBOUNCE_MS = 3000;
 
 type ParsedQR = {
-  stationId: string;
-  connectorId?: string;
+  stationId?: string;
+  stationCode?: string;
+  connectorNumber?: number;
 };
 
 function parseQrData(data: string): ParsedQR | null {
-  // Try JSON format: {"stationId":"xxx"} or {"stationId":"xxx","connectorId":"xxx"}
+  // Format 1: JSON — {"stationId":"uuid","connectorNumber":1}
   try {
     const parsed = JSON.parse(data);
     if (parsed && typeof parsed.stationId === 'string' && parsed.stationId.length > 0) {
       return {
         stationId: parsed.stationId,
-        connectorId: typeof parsed.connectorId === 'string' ? parsed.connectorId : undefined,
+        connectorNumber: typeof parsed.connectorNumber === 'number' ? parsed.connectorNumber : undefined,
       };
     }
   } catch {
-    // Not JSON, try URL format
+    // Not JSON
   }
 
-  // Try URL format: klc://station/{stationId} or klc://station/{stationId}/connector/{connectorId}
-  const urlMatch = data.match(/^klc:\/\/station\/([^/]+)(?:\/connector\/([^/]+))?$/);
-  if (urlMatch && urlMatch[1]) {
+  // Format 2: KLC URL — klc://station/{stationId}/connector/{number}
+  const klcMatch = data.match(/^klc:\/\/station\/([^/]+)(?:\/connector\/(\d+))?$/);
+  if (klcMatch && klcMatch[1]) {
     return {
-      stationId: urlMatch[1],
-      connectorId: urlMatch[2] || undefined,
+      stationId: klcMatch[1],
+      connectorNumber: klcMatch[2] ? parseInt(klcMatch[2], 10) : undefined,
+    };
+  }
+
+  // Format 3: Charger vendor QR — "SN:{serialNumber}:{connectorId}" or just serial number
+  // Examples: "SN:244902000001:1", "SN:244902000001:2", "244902000001:1"
+  const vendorMatch = data.match(/^(?:SN:)?(\d{6,}):(\d+)$/);
+  if (vendorMatch) {
+    return {
+      stationCode: vendorMatch[1],
+      connectorNumber: parseInt(vendorMatch[2], 10),
+    };
+  }
+
+  // Format 4: Plain serial number (no connector) — "244902000001"
+  const serialMatch = data.match(/^(\d{8,})$/);
+  if (serialMatch) {
+    return {
+      stationCode: serialMatch[1],
+    };
+  }
+
+  // Format 5: HTTPS URL — https://klc.vn/s/{stationId}/c/{number} (future web app)
+  const httpsMatch = data.match(/^https?:\/\/[^/]+\/s\/([^/]+)(?:\/c\/(\d+))?/);
+  if (httpsMatch && httpsMatch[1]) {
+    return {
+      stationId: httpsMatch[1],
+      connectorNumber: httpsMatch[2] ? parseInt(httpsMatch[2], 10) : undefined,
     };
   }
 
@@ -82,7 +110,22 @@ export function QRScannerScreen() {
         return;
       }
 
-      navigation.replace('StationDetail', { stationId: parsed.stationId });
+      // Navigate with stationId or stationCode + optional connectorNumber
+      if (parsed.stationId) {
+        navigation.replace('StationDetail', {
+          stationId: parsed.stationId,
+          connectorNumber: parsed.connectorNumber,
+        });
+      } else if (parsed.stationCode) {
+        // Vendor QR: lookup station by code, then navigate
+        navigation.replace('StationDetail', {
+          stationCode: parsed.stationCode,
+          connectorNumber: parsed.connectorNumber,
+        });
+      } else {
+        Alert.alert(t('common.error'), t('qrScanner.invalidQr'));
+        return;
+      }
     },
     [navigation, t],
   );

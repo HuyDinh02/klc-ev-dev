@@ -63,6 +63,22 @@ public static class StationEndpoints
         .Produces<StationDetailDto>(200)
         .Produces(404);
 
+        // GET /api/v1/stations/by-code/{code} — Lookup by station code (charger serial number)
+        // Used when QR codes contain the charger's serial number instead of our station UUID
+        group.MapGet("/by-code/{code}", async (
+            string code,
+            IStationBffService stationService) =>
+        {
+            var station = await stationService.GetStationByCodeAsync(code);
+            return station is null
+                ? Results.NotFound(new { error = new { code = "STATION_NOT_FOUND", message = $"Station with code '{code}' not found" } })
+                : Results.Ok(station);
+        })
+        .WithName("GetStationByCode")
+        .WithSummary("Get station details by station code (serial number)")
+        .Produces<StationDetailDto>(200)
+        .Produces(404);
+
         // GET /api/v1/stations/{id}/connectors
         // Public endpoint - no auth required (station discovery)
         group.MapGet("/{id:guid}/connectors", async (

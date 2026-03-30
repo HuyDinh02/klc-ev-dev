@@ -10,6 +10,7 @@ public interface IStationBffService
     Task<List<NearbyStationDto>> GetNearbyStationsAsync(double latitude, double longitude, double radiusKm, int limit);
     Task<List<NearbyStationDto>> SearchStationsAsync(string query, int limit);
     Task<StationDetailDto?> GetStationDetailAsync(Guid stationId);
+    Task<StationDetailDto?> GetStationByCodeAsync(string stationCode);
     Task<List<ConnectorStatusDto>> GetConnectorStatusAsync(Guid stationId);
 }
 
@@ -133,6 +134,17 @@ public class StationBffService : IStationBffService
                 }).OrderBy(c => c.ConnectorNumber).ToList()
             };
         }, TimeSpan.FromMinutes(1));
+    }
+
+    public async Task<StationDetailDto?> GetStationByCodeAsync(string stationCode)
+    {
+        var station = await _dbContext.ChargingStations
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.StationCode == stationCode && !s.IsDeleted);
+
+        if (station == null) return null;
+
+        return await GetStationDetailAsync(station.Id);
     }
 
     public async Task<List<ConnectorStatusDto>> GetConnectorStatusAsync(Guid stationId)
