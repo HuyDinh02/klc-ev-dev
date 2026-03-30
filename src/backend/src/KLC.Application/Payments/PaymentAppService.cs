@@ -565,7 +565,7 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
         // Only credit wallet after gateway confirms refund (or for non-VnPay payments)
         payment.MarkRefunded();
 
-        var user = await _appUserRepository.FirstOrDefaultAsync(u => u.IdentityUserId == payment.UserId)
+        var user = await _appUserRepository.FirstOrDefaultAsync(u => u.Id == payment.UserId || u.IdentityUserId == payment.UserId)
             ?? throw new BusinessException(KLCDomainErrorCodes.EntityNotFound);
 
         var (newBalance, walletTransaction) = _walletDomainService.Refund(

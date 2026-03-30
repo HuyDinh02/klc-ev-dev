@@ -87,7 +87,7 @@ public class FeedbackAdminAppService : KLCAppService, IFeedbackAdminAppService
         if (feedback == null)
             throw new BusinessException(KLCDomainErrorCodes.Feedback.NotFound);
 
-        var user = await _appUserRepository.FirstOrDefaultAsync(u => u.IdentityUserId == feedback.UserId);
+        var user = await _appUserRepository.FirstOrDefaultAsync(u => u.Id == feedback.UserId || u.IdentityUserId == feedback.UserId);
 
         return new FeedbackDetailDto
         {

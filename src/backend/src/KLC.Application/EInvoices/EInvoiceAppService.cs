@@ -68,7 +68,7 @@ public class EInvoiceAppService : KLCAppService, IEInvoiceAppService
             {
                 station = await _stationRepository.FirstOrDefaultAsync(s => s.Id == session.StationId);
             }
-            user = await _appUserRepository.FirstOrDefaultAsync(u => u.IdentityUserId == payment.UserId);
+            user = await _appUserRepository.FirstOrDefaultAsync(u => u.Id == payment.UserId || u.IdentityUserId == payment.UserId);
         }
 
         return new EInvoiceDetailDto
