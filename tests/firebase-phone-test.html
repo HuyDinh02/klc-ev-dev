@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>KLC Firebase Phone Auth Test</title>
+    <style>
+        body { font-family: system-ui; max-width: 500px; margin: 50px auto; padding: 20px; }
+        h1 { color: #22C55E; }
+        input, button { padding: 12px; font-size: 16px; width: 100%; margin: 8px 0; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; }
+        button { background: #22C55E; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { background: #16A34A; }
+        button:disabled { background: #9CA3AF; }
+        #result { margin-top: 20px; padding: 15px; border-radius: 8px; background: #F0FDF4; white-space: pre-wrap; font-size: 14px; }
+        .error { background: #FEF2F2 !important; color: #DC2626; }
+        .step { margin: 20px 0; padding: 15px; border: 1px solid #E5E7EB; border-radius: 8px; }
+        .step.active { border-color: #22C55E; background: #F0FDF4; }
+        .step.done { border-color: #22C55E; background: #DCFCE7; }
+    </style>
+</head>
+<body>
+    <h1>🔋 KLC Phone Auth Test</h1>
+
+    <div id="step1" class="step active">
+        <h3>Step 1: Enter Phone Number</h3>
+        <input type="tel" id="phone" value="+84983987986" placeholder="+84xxxxxxxxx" />
+        <div id="recaptcha-container"></div>
+        <button id="btnSend" onclick="sendOTP()">Send OTP</button>
+    </div>
+
+    <div id="step2" class="step" style="display:none">
+        <h3>Step 2: Enter OTP</h3>
+        <input type="text" id="otp" placeholder="Enter 6-digit OTP" maxlength="6" />
+        <button id="btnVerify" onclick="verifyOTP()">Verify & Login</button>
+    </div>
+
+    <div id="step3" class="step" style="display:none">
+        <h3>Step 3: KLC Login Result</h3>
+        <div id="result"></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
+        import { getAuth, signInWithPhoneNumber, RecaptchaVerifier } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCtOnJ-2SD6laxDHUjI3znPv6fWWRrZ-aM",
+            authDomain: "klc-ev-charging.firebaseapp.com",
+            projectId: "klc-ev-charging",
+            storageBucket: "klc-ev-charging.firebasestorage.app",
+            messagingSenderId: "493799105026",
+            appId: "1:493799105026:web:ce04fdbbb0f35e013cfd1b"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // Use invisible reCAPTCHA
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+            size: 'invisible'
+        });
+
+        let confirmationResult = null;
+
+        window.sendOTP = async function() {
+            const phone = document.getElementById('phone').value;
+            const btn = document.getElementById('btnSend');
+            btn.disabled = true;
+            btn.textContent = 'Sending...';
+
+            try {
+                confirmationResult = await signInWithPhoneNumber(auth, phone, window.recaptchaVerifier);
+                document.getElementById('step1').className = 'step done';
+                document.getElementById('step2').style.display = 'block';
+                document.getElementById('step2').className = 'step active';
+                document.getElementById('otp').focus();
+                btn.textContent = '✓ OTP Sent!';
+            } catch (err) {
+                btn.disabled = false;
+                btn.textContent = 'Send OTP';
+                alert('Error: ' + err.message);
+            }
+        };
+
+        window.verifyOTP = async function() {
+            const otp = document.getElementById('otp').value;
+            const btn = document.getElementById('btnVerify');
+            btn.disabled = true;
+            btn.textContent = 'Verifying...';
+
+            try {
+                const credential = await confirmationResult.confirm(otp);
+                const idToken = await credential.user.getIdToken();
+
+                document.getElementById('step2').className = 'step done';
+                document.getElementById('step3').style.display = 'block';
+                document.getElementById('step3').className = 'step active';
+
+                // Call KLC BFF
+                const bffUrl = window.location.hostname === 'localhost'
+                    ? 'http://localhost:5010'
+                    : 'https://bff.ev.odcall.com';
+
+                const res = await fetch(bffUrl + '/api/v1/auth/firebase-phone', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ idToken, fullName: 'Howard Nguyen' })
+                });
+                const data = await res.json();
+
+                const result = document.getElementById('result');
+                if (data.success) {
+                    result.textContent = '✅ Login Successful!\n\n'
+                        + 'User: ' + data.user.fullName + '\n'
+                        + 'Phone: ' + data.user.phoneNumber + '\n'
+                        + 'UserId: ' + data.user.userId + '\n'
+                        + 'Token: ' + data.accessToken.substring(0, 50) + '...';
+                } else {
+                    result.className = 'error';
+                    result.textContent = '❌ BFF Login Failed: ' + (data.error || JSON.stringify(data));
+                }
+
+                btn.textContent = '✓ Verified!';
+            } catch (err) {
+                btn.disabled = false;
+                btn.textContent = 'Verify & Login';
+                alert('Error: ' + err.message);
+            }
+        };
+    </script>
+</body>
+</html>

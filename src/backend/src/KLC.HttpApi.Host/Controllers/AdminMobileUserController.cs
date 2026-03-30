@@ -86,10 +86,10 @@ public class AdminMobileUserController : AbpController
         if (user == null) return NotFound();
 
         var sessionCount = await (await _sessionRepository.GetQueryableAsync())
-            .CountAsync(s => (s.UserId == user.Id || s.UserId == user.IdentityUserId) && !s.IsDeleted);
+            .CountAsync(s => (s.UserId == user.IdentityUserId) && !s.IsDeleted);
 
         var totalSpent = await (await _sessionRepository.GetQueryableAsync())
-            .Where(s => (s.UserId == user.Id || s.UserId == user.IdentityUserId) && !s.IsDeleted && s.Status == SessionStatus.Completed)
+            .Where(s => (s.UserId == user.IdentityUserId) && !s.IsDeleted && s.Status == SessionStatus.Completed)
             .SumAsync(s => (decimal?)s.TotalCost) ?? 0;
 
         return Ok(new MobileUserDetailDto
@@ -121,7 +121,7 @@ public class AdminMobileUserController : AbpController
 
         // Search by both AppUser.Id and IdentityUserId
         var query = (await _sessionRepository.GetQueryableAsync())
-            .Where(s => (s.UserId == user.Id || s.UserId == user.IdentityUserId) && !s.IsDeleted)
+            .Where(s => (s.UserId == user.IdentityUserId) && !s.IsDeleted)
             .OrderByDescending(s => s.CreationTime);
 
         var totalCount = await query.CountAsync();
@@ -166,7 +166,7 @@ public class AdminMobileUserController : AbpController
         if (user == null) return NotFound();
 
         var query = (await _walletTransactionRepository.GetQueryableAsync())
-            .Where(t => t.UserId == user.Id || t.UserId == user.IdentityUserId)
+            .Where(t => t.UserId == user.IdentityUserId)
             .OrderByDescending(t => t.CreationTime);
 
         var totalCount = await query.CountAsync();

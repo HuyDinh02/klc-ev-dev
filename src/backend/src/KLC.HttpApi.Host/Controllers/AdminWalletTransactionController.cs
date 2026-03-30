@@ -57,15 +57,9 @@ public class AdminWalletTransactionController : AbpController
             .ToListAsync();
 
         var userIds = items.Select(t => t.UserId).Distinct().ToList();
-        var users = await (await _appUserRepository.GetQueryableAsync())
-            .Where(u => userIds.Contains(u.Id) || userIds.Contains(u.IdentityUserId))
-            .ToListAsync();
-        var userMap = new Dictionary<Guid, string>();
-        foreach (var u in users)
-        {
-            userMap.TryAdd(u.Id, u.FullName);
-            userMap.TryAdd(u.IdentityUserId, u.FullName);
-        }
+        var userMap = await (await _appUserRepository.GetQueryableAsync())
+            .Where(u => userIds.Contains(u.IdentityUserId))
+            .ToDictionaryAsync(u => u.IdentityUserId, u => u.FullName);
 
         var dtos = items.Select(t => new AdminWalletTransactionDto
         {

@@ -205,7 +205,7 @@ public class WalletBffService : IWalletBffService
         if (request.Status == TransactionStatus.Completed)
         {
             var user = await _dbContext.AppUsers
-                .FirstOrDefaultAsync(u => u.Id == transaction.UserId || u.IdentityUserId == transaction.UserId);
+                .FirstOrDefaultAsync(u => u.IdentityUserId == transaction.UserId);
 
             if (user == null)
             {
@@ -325,7 +325,7 @@ public class WalletBffService : IWalletBffService
         if (responseCode == "00")
         {
             var user = await _dbContext.AppUsers
-                .FirstOrDefaultAsync(u => u.Id == transaction.UserId || u.IdentityUserId == transaction.UserId);
+                .FirstOrDefaultAsync(u => u.IdentityUserId == transaction.UserId);
 
             if (user == null)
             {

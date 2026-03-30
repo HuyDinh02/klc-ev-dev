@@ -111,7 +111,7 @@ public class WalletBalanceMonitorService : BackgroundService
         IRepository<ChargingStation, Guid> stationRepository,
         IOcppRemoteCommandService remoteCommandService)
     {
-        var user = await userRepository.FirstOrDefaultAsync(u => u.Id == session.UserId || u.IdentityUserId == session.UserId);
+        var user = await userRepository.FirstOrDefaultAsync(u => u.IdentityUserId == session.UserId);
         if (user == null)
         {
             _logger.LogWarning(
