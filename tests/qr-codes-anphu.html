@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>QR Codes - AN PHU Station</title>
+  <style>
+    body { font-family: system-ui; text-align: center; padding: 40px; }
+    .qr-container { display: inline-block; margin: 30px; padding: 20px; border: 3px solid #22C55E; border-radius: 16px; }
+    .qr-container h2 { color: #22C55E; margin-bottom: 5px; font-size: 24px; }
+    .qr-container h3 { color: #666; margin-top: 0; }
+    .info { font-size: 11px; color: #999; margin-top: 10px; word-break: break-all; max-width: 280px; }
+    .station-name { font-size: 28px; font-weight: bold; color: #333; margin-bottom: 10px; }
+    .address { color: #666; margin-bottom: 30px; }
+    .print-btn { margin: 20px; padding: 12px 30px; background: #22C55E; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; }
+    @media print { .print-btn { display: none; } }
+    img { display: block; margin: 10px auto; }
+  </style>
+</head>
+<body>
+  <div class="station-name">AN PHU - KLC-HCM-ANPHU-001</div>
+  <p class="address">666 Le Trong Tan, Binh Hung Hoa, Tan Phu, HCM</p>
+
+  <div class="qr-container">
+    <h2>Connector A (Left)</h2>
+    <h3>CCS2 - 70 kW</h3>
+    <img id="qr1" width="250" height="250">
+    <div class="info" id="content1"></div>
+  </div>
+
+  <div class="qr-container">
+    <h2>Connector B (Right)</h2>
+    <h3>CCS2 - 70 kW</h3>
+    <img id="qr2" width="250" height="250">
+    <div class="info" id="content2"></div>
+  </div>
+
+  <br>
+  <button class="print-btn" onclick="window.print()">Print QR Codes</button>
+
+  <script>
+    var stationId = "3a203c2e-590b-c95b-da19-0ec1a6890b55";
+
+    var qr1 = "KLC-HCM-ANPHU-001-01";
+    var qr2 = "KLC-HCM-ANPHU-001-02";
+
+    document.getElementById("qr1").src = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" + encodeURIComponent(qr1);
+    document.getElementById("content1").textContent = qr1;
+
+    document.getElementById("qr2").src = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" + encodeURIComponent(qr2);
+    document.getElementById("content2").textContent = qr2;
+  </script>
+</body>
+</html>

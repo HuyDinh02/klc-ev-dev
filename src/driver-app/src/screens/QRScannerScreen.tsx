@@ -68,7 +68,17 @@ function parseQrData(data: string): ParsedQR | null {
     };
   }
 
-  // Format 5: HTTPS URL — https://klc.vn/s/{stationId}/c/{number} (future web app)
+  // Format 5: stationCode-connector — "KLC-HCM-ANPHU-001-01" or "KC-HN-001-01"
+  // Station code followed by dash and 2-digit connector number
+  const codeConnMatch = data.match(/^(.+)-(\d{2})$/);
+  if (codeConnMatch && codeConnMatch[1].length >= 5) {
+    return {
+      stationCode: codeConnMatch[1],
+      connectorNumber: parseInt(codeConnMatch[2], 10),
+    };
+  }
+
+  // Format 6: HTTPS URL — https://klc.vn/s/{stationId}/c/{number} (future web app)
   const httpsMatch = data.match(/^https?:\/\/[^/]+\/s\/([^/]+)(?:\/c\/(\d+))?/);
   if (httpsMatch && httpsMatch[1]) {
     return {
