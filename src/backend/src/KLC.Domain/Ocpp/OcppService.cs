@@ -253,12 +253,26 @@ public class OcppService : DomainService, IOcppService
             return existingSession.Id;
         }
 
-        // Resolve userId from idTag
+        // Resolve userId from idTag — ALWAYS normalize to IdentityUserId
         var userId = Guid.Empty;
         if (Guid.TryParse(idTag, out var parsedUserId) && parsedUserId != Guid.Empty)
         {
-            // Mobile app sends userId as idTag
-            userId = parsedUserId;
+            // idTag is a GUID — could be AppUser.Id or IdentityUserId
+            // Normalize: try AppUser.Id first, then IdentityUserId
+            var appUser = await _userRepository.FirstOrDefaultAsync(u => u.Id == parsedUserId);
+            if (appUser != null)
+            {
+                userId = appUser.IdentityUserId;
+            }
+            else
+            {
+                // Maybe it's already an IdentityUserId
+                var byIdentity = await _userRepository.FirstOrDefaultAsync(u => u.IdentityUserId == parsedUserId);
+                if (byIdentity != null)
+                {
+                    userId = parsedUserId; // Already IdentityUserId
+                }
+            }
         }
         else
         {
@@ -267,8 +281,11 @@ public class OcppService : DomainService, IOcppService
                 t => t.IdTag == idTag && t.IsActive);
             if (userIdTag != null && userIdTag.IsValid())
             {
-                userId = userIdTag.UserId;
-                _logger.LogInformation("Resolved idTag {IdTag} to user {UserId}", idTag, userId);
+                // UserIdTag.UserId stores AppUser.Id — normalize to IdentityUserId
+                var tagUser = await _userRepository.FirstOrDefaultAsync(u => u.Id == userIdTag.UserId);
+                userId = tagUser?.IdentityUserId ?? Guid.Empty;
+                if (userId != Guid.Empty)
+                    _logger.LogInformation("Resolved idTag {IdTag} to IdentityUserId {UserId}", idTag, userId);
             }
         }
 
@@ -281,9 +298,9 @@ public class OcppService : DomainService, IOcppService
                 var firstUser = await _userRepository.FirstOrDefaultAsync(u => u.IsActive);
                 if (firstUser != null)
                 {
-                    userId = firstUser.Id;
+                    userId = firstUser.IdentityUserId; // Use IdentityUserId, not Id
                     _logger.LogInformation(
-                        "Test idTag {IdTag} assigned to user {UserId} (Ocpp:AllowTestIdTags enabled)",
+                        "Test idTag {IdTag} assigned to IdentityUserId {UserId} (Ocpp:AllowTestIdTags enabled)",
                         idTag, userId);
                 }
             }

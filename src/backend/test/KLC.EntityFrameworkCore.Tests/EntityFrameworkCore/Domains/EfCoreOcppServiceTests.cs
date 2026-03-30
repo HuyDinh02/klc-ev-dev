@@ -266,21 +266,27 @@ public class EfCoreOcppServiceTests : KLCEntityFrameworkCoreTestBase
     public async Task StartTransaction_Should_Create_Session()
     {
         var stationId = Guid.NewGuid();
-        var userId = Guid.NewGuid();
+        var appUserId = Guid.NewGuid();
+        var identityUserId = Guid.NewGuid();
 
         await WithUnitOfWorkAsync(async () =>
         {
             var station = new ChargingStation(stationId, "OCPP-ST-001", "ST Test", "Test St", 21.0, 105.8);
             station.AddConnector(Guid.NewGuid(), 1, ConnectorType.CCS2, 50);
             await _dbContext.ChargingStations.AddAsync(station);
+
+            // Create AppUser so OCPP can resolve idTag to IdentityUserId
+            var user = new AppUser(appUserId, identityUserId, "Test User", "0900000001");
+            await _dbContext.AppUsers.AddAsync(user);
             await _dbContext.SaveChangesAsync();
         });
 
         Guid? sessionId = null;
         await WithUnitOfWorkAsync(async () =>
         {
+            // Send AppUser.Id as idTag — should be normalized to IdentityUserId
             sessionId = await _ocppService.HandleStartTransactionAsync(
-                "OCPP-ST-001", 1, userId.ToString(), 1000, 12345);
+                "OCPP-ST-001", 1, appUserId.ToString(), 1000, 12345);
 
             sessionId.ShouldNotBeNull();
         });
@@ -290,11 +296,11 @@ public class EfCoreOcppServiceTests : KLCEntityFrameworkCoreTestBase
             var session = await _dbContext.ChargingSessions.FirstAsync(s => s.Id == sessionId!.Value);
             session.StationId.ShouldBe(stationId);
             session.ConnectorNumber.ShouldBe(1);
-            session.UserId.ShouldBe(userId);
+            session.UserId.ShouldBe(identityUserId); // Should be IdentityUserId, not AppUser.Id
             session.OcppTransactionId.ShouldBe(12345);
             session.MeterStart.ShouldBe(1000);
             session.Status.ShouldBe(SessionStatus.InProgress);
-            session.IdTag.ShouldBe(userId.ToString());
+            session.IdTag.ShouldBe(appUserId.ToString());
         });
     }
 
@@ -342,14 +348,19 @@ public class EfCoreOcppServiceTests : KLCEntityFrameworkCoreTestBase
     public async Task StartTransaction_Should_Resolve_RFID_Tag()
     {
         var stationId = Guid.NewGuid();
-        var userId = Guid.NewGuid();
+        var appUserId = Guid.NewGuid();
+        var identityUserId = Guid.NewGuid();
 
         await WithUnitOfWorkAsync(async () =>
         {
             var station = new ChargingStation(stationId, "OCPP-ST-003", "ST Test 3", "Test St", 21.0, 105.8);
             await _dbContext.ChargingStations.AddAsync(station);
 
-            var idTag = new UserIdTag(Guid.NewGuid(), userId, "RFID-ABC123", IdTagType.Rfid);
+            // Create AppUser + RFID tag
+            var user = new AppUser(appUserId, identityUserId, "RFID User", "0900000003");
+            await _dbContext.AppUsers.AddAsync(user);
+
+            var idTag = new UserIdTag(Guid.NewGuid(), appUserId, "RFID-ABC123", IdTagType.Rfid);
             await _dbContext.UserIdTags.AddAsync(idTag);
             await _dbContext.SaveChangesAsync();
         });
@@ -366,7 +377,7 @@ public class EfCoreOcppServiceTests : KLCEntityFrameworkCoreTestBase
         await WithUnitOfWorkAsync(async () =>
         {
             var session = await _dbContext.ChargingSessions.FirstAsync(s => s.Id == sessionId!.Value);
-            session.UserId.ShouldBe(userId);
+            session.UserId.ShouldBe(identityUserId); // Normalized to IdentityUserId
             session.IdTag.ShouldBe("RFID-ABC123");
         });
     }
