@@ -261,6 +261,59 @@ public class SessionBffService : ISessionBffService
 
                 session.StationName = station?.Name ?? "";
                 session.StationAddress = station?.Address ?? "";
+
+                // Get latest meter value for real-time SoC + Power
+                var latestMeter = await _dbContext.MeterValues
+                    .AsNoTracking()
+                    .Where(m => m.SessionId == session.SessionId)
+                    .OrderByDescending(m => m.Timestamp)
+                    .Select(m => new { m.SocPercent, m.PowerKw, m.VoltageVolts, m.CurrentAmps })
+                    .FirstOrDefaultAsync();
+
+                if (latestMeter != null)
+                {
+                    session.SocPercent = latestMeter.SocPercent;
+                    session.PowerKw = latestMeter.PowerKw;
+                    session.VoltageVolts = latestMeter.VoltageVolts;
+                    session.CurrentAmps = latestMeter.CurrentAmps;
+                }
+
+                // Get vehicle battery capacity for ETA calculation
+                var sessionEntity = await _dbContext.ChargingSessions
+                    .AsNoTracking()
+                    .Where(s => s.Id == session.SessionId)
+                    .Select(s => new { s.VehicleId })
+                    .FirstOrDefaultAsync();
+
+                if (sessionEntity?.VehicleId.HasValue == true)
+                {
+                    var vehicle = await _dbContext.Vehicles
+                        .AsNoTracking()
+                        .Where(v => v.Id == sessionEntity.VehicleId.Value)
+                        .Select(v => new { v.BatteryCapacityKwh, v.Make, v.Model, v.Nickname })
+                        .FirstOrDefaultAsync();
+
+                    if (vehicle != null)
+                    {
+                        session.BatteryCapacityKwh = vehicle.BatteryCapacityKwh;
+                        session.VehicleName = vehicle.Nickname ?? $"{vehicle.Make} {vehicle.Model}";
+
+                        // Calculate ETA (estimated time to full)
+                        if (session.SocPercent.HasValue && session.PowerKw.HasValue
+                            && session.PowerKw.Value > 0 && vehicle.BatteryCapacityKwh > 0)
+                        {
+                            var remainingKwh = vehicle.BatteryCapacityKwh * (100 - session.SocPercent.Value) / 100;
+                            var etaMinutes = (int)(remainingKwh / session.PowerKw.Value * 60);
+                            session.EstimatedMinutesToFull = etaMinutes;
+                        }
+                    }
+                }
+
+                // Calculate duration
+                if (session.StartTime.HasValue)
+                {
+                    session.DurationMinutes = (int)(DateTime.UtcNow - session.StartTime.Value).TotalMinutes;
+                }
             }
 
             return session;
@@ -389,6 +442,20 @@ public record ActiveSessionDto
     public decimal EnergyKwh { get; init; }
     public decimal CurrentCost { get; init; }
     public decimal RatePerKwh { get; init; }
+
+    // Real-time charging data (from latest MeterValues)
+    public decimal? SocPercent { get; set; }
+    public decimal? PowerKw { get; set; }
+    public decimal? VoltageVolts { get; set; }
+    public decimal? CurrentAmps { get; set; }
+
+    // Vehicle info
+    public string? VehicleName { get; set; }
+    public decimal? BatteryCapacityKwh { get; set; }
+
+    // Calculated fields
+    public int? EstimatedMinutesToFull { get; set; }
+    public int? DurationMinutes { get; set; }
 }
 
 public record SessionDetailDto
