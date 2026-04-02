@@ -360,6 +360,9 @@ public class OcppService : DomainService, IOcppService
             pendingSession.RecordStart(ocppTransactionId, meterStart);
             await _sessionRepository.UpdateAsync(pendingSession);
 
+            // Update connector status to Charging
+            await UpdateConnectorStatusAsync(station.Id, connectorId, ConnectorStatus.Charging);
+
             _logger.LogInformation(
                 "Linked OCPP transaction {TransactionId} to existing BFF session {SessionId}",
                 ocppTransactionId, pendingSession.Id);
@@ -396,10 +399,24 @@ public class OcppService : DomainService, IOcppService
 
         await _sessionRepository.InsertAsync(session);
 
+        // Update connector status to Charging
+        await UpdateConnectorStatusAsync(station.Id, connectorId, ConnectorStatus.Charging);
+
         _logger.LogInformation("Session {SessionId} started for transaction {TransactionId}",
             sessionId, ocppTransactionId);
 
         return sessionId;
+    }
+
+    private async Task UpdateConnectorStatusAsync(Guid stationId, int connectorNumber, ConnectorStatus status)
+    {
+        var connector = await _connectorRepository.FirstOrDefaultAsync(
+            c => c.StationId == stationId && c.ConnectorNumber == connectorNumber);
+        if (connector != null)
+        {
+            connector.UpdateStatus(status);
+            await _connectorRepository.UpdateAsync(connector);
+        }
     }
 
     public async Task<StopTransactionResult?> HandleStopTransactionAsync(
@@ -532,15 +549,7 @@ public class OcppService : DomainService, IOcppService
         }
 
         // Update connector status to Available after session completes
-        var connector = await _connectorRepository.FirstOrDefaultAsync(
-            c => c.StationId == session.StationId && c.ConnectorNumber == session.ConnectorNumber);
-        if (connector != null)
-        {
-            connector.UpdateStatus(ConnectorStatus.Available);
-            await _connectorRepository.UpdateAsync(connector);
-            _logger.LogInformation("Connector {ConnectorNumber} at station {StationId} set to Available",
-                session.ConnectorNumber, session.StationId);
-        }
+        await UpdateConnectorStatusAsync(session.StationId, session.ConnectorNumber, ConnectorStatus.Available);
 
         _logger.LogInformation("Session {SessionId} completed: Energy={EnergyKwh}kWh, Cost={Cost}, TariffType={TariffType}",
             session.Id, session.TotalEnergyKwh, session.TotalCost,

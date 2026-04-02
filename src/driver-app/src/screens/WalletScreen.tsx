@@ -136,22 +136,20 @@ export function WalletScreen() {
 
   const handleTopUp = (amount: number) => {
     Alert.alert(
-      t('wallet.topUpTitle'),
+      t('wallet.selectPaymentMethod'),
       t('wallet.topUpMessage', { amount: formatCurrency(amount) }),
       [
         { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.confirm'),
-          onPress: () => processTopUp(amount),
-        },
+        { text: 'VnPay', onPress: () => processTopUp(amount, 'VnPay') },
+        { text: 'MoMo', onPress: () => processTopUp(amount, 'MoMo') },
       ]
     );
   };
 
-  const processTopUp = async (amount: number) => {
+  const processTopUp = async (amount: number, gateway: string = 'VnPay') => {
     setTopUpLoading(true);
     try {
-      const result = await walletApi.topUp(amount, 'VnPay');
+      const result = await walletApi.topUp(amount, gateway);
 
       if (result.redirectUrl) {
         // Open VnPay payment page in browser

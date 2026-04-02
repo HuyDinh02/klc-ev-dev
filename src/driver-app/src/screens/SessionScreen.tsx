@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Colors, Shadows } from '../constants/colors';
+import { Config } from '../constants/config';
 import { Card, Button } from '../components/common';
 import { sessionsApi } from '../api/sessions';
 import { useSessionStore } from '../stores';
@@ -17,13 +18,17 @@ import { useSignalR } from '../hooks/useSignalR';
 export function SessionScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation();
-  const { activeSession, latestMeterValue, clearSession } = useSessionStore();
-  const { connect, subscribeToSession, unsubscribeFromSession } = useSignalR();
+  const { activeSession, latestMeterValue, clearSession, checkActiveSession } = useSessionStore();
+  const { connect, subscribeToSession, unsubscribeFromSession, isConnected } = useSignalR();
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // SignalR connection
   useEffect(() => {
     if (activeSession?.id) {
       connect().then(() => {
         subscribeToSession(activeSession.id);
+      }).catch(() => {
+        // SignalR failed — polling will handle updates
       });
 
       return () => {
@@ -31,6 +36,21 @@ export function SessionScreen() {
       };
     }
   }, [activeSession?.id, connect, subscribeToSession, unsubscribeFromSession]);
+
+  // Fallback polling when SignalR is not connected
+  useEffect(() => {
+    if (!activeSession?.id) return;
+
+    pollingRef.current = setInterval(() => {
+      if (!isConnected) {
+        checkActiveSession();
+      }
+    }, Config.SESSION_REFRESH_INTERVAL);
+
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, [activeSession?.id, isConnected, checkActiveSession]);
 
   const handleStopCharging = async () => {
     if (!activeSession) return;

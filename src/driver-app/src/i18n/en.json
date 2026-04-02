@@ -170,6 +170,7 @@
     "noTransactions": "No Transactions Yet",
     "noTransactionsDescription": "Top up your wallet to start charging your vehicle.",
     "topUpTitle": "Top Up Wallet",
+    "selectPaymentMethod": "Select Payment Method",
     "topUpMessage": "Add {{amount}} to your wallet?",
     "topUpSuccess": "{{amount}} has been added to your wallet.",
     "topUpError": "Top up failed. Please try again."
