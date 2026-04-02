@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { Colors, Shadows } from '../constants/colors';
 import { Card } from '../components/common';
 import { walletApi } from '../api/wallet';
+import { formatCurrency, formatDateTime } from '../utils/formatting';
 import { useSignalR } from '../hooks/useSignalR';
 import type { WalletBalanceChangedMessage } from '../hooks/useSignalR';
 import type { WalletTransaction } from '../types';
@@ -35,23 +36,6 @@ const TRANSACTION_COLORS: Record<WalletTransaction['type'], string> = {
   Refund: Colors.primary,
   Bonus: Colors.warning,
 };
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'decimal',
-    maximumFractionDigits: 0,
-  }).format(amount) + '\u0111';
-}
-
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  const day = date.getDate().toString().padStart(2, '0');
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  const year = date.getFullYear();
-  const hours = date.getHours().toString().padStart(2, '0');
-  const minutes = date.getMinutes().toString().padStart(2, '0');
-  return `${day}/${month}/${year} ${hours}:${minutes}`;
-}
 
 export function WalletScreen() {
   const { t } = useTranslation();
@@ -177,7 +161,7 @@ export function WalletScreen() {
       <View
         style={styles.transactionItem}
         accessible={true}
-        accessibilityLabel={`${item.description}, ${amountPrefix}${formatCurrency(Math.abs(item.amount))}, ${formatDate(item.createdAt)}`}
+        accessibilityLabel={`${item.description}, ${amountPrefix}${formatCurrency(Math.abs(item.amount))}, ${formatDateTime(item.createdAt)}`}
       >
         <View style={[styles.transactionIcon, { backgroundColor: iconColor + '20' }]}>
           <Text style={[styles.transactionIconText, { color: iconColor }]}>
@@ -188,7 +172,7 @@ export function WalletScreen() {
           <Text style={styles.transactionDescription} numberOfLines={1}>
             {item.description}
           </Text>
-          <Text style={styles.transactionDate}>{formatDate(item.createdAt)}</Text>
+          <Text style={styles.transactionDate}>{formatDateTime(item.createdAt)}</Text>
         </View>
         <View style={styles.transactionAmountContainer}>
           <Text style={[styles.transactionAmount, { color: amountColor }]}>

@@ -42,7 +42,7 @@ public class ProfileBffService : IProfileBffService
 
     public async Task<ProfileDto?> GetProfileAsync(Guid userId)
     {
-        var cacheKey = $"user:{userId}:profile";
+        var cacheKey = CacheKeys.UserProfile(userId);
 
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
@@ -95,7 +95,7 @@ public class ProfileBffService : IProfileBffService
         }
 
         await _dbContext.SaveChangesAsync();
-        await _cache.RemoveAsync($"user:{userId}:profile");
+        await _cache.RemoveAsync(CacheKeys.UserProfile(userId));
 
         return new ProfileDto
         {
@@ -113,7 +113,7 @@ public class ProfileBffService : IProfileBffService
 
     public async Task<UserStatsDto> GetUserStatsAsync(Guid userId)
     {
-        var cacheKey = $"user:{userId}:stats";
+        var cacheKey = CacheKeys.UserStats(userId);
 
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
@@ -162,7 +162,7 @@ public class ProfileBffService : IProfileBffService
 
         user.SetAvatarUrl(result.Url);
         await _dbContext.SaveChangesAsync();
-        await _cache.RemoveAsync($"user:{userId}:profile");
+        await _cache.RemoveAsync(CacheKeys.UserProfile(userId));
 
         return new ProfileDto
         {
@@ -209,7 +209,7 @@ public class ProfileBffService : IProfileBffService
         user.SetPhoneNumber(newPhoneNumber, isVerified: true);
         await _dbContext.SaveChangesAsync();
         await _redis.KeyDeleteAsync($"otp:phone-change:{userId}:{newPhoneNumber}");
-        await _cache.RemoveAsync($"user:{userId}:profile");
+        await _cache.RemoveAsync(CacheKeys.UserProfile(userId));
     }
 
     public async Task DeleteAccountAsync(Guid userId)
@@ -229,8 +229,8 @@ public class ProfileBffService : IProfileBffService
         user.Deactivate();
         // ABP soft delete will handle IsDeleted flag
         await _dbContext.SaveChangesAsync();
-        await _cache.RemoveAsync($"user:{userId}:profile");
-        await _cache.RemoveAsync($"user:{userId}:stats");
+        await _cache.RemoveAsync(CacheKeys.UserProfile(userId));
+        await _cache.RemoveAsync(CacheKeys.UserStats(userId));
     }
 }
 

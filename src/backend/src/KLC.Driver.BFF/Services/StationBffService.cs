@@ -91,7 +91,7 @@ public class StationBffService : IStationBffService
 
     public async Task<StationDetailDto?> GetStationDetailAsync(Guid stationId)
     {
-        var cacheKey = $"station:{stationId}:detail";
+        var cacheKey = CacheKeys.StationDetail(stationId);
 
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
@@ -149,7 +149,7 @@ public class StationBffService : IStationBffService
 
     public async Task<List<ConnectorStatusDto>> GetConnectorStatusAsync(Guid stationId)
     {
-        var cacheKey = $"station:{stationId}:connectors";
+        var cacheKey = CacheKeys.StationConnectors(stationId);
 
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {

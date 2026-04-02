@@ -150,9 +150,9 @@ public class PaymentBffService : IPaymentBffService
             await _dbContext.UserVouchers.AddAsync(userVoucher);
 
             // Invalidate caches
-            await _cache.RemoveAsync($"user:{userId}:wallet-balance");
-            await _cache.RemoveAsync($"user:{userId}:available-vouchers");
-            await _cache.RemoveAsync($"user:{userId}:wallet-summary");
+            await _cache.RemoveAsync(CacheKeys.UserWalletBalance(userId));
+            await _cache.RemoveAsync(CacheKeys.UserAvailableVouchers(userId));
+            await _cache.RemoveAsync(CacheKeys.UserWalletSummary(userId));
         }
 
         // If fully covered by voucher or zero-cost session
@@ -332,7 +332,7 @@ public class PaymentBffService : IPaymentBffService
 
     public async Task<List<PaymentMethodDto>> GetPaymentMethodsAsync(Guid userId)
     {
-        var cacheKey = $"user:{userId}:payment-methods";
+        var cacheKey = CacheKeys.UserPaymentMethods(userId);
 
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
@@ -375,7 +375,7 @@ public class PaymentBffService : IPaymentBffService
         await _dbContext.UserPaymentMethods.AddAsync(method);
         await _dbContext.SaveChangesAsync();
 
-        await _cache.RemoveAsync($"user:{userId}:payment-methods");
+        await _cache.RemoveAsync(CacheKeys.UserPaymentMethods(userId));
 
         return new PaymentMethodDto
         {
@@ -396,7 +396,7 @@ public class PaymentBffService : IPaymentBffService
         {
             method.Deactivate();
             await _dbContext.SaveChangesAsync();
-            await _cache.RemoveAsync($"user:{userId}:payment-methods");
+            await _cache.RemoveAsync(CacheKeys.UserPaymentMethods(userId));
         }
     }
 
@@ -419,7 +419,7 @@ public class PaymentBffService : IPaymentBffService
         }
 
         await _dbContext.SaveChangesAsync();
-        await _cache.RemoveAsync($"user:{userId}:payment-methods");
+        await _cache.RemoveAsync(CacheKeys.UserPaymentMethods(userId));
     }
 
 }

@@ -31,7 +31,7 @@ public class FavoriteBffService : IFavoriteBffService
 
     public async Task<List<FavoriteStationDto>> GetFavoritesAsync(Guid userId)
     {
-        var cacheKey = $"user:{userId}:favorites";
+        var cacheKey = CacheKeys.UserFavorites(userId);
 
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
@@ -93,7 +93,7 @@ public class FavoriteBffService : IFavoriteBffService
         await _dbContext.SaveChangesAsync();
 
         // Invalidate cache
-        await _cache.RemoveAsync($"user:{userId}:favorites");
+        await _cache.RemoveAsync(CacheKeys.UserFavorites(userId));
 
         _logger.LogInformation(
             "User {UserId} added station {StationId} to favorites",
@@ -128,7 +128,7 @@ public class FavoriteBffService : IFavoriteBffService
         await _dbContext.SaveChangesAsync();
 
         // Invalidate cache
-        await _cache.RemoveAsync($"user:{userId}:favorites");
+        await _cache.RemoveAsync(CacheKeys.UserFavorites(userId));
 
         _logger.LogInformation(
             "User {UserId} removed station {StationId} from favorites",

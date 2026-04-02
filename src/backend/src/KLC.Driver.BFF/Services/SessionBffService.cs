@@ -203,9 +203,9 @@ public class SessionBffService : ISessionBffService
             }
 
             // Invalidate cache
-            await _cache.RemoveAsync($"station:{connector.StationId}:connectors");
-            await _cache.RemoveAsync($"station:{connector.StationId}:detail");
-            await _cache.RemoveAsync($"user:{userId}:active-session");
+            await _cache.RemoveAsync(CacheKeys.StationConnectors(connector.StationId));
+            await _cache.RemoveAsync(CacheKeys.StationDetail(connector.StationId));
+            await _cache.RemoveAsync(CacheKeys.UserActiveSession(userId));
 
             return new SessionResponseDto
             {
@@ -290,8 +290,8 @@ public class SessionBffService : ISessionBffService
             }
 
             // Invalidate cache
-            await _cache.RemoveAsync($"user:{userId}:active-session");
-            await _cache.RemoveAsync($"session:{sessionId}:detail");
+            await _cache.RemoveAsync(CacheKeys.UserActiveSession(userId));
+            await _cache.RemoveAsync(CacheKeys.SessionDetail(sessionId));
 
             return new SessionResponseDto
             {
@@ -309,7 +309,7 @@ public class SessionBffService : ISessionBffService
 
     public async Task<ActiveSessionDto?> GetActiveSessionAsync(Guid userId)
     {
-        var cacheKey = $"user:{userId}:active-session";
+        var cacheKey = CacheKeys.UserActiveSession(userId);
 
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {

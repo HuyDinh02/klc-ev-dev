@@ -29,6 +29,7 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
     private readonly IRepository<WalletTransaction, Guid> _walletTransactionRepository;
     private readonly IEnumerable<IPaymentGatewayService> _gateways;
     private readonly WalletDomainService _walletDomainService;
+    private readonly IPaymentCallbackValidator _callbackValidator;
     private readonly IAuditEventLogger _auditLogger;
 
     public PaymentAppService(
@@ -41,6 +42,7 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
         IRepository<WalletTransaction, Guid> walletTransactionRepository,
         IEnumerable<IPaymentGatewayService> gateways,
         WalletDomainService walletDomainService,
+        IPaymentCallbackValidator callbackValidator,
         IAuditEventLogger auditLogger)
     {
         _paymentRepository = paymentRepository;
@@ -52,6 +54,7 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
         _walletTransactionRepository = walletTransactionRepository;
         _gateways = gateways;
         _walletDomainService = walletDomainService;
+        _callbackValidator = callbackValidator;
         _auditLogger = auditLogger;
     }
 
@@ -338,41 +341,25 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
                 .WithData("referenceCode", callback.ReferenceCode);
         }
 
-        // Verify callback signature via the appropriate gateway service
-        var gatewayService = _gateways.FirstOrDefault(g => g.Gateway == payment.Gateway);
-        if (gatewayService != null)
-        {
-            var rawData = callback.RawData
-                ?? $"{callback.ReferenceCode}{callback.Status}{callback.TransactionId}";
+        // Verify callback signature and amount via shared validator
+        var rawData = callback.RawData
+            ?? $"{callback.ReferenceCode}{callback.Status}{callback.TransactionId}";
 
-            var verifyResult = await gatewayService.VerifyCallbackAsync(rawData, callback.Signature);
-            if (!verifyResult.IsValid)
-            {
-                Logger.LogWarning(
-                    "Payment callback signature verification failed: Gateway={Gateway}, Ref={ReferenceCode}, Error={Error}",
-                    payment.Gateway, callback.ReferenceCode, verifyResult.ErrorMessage);
+        var validation = await _callbackValidator.ValidateGatewayCallbackAsync(
+            payment.Gateway, rawData, callback.Signature, payment.Amount);
 
-                throw new BusinessException(KLCDomainErrorCodes.Payment.InvalidSignature)
-                    .WithData("gateway", payment.Gateway.ToString());
-            }
-
-            // Verify amount matches (if callback provides amount)
-            if (verifyResult.CallbackAmount.HasValue && verifyResult.CallbackAmount.Value != payment.Amount)
-            {
-                Logger.LogWarning(
-                    "Payment callback amount mismatch: Expected={Expected}, Got={Got}, Ref={ReferenceCode}",
-                    payment.Amount, verifyResult.CallbackAmount.Value, callback.ReferenceCode);
-
-                throw new BusinessException(KLCDomainErrorCodes.Payment.InvalidAmount)
-                    .WithData("expected", payment.Amount)
-                    .WithData("actual", verifyResult.CallbackAmount.Value);
-            }
-        }
-        else
+        if (!validation.IsValid)
         {
             Logger.LogWarning(
-                "No gateway service found for {Gateway}, skipping signature verification for Ref={ReferenceCode}",
-                payment.Gateway, callback.ReferenceCode);
+                "Payment callback validation failed: Gateway={Gateway}, Ref={ReferenceCode}, Error={Error}",
+                payment.Gateway, callback.ReferenceCode, validation.ErrorMessage);
+
+            var errorCode = validation.ErrorMessage?.Contains("Amount") == true
+                ? KLCDomainErrorCodes.Payment.InvalidAmount
+                : KLCDomainErrorCodes.Payment.InvalidSignature;
+
+            throw new BusinessException(errorCode)
+                .WithData("gateway", payment.Gateway.ToString());
         }
 
         if (callback.Status == "success" || callback.Status == "completed")
@@ -408,30 +395,10 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
     [AllowAnonymous]
     public async Task<VnPayIpnResponse> HandleVnPayIpnAsync(Dictionary<string, string> queryParams)
     {
-        // Build raw query string for signature verification
-        var rawData = string.Join("&", queryParams.Select(kvp => $"{kvp.Key}={kvp.Value}"));
-
-        var vnpayGateway = _gateways.FirstOrDefault(g => g.Gateway == PaymentGateway.VnPay);
-        if (vnpayGateway == null)
-        {
-            Logger.LogWarning("[VnPay IPN] VnPay gateway service not registered");
-            return VnPayIpnResponse.UnknownError();
-        }
-
-        // Step 1: Verify signature
-        var verifyResult = await vnpayGateway.VerifyCallbackAsync(rawData, null);
-        if (!verifyResult.IsValid)
-        {
-            Logger.LogWarning("[VnPay IPN] Invalid signature");
-            return VnPayIpnResponse.InvalidSignature();
-        }
-
-        // Step 2: Find payment by TxnRef (= ReferenceCode)
+        // Step 1: Find payment by TxnRef
         var txnRef = queryParams.GetValueOrDefault("vnp_TxnRef");
         if (string.IsNullOrEmpty(txnRef))
-        {
             return VnPayIpnResponse.OrderNotFound();
-        }
 
         var payment = await _paymentRepository.FirstOrDefaultAsync(p => p.ReferenceCode == txnRef);
         if (payment == null)
@@ -440,26 +407,24 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
             return VnPayIpnResponse.OrderNotFound();
         }
 
-        // Step 3: Idempotency — already confirmed
         if (payment.Status == PaymentStatus.Completed)
-        {
             return VnPayIpnResponse.AlreadyConfirmed();
+
+        // Step 2: Validate signature and amount via shared validator
+        var validation = await _callbackValidator.ValidateVnPayIpnAsync(queryParams, payment.Amount);
+        if (!validation.IsValid)
+        {
+            Logger.LogWarning("[VnPay IPN] Validation failed: {Error}, TxnRef={TxnRef}",
+                validation.ErrorMessage, txnRef);
+            return validation.ErrorMessage?.Contains("Amount") == true
+                ? VnPayIpnResponse.InvalidAmount()
+                : VnPayIpnResponse.InvalidSignature();
         }
 
-        // Step 4: Verify amount (VNPay sends amount * 100)
-        if (verifyResult.CallbackAmount.HasValue && verifyResult.CallbackAmount.Value != payment.Amount)
+        // Step 3: Update payment status
+        if (validation.IsPaymentSuccess)
         {
-            Logger.LogWarning(
-                "[VnPay IPN] Amount mismatch: Expected={Expected}, Got={Got}, TxnRef={TxnRef}",
-                payment.Amount, verifyResult.CallbackAmount.Value, txnRef);
-            return VnPayIpnResponse.InvalidAmount();
-        }
-
-        // Step 5: Update payment status
-        var responseCode = queryParams.GetValueOrDefault("vnp_ResponseCode");
-        if (responseCode == "00")
-        {
-            payment.MarkCompleted(verifyResult.GatewayTransactionId ?? "");
+            payment.MarkCompleted(validation.GatewayTransactionId ?? "");
             _auditLogger.LogPaymentEvent("PaymentCompleted", payment.Id, payment.Amount, payment.Gateway.ToString(), payment.UserId.ToString());
 
             // Generate invoice
@@ -477,7 +442,7 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
         }
         else
         {
-            payment.MarkFailed($"VnPay response code: {responseCode}");
+            payment.MarkFailed($"VnPay response code: {validation.ResponseCode}");
             _auditLogger.LogPaymentEvent("PaymentFailed", payment.Id, payment.Amount, payment.Gateway.ToString(), payment.UserId.ToString());
         }
 
@@ -485,7 +450,7 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
 
         Logger.LogInformation(
             "[VnPay IPN] Processed: TxnRef={TxnRef}, ResponseCode={ResponseCode}, PaymentStatus={Status}",
-            txnRef, responseCode, payment.Status);
+            txnRef, validation.ResponseCode, payment.Status);
 
         return VnPayIpnResponse.Success();
     }

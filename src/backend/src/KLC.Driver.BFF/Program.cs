@@ -97,6 +97,7 @@ builder.Services.AddScoped<IStationBffService, StationBffService>();
 builder.Services.AddScoped<ISessionBffService, SessionBffService>();
 builder.Services.AddScoped<IPaymentBffService, PaymentBffService>();
 builder.Services.AddTransient<KLC.Payments.IPaymentGatewayService, KLC.Payments.VnPayPaymentService>();
+builder.Services.AddScoped<KLC.Payments.IPaymentCallbackValidator, KLC.Payments.PaymentCallbackValidator>();
 builder.Services.AddScoped<IProfileBffService, ProfileBffService>();
 builder.Services.AddScoped<IVehicleBffService, VehicleBffService>();
 builder.Services.AddScoped<INotificationBffService, NotificationBffService>();

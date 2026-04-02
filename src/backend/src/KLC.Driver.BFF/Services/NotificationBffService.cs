@@ -82,7 +82,7 @@ public class NotificationBffService : INotificationBffService
 
     public async Task<int> GetUnreadCountAsync(Guid userId)
     {
-        var cacheKey = $"user:{userId}:unread-notifications";
+        var cacheKey = CacheKeys.UserUnreadNotifications(userId);
 
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
@@ -101,7 +101,7 @@ public class NotificationBffService : INotificationBffService
         {
             notification.MarkAsRead();
             await _dbContext.SaveChangesAsync();
-            await _cache.RemoveAsync($"user:{userId}:unread-notifications");
+            await _cache.RemoveAsync(CacheKeys.UserUnreadNotifications(userId));
         }
     }
 
@@ -117,7 +117,7 @@ public class NotificationBffService : INotificationBffService
         }
 
         await _dbContext.SaveChangesAsync();
-        await _cache.RemoveAsync($"user:{userId}:unread-notifications");
+        await _cache.RemoveAsync(CacheKeys.UserUnreadNotifications(userId));
     }
 
     public async Task RegisterDeviceAsync(Guid userId, string fcmToken)

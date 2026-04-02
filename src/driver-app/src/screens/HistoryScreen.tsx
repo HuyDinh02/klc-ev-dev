@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { Colors } from '../constants/colors';
 import { Card, Badge } from '../components/common';
 import { sessionsApi } from '../api/sessions';
+import { formatCurrency, formatDate, formatTime, formatDuration } from '../utils/formatting';
 import type { ChargingSession, SessionStatus } from '../types';
 
 export function HistoryScreen() {
@@ -75,50 +76,13 @@ export function HistoryScreen() {
     }
   };
 
-  // Backend returns UTC timestamps without Z suffix (Npgsql legacy mode)
-  const parseUtc = (s: string) => new Date(s.endsWith('Z') ? s : s + 'Z');
-
-  const formatDateStr = (dateString: string): string => {
-    return parseUtc(dateString).toLocaleDateString('vi-VN', {
-      timeZone: 'Asia/Ho_Chi_Minh',
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
-  };
-
-  const formatTime = (dateString: string): string => {
-    return parseUtc(dateString).toLocaleTimeString('vi-VN', {
-      timeZone: 'Asia/Ho_Chi_Minh',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const formatDuration = (minutes: number): string => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    if (hours > 0) {
-      return `${hours}h ${mins}m`;
-    }
-    return `${mins}m`;
-  };
-
   const renderSession = ({ item: session }: { item: ChargingSession }) => (
-    <Card style={styles.sessionCard} accessibilityLabel={`${session.stationName}, ${formatDateStr(session.startTime)}, ${session.status}, ${session.energyKwh.toFixed(2)} kilowatt hours, ${formatDuration(session.durationMinutes)}`}>
+    <Card style={styles.sessionCard} accessibilityLabel={`${session.stationName}, ${formatDate(session.startTime)}, ${session.status}, ${session.energyKwh.toFixed(2)} kilowatt hours, ${formatDuration(session.durationMinutes)}`}>
       <View style={styles.sessionHeader}>
         <View>
           <Text style={styles.stationName}>{session.stationName}</Text>
           <Text style={styles.dateTime}>
-            {formatDateStr(session.startTime)} • {formatTime(session.startTime)}
+            {formatDate(session.startTime)} • {formatTime(session.startTime)}
           </Text>
         </View>
         <Badge label={session.status} variant={getStatusVariant(session.status)} />

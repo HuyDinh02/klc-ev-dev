@@ -14,6 +14,7 @@ import { Card, Button } from '../components/common';
 import { sessionsApi } from '../api/sessions';
 import { useSessionStore } from '../stores';
 import { useSignalR } from '../hooks/useSignalR';
+import { formatDuration, formatCurrency, formatTime } from '../utils/formatting';
 
 export function SessionScreen() {
   const { t } = useTranslation();
@@ -76,23 +77,6 @@ export function SessionScreen() {
         },
       ]
     );
-  };
-
-  const formatDuration = (minutes: number): string => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    if (hours > 0) {
-      return `${hours}h ${mins}m`;
-    }
-    return `${mins}m`;
-  };
-
-  const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-      maximumFractionDigits: 0,
-    }).format(amount);
   };
 
   if (!activeSession) {
@@ -178,7 +162,7 @@ export function SessionScreen() {
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>{t('session.started')}</Text>
             <Text style={styles.infoValue}>
-              {new Date(activeSession.startTime?.endsWith?.('Z') ? activeSession.startTime : activeSession.startTime + 'Z').toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}
+              {formatTime(activeSession.startTime)}
             </Text>
           </View>
           <View style={styles.infoRow}>
