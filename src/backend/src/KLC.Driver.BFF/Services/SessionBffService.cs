@@ -201,6 +201,7 @@ public class SessionBffService : ISessionBffService
 
             // Invalidate cache
             await _cache.RemoveAsync($"station:{connector.StationId}:connectors");
+            await _cache.RemoveAsync($"station:{connector.StationId}:detail");
             await _cache.RemoveAsync($"user:{userId}:active-session");
 
             return new SessionResponseDto

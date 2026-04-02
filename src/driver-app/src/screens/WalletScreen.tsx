@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -150,9 +151,16 @@ export function WalletScreen() {
   const processTopUp = async (amount: number) => {
     setTopUpLoading(true);
     try {
-      await walletApi.topUp(amount, 'MoMo');
-      await loadData();
-      Alert.alert(t('common.success'), t('wallet.topUpSuccess', { amount: formatCurrency(amount) }));
+      const result = await walletApi.topUp(amount, 'VnPay');
+
+      if (result.redirectUrl) {
+        // Open VnPay payment page in browser
+        await Linking.openURL(result.redirectUrl);
+      } else {
+        // Direct topup (wallet/bonus) — refresh balance
+        await loadData();
+        Alert.alert(t('common.success'), t('wallet.topUpSuccess', { amount: formatCurrency(amount) }));
+      }
     } catch (error) {
       console.error('Top up failed:', error);
       Alert.alert(t('common.error'), t('wallet.topUpError'));

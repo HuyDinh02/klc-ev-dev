@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>QR Codes — Demo Station</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 40px; background: #f5f5f5; }
+        h1 { color: #333; }
+        .qr-container { display: inline-block; margin: 30px; padding: 20px; background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .qr-container img { display: block; margin: 0 auto 10px; }
+        .qr-label { font-size: 1.2em; font-weight: bold; color: #333; }
+        .qr-value { font-size: 0.9em; color: #666; margin-top: 4px; font-family: monospace; }
+        .print-btn { margin-top: 30px; padding: 10px 30px; font-size: 1em; background: #2979ff; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
+        @media print { .print-btn { display: none; } body { background: #fff; } }
+    </style>
+</head>
+<body>
+    <h1>Demo Station — QR Codes</h1>
+    <p>Station Code: <strong>demo</strong></p>
+
+    <div class="qr-container">
+        <img id="qr1" width="250" height="250" />
+        <div class="qr-label">Connector 1</div>
+        <div class="qr-value">demo-01</div>
+    </div>
+
+    <div class="qr-container">
+        <img id="qr2" width="250" height="250" />
+        <div class="qr-label">Connector 2</div>
+        <div class="qr-value">demo-02</div>
+    </div>
+
+    <br>
+    <button class="print-btn" onclick="window.print()">Print QR Codes</button>
+
+    <script>
+        var qr1 = "demo-01";
+        var qr2 = "demo-02";
+        document.getElementById("qr1").src = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" + encodeURIComponent(qr1);
+        document.getElementById("qr2").src = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" + encodeURIComponent(qr2);
+    </script>
+</body>
+</html>

@@ -202,11 +202,11 @@ describe('QRScannerScreen', () => {
 
       onBarCodeScanned({
         type: 'qr',
-        data: 'klc://station/station-789/connector/conn-2',
+        data: 'klc://station/station-789/connector/2',
         bounds: { origin: { x: 0, y: 0 }, size: { width: 100, height: 100 } },
       });
 
-      expect(mockReplace).toHaveBeenCalledWith('StationDetail', { stationId: 'station-789' });
+      expect(mockReplace).toHaveBeenCalledWith('StationDetail', { stationId: 'station-789', connectorNumber: 2 });
     });
 
     it('shows error alert for invalid QR code (random string)', () => {

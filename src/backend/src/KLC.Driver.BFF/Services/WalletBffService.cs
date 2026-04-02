@@ -157,7 +157,8 @@ public class WalletBffService : IWalletBffService
                     Amount = request.Amount,
                     Description = $"Top-up via {request.Gateway}",
                     ReturnUrl = _configuration["Payment:VnPay:ReturnUrl"] ?? "klc://wallet/topup/callback",
-                    NotifyUrl = "/api/v1/wallet/topup/callback",
+                    NotifyUrl = _configuration["Payment:VnPay:IpnUrl"]
+                        ?? $"{_configuration["App:SelfUrl"] ?? "https://bff.ev.odcall.com"}/api/v1/wallet/topup/vnpay-ipn",
                     ClientIpAddress = request.ClientIpAddress,
                     BankCode = request.BankCode
                 })
