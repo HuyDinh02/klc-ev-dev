@@ -160,7 +160,7 @@ public class SessionBffService : ISessionBffService
             connector.UpdateStatus(ConnectorStatus.Preparing);
             await _dbContext.SaveChangesAsync();
 
-            // Send RemoteStartTransaction to the charger via Admin API
+            // Send RemoteStartTransaction to the charger via Admin API (internal endpoint)
             try
             {
                 var adminApiUrl = _configuration["Auth:Authority"] ?? "https://localhost:44305";
@@ -168,9 +168,15 @@ public class SessionBffService : ISessionBffService
                 httpClient.DefaultRequestHeaders.Accept.Add(
                     new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
 
+                var internalApiKey = _configuration["Internal:ApiKey"];
+                if (!string.IsNullOrEmpty(internalApiKey))
+                {
+                    httpClient.DefaultRequestHeaders.Add("X-Internal-Key", internalApiKey);
+                }
+
                 var remoteStartResponse = await httpClient.PostAsJsonAsync(
-                    $"{adminApiUrl}/api/v1/ocpp/connections/{connector.Station!.StationCode}/remote-start",
-                    new { connectorId = connector.ConnectorNumber, idTag = userId.ToString() });
+                    $"{adminApiUrl}/api/internal/ocpp/remote-start",
+                    new { stationCode = connector.Station!.StationCode, connectorId = connector.ConnectorNumber, idTag = userId.ToString() });
 
                 if (remoteStartResponse.IsSuccessStatusCode)
                 {
