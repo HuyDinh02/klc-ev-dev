@@ -731,12 +731,14 @@ public class EfCoreOcppServiceTests : KLCEntityFrameworkCoreTestBase
 
         await WithUnitOfWorkAsync(async () =>
         {
+            // InProgress session with OcppTransactionId should be kept alive (grace period)
             var s1 = await _dbContext.ChargingSessions.FirstAsync(s => s.Id == sessionId1);
-            s1.Status.ShouldBe(SessionStatus.Failed);
-            s1.StopReason.ShouldBe("Station disconnected");
+            s1.Status.ShouldBe(SessionStatus.InProgress);
 
+            // Pending session (no OcppTransactionId) should be failed immediately
             var s2 = await _dbContext.ChargingSessions.FirstAsync(s => s.Id == sessionId2);
             s2.Status.ShouldBe(SessionStatus.Failed);
+            s2.StopReason.ShouldContain("Station disconnected");
         });
     }
 
