@@ -775,30 +775,32 @@ public class OcppService : DomainService, IOcppService
             "Station {ChargePointId} marked Offline, {ConnectorCount} connectors set to Unavailable",
             chargePointId, connectors.Count);
 
-        // Find all active sessions for this station
-        var activeSessions = await AsyncExecuter.ToListAsync(
+        // Only fail Pending/Starting sessions (never got an OCPP transaction).
+        // InProgress sessions keep running — the charger may reconnect and resume,
+        // or send StopTransaction on next connection. This prevents false failures
+        // from transient disconnects (Cloud Run scaling, network blips, simulator refresh).
+        var pendingSessions = await AsyncExecuter.ToListAsync(
             (await _sessionRepository.GetQueryableAsync())
                 .Where(s => s.StationId == station.Id &&
+                            s.OcppTransactionId == null &&
                             (s.Status == SessionStatus.Pending ||
-                             s.Status == SessionStatus.InProgress ||
-                             s.Status == SessionStatus.Starting ||
-                             s.Status == SessionStatus.Suspended)));
+                             s.Status == SessionStatus.Starting)));
 
-        foreach (var session in activeSessions)
+        foreach (var session in pendingSessions)
         {
-            session.MarkFailed("Station disconnected");
+            session.MarkFailed("Station disconnected before transaction started");
             await _sessionRepository.UpdateAsync(session);
 
             _logger.LogWarning(
-                "Orphaned session {SessionId} marked Failed due to station {ChargePointId} disconnect",
+                "Pending session {SessionId} marked Failed due to station {ChargePointId} disconnect",
                 session.Id, chargePointId);
         }
 
-        if (activeSessions.Count > 0)
+        if (pendingSessions.Count > 0)
         {
             _logger.LogInformation(
-                "Marked {Count} orphaned sessions as Failed for station {ChargePointId}",
-                activeSessions.Count, chargePointId);
+                "Marked {Count} pending sessions as Failed for station {ChargePointId}",
+                pendingSessions.Count, chargePointId);
         }
     }
 }
