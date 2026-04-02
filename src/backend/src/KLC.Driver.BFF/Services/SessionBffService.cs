@@ -155,9 +155,7 @@ public class SessionBffService : ISessionBffService
                 tariff?.BaseRatePerKwh ?? 0);
 
             // BFF uses raw EF Core (not ABP repositories), so audit fields must be set manually
-            var now = DateTime.UtcNow;
-            _dbContext.Entry(session).Property("CreationTime").CurrentValue = now;
-            _dbContext.Entry(session).Property("LastModificationTime").CurrentValue = now;
+            _dbContext.SetAuditFields(session, userId);
 
             await _dbContext.ChargingSessions.AddAsync(session);
 

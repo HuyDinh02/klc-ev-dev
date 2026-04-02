@@ -13,24 +13,39 @@ export function formatCurrency(amount?: number | null): string {
   }).format(amount ?? 0) + "đ";
 }
 
+/**
+ * Parse a date string as UTC. Backend returns timestamps without Z suffix
+ * (Npgsql legacy mode), so we append Z if missing to ensure UTC interpretation.
+ */
+function parseAsUtc(date: string | Date): Date {
+  if (date instanceof Date) return date;
+  // If string lacks timezone info, treat as UTC by appending Z
+  if (!date.endsWith("Z") && !date.includes("+") && !/\d{2}:\d{2}$/.test(date.slice(-6))) {
+    return new Date(date + "Z");
+  }
+  return new Date(date);
+}
+
 export function formatDate(date?: string | Date | null): string {
   if (!date) return "—";
   return new Intl.DateTimeFormat("vi-VN", {
+    timeZone: "Asia/Ho_Chi_Minh",
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
-  }).format(new Date(date));
+  }).format(parseAsUtc(date));
 }
 
 export function formatDateTime(date?: string | Date | null): string {
   if (!date) return "—";
   return new Intl.DateTimeFormat("vi-VN", {
+    timeZone: "Asia/Ho_Chi_Minh",
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-  }).format(new Date(date));
+  }).format(parseAsUtc(date));
 }
 
 export function formatEnergy(kwh?: number | null): string {
@@ -45,10 +60,12 @@ export function formatDuration(minutes?: number | null): string {
   return `${hours}h ${mins}m`;
 }
 
+export { parseAsUtc };
+
 export function formatDistanceToNow(date?: string | Date | null): string {
   if (!date) return "—";
   const now = Date.now();
-  const then = new Date(date).getTime();
+  const then = parseAsUtc(date).getTime();
   const diffMs = now - then;
   const diffMin = Math.floor(diffMs / 60000);
   if (diffMin < 1) return "Just now";

@@ -75,9 +75,12 @@ export function HistoryScreen() {
     }
   };
 
+  // Backend returns UTC timestamps without Z suffix (Npgsql legacy mode)
+  const parseUtc = (s: string) => new Date(s.endsWith('Z') ? s : s + 'Z');
+
   const formatDateStr = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('vi-VN', {
+    return parseUtc(dateString).toLocaleDateString('vi-VN', {
+      timeZone: 'Asia/Ho_Chi_Minh',
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -85,8 +88,8 @@ export function HistoryScreen() {
   };
 
   const formatTime = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('vi-VN', {
+    return parseUtc(dateString).toLocaleTimeString('vi-VN', {
+      timeZone: 'Asia/Ho_Chi_Minh',
       hour: '2-digit',
       minute: '2-digit',
     });

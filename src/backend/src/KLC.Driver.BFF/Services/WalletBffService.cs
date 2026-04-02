@@ -365,6 +365,7 @@ public class WalletBffService : IWalletBffService
                 KLC.Enums.NotificationType.WalletTopUp,
                 "Nạp ví thành công",
                 $"Bạn đã nạp thành công {transaction.Amount:N0}đ vào ví. Số dư hiện tại: {newBalance:N0}đ.");
+            _dbContext.SetAuditFields(successNotification);
             _dbContext.Notifications.Add(successNotification);
             await _dbContext.SaveChangesAsync();
 
@@ -383,6 +384,7 @@ public class WalletBffService : IWalletBffService
                 KLC.Enums.NotificationType.PaymentFailed,
                 "Nạp ví thất bại",
                 $"Giao dịch nạp {transaction.Amount:N0}đ qua VnPay không thành công (mã: {responseCode}). Vui lòng thử lại.");
+            _dbContext.SetAuditFields(failNotification);
             _dbContext.Notifications.Add(failNotification);
 
             await _dbContext.SaveChangesAsync();

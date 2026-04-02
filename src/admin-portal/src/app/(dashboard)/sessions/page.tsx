@@ -12,7 +12,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { sessionsApi } from "@/lib/api";
-import { formatCurrency, formatDateTime, formatEnergy, formatDuration, downloadCsv } from "@/lib/utils";
+import { formatCurrency, formatDateTime, formatEnergy, formatDuration, downloadCsv, parseAsUtc } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
 import { useMonitoringHub } from "@/lib/signalr";
 import { useRequirePermission } from "@/lib/use-permission";
@@ -65,8 +65,8 @@ export default function SessionsPage() {
 
   const computeDuration = (startTime?: string | null, endTime?: string | null) => {
     if (!startTime) return 0;
-    const start = new Date(startTime).getTime();
-    const end = endTime ? new Date(endTime).getTime() : Date.now();
+    const start = parseAsUtc(startTime).getTime();
+    const end = endTime ? parseAsUtc(endTime).getTime() : Date.now();
     return Math.floor((end - start) / 60000);
   };
 

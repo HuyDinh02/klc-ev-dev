@@ -178,7 +178,7 @@ export function SessionScreen() {
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>{t('session.started')}</Text>
             <Text style={styles.infoValue}>
-              {new Date(activeSession.startTime).toLocaleTimeString('vi-VN')}
+              {new Date(activeSession.startTime?.endsWith?.('Z') ? activeSession.startTime : activeSession.startTime + 'Z').toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}
             </Text>
           </View>
           <View style={styles.infoRow}>
