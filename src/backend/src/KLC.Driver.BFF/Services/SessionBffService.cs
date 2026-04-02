@@ -237,6 +237,54 @@ public class SessionBffService : ISessionBffService
             session.MarkStopping();
             await _dbContext.SaveChangesAsync();
 
+            // Send RemoteStopTransaction to charger via Admin API internal endpoint
+            if (session.OcppTransactionId.HasValue)
+            {
+                try
+                {
+                    var station = await _dbContext.ChargingStations
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(s => s.Id == session.StationId);
+
+                    if (station != null)
+                    {
+                        var adminApiUrl = _configuration["Auth:Authority"] ?? "https://localhost:44305";
+                        using var httpClient = _httpClientFactory.CreateClient();
+                        httpClient.DefaultRequestHeaders.Accept.Add(
+                            new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+
+                        var internalApiKey = _configuration["Internal:ApiKey"];
+                        if (!string.IsNullOrEmpty(internalApiKey))
+                        {
+                            httpClient.DefaultRequestHeaders.Add("X-Internal-Key", internalApiKey);
+                        }
+
+                        var remoteStopResponse = await httpClient.PostAsJsonAsync(
+                            $"{adminApiUrl}/api/internal/ocpp/remote-stop",
+                            new { stationCode = station.StationCode, transactionId = session.OcppTransactionId.Value });
+
+                        if (remoteStopResponse.IsSuccessStatusCode)
+                        {
+                            _logger.LogInformation(
+                                "RemoteStopTransaction sent: Station={StationCode}, TxnId={TransactionId}",
+                                station.StationCode, session.OcppTransactionId.Value);
+                        }
+                        else
+                        {
+                            _logger.LogWarning(
+                                "RemoteStopTransaction failed: Station={StationCode}, Status={StatusCode}",
+                                station.StationCode, remoteStopResponse.StatusCode);
+                        }
+                    }
+                }
+                catch (Exception remoteEx)
+                {
+                    _logger.LogWarning(remoteEx,
+                        "Failed to send RemoteStopTransaction for session {SessionId}",
+                        sessionId);
+                }
+            }
+
             // Invalidate cache
             await _cache.RemoveAsync($"user:{userId}:active-session");
             await _cache.RemoveAsync($"session:{sessionId}:detail");

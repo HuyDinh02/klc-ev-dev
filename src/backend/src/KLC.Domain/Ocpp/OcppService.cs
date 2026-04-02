@@ -531,6 +531,17 @@ public class OcppService : DomainService, IOcppService
             }
         }
 
+        // Update connector status to Available after session completes
+        var connector = await _connectorRepository.FirstOrDefaultAsync(
+            c => c.StationId == session.StationId && c.ConnectorNumber == session.ConnectorNumber);
+        if (connector != null)
+        {
+            connector.UpdateStatus(ConnectorStatus.Available);
+            await _connectorRepository.UpdateAsync(connector);
+            _logger.LogInformation("Connector {ConnectorNumber} at station {StationId} set to Available",
+                session.ConnectorNumber, session.StationId);
+        }
+
         _logger.LogInformation("Session {SessionId} completed: Energy={EnergyKwh}kWh, Cost={Cost}, TariffType={TariffType}",
             session.Id, session.TotalEnergyKwh, session.TotalCost,
             tariffPlan?.TariffType.ToString() ?? "None");
