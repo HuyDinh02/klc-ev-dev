@@ -346,6 +346,28 @@ public class OcppService : DomainService, IOcppService
             }
         }
 
+        // Link to existing BFF-created Pending session (from mobile app QR flow)
+        // The BFF creates a session with Status=Pending before sending RemoteStartTransaction
+        var pendingSession = await _sessionRepository.FirstOrDefaultAsync(
+            s => s.StationId == station.Id &&
+                 s.ConnectorNumber == connectorId &&
+                 s.OcppTransactionId == null &&
+                 (s.Status == SessionStatus.Pending || s.Status == SessionStatus.Starting) &&
+                 (userId == Guid.Empty || s.UserId == userId));
+
+        if (pendingSession != null)
+        {
+            pendingSession.RecordStart(ocppTransactionId, meterStart);
+            await _sessionRepository.UpdateAsync(pendingSession);
+
+            _logger.LogInformation(
+                "Linked OCPP transaction {TransactionId} to existing BFF session {SessionId}",
+                ocppTransactionId, pendingSession.Id);
+
+            return pendingSession.Id;
+        }
+
+        // No pending session found — create a new one (direct charger start / RFID)
         // Resolve tariff rate from station's tariff plan
         var tariffPlanId = station.TariffPlanId;
         decimal ratePerKwh = 0;
