@@ -32,8 +32,9 @@ public class KLCEntityFrameworkCoreModule : AbpModule
 {
     public override void PreConfigureServices(ServiceConfigurationContext context)
     {
-        // https://www.npgsql.org/efcore/release-notes/6.0.html#opting-out-of-the-new-timestamp-mapping-logic
-        AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+        // Using modern Npgsql timestamp behavior: DateTime(Kind=Utc) → timestamptz
+        // All DateTime values must use DateTimeKind.Utc
+        AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", false);
 
         KLCEfCoreEntityExtensionMappings.Configure();
     }
