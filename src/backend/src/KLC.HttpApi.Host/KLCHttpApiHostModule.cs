@@ -272,6 +272,7 @@ public class KLCHttpApiHostModule : AbpModule
         context.Services.AddSingleton<OcppMessageParserFactory>();
         context.Services.AddScoped<OcppMessageHandler>();
         context.Services.AddHostedService<HeartbeatMonitorService>();
+        context.Services.AddHostedService<OrphanedSessionCleanupService>();
         context.Services.AddHostedService<FleetResetBackgroundService>();
         context.Services.AddHostedService<WalletBalanceMonitorService>();
         context.Services.AddHostedService<PaymentReconciliationService>();

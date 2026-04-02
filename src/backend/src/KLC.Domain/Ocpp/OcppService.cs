@@ -775,10 +775,8 @@ public class OcppService : DomainService, IOcppService
             "Station {ChargePointId} marked Offline, {ConnectorCount} connectors set to Unavailable",
             chargePointId, connectors.Count);
 
-        // Only fail Pending/Starting sessions (never got an OCPP transaction).
-        // InProgress sessions keep running — the charger may reconnect and resume,
-        // or send StopTransaction on next connection. This prevents false failures
-        // from transient disconnects (Cloud Run scaling, network blips, simulator refresh).
+        // Fail Pending/Starting sessions immediately — they never got an OCPP transaction,
+        // so there's nothing to recover.
         var pendingSessions = await AsyncExecuter.ToListAsync(
             (await _sessionRepository.GetQueryableAsync())
                 .Where(s => s.StationId == station.Id &&
@@ -794,6 +792,24 @@ public class OcppService : DomainService, IOcppService
             _logger.LogWarning(
                 "Pending session {SessionId} marked Failed due to station {ChargePointId} disconnect",
                 session.Id, chargePointId);
+        }
+
+        // InProgress/Suspended sessions are NOT failed immediately.
+        // Real chargers may reconnect after transient network issues and resume
+        // or send StopTransaction. A background job (OrphanedSessionCleanupService)
+        // will fail these after a grace period if the station doesn't reconnect.
+        var inProgressCount = await AsyncExecuter.CountAsync(
+            (await _sessionRepository.GetQueryableAsync())
+                .Where(s => s.StationId == station.Id &&
+                            s.OcppTransactionId != null &&
+                            (s.Status == SessionStatus.InProgress ||
+                             s.Status == SessionStatus.Suspended)));
+
+        if (inProgressCount > 0)
+        {
+            _logger.LogWarning(
+                "{Count} InProgress sessions for station {ChargePointId} kept alive pending reconnection (grace period)",
+                inProgressCount, chargePointId);
         }
 
         if (pendingSessions.Count > 0)
