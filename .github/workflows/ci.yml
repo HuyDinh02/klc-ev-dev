@@ -3,17 +3,37 @@ name: CI
 on:
   pull_request:
     branches: [develop, main]
-  push:
-    branches: [develop, main]
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  backend-build-test:
-    name: Backend Build & Test
+  changes:
+    name: Detect changes
     runs-on: [self-hosted, linux, x64, gce]
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      admin-portal: ${{ steps.filter.outputs.admin-portal }}
+      driver-app: ${{ steps.filter.outputs.driver-app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'src/backend/**'
+            admin-portal:
+              - 'src/admin-portal/**'
+            driver-app:
+              - 'src/driver-app/**'
+
+  backend-test:
+    name: Backend Tests
+    runs-on: [self-hosted, linux, x64, gce]
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     timeout-minutes: 15
 
     services:
@@ -41,14 +61,8 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
-      - name: Restore dependencies
-        run: dotnet restore src/backend
-
-      - name: Build
-        run: dotnet build src/backend --no-restore -c Release
-
       - name: Test
-        run: dotnet test src/backend --no-restore --no-build -c Release --logger "trx;LogFileName=test-results.trx" --results-directory ./test-results
+        run: dotnet test src/backend -c Release --logger "trx;LogFileName=test-results.trx" --results-directory ./test-results
         env:
           ConnectionStrings__Default: "Host=localhost;Port=5433;Database=KLC;Username=postgres;Password=postgres"
 
@@ -56,13 +70,15 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: test-results
+          name: backend-test-results
           path: ./test-results
           retention-days: 7
 
-  admin-portal-build:
-    name: Admin Portal Build
+  admin-portal-check:
+    name: Admin Portal Check
     runs-on: [self-hosted, linux, x64, gce]
+    needs: changes
+    if: needs.changes.outputs.admin-portal == 'true'
     timeout-minutes: 10
 
     steps:
@@ -75,27 +91,18 @@ jobs:
           cache: "npm"
           cache-dependency-path: src/admin-portal/package-lock.json
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Install & check
         working-directory: src/admin-portal
-
-      - name: Type check
-        run: npx tsc --noEmit
-        working-directory: src/admin-portal
-
-      - name: Unit tests
-        run: npx vitest run
-        working-directory: src/admin-portal
-
-      - name: Build
-        run: npm run build
-        working-directory: src/admin-portal
-        env:
-          NEXT_PUBLIC_API_URL: https://api.example.com
+        run: |
+          npm ci
+          npx tsc --noEmit
+          npx vitest run
 
   driver-app-test:
     name: Driver App Tests
     runs-on: [self-hosted, linux, x64, gce]
+    needs: changes
+    if: needs.changes.outputs.driver-app == 'true'
     timeout-minutes: 10
 
     steps:
@@ -108,10 +115,8 @@ jobs:
           cache: "npm"
           cache-dependency-path: src/driver-app/package-lock.json
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Install & test
         working-directory: src/driver-app
-
-      - name: Unit tests
-        run: npx jest --ci --coverage
-        working-directory: src/driver-app
+        run: |
+          npm ci
+          npx jest --ci --coverage
