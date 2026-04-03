@@ -33,6 +33,7 @@ public class OrphanedSessionCleanupService : BackgroundService
     private readonly TimeSpan _checkInterval;
     private readonly TimeSpan _pendingTimeout;
     private readonly TimeSpan _offlineGracePeriod;
+    private readonly TimeSpan _staleInProgressTimeout;
 
     public OrphanedSessionCleanupService(
         IServiceProvider serviceProvider,
@@ -44,6 +45,7 @@ public class OrphanedSessionCleanupService : BackgroundService
         _checkInterval = TimeSpan.FromMinutes(configuration.GetValue("SessionCleanup:CheckIntervalMinutes", 1));
         _pendingTimeout = TimeSpan.FromMinutes(configuration.GetValue("SessionCleanup:PendingTimeoutMinutes", 5));
         _offlineGracePeriod = TimeSpan.FromMinutes(configuration.GetValue("SessionCleanup:OfflineGracePeriodMinutes", 10));
+        _staleInProgressTimeout = TimeSpan.FromMinutes(configuration.GetValue("SessionCleanup:StaleInProgressMinutes", 15));
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -157,6 +159,38 @@ public class OrphanedSessionCleanupService : BackgroundService
                     "Duplicate InProgress session {SessionId} failed — newer session exists on same connector",
                     stale.Id);
             }
+        }
+
+        // --- 4. Stale InProgress sessions — no meter values received recently ---
+        // Charger may have stopped sending data (disconnected, battery full, power off)
+        // but never sent StopTransaction. Complete the session using last known data.
+        var staleCutoff = DateTime.UtcNow - _staleInProgressTimeout;
+        var remainingInProgress = await sessionRepo.GetListAsync(
+            s => s.Status == SessionStatus.InProgress && s.OcppTransactionId != null);
+
+        foreach (var session in remainingInProgress)
+        {
+            // Check last activity: either LastModificationTime or StartTime
+            var lastActivity = session.LastModificationTime ?? session.StartTime ?? session.CreationTime;
+            if (lastActivity >= staleCutoff) continue; // Still active
+
+            // Session has had no updates for StaleInProgressMinutes — complete it
+            session.MarkFailed($"No meter data received for {_staleInProgressTimeout.TotalMinutes:0} minutes");
+            await sessionRepo.UpdateAsync(session);
+
+            // Reset connector
+            var connector = await connectorRepo.FirstOrDefaultAsync(
+                c => c.StationId == session.StationId && c.ConnectorNumber == session.ConnectorNumber);
+            if (connector != null && connector.Status != ConnectorStatus.Available)
+            {
+                connector.UpdateStatus(ConnectorStatus.Available);
+                await connectorRepo.UpdateAsync(connector);
+            }
+
+            totalCleaned++;
+            _logger.LogWarning(
+                "Stale InProgress session {SessionId} failed — no meter data for {Minutes}min. Energy={Energy}kWh",
+                session.Id, _staleInProgressTimeout.TotalMinutes, session.TotalEnergyKwh);
         }
 
         await uow.CompleteAsync();
