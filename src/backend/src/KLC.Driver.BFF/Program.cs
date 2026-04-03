@@ -115,9 +115,9 @@ builder.Services.AddScoped<IPromotionBffService, PromotionBffService>();
 builder.Services.AddScoped<IFeedbackBffService, FeedbackBffService>();
 
 // Register services from Application layer (not auto-registered since BFF doesn't depend on KLCApplicationModule)
-// Uses FirebaseSmsService — sends OTP via Firebase Identity Toolkit API
-// Falls back to log-only when Firebase:WebApiKey is not configured
-builder.Services.AddTransient<KLC.Notifications.ISmsService, KLC.Notifications.FirebaseSmsService>();
+// SMS: configurable via Sms:Provider ("eSMS" | "SpeedSMS" | "Log")
+// Default: "Log" — OTP logged to Cloud Logging (dev/testing mode)
+builder.Services.AddTransient<KLC.Notifications.ISmsService, KLC.Notifications.SmsService>();
 builder.Services.AddTransient<KLC.Files.IFileUploadService, KLC.Files.GcsFileUploadService>();
 builder.Services.AddTransient<KLC.Auditing.IAuditEventLogger, KLC.Auditing.AuditEventLogger>();
 

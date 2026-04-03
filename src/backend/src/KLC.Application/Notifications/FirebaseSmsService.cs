@@ -22,10 +22,12 @@ namespace KLC.Notifications;
 ///   3. Backend calls signInWithPhoneNumber to verify the OTP
 ///   4. Returns Firebase session info for token verification
 ///
-/// Note: For the KLC system, we use a simpler approach:
-///   - We generate our own OTP and send it via Firebase's SMS channel
-///   - Verification is done by our backend (Redis OTP store), not Firebase
-///   - This gives us full control over the auth flow
+/// Note: Firebase Identity Toolkit sendVerificationCode requires reCAPTCHA
+/// from the client side — cannot be called purely from server.
+/// This service falls back to logging the OTP for dev/testing.
+/// For production SMS, configure eSMS.vn or SpeedSMS credentials:
+///   Sms:Provider = "eSMS" | "SpeedSMS"
+///   Sms:ApiKey, Sms:SecretKey, Sms:BrandName
 /// </summary>
 public class FirebaseSmsService : ISmsService, ITransientDependency
 {
