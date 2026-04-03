@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Search, AlertTriangle, CheckCircle, Clock, Wrench } from "lucide-react";
+import { useTableQuery } from "@/hooks/use-table-query";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
 import { StatusBadge, getStatusConfig } from "@/components/ui/status-badge";
@@ -17,32 +17,47 @@ import { useTranslation } from "@/lib/i18n";
 import { useRequirePermission, useHasPermission } from "@/lib/use-permission";
 import { AccessDenied } from "@/components/ui/access-denied";
 
+interface Fault {
+  id: string;
+  errorCode: string;
+  status: number | string;
+  priority?: number;
+  errorInfo?: string;
+  stationName?: string;
+  connectorNumber?: number;
+  detectedAt?: string;
+  resolvedAt?: string | null;
+}
+
 export default function FaultsPage() {
   const hasAccess = useRequirePermission("KLC.Faults");
   const canUpdate = useHasPermission("KLC.Faults.Update");
   const { t } = useTranslation();
   const router = useRouter();
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [cursorStack, setCursorStack] = useState<(string | null)[]>([]);
-  const pageSize = 20;
   const queryClient = useQueryClient();
 
-  const resetPagination = () => { setCursor(null); setCursorStack([]); };
-
-  const { data: faultsData, isLoading } = useQuery({
-    queryKey: ["faults", statusFilter, cursor],
-    queryFn: async () => {
-      const params: Record<string, unknown> = { maxResultCount: pageSize };
-      if (statusFilter !== "all") params.status = Number(statusFilter);
-      if (cursor) params.cursor = cursor;
+  const {
+    data: faultsData,
+    items: faults,
+    filteredItems: filteredFaults,
+    isLoading,
+    search,
+    setSearch,
+    statusFilter,
+    setStatusFilterAndReset,
+    pageSize,
+    goNextPage,
+    goPrevPage,
+    hasNextPage,
+    hasPrevPage,
+  } = useTableQuery<Fault>({
+    queryKey: "faults",
+    fetchFn: async (params) => {
       const { data } = await faultsApi.getAll(params as Parameters<typeof faultsApi.getAll>[0]);
       return data;
     },
+    searchFields: ["stationName", "errorCode"],
   });
-
-  const faults = faultsData?.items || [];
 
   const updateStatusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: number }) =>
@@ -50,18 +65,9 @@ export default function FaultsPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["faults"] }),
   });
 
-  const filteredFaults = faults.filter((fault: { stationName?: string; errorCode?: string }) => {
-    if (!search) return true;
-    const s = search.toLowerCase();
-    return (
-      (fault.stationName || "").toLowerCase().includes(s) ||
-      (fault.errorCode || "").toLowerCase().includes(s)
-    );
-  });
-
-  const newFaults = faults.filter((f: { status: number | string }) => f.status === 0 || f.status === "Open").length;
-  const inProgressFaults = faults.filter((f: { status: number | string }) => f.status === 1 || f.status === "Investigating").length;
-  const criticalFaults = faults.filter((f: { priority?: number }) => f.priority === 1).length;
+  const newFaults = faults.filter((f) => f.status === 0 || f.status === "Open").length;
+  const inProgressFaults = faults.filter((f) => f.status === 1 || f.status === "Investigating").length;
+  const criticalFaults = faults.filter((f) => f.priority === 1).length;
 
   if (!hasAccess) return <AccessDenied />;
 
@@ -125,11 +131,11 @@ export default function FaultsPage() {
             />
           </div>
           <div className="flex items-center gap-2">
-            <Button variant={statusFilter === "all" ? "default" : "outline"} size="sm" aria-pressed={statusFilter === "all"} onClick={() => { setStatusFilter("all"); resetPagination(); }}>{t("common.all")}</Button>
-            <Button variant={statusFilter === "0" ? "default" : "outline"} size="sm" aria-pressed={statusFilter === "0"} onClick={() => { setStatusFilter("0"); resetPagination(); }}>{t("faults.open")}</Button>
-            <Button variant={statusFilter === "1" ? "default" : "outline"} size="sm" aria-pressed={statusFilter === "1"} onClick={() => { setStatusFilter("1"); resetPagination(); }}>{t("faults.investigating")}</Button>
-            <Button variant={statusFilter === "2" ? "default" : "outline"} size="sm" aria-pressed={statusFilter === "2"} onClick={() => { setStatusFilter("2"); resetPagination(); }}>{t("faults.resolved")}</Button>
-            <Button variant={statusFilter === "3" ? "default" : "outline"} size="sm" aria-pressed={statusFilter === "3"} onClick={() => { setStatusFilter("3"); resetPagination(); }}>{t("faults.closed")}</Button>
+            <Button variant={statusFilter === "all" ? "default" : "outline"} size="sm" aria-pressed={statusFilter === "all"} onClick={() => setStatusFilterAndReset("all")}>{t("common.all")}</Button>
+            <Button variant={statusFilter === "0" ? "default" : "outline"} size="sm" aria-pressed={statusFilter === "0"} onClick={() => setStatusFilterAndReset("0")}>{t("faults.open")}</Button>
+            <Button variant={statusFilter === "1" ? "default" : "outline"} size="sm" aria-pressed={statusFilter === "1"} onClick={() => setStatusFilterAndReset("1")}>{t("faults.investigating")}</Button>
+            <Button variant={statusFilter === "2" ? "default" : "outline"} size="sm" aria-pressed={statusFilter === "2"} onClick={() => setStatusFilterAndReset("2")}>{t("faults.resolved")}</Button>
+            <Button variant={statusFilter === "3" ? "default" : "outline"} size="sm" aria-pressed={statusFilter === "3"} onClick={() => setStatusFilterAndReset("3")}>{t("faults.closed")}</Button>
           </div>
         </div>
 
@@ -148,7 +154,7 @@ export default function FaultsPage() {
           />
         ) : (
           <div className="space-y-4">
-            {filteredFaults.map((fault: { id: string; errorCode: string; status: number | string; priority?: number; errorInfo?: string; stationName?: string; connectorNumber?: number; detectedAt?: string; resolvedAt?: string | null }) => {
+            {filteredFaults.map((fault) => {
               const severityConfig = getStatusConfig("faultSeverity", fault.priority ?? 4);
               return (
                 <Card
@@ -206,30 +212,19 @@ export default function FaultsPage() {
         )}
 
         {/* Pagination */}
-        {!isLoading && ((faultsData?.totalCount ?? 0) > pageSize || cursorStack.length > 0) && (
+        {!isLoading && ((faultsData?.totalCount ?? 0) > pageSize || hasPrevPage) && (
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               {faultsData?.totalCount ?? 0} {t("faults.totalFaultsCount")}
             </p>
             <div className="flex items-center gap-2">
-              {cursorStack.length > 0 && (
-                <Button variant="outline" size="sm" onClick={() => {
-                  const prev = [...cursorStack];
-                  const prevCursor = prev.pop()!;
-                  setCursorStack(prev);
-                  setCursor(prevCursor);
-                }}>
+              {hasPrevPage && (
+                <Button variant="outline" size="sm" onClick={goPrevPage}>
                   {t("common.previous")}
                 </Button>
               )}
-              {faults.length === pageSize && (
-                <Button variant="outline" size="sm" onClick={() => {
-                  const lastId = faults[faults.length - 1]?.id;
-                  if (lastId) {
-                    setCursorStack([...cursorStack, cursor]);
-                    setCursor(lastId);
-                  }
-                }}>
+              {hasNextPage && (
+                <Button variant="outline" size="sm" onClick={goNextPage}>
                   {t("common.next")}
                 </Button>
               )}

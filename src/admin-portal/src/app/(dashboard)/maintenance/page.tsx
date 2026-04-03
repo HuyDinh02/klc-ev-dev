@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTableQuery } from "@/hooks/use-table-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -70,10 +71,7 @@ export default function MaintenancePage() {
     1: t("maintenance.inspection"),
     2: t("maintenance.emergency"),
   };
-  const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [cursorStack, setCursorStack] = useState<(string | null)[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [formData, setFormData] = useState({
     stationId: "",
@@ -84,24 +82,29 @@ export default function MaintenancePage() {
     assignedTo: "",
     scheduledDate: "",
   });
-  const pageSize = 20;
 
-  const resetPagination = () => { setCursor(null); setCursorStack([]); };
-
-  // Fetch tasks
-  const { data: tasksData, isLoading } = useQuery({
-    queryKey: ["maintenance-tasks", statusFilter, typeFilter, cursor],
-    queryFn: async () => {
-      const params: Record<string, string | number> = {
-        maxResultCount: pageSize,
-      };
-      if (statusFilter !== "all") params.status = statusFilter;
-      if (typeFilter !== "all") params.type = typeFilter;
-      if (cursor) params.cursor = cursor;
-
-      const res = await maintenanceApi.getAll(params as Parameters<typeof maintenanceApi.getAll>[0]);
+  const {
+    items: tasks,
+    totalCount,
+    isLoading,
+    statusFilter,
+    setStatusFilter,
+    setStatusFilterAndReset,
+    pageSize,
+    goNextPage,
+    goPrevPage,
+    hasNextPage,
+    hasPrevPage,
+    resetPage,
+  } = useTableQuery<MaintenanceTask>({
+    queryKey: "maintenance-tasks",
+    fetchFn: async (params) => {
+      const p = { ...params } as Record<string, unknown>;
+      if (typeFilter !== "all") p.type = typeFilter;
+      const res = await maintenanceApi.getAll(p as Parameters<typeof maintenanceApi.getAll>[0]);
       return res.data;
     },
+    extraQueryKeys: [typeFilter],
   });
 
   // Fetch stations for dropdown
@@ -186,9 +189,6 @@ export default function MaintenancePage() {
     },
   });
 
-  const tasks: MaintenanceTask[] = tasksData?.items || [];
-  const totalCount = tasksData?.totalCount || 0;
-
   const getTypeColor = (type: number): "destructive" | "warning" | "default" | "secondary" => {
     switch (type) {
       case 2: return "destructive";
@@ -232,7 +232,7 @@ export default function MaintenancePage() {
             icon={Calendar}
             iconColor="bg-primary/10 text-primary"
             className={statusFilter === "0" ? "ring-2 ring-primary" : ""}
-            onClick={() => setStatusFilter(statusFilter === "0" ? "all" : "0")}
+            onClick={() => setStatusFilterAndReset(statusFilter === "0" ? "all" : "0")}
           />
           <StatCard
             label={t("maintenance.inProgress")}
@@ -240,7 +240,7 @@ export default function MaintenancePage() {
             icon={Wrench}
             iconColor="bg-blue-50 text-blue-600"
             className={statusFilter === "1" ? "ring-2 ring-blue-500" : ""}
-            onClick={() => setStatusFilter(statusFilter === "1" ? "all" : "1")}
+            onClick={() => setStatusFilterAndReset(statusFilter === "1" ? "all" : "1")}
           />
           <StatCard
             label={t("maintenance.completed")}
@@ -248,7 +248,7 @@ export default function MaintenancePage() {
             icon={CheckCircle2}
             iconColor="bg-green-50 text-green-600"
             className={statusFilter === "2" ? "ring-2 ring-green-500" : ""}
-            onClick={() => setStatusFilter(statusFilter === "2" ? "all" : "2")}
+            onClick={() => setStatusFilterAndReset(statusFilter === "2" ? "all" : "2")}
           />
           <StatCard
             label={t("maintenance.overdue")}
@@ -373,7 +373,7 @@ export default function MaintenancePage() {
             <div className="flex gap-4">
               <select
                 value={statusFilter}
-                onChange={(e) => { setStatusFilter(e.target.value); resetPagination(); }}
+                onChange={(e) => setStatusFilterAndReset(e.target.value)}
                 className="rounded-md border px-3 py-2"
                 aria-label={t("maintenance.filterByStatus")}
               >
@@ -385,7 +385,7 @@ export default function MaintenancePage() {
               </select>
               <select
                 value={typeFilter}
-                onChange={(e) => { setTypeFilter(e.target.value); resetPagination(); }}
+                onChange={(e) => { setTypeFilter(e.target.value); resetPage(); }}
                 className="rounded-md border px-3 py-2"
                 aria-label={t("maintenance.filterByType")}
               >
@@ -514,39 +514,28 @@ export default function MaintenancePage() {
         </div>
 
         {/* Pagination */}
-        {(totalCount > pageSize || cursorStack.length > 0) && (
+        {(totalCount > pageSize || hasPrevPage) && (
           <div className="flex items-center justify-between">
             <div className="text-sm tabular-nums text-muted-foreground">
               {totalCount} {t("maintenance.totalTasks")}
             </div>
             <div className="flex gap-2">
-              {cursorStack.length > 0 && (
+              {hasPrevPage && (
                 <Button
                   variant="outline"
                   size="sm"
                   aria-label={t("common.previous")}
-                  onClick={() => {
-                    const prev = [...cursorStack];
-                    const prevCursor = prev.pop()!;
-                    setCursorStack(prev);
-                    setCursor(prevCursor);
-                  }}
+                  onClick={goPrevPage}
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
               )}
-              {tasks.length === pageSize && (
+              {hasNextPage && (
                 <Button
                   variant="outline"
                   size="sm"
                   aria-label={t("common.next")}
-                  onClick={() => {
-                    const lastId = tasks[tasks.length - 1]?.id;
-                    if (lastId) {
-                      setCursorStack([...cursorStack, cursor]);
-                      setCursor(lastId);
-                    }
-                  }}
+                  onClick={goNextPage}
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTableQuery } from "@/hooks/use-table-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -50,42 +51,35 @@ export default function EInvoicesPage() {
   const hasAccess = useRequirePermission("KLC.EInvoices");
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const [statusFilter, setStatusFilter] = useState("all");
   const [providerFilter, setProviderFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [cursorStack, setCursorStack] = useState<(string | null)[]>([]);
-  const pageSize = 20;
 
-  const resetPagination = () => { setCursor(null); setCursorStack([]); };
-
-  // Fetch e-invoices
-  const { data: invoicesData, isLoading } = useQuery({
-    queryKey: [
-      "e-invoices",
-      statusFilter,
-      providerFilter,
-      dateFrom,
-      dateTo,
-      searchQuery,
-      cursor,
-    ],
-    queryFn: async () => {
-      const params: Record<string, string | number> = {
-        maxResultCount: pageSize,
-      };
-      if (statusFilter !== "all") params.status = statusFilter;
-      if (providerFilter !== "all") params.provider = providerFilter;
-      if (dateFrom) params.fromDate = dateFrom;
-      if (dateTo) params.toDate = dateTo;
-      if (searchQuery) params.search = searchQuery;
-      if (cursor) params.cursor = cursor;
-
-      const res = await api.get("/e-invoices", { params });
+  const {
+    items: invoices,
+    totalCount,
+    isLoading,
+    statusFilter,
+    setStatusFilterAndReset,
+    pageSize,
+    goNextPage,
+    goPrevPage,
+    hasNextPage,
+    hasPrevPage,
+    resetPage,
+  } = useTableQuery<EInvoice>({
+    queryKey: "e-invoices",
+    fetchFn: async (params) => {
+      const p = { ...params } as Record<string, unknown>;
+      if (providerFilter !== "all") p.provider = providerFilter;
+      if (dateFrom) p.fromDate = dateFrom;
+      if (dateTo) p.toDate = dateTo;
+      if (searchQuery) p.search = searchQuery;
+      const res = await api.get("/e-invoices", { params: p });
       return res.data;
     },
+    extraQueryKeys: [providerFilter, dateFrom, dateTo, searchQuery],
   });
 
   // Retry failed invoice
@@ -107,9 +101,6 @@ export default function EInvoicesPage() {
       queryClient.invalidateQueries({ queryKey: ["e-invoices"] });
     },
   });
-
-  const invoices: EInvoice[] = invoicesData?.items || [];
-  const totalCount = invoicesData?.totalCount || 0;
 
   // Compute stats from fetched data
   const stats = {
@@ -207,7 +198,7 @@ export default function EInvoicesPage() {
             </div>
             <select
               value={statusFilter}
-              onChange={(e) => { setStatusFilter(e.target.value); resetPagination(); }}
+              onChange={(e) => setStatusFilterAndReset(e.target.value)}
               className="rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
               aria-label={t("eInvoices.filterByStatus")}
             >
@@ -218,7 +209,7 @@ export default function EInvoicesPage() {
             </select>
             <select
               value={providerFilter}
-              onChange={(e) => { setProviderFilter(e.target.value); resetPagination(); }}
+              onChange={(e) => { setProviderFilter(e.target.value); resetPage(); }}
               className="rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
               aria-label={t("eInvoices.filterByProvider")}
             >
@@ -375,39 +366,28 @@ export default function EInvoicesPage() {
             </div>
 
             {/* Pagination */}
-            {(totalCount > pageSize || cursorStack.length > 0) && (
+            {(totalCount > pageSize || hasPrevPage) && (
               <div className="flex items-center justify-between border-t px-4 py-3">
                 <div className="text-sm text-muted-foreground">
                   {totalCount} {t("eInvoices.totalEInvoices")}
                 </div>
                 <div className="flex gap-2">
-                  {cursorStack.length > 0 && (
+                  {hasPrevPage && (
                     <Button
                       variant="outline"
                       size="sm"
                       aria-label={t("common.previous")}
-                      onClick={() => {
-                        const prev = [...cursorStack];
-                        const prevCursor = prev.pop()!;
-                        setCursorStack(prev);
-                        setCursor(prevCursor);
-                      }}
+                      onClick={goPrevPage}
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
                   )}
-                  {invoices.length === pageSize && (
+                  {hasNextPage && (
                     <Button
                       variant="outline"
                       size="sm"
                       aria-label={t("common.next")}
-                      onClick={() => {
-                        const lastId = invoices[invoices.length - 1]?.id;
-                        if (lastId) {
-                          setCursorStack([...cursorStack, cursor]);
-                          setCursor(lastId);
-                        }
-                      }}
+                      onClick={goNextPage}
                     >
                       <ChevronRight className="h-4 w-4" />
                     </Button>
