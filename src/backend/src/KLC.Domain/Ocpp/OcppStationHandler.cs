@@ -67,7 +67,7 @@ public class OcppStationHandler : DomainService
             return null;
         }
 
-        if (!station.IsEnabled || station.Status == StationStatus.Disabled || station.Status == StationStatus.Decommissioned)
+        if (!station.IsEnabled || station.Status == StationStatus.Disabled)
         {
             _logger.LogWarning(
                 "BootNotification rejected for unavailable station {ChargePointId}: enabled={IsEnabled}, status={Status}",

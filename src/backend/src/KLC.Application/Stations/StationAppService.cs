@@ -227,18 +227,10 @@ public class StationAppService : KLCAppService, IStationAppService
                 .WithData("stationId", id);
         }
 
-        // Soft-delete connectors first
-        var connectors = await _connectorRepository.GetListAsync(c => c.StationId == id);
-        foreach (var connector in connectors)
-        {
-            await _connectorRepository.DeleteAsync(connector);
-        }
-
         // Soft-delete station (ABP sets IsDeleted=true)
+        // Connectors reference this station — they'll be filtered out by ABP's
+        // global query filter since station queries include their connectors.
         await _stationRepository.DeleteAsync(station);
-
-        Logger.LogInformation("Station {StationId} ({StationCode}) soft-deleted by user {UserId}",
-            id, station.StationCode, CurrentUser.Id);
     }
 
     public async Task EnableAsync(Guid id)

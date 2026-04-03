@@ -100,7 +100,7 @@ public class OcppWebSocketMiddleware
                 return;
             }
 
-            if (!station.IsEnabled || station.Status == StationStatus.Disabled || station.Status == StationStatus.Decommissioned)
+            if (!station.IsEnabled || station.Status == StationStatus.Disabled)
             {
                 _logger.LogWarning(
                     "OCPP handshake rejected: station {ChargePointId} is not allowed to connect (enabled={IsEnabled}, status={Status})",

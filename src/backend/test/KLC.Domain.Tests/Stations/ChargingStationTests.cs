@@ -148,26 +148,27 @@ public class ChargingStationTests
     }
 
     [Fact]
-    public void Decommission_Should_Set_Terminal_Status_And_Disable()
+    public void Decommission_Should_Delegate_To_Disable()
     {
         var station = CreateStation();
 
-        station.Decommission();
+        station.Decommission(); // Deprecated — delegates to Disable()
 
         station.IsEnabled.ShouldBeFalse();
-        station.Status.ShouldBe(StationStatus.Decommissioned);
+        station.Status.ShouldBe(StationStatus.Disabled);
     }
 
     [Fact]
-    public void Disable_Should_Not_Overwrite_Decommissioned_Status()
+    public void Disable_Then_Enable_Should_Reset_To_Offline()
     {
         var station = CreateStation();
-        station.Decommission();
-
         station.Disable();
-
         station.IsEnabled.ShouldBeFalse();
-        station.Status.ShouldBe(StationStatus.Decommissioned);
+        station.Status.ShouldBe(StationStatus.Disabled);
+
+        station.Enable();
+        station.IsEnabled.ShouldBeTrue();
+        station.Status.ShouldBe(StationStatus.Offline);
     }
 
     private static ChargingStation CreateStation()

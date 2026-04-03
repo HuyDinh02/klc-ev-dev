@@ -192,13 +192,13 @@ public class StationAppServiceTests
     }
 
     [Fact]
-    public void Decommission_Should_Set_Status_And_Disable()
+    public void Decommission_Should_Delegate_To_Disable()
     {
         var station = CreateTestStation();
 
-        station.Decommission();
+        station.Decommission(); // Deprecated — delegates to Disable()
 
-        station.Status.ShouldBe(StationStatus.Decommissioned);
+        station.Status.ShouldBe(StationStatus.Disabled);
         station.IsEnabled.ShouldBeFalse();
     }
 

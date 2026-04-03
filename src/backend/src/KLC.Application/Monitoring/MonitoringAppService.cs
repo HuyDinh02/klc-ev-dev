@@ -280,7 +280,7 @@ public class MonitoringAppService : KLCAppService, IMonitoringAppService
 
         // Uptime: % of stations that are not Faulted/Offline
         var onlineStations = stations.Count(s => s.Status == StationStatus.Online);
-        var activeStations = stations.Count(s => s.Status != StationStatus.Decommissioned);
+        var activeStations = stations.Count(s => s.IsEnabled);
         var uptimePercent = activeStations > 0 ? Math.Round((decimal)onlineStations / activeStations * 100, 1) : 0;
 
         var totalDuration = sessions

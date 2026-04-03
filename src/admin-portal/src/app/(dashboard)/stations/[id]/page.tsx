@@ -251,9 +251,9 @@ export default function StationDetailPage() {
                 {t("stations.decommission")}
               </Button>
             )}
-            {canDecommission && station?.status === "Decommissioned" && (
+            {canDecommission && !station?.isEnabled && (
               <Button variant="destructive" size="sm" onClick={() => {
-                if (confirm("Delete this station permanently? Historical session data will be preserved but the station will be hidden from all lists.")) {
+                if (confirm("Delete this station? Historical data (sessions, faults) will be preserved but the station will be hidden from all lists.")) {
                   deleteMutation.mutate();
                 }
               }}>
