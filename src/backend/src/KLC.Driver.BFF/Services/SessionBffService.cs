@@ -179,7 +179,7 @@ public class SessionBffService : ISessionBffService
 
                 var remoteStartResponse = await httpClient.PostAsJsonAsync(
                     $"{adminApiUrl}/api/internal/ocpp/remote-start",
-                    new { stationCode = connector.Station!.StationCode, connectorId = connector.ConnectorNumber, idTag = userId.ToString() });
+                    new { stationCode = connector.Station!.StationCode, connectorId = connector.ConnectorNumber, idTag = userId.ToString("N")[..20] });
 
                 if (remoteStartResponse.IsSuccessStatusCode)
                 {

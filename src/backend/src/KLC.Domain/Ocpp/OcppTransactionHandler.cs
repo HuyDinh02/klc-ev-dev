@@ -100,7 +100,7 @@ public class OcppTransactionHandler : DomainService
         var userId = Guid.Empty;
         if (Guid.TryParse(idTag, out var parsedUserId) && parsedUserId != Guid.Empty)
         {
-            // idTag is a GUID — could be AppUser.Id or IdentityUserId
+            // idTag is a full GUID — could be AppUser.Id or IdentityUserId
             // Normalize: try AppUser.Id first, then IdentityUserId
             var appUser = await _userRepository.FirstOrDefaultAsync(u => u.Id == parsedUserId);
             if (appUser != null)
@@ -109,12 +109,23 @@ public class OcppTransactionHandler : DomainService
             }
             else
             {
-                // Maybe it's already an IdentityUserId
                 var byIdentity = await _userRepository.FirstOrDefaultAsync(u => u.IdentityUserId == parsedUserId);
                 if (byIdentity != null)
                 {
-                    userId = parsedUserId; // Already IdentityUserId
+                    userId = parsedUserId;
                 }
+            }
+        }
+        else if (idTag.Length == 20 && idTag.All(c => "0123456789abcdefABCDEF".Contains(c)))
+        {
+            // Truncated GUID format: first 20 hex chars of Guid.ToString("N")
+            // Used by BFF to comply with OCPP 1.6 idTag max 20 chars
+            var matchingUser = await _userRepository.FirstOrDefaultAsync(
+                u => u.IdentityUserId.ToString("N").StartsWith(idTag));
+            if (matchingUser != null)
+            {
+                userId = matchingUser.IdentityUserId;
+                _logger.LogInformation("Resolved truncated idTag {IdTag} to IdentityUserId {UserId}", idTag, userId);
             }
         }
         else
