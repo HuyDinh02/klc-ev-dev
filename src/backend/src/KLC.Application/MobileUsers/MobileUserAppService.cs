@@ -43,7 +43,11 @@ public class MobileUserAppService : KLCAppService, IMobileUserAppService
 
         if (!string.IsNullOrEmpty(input.Search))
         {
-            query = query.Where(u => u.FullName.Contains(input.Search) || u.PhoneNumber!.Contains(input.Search));
+            var search = input.Search.ToLower();
+            query = query.Where(u =>
+                u.FullName.ToLower().Contains(search) ||
+                (u.PhoneNumber != null && u.PhoneNumber.Contains(search)) ||
+                (u.Email != null && u.Email.ToLower().Contains(search)));
         }
 
         if (input.Status == "active") query = query.Where(u => u.IsActive);
