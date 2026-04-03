@@ -67,4 +67,7 @@ public class OcppService : DomainService, IOcppService
 
     public Task HandleStationDisconnectAsync(string chargePointId)
         => _stationHandler.HandleStationDisconnectAsync(chargePointId);
+
+    public Task<Sessions.ChargingSession?> GetActiveSessionForConnectorAsync(string chargePointId, int connectorNumber)
+        => _stationHandler.GetActiveSessionForConnectorAsync(chargePointId, connectorNumber);
 }

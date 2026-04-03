@@ -129,4 +129,10 @@ public interface IOcppService
     /// Handles DiagnosticsStatusNotification - updates station diagnostics upload status.
     /// </summary>
     Task HandleDiagnosticsStatusAsync(string chargePointId, string status);
+
+    /// <summary>
+    /// Gets the active InProgress session for a specific connector.
+    /// Used for auto-stop when connector goes Available/Finishing during active session.
+    /// </summary>
+    Task<Sessions.ChargingSession?> GetActiveSessionForConnectorAsync(string chargePointId, int connectorNumber);
 }

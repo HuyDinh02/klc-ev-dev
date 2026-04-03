@@ -331,6 +331,41 @@ public class OcppMessageHandler
             }
         }
 
+        // Auto-complete session when connector transitions to Available/Finishing
+        // while an InProgress session exists (EV unplugged without StopTransaction)
+        if (statusResult != null &&
+            request.ConnectorId > 0 &&
+            (statusResult.NewStatus == ConnectorStatus.Available ||
+             statusResult.NewStatus == ConnectorStatus.Finishing) &&
+            (statusResult.PreviousStatus == ConnectorStatus.Charging ||
+             statusResult.PreviousStatus == ConnectorStatus.SuspendedEV ||
+             statusResult.PreviousStatus == ConnectorStatus.SuspendedEVSE))
+        {
+            try
+            {
+                var session = await _ocppService.GetActiveSessionForConnectorAsync(
+                    connection.ChargePointId, request.ConnectorId);
+
+                if (session != null && session.OcppTransactionId.HasValue)
+                {
+                    _logger.LogInformation(
+                        "Connector {ConnectorId} on {ChargePointId} went {Status} — auto-completing session {SessionId} (txn={TxnId})",
+                        request.ConnectorId, connection.ChargePointId, statusResult.NewStatus,
+                        session.Id, session.OcppTransactionId.Value);
+
+                    // Complete session using last known meter data
+                    var meterStop = session.MeterStart.GetValueOrDefault() +
+                        (int)(session.TotalEnergyKwh * 1000);
+                    await _ocppService.HandleStopTransactionAsync(
+                        session.OcppTransactionId.Value, meterStop, "EVDisconnected");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to auto-complete session on connector status change");
+            }
+        }
+
         return parser.SerializeCallResult(uniqueId, new StatusNotificationResponse());
     }
 

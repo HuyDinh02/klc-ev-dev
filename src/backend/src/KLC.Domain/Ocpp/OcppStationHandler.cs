@@ -367,4 +367,15 @@ public class OcppStationHandler : DomainService
         _logger.LogWarning("IdTag validation failed for: {IdTag}", idTag);
         return false;
     }
+
+    public async Task<ChargingSession?> GetActiveSessionForConnectorAsync(string chargePointId, int connectorNumber)
+    {
+        var station = await _stationRepository.FirstOrDefaultAsync(s => s.StationCode == chargePointId);
+        if (station == null) return null;
+
+        return await _sessionRepository.FirstOrDefaultAsync(
+            s => s.StationId == station.Id &&
+                 s.ConnectorNumber == connectorNumber &&
+                 (s.Status == SessionStatus.InProgress || s.Status == SessionStatus.Suspended));
+    }
 }
