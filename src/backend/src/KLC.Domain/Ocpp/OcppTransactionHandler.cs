@@ -119,14 +119,12 @@ public class OcppTransactionHandler : DomainService
         else if (idTag.Length == 20 && idTag.All(c => "0123456789abcdefABCDEF".Contains(c)))
         {
             // Truncated GUID format: first 20 hex chars of Guid.ToString("N")
-            // Used by BFF to comply with OCPP 1.6 idTag max 20 chars
-            var matchingUser = await _userRepository.FirstOrDefaultAsync(
-                u => u.IdentityUserId.ToString("N").StartsWith(idTag));
-            if (matchingUser != null)
-            {
-                userId = matchingUser.IdentityUserId;
-                _logger.LogInformation("Resolved truncated idTag {IdTag} to IdentityUserId {UserId}", idTag, userId);
-            }
+            // Used by BFF to comply with OCPP 1.6 idTag max 20 chars.
+            // BFF sends session.Id as idTag — the Pending session linking (below) handles
+            // user resolution via station+connector match. Log for traceability.
+            _logger.LogInformation(
+                "Truncated hex idTag {IdTag} from {ChargePointId} — will resolve via Pending session link",
+                idTag, chargePointId);
         }
         else
         {
