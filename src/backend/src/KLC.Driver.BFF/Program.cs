@@ -20,6 +20,12 @@ builder.WebHost.UseSentry(o =>
 builder.Host.UseAutofac();
 builder.Services.AddApplication<DriverBffModule>();
 
+// Configure JSON to accept string enum values (e.g., "VnPay" instead of 4)
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+});
+
 // Configure services
 builder.Services.AddOpenApi();
 
