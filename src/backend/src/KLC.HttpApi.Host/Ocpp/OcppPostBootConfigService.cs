@@ -102,5 +102,20 @@ public class OcppPostBootConfigService
         _logger.LogInformation(
             "Post-boot configuration completed for {ChargePointId}: {SuccessCount} succeeded, {FailCount} failed",
             connection.ChargePointId, successCount, failCount);
+
+        // Trigger StatusNotification for all connectors to update their status in our DB.
+        // After deploy/reconnect, connector status may be stale (Unavailable) even though
+        // the charger's physical connectors are Available.
+        try
+        {
+            await connection.SendCallAsync("TriggerMessage",
+                new { requestedMessage = "StatusNotification" }, CommandTimeout);
+            _logger.LogDebug("TriggerMessage(StatusNotification) sent to {ChargePointId}", connection.ChargePointId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "TriggerMessage(StatusNotification) failed for {ChargePointId}",
+                connection.ChargePointId);
+        }
     }
 }
