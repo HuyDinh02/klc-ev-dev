@@ -112,16 +112,15 @@ public class ChargingStationTests
     }
 
     [Fact]
-    public void Enable_Should_Throw_For_Decommissioned_Station()
+    public void Enable_Should_Reactivate_Decommissioned_Station()
     {
         var station = CreateStation();
         station.Decommission();
 
-        var ex = Should.Throw<BusinessException>(() => station.Enable());
+        station.Enable();
 
-        ex.Code.ShouldBe(KLCDomainErrorCodes.Station.CannotEnableDecommissioned);
-        station.IsEnabled.ShouldBeFalse();
-        station.Status.ShouldBe(StationStatus.Decommissioned);
+        station.IsEnabled.ShouldBeTrue();
+        station.Status.ShouldBe(StationStatus.Offline);
     }
 
     [Fact]
