@@ -78,22 +78,28 @@ public class OrphanedSessionCleanupService : BackgroundService
         using var uow = uowManager.Begin();
         var totalCleaned = 0;
 
-        // --- 1. Timeout Pending/Starting sessions (user scanned QR but never plugged in) ---
+        // --- 1. Timeout Pending/Starting/Stopping sessions ---
+        // Pending/Starting: user scanned QR but charger never responded
+        // Stopping: user tapped Stop but charger never sent StopTransaction
         var cutoff = DateTime.UtcNow - _pendingTimeout;
-        var pendingSessions = await sessionRepo.GetListAsync(
-            s => s.OcppTransactionId == null &&
-                 (s.Status == SessionStatus.Pending || s.Status == SessionStatus.Starting) &&
+        var stuckSessions = await sessionRepo.GetListAsync(
+            s => (s.Status == SessionStatus.Pending ||
+                  s.Status == SessionStatus.Starting ||
+                  s.Status == SessionStatus.Stopping) &&
                  s.StartTime < cutoff);
 
-        foreach (var session in pendingSessions)
+        foreach (var session in stuckSessions)
         {
-            session.MarkFailed($"Timed out after {_pendingTimeout.TotalMinutes:0} minutes — charger never started");
+            var reason = session.Status == SessionStatus.Stopping
+                ? $"Timed out after {_pendingTimeout.TotalMinutes:0} minutes — charger never confirmed stop"
+                : $"Timed out after {_pendingTimeout.TotalMinutes:0} minutes — charger never started";
+            session.MarkFailed(reason);
             await sessionRepo.UpdateAsync(session);
 
             // Reset connector to Available so other users can charge
             var connector = await connectorRepo.FirstOrDefaultAsync(
                 c => c.StationId == session.StationId && c.ConnectorNumber == session.ConnectorNumber);
-            if (connector != null && connector.Status == ConnectorStatus.Preparing)
+            if (connector != null && (connector.Status == ConnectorStatus.Preparing || connector.Status == ConnectorStatus.Finishing))
             {
                 connector.UpdateStatus(ConnectorStatus.Available);
                 await connectorRepo.UpdateAsync(connector);
@@ -101,8 +107,8 @@ public class OrphanedSessionCleanupService : BackgroundService
 
             totalCleaned++;
             _logger.LogInformation(
-                "Pending session {SessionId} timed out after {Minutes}min (user: {UserId}, station: {StationId})",
-                session.Id, _pendingTimeout.TotalMinutes, session.UserId, session.StationId);
+                "Stuck {Status} session {SessionId} timed out after {Minutes}min (user: {UserId}, station: {StationId})",
+                session.Status, session.Id, _pendingTimeout.TotalMinutes, session.UserId, session.StationId);
         }
 
         // --- 2. Timeout InProgress sessions with offline station ---
