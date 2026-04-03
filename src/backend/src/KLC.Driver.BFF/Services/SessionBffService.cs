@@ -166,7 +166,7 @@ public class SessionBffService : ISessionBffService
             // Send RemoteStartTransaction to the charger via Admin API (internal endpoint)
             try
             {
-                var adminApiUrl = _configuration["Auth:Authority"] ?? "https://localhost:44305";
+                var adminApiUrl = _configuration["Ocpp:GatewayUrl"] ?? _configuration["Auth:Authority"] ?? "https://localhost:44305";
                 using var httpClient = _httpClientFactory.CreateClient();
                 httpClient.DefaultRequestHeaders.Accept.Add(
                     new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
@@ -252,7 +252,7 @@ public class SessionBffService : ISessionBffService
 
                     if (station != null)
                     {
-                        var adminApiUrl = _configuration["Auth:Authority"] ?? "https://localhost:44305";
+                        var adminApiUrl = _configuration["Ocpp:GatewayUrl"] ?? _configuration["Auth:Authority"] ?? "https://localhost:44305";
                         using var httpClient = _httpClientFactory.CreateClient();
                         httpClient.DefaultRequestHeaders.Accept.Add(
                             new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
