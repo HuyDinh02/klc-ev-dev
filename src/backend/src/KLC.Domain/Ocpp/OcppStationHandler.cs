@@ -161,19 +161,21 @@ public class OcppStationHandler : DomainService
                     chargePointId, connectorId, errorCode, fault.Priority);
             }
         }
-        // Auto-resolve faults when error clears
-        else if (string.Equals(errorCode, "NoError", StringComparison.OrdinalIgnoreCase))
+        // Auto-resolve faults when error clears (NoError or connector goes Available)
+        else if (string.Equals(errorCode, "NoError", StringComparison.OrdinalIgnoreCase) ||
+                 status == ConnectorStatus.Available)
         {
-            int? connNum = connectorId > 0 ? connectorId : null;
+            // Resolve faults for this connector AND station-level (ConnectorNumber=null)
             var openFaults = await AsyncExecuter.ToListAsync(
                 (await _faultRepository.GetQueryableAsync())
                     .Where(f => f.StationId == station.Id
-                        && f.ConnectorNumber == connNum
+                        && (f.ConnectorNumber == null ||
+                            f.ConnectorNumber == (connectorId > 0 ? connectorId : (int?)null))
                         && (f.Status == FaultStatus.Open || f.Status == FaultStatus.Investigating)));
 
             foreach (var fault in openFaults)
             {
-                fault.Close("Auto-resolved: charger reported NoError");
+                fault.Close("Auto-resolved: charger reported NoError/Available");
                 await _faultRepository.UpdateAsync(fault);
 
                 _logger.LogInformation("Fault {FaultId} auto-resolved for {ChargePointId} connector {ConnectorId}",
