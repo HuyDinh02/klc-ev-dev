@@ -37,6 +37,11 @@ public interface IStationAppService : IApplicationService
     Task DecommissionAsync(Guid id);
 
     /// <summary>
+    /// Soft-deletes a station. Must be disabled/decommissioned first.
+    /// </summary>
+    Task DeleteAsync(Guid id);
+
+    /// <summary>
     /// Enables a station.
     /// </summary>
     Task EnableAsync(Guid id);

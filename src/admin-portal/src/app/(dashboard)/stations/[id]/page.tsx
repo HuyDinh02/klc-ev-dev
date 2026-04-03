@@ -130,6 +130,15 @@ export default function StationDetailPage() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["station", id] }); router.push("/stations"); },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: () => stationsApi.delete(id),
+    onSuccess: () => { router.push("/stations"); },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.error?.message || "Cannot delete station. Disable it first and ensure no active sessions.";
+      alert(msg);
+    },
+  });
+
   const addConnectorMutation = useMutation({
     mutationFn: (data: { connectorNumber: number; connectorType: number; maxPowerKw: number }) =>
       connectorsApi.create(id, data),
@@ -240,6 +249,15 @@ export default function StationDetailPage() {
             {canDecommission && (
               <Button variant="destructive" onClick={() => { if (confirm(t("stations.decommissionConfirm"))) decommissionMutation.mutate(); }}>
                 {t("stations.decommission")}
+              </Button>
+            )}
+            {canDecommission && station?.status === "Decommissioned" && (
+              <Button variant="destructive" size="sm" onClick={() => {
+                if (confirm("Delete this station permanently? Historical session data will be preserved but the station will be hidden from all lists.")) {
+                  deleteMutation.mutate();
+                }
+              }}>
+                <Trash2 className="mr-2 h-4 w-4" /> Delete
               </Button>
             )}
           </div>

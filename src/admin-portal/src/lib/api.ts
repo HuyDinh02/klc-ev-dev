@@ -76,6 +76,7 @@ export const stationsApi = {
   enable: (id: string) => api.post(`/stations/${id}/enable`),
   disable: (id: string) => api.post(`/stations/${id}/disable`),
   decommission: (id: string) => api.post(`/stations/${id}/decommission`),
+  delete: (id: string) => api.delete(`/stations/${id}`),
   // Photos
   uploadPhoto: (file: File) => {
     const formData = new FormData();
