@@ -123,6 +123,7 @@ public class ChargingSession : FullAuditedAggregateRoot<Guid>
         RatePerKwh = ratePerKwh;
         IdTag = idTag;
         Status = SessionStatus.Pending;
+        StartTime = DateTime.UtcNow;
         TotalEnergyKwh = 0;
         TotalCost = 0;
     }
