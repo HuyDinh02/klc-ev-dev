@@ -3,6 +3,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.WebSockets;
+using System.Threading;
+using System.Threading.Tasks;
 using KLC.Enums;
 using Microsoft.Extensions.Logging;
 
@@ -92,5 +94,36 @@ public class OcppConnectionManager
     {
         var threshold = DateTime.UtcNow - timeout;
         return _connections.Values.Where(c => c.LastHeartbeat < threshold);
+    }
+
+    /// <summary>
+    /// Close all WebSocket connections gracefully on shutdown.
+    /// Forces chargers to reconnect to the new instance after deploy.
+    /// </summary>
+    public async Task CloseAllConnectionsAsync()
+    {
+        var connections = _connections.Values.ToList();
+        _logger.LogInformation("Closing {Count} WebSocket connections for graceful shutdown", connections.Count);
+
+        foreach (var connection in connections)
+        {
+            try
+            {
+                if (connection.WebSocket.State == WebSocketState.Open)
+                {
+                    await connection.WebSocket.CloseAsync(
+                        WebSocketCloseStatus.EndpointUnavailable,
+                        "Server shutting down",
+                        CancellationToken.None);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error closing WebSocket for {ChargePointId}", connection.ChargePointId);
+            }
+        }
+
+        _connections.Clear();
+        _logger.LogInformation("All WebSocket connections closed");
     }
 }

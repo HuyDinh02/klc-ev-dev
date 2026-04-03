@@ -632,4 +632,11 @@ public class KLCHttpApiHostModule : AbpModule
             logger.LogInformation("Production configuration validation passed.");
         }
     }
+
+    public override void OnApplicationShutdown(ApplicationShutdownContext context)
+    {
+        // Close all OCPP WebSocket connections on shutdown so chargers reconnect to new instance
+        var connectionManager = context.ServiceProvider.GetRequiredService<OcppConnectionManager>();
+        connectionManager.CloseAllConnectionsAsync().GetAwaiter().GetResult();
+    }
 }
