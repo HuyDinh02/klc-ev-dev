@@ -22,6 +22,7 @@ public class TariffPlanListDto : EntityDto<Guid>
     public string Name { get; set; } = string.Empty;
     public decimal BaseRatePerKwh { get; set; }
     public decimal TaxRatePercent { get; set; }
+    public decimal TotalRatePerKwh { get; set; }
     public bool IsActive { get; set; }
     public bool IsDefault { get; set; }
     public DateTime EffectiveFrom { get; set; }

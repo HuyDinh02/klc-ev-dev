@@ -83,6 +83,7 @@ public class TariffAppService : KLCAppService, ITariffAppService
             Name = t.Name,
             BaseRatePerKwh = t.BaseRatePerKwh,
             TaxRatePercent = t.TaxRatePercent,
+            TotalRatePerKwh = Math.Round(t.BaseRatePerKwh * (1 + t.TaxRatePercent / 100), 0),
             IsActive = t.IsActive,
             IsDefault = t.IsDefault,
             EffectiveFrom = t.EffectiveFrom
