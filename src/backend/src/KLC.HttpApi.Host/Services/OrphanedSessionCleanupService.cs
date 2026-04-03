@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using KLC.Enums;
 using KLC.Sessions;
 using KLC.Stations;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -15,23 +16,34 @@ namespace KLC.Services;
 
 /// <summary>
 /// Background service that cleans up orphaned sessions:
-/// 1. Pending/Starting sessions that never got a charger response (5 min timeout)
-/// 2. InProgress sessions whose station has been offline beyond grace period (10 min)
+/// 1. Pending/Starting sessions that never got a charger response (configurable timeout)
+/// 2. InProgress sessions whose station has been offline beyond grace period
+///
+/// Configure in appsettings.json:
+///   "SessionCleanup": {
+///     "CheckIntervalMinutes": 1,
+///     "PendingTimeoutMinutes": 5,
+///     "OfflineGracePeriodMinutes": 10
+///   }
 /// </summary>
 public class OrphanedSessionCleanupService : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<OrphanedSessionCleanupService> _logger;
-    private readonly TimeSpan _checkInterval = TimeSpan.FromMinutes(1);
-    private readonly TimeSpan _pendingTimeout = TimeSpan.FromMinutes(5);
-    private readonly TimeSpan _offlineGracePeriod = TimeSpan.FromMinutes(10);
+    private readonly TimeSpan _checkInterval;
+    private readonly TimeSpan _pendingTimeout;
+    private readonly TimeSpan _offlineGracePeriod;
 
     public OrphanedSessionCleanupService(
         IServiceProvider serviceProvider,
+        IConfiguration configuration,
         ILogger<OrphanedSessionCleanupService> logger)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
+        _checkInterval = TimeSpan.FromMinutes(configuration.GetValue("SessionCleanup:CheckIntervalMinutes", 1));
+        _pendingTimeout = TimeSpan.FromMinutes(configuration.GetValue("SessionCleanup:PendingTimeoutMinutes", 5));
+        _offlineGracePeriod = TimeSpan.FromMinutes(configuration.GetValue("SessionCleanup:OfflineGracePeriodMinutes", 10));
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
