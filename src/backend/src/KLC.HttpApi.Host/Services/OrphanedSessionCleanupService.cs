@@ -133,6 +133,32 @@ public class OrphanedSessionCleanupService : BackgroundService
                 session.Id, session.OcppTransactionId, station.LastHeartbeat);
         }
 
+        // --- 3. Deduplicate: only keep the NEWEST InProgress session per connector ---
+        // Multiple InProgress sessions on the same connector means older ones are orphaned
+        // (simulator disconnected before sending StopTransaction)
+        var inProgressSessions = await sessionRepo.GetListAsync(
+            s => s.Status == SessionStatus.InProgress && s.OcppTransactionId != null);
+
+        var grouped = inProgressSessions
+            .GroupBy(s => new { s.StationId, s.ConnectorNumber })
+            .Where(g => g.Count() > 1);
+
+        foreach (var group in grouped)
+        {
+            // Keep the newest, fail all older ones
+            var ordered = group.OrderByDescending(s => s.StartTime).ToList();
+            foreach (var stale in ordered.Skip(1))
+            {
+                stale.MarkFailed("Superseded by newer session on same connector");
+                await sessionRepo.UpdateAsync(stale);
+                totalCleaned++;
+
+                _logger.LogInformation(
+                    "Duplicate InProgress session {SessionId} failed — newer session exists on same connector",
+                    stale.Id);
+            }
+        }
+
         await uow.CompleteAsync();
 
         if (totalCleaned > 0)
