@@ -75,6 +75,7 @@ public class OrphanedSessionCleanupService : BackgroundService
         var sessionRepo = scope.ServiceProvider.GetRequiredService<IRepository<ChargingSession, Guid>>();
         var stationRepo = scope.ServiceProvider.GetRequiredService<IRepository<ChargingStation, Guid>>();
         var connectorRepo = scope.ServiceProvider.GetRequiredService<IRepository<Connector, Guid>>();
+        var tariffRepo = scope.ServiceProvider.GetRequiredService<IRepository<Tariffs.TariffPlan, Guid>>();
         var uowManager = scope.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
 
         using var uow = uowManager.Begin();
@@ -95,7 +96,10 @@ public class OrphanedSessionCleanupService : BackgroundService
             var reason = session.Status == SessionStatus.Stopping
                 ? $"Timed out after {_pendingTimeout.TotalMinutes:0} minutes — charger never confirmed stop"
                 : $"Timed out after {_pendingTimeout.TotalMinutes:0} minutes — charger never started";
-            session.MarkFailed(reason);
+            var tariff = session.TariffPlanId.HasValue
+                ? await tariffRepo.FirstOrDefaultAsync(t => t.Id == session.TariffPlanId.Value)
+                : null;
+            session.MarkFailed(reason, tariff);
             await sessionRepo.UpdateAsync(session);
 
             // Reset connector to Available so other users can charge
@@ -126,7 +130,10 @@ public class OrphanedSessionCleanupService : BackgroundService
             if (station.LastHeartbeat.HasValue &&
                 DateTime.UtcNow - station.LastHeartbeat.Value < _offlineGracePeriod) continue;
 
-            session.MarkFailed("Station offline beyond grace period — no StopTransaction received");
+            var offlineTariff = session.TariffPlanId.HasValue
+                ? await tariffRepo.FirstOrDefaultAsync(t => t.Id == session.TariffPlanId.Value)
+                : null;
+            session.MarkFailed("Station offline beyond grace period — no StopTransaction received", offlineTariff);
             await sessionRepo.UpdateAsync(session);
             totalCleaned++;
 
@@ -151,7 +158,10 @@ public class OrphanedSessionCleanupService : BackgroundService
             var ordered = group.OrderByDescending(s => s.StartTime).ToList();
             foreach (var stale in ordered.Skip(1))
             {
-                stale.MarkFailed("Superseded by newer session on same connector");
+                var staleTariff = stale.TariffPlanId.HasValue
+                    ? await tariffRepo.FirstOrDefaultAsync(t => t.Id == stale.TariffPlanId.Value)
+                    : null;
+                stale.MarkFailed("Superseded by newer session on same connector", staleTariff);
                 await sessionRepo.UpdateAsync(stale);
                 totalCleaned++;
 
@@ -175,7 +185,10 @@ public class OrphanedSessionCleanupService : BackgroundService
             if (lastActivity >= staleCutoff) continue; // Still active
 
             // Session has had no updates for StaleInProgressMinutes — complete it
-            session.MarkFailed($"No meter data received for {_staleInProgressTimeout.TotalMinutes:0} minutes");
+            var staleMeterTariff = session.TariffPlanId.HasValue
+                ? await tariffRepo.FirstOrDefaultAsync(t => t.Id == session.TariffPlanId.Value)
+                : null;
+            session.MarkFailed($"No meter data received for {_staleInProgressTimeout.TotalMinutes:0} minutes", staleMeterTariff);
             await sessionRepo.UpdateAsync(session);
 
             // Reset connector
