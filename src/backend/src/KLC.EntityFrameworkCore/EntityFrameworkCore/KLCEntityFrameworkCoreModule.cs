@@ -32,9 +32,11 @@ public class KLCEntityFrameworkCoreModule : AbpModule
 {
     public override void PreConfigureServices(ServiceConfigurationContext context)
     {
-        // Using modern Npgsql timestamp behavior: DateTime(Kind=Utc) → timestamptz
-        // All DateTime values must use DateTimeKind.Utc
-        AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", false);
+        // Keep legacy timestamp behavior: ABP framework modules (BackgroundJobs, OpenIddict,
+        // AuditLogging) use DateTime.Now (Kind=Local) internally, which is incompatible with
+        // Npgsql's modern timestamptz mapping. UTC handling is done at the application level
+        // (frontend parseAsUtc + backend SetAuditFields).
+        AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
         KLCEfCoreEntityExtensionMappings.Configure();
     }

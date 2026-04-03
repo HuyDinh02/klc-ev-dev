@@ -12,7 +12,7 @@ public class KLCDbContextFactory : IDesignTimeDbContextFactory<KLCDbContext>
 {
     public KLCDbContext CreateDbContext(string[] args)
     {
-        AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", false);
+        AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
         KLCEfCoreEntityExtensionMappings.Configure();
 
