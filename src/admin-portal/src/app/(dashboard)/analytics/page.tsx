@@ -10,7 +10,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonCard, SkeletonChart } from "@/components/ui/skeleton";
 import { monitoringApi } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
-import { formatCurrency, formatEnergy } from "@/lib/utils";
+import { formatCurrency, formatEnergy, parseAsUtc, downloadCsv } from "@/lib/utils";
 import { CHART_COLORS } from "@/lib/constants";
 import {
   AreaChart,
@@ -33,6 +33,7 @@ import {
   Wrench,
   Sun,
   BarChart3,
+  Download,
 } from "lucide-react";
 
 interface DailyStats {
@@ -101,7 +102,7 @@ const rangeKeys: Record<DateRange, string> = {
 };
 
 function formatDate(dateStr: string): string {
-  const d = new Date(dateStr);
+  const d = parseAsUtc(dateStr);
   return `${d.getDate()}/${d.getMonth() + 1}`;
 }
 
@@ -161,6 +162,22 @@ export default function AnalyticsPage() {
       setSortKey(key);
       setSortDir("desc");
     }
+  };
+
+  const exportReport = () => {
+    const headers = ["Date", "Sessions", "Energy (kWh)", "Revenue (VND)"];
+    const rows = data.dailyStats.map((d) => [
+      d.date,
+      d.sessions.toString(),
+      d.energyKwh.toFixed(2),
+      d.revenue.toString(),
+    ]);
+    // Add station utilization
+    rows.push([], ["", "", "", ""], ["Station", "Sessions", "Energy (kWh)", "Revenue (VND)"]);
+    data.stationUtilization.forEach((s) => {
+      rows.push([s.stationName, s.totalSessions.toString(), s.totalEnergyKwh.toFixed(2), s.totalRevenue.toString()]);
+    });
+    downloadCsv(headers, rows, `klc-analytics-${range}-${fromDate}.csv`);
   };
 
   const sortedUtilization = [...data.stationUtilization].sort((a, b) => {
@@ -229,6 +246,12 @@ export default function AnalyticsPage() {
               </button>
             ))}
           </div>
+          <button
+            onClick={exportReport}
+            className="ml-2 inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-accent transition-colors"
+          >
+            <Download className="h-4 w-4" /> Export
+          </button>
         </PageHeader>
       </div>
 
@@ -351,7 +374,7 @@ export default function AnalyticsPage() {
                 <YAxis tickFormatter={formatVnd} className="text-xs" />
                 <Tooltip
                   formatter={(value) => [formatCurrency(value as number), t("analytics.revenue")]}
-                  labelFormatter={(label) => new Date(label).toLocaleDateString("vi-VN")}
+                  labelFormatter={(label) => parseAsUtc(label as string).toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })}
                   contentStyle={{
                     backgroundColor: "var(--card)",
                     border: "1px solid var(--border)",
@@ -401,7 +424,7 @@ export default function AnalyticsPage() {
                   <YAxis className="text-xs" />
                   <Tooltip
                     formatter={(value) => [`${(value as number).toFixed(2)} kWh`, t("analytics.energy")]}
-                    labelFormatter={(label) => new Date(label).toLocaleDateString("vi-VN")}
+                    labelFormatter={(label) => parseAsUtc(label as string).toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })}
                     contentStyle={{
                       backgroundColor: "var(--card)",
                       border: "1px solid var(--border)",
@@ -443,7 +466,7 @@ export default function AnalyticsPage() {
                   <YAxis className="text-xs" allowDecimals={false} />
                   <Tooltip
                     formatter={(value) => [value as number, t("analytics.sessionsLabel")]}
-                    labelFormatter={(label) => new Date(label).toLocaleDateString("vi-VN")}
+                    labelFormatter={(label) => parseAsUtc(label as string).toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })}
                     contentStyle={{
                       backgroundColor: "var(--card)",
                       border: "1px solid var(--border)",
