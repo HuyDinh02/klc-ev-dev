@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { Search, Zap, Clock, Battery, DollarSign, Wifi, Download } from "lucide-react";
+import { useTableQuery } from "@/hooks/use-table-query";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -23,11 +24,6 @@ export default function SessionsPage() {
   const { t } = useTranslation();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [cursorStack, setCursorStack] = useState<(string | null)[]>([]);
-  const pageSize = 20;
 
   // SignalR real-time updates — refresh sessions on updates
   const onSessionUpdated = useCallback(() => {
@@ -38,29 +34,28 @@ export default function SessionsPage() {
     onSessionUpdated,
   });
 
-  const { data: sessionsData, isLoading } = useQuery({
-    queryKey: ["sessions", statusFilter, cursor],
-    queryFn: async () => {
-      const params: Record<string, unknown> = {
-        maxResultCount: pageSize,
-      };
-      if (statusFilter !== "all") params.status = Number(statusFilter);
-      if (cursor) params.cursor = cursor;
+  const {
+    data: sessionsData,
+    items: sessions,
+    filteredItems: filteredSessions,
+    isLoading,
+    search,
+    setSearch,
+    statusFilter,
+    setStatusFilterAndReset,
+    pageSize,
+    goNextPage,
+    goPrevPage,
+    hasNextPage,
+    hasPrevPage,
+  } = useTableQuery({
+    queryKey: "sessions",
+    fetchFn: async (params) => {
       const { data } = await sessionsApi.getAll(params as Parameters<typeof sessionsApi.getAll>[0]);
       return data;
     },
     refetchInterval: 3000,
-  });
-
-  const sessions = sessionsData?.items || [];
-
-  const filteredSessions = sessions.filter((session: { stationName?: string; userName?: string }) => {
-    if (!search) return true;
-    const s = search.toLowerCase();
-    return (
-      (session.stationName || "").toLowerCase().includes(s) ||
-      (session.userName || "").toLowerCase().includes(s)
-    );
+    searchFields: ["stationName", "userName"],
   });
 
   const computeDuration = (startTime?: string | null, endTime?: string | null) => {
@@ -70,9 +65,13 @@ export default function SessionsPage() {
     return Math.floor((end - start) / 60000);
   };
 
-  const activeSessions = sessions.filter((s: { status: number | string }) => s.status === 1 || s.status === 2 || s.status === "InProgress" || s.status === "Starting").length;
-  const totalEnergy = sessions.reduce((acc: number, s: { totalEnergyKwh?: number; energyDeliveredKwh?: number }) => acc + (s.totalEnergyKwh || s.energyDeliveredKwh || 0), 0);
-  const totalRevenue = sessions.reduce((acc: number, s: { totalCost?: number; cost?: number }) => acc + (s.totalCost || s.cost || 0), 0);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- API returns untyped axios data
+  const sessionsAny = sessions as any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const filteredSessionsAny = filteredSessions as any[];
+  const activeSessions = sessionsAny.filter((s) => s.status === 1 || s.status === 2 || s.status === "InProgress" || s.status === "Starting").length;
+  const totalEnergy = sessionsAny.reduce((acc: number, s) => acc + (s.totalEnergyKwh || s.energyDeliveredKwh || 0), 0);
+  const totalRevenue = sessionsAny.reduce((acc: number, s) => acc + (s.totalCost || s.cost || 0), 0);
 
   if (!hasAccess) return <AccessDenied />;
 
@@ -96,10 +95,10 @@ export default function SessionsPage() {
               <Button
                 variant="outline"
                 size="sm"
-                disabled={filteredSessions.length === 0}
+                disabled={filteredSessionsAny.length === 0}
                 onClick={() => {
                   const headers = [t("sessions.station"), t("sessions.user"), t("common.status"), t("sessions.startTime"), t("sessions.duration"), t("sessions.energy"), t("sessions.cost")];
-                  const rows = filteredSessions.map((s: { stationName?: string; userName?: string; status: number | string; startTime: string; endTime?: string | null; totalEnergyKwh?: number; energyDeliveredKwh?: number; totalCost?: number; cost?: number }) => [
+                  const rows = filteredSessionsAny.map((s: any) => [
                     s.stationName || "—",
                     s.userName || "—",
                     String(s.status),
@@ -135,21 +134,21 @@ export default function SessionsPage() {
             <Button
               variant={statusFilter === "all" ? "default" : "outline"}
               size="sm"
-              onClick={() => { setStatusFilter("all"); setCursor(null); setCursorStack([]); }}
+              onClick={() => setStatusFilterAndReset("all")}
             >
               {t("common.all")}
             </Button>
             <Button
               variant={statusFilter === "2" ? "default" : "outline"}
               size="sm"
-              onClick={() => { setStatusFilter("2"); setCursor(null); setCursorStack([]); }}
+              onClick={() => setStatusFilterAndReset("2")}
             >
               {t("common.active")}
             </Button>
             <Button
               variant={statusFilter === "5" ? "default" : "outline"}
               size="sm"
-              onClick={() => { setStatusFilter("5"); setCursor(null); setCursorStack([]); }}
+              onClick={() => setStatusFilterAndReset("5")}
             >
               {t("sessions.completed")}
             </Button>
@@ -192,7 +191,7 @@ export default function SessionsPage() {
         ) : (
           <Card>
             <CardContent className="p-0">
-              {filteredSessions.length > 0 ? (
+              {filteredSessionsAny.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
@@ -207,7 +206,7 @@ export default function SessionsPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredSessions.map((session: { id: string; stationName?: string; connectorNumber?: number; userName?: string; status: number | string; startTime: string; endTime?: string | null; totalEnergyKwh?: number; energyDeliveredKwh?: number; totalCost?: number; cost?: number }) => (
+                      {filteredSessionsAny.map((session: any) => (
                         <tr key={session.id} className="border-b hover:bg-muted/50 cursor-pointer" onClick={() => router.push(`/sessions/${session.id}`)}>
                           <td className="px-4 py-3">
                             <div>
@@ -249,37 +248,26 @@ export default function SessionsPage() {
               )}
 
               {/* Pagination */}
-              {((sessionsData?.totalCount ?? 0) > pageSize || cursorStack.length > 0) && (
+              {((sessionsData?.totalCount ?? 0) > pageSize || hasPrevPage) && (
                 <div className="flex items-center justify-between border-t px-4 py-3">
                   <p className="text-sm text-muted-foreground">
                     {sessionsData?.totalCount ?? 0} {t("sessions.totalSessionsCount")}
                   </p>
                   <div className="flex items-center gap-2">
-                    {cursorStack.length > 0 && (
+                    {hasPrevPage && (
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => {
-                          const prev = [...cursorStack];
-                          const prevCursor = prev.pop()!;
-                          setCursorStack(prev);
-                          setCursor(prevCursor);
-                        }}
+                        onClick={goPrevPage}
                       >
                         {t("common.previous")}
                       </Button>
                     )}
-                    {sessions.length === pageSize && (
+                    {hasNextPage && (
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => {
-                          const lastId = sessions[sessions.length - 1]?.id;
-                          if (lastId) {
-                            setCursorStack([...cursorStack, cursor]);
-                            setCursor(lastId);
-                          }
-                        }}
+                        onClick={goNextPage}
                       >
                         {t("common.next")}
                       </Button>
