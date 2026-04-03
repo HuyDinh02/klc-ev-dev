@@ -12,7 +12,7 @@ import { Rate, Trend } from 'k6/metrics';
 
 // --- Configuration ---
 const BFF_URL = __ENV.BFF_URL || 'https://bff.ev.odcall.com/api/v1';
-const TEST_PHONE_PREFIX = '090123400'; // Seed users: 0901234001-0901234020
+const TEST_PHONE_PREFIX = '090123400'; // Seed users: 0901234001-0901234010
 const TEST_PASSWORD = 'Admin@123';
 
 // --- Custom metrics ---
@@ -38,26 +38,38 @@ export const options = {
   },
 };
 
-// --- Helper: Login and get token ---
-function login(vuId) {
-  const userNum = (vuId % 20) + 1; // 20 seed users
-  const phone = `${TEST_PHONE_PREFIX}${userNum.toString().padStart(1, '0')}`;
+// --- Pre-authenticate all test users in setup() ---
+export function setup() {
+  const tokens = {};
+  for (let i = 1; i <= 10; i++) {
+    const phone = `${TEST_PHONE_PREFIX}${i}`;
+    const res = http.post(`${BFF_URL}/auth/login`, JSON.stringify({
+      phoneNumber: phone,
+      password: TEST_PASSWORD,
+    }), { headers: { 'Content-Type': 'application/json' } });
 
-  const res = http.post(`${BFF_URL}/auth/login`, JSON.stringify({
-    phoneNumber: phone,
-    password: TEST_PASSWORD,
-  }), { headers: { 'Content-Type': 'application/json' } });
-
-  const success = res.status === 200 && res.json('accessToken');
-  loginSuccess.add(success);
-
-  if (!success) return null;
-  return res.json('accessToken');
+    try {
+      const body = res.json();
+      if (res.status === 200 && body && body.accessToken) {
+        tokens[i] = body.accessToken;
+        loginSuccess.add(true);
+      } else {
+        loginSuccess.add(false);
+        console.error(`Login failed for ${phone}: ${res.status}`);
+      }
+    } catch (e) {
+      loginSuccess.add(false);
+      console.error(`Login parse error for ${phone}`);
+    }
+    sleep(0.5); // Stagger logins
+  }
+  return { tokens };
 }
 
 // --- Main test scenario ---
-export default function () {
-  const token = login(__VU);
+export default function (data) {
+  const userNum = (__VU % 10) + 1;
+  const token = data.tokens[userNum];
   if (!token) {
     sleep(1);
     return;
