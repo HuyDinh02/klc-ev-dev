@@ -290,8 +290,21 @@ public class KLCHttpApiHostModule : AbpModule
 
     private void ConfigureSignalR(ServiceConfigurationContext context)
     {
-        // Add SignalR for real-time monitoring
-        context.Services.AddSignalR();
+        // Add SignalR for real-time monitoring with Redis backplane
+        // Redis backplane allows SignalR messages to be shared across multiple
+        // Cloud Run instances (Admin API + OCPP Gateway both publish/subscribe)
+        var redisConnection = context.Services.GetConfiguration()["ConnectionStrings:Redis"];
+        if (!string.IsNullOrEmpty(redisConnection))
+        {
+            context.Services.AddSignalR().AddStackExchangeRedis(redisConnection, options =>
+            {
+                options.Configuration.ChannelPrefix = StackExchange.Redis.RedisChannel.Literal("klc-signalr");
+            });
+        }
+        else
+        {
+            context.Services.AddSignalR();
+        }
         context.Services.AddScoped<IMonitoringNotifier, MonitoringNotifier>();
     }
 
