@@ -53,7 +53,7 @@ public record GatewayCallbackValidation(
     string? GatewayTransactionId,
     string? ErrorMessage);
 
-public class PaymentCallbackValidator : IPaymentCallbackValidator
+public class PaymentCallbackValidator : IPaymentCallbackValidator, Volo.Abp.DependencyInjection.ITransientDependency
 {
     private readonly IEnumerable<IPaymentGatewayService> _gateways;
     private readonly ILogger<PaymentCallbackValidator> _logger;
