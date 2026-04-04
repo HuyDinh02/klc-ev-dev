@@ -398,6 +398,7 @@ public class OcppTransactionHandler : DomainService
 
         return new StopTransactionResult(
             session.Id,
+            session.UserId,
             session.StationId,
             session.ConnectorNumber,
             session.TotalEnergyKwh,

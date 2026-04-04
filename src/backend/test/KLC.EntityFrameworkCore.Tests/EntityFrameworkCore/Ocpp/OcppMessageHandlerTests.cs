@@ -233,7 +233,7 @@ public class OcppMessageHandlerTests
         var sessionId = Guid.NewGuid();
         var stationId = Guid.NewGuid();
         _ocppService.HandleStopTransactionAsync(Arg.Is(12345), Arg.Is(11000), Arg.Any<string?>())
-            .Returns(new StopTransactionResult(sessionId, stationId, 1, 10m, 35000m));
+            .Returns(new StopTransactionResult(sessionId, Guid.NewGuid(), stationId, 1, 10m, 35000m));
 
         var message = """[2,"stop1","StopTransaction",{"transactionId":12345,"meterStop":11000,"reason":"EVDisconnected","timestamp":"2026-03-08T11:00:00Z"}]""";
         var connection = CreateConnection();

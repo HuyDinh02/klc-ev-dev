@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using KLC.Auditing;
 using KLC.Enums;
 using KLC.Hubs;
+using KLC.Notifications;
 using KLC.Ocpp.Messages;
 using KLC.Ocpp.Vendors;
 using KLC.Operators;
@@ -33,6 +34,7 @@ public class OcppMessageHandler
     private readonly PowerBalancingService? _powerBalancingService;
     private readonly IOperatorWebhookService? _webhookService;
     private readonly ISettingProvider _settingProvider;
+    private readonly IPushNotificationService? _pushNotificationService;
 
     public OcppMessageHandler(
         ILogger<OcppMessageHandler> logger,
@@ -46,7 +48,8 @@ public class OcppMessageHandler
         IAuditEventLogger auditLogger,
         ISettingProvider settingProvider,
         PowerBalancingService? powerBalancingService = null,
-        IOperatorWebhookService? webhookService = null)
+        IOperatorWebhookService? webhookService = null,
+        IPushNotificationService? pushNotificationService = null)
     {
         _logger = logger;
         _connectionManager = connectionManager;
@@ -60,6 +63,7 @@ public class OcppMessageHandler
         _settingProvider = settingProvider;
         _powerBalancingService = powerBalancingService;
         _webhookService = webhookService;
+        _pushNotificationService = pushNotificationService;
     }
 
     /// <summary>
@@ -420,6 +424,33 @@ public class OcppMessageHandler
             }
         }
 
+        // Push notification: charging started
+        if (sessionId.HasValue && _pushNotificationService != null)
+        {
+            // Fire-and-forget — don't block OCPP response
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var session = await _ocppService.GetActiveSessionForConnectorAsync(
+                        connection.ChargePointId, request.ConnectorId);
+                    if (session != null && session.UserId != Guid.Empty)
+                    {
+                        await _pushNotificationService.SendToUserAsync(
+                            session.UserId,
+                            "Đang sạc ⚡",
+                            $"Phiên sạc đã bắt đầu tại cổng {request.ConnectorId}",
+                            new System.Collections.Generic.Dictionary<string, string>
+                            {
+                                { "type", "session_started" },
+                                { "sessionId", sessionId.Value.ToString() }
+                            });
+                    }
+                }
+                catch (Exception ex) { _logger.LogWarning(ex, "Push notification failed for session start"); }
+            });
+        }
+
         // Trigger immediate power rebalancing (new session changes load)
         _powerBalancingService?.TriggerRebalance();
 
@@ -504,6 +535,31 @@ public class OcppMessageHandler
                         stopReason = request.Reason
                     });
             }
+        }
+
+        // Push notification: charging completed
+        if (stopResult != null && stopResult.UserId != Guid.Empty && _pushNotificationService != null)
+        {
+            var energy = stopResult.TotalEnergyKwh;
+            var cost = stopResult.TotalCost;
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _pushNotificationService.SendToUserAsync(
+                        stopResult.UserId,
+                        "Sạc hoàn tất ✅",
+                        $"Đã sạc {energy:F2} kWh — Chi phí: {cost:N0}đ",
+                        new System.Collections.Generic.Dictionary<string, string>
+                        {
+                            { "type", "session_completed" },
+                            { "sessionId", stopResult.SessionId.ToString() },
+                            { "energyKwh", energy.ToString("F2") },
+                            { "cost", cost.ToString("F0") }
+                        });
+                }
+                catch (Exception ex) { _logger.LogWarning(ex, "Push notification failed for session complete"); }
+            });
         }
 
         // Trigger immediate power rebalancing (freed capacity)

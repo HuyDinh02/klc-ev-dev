@@ -10,6 +10,7 @@ namespace KLC.Ocpp;
 /// </summary>
 public record StopTransactionResult(
     Guid SessionId,
+    Guid UserId,
     Guid StationId,
     int ConnectorNumber,
     decimal TotalEnergyKwh,

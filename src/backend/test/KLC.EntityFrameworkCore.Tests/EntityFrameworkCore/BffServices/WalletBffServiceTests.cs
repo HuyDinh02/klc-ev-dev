@@ -6,6 +6,7 @@ using KLC.Driver;
 using KLC.Driver.Services;
 using KLC.EntityFrameworkCore;
 using KLC.Enums;
+using KLC.Notifications;
 using KLC.Payments;
 using KLC.Users;
 using Microsoft.Extensions.DependencyInjection;
@@ -39,7 +40,7 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
         var callbackValidator = Substitute.For<IPaymentCallbackValidator>();
         var configuration = new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build();
         _service = new WalletBffService(
-            _dbContext, _cache, logger, walletDomainService, paymentGateways, callbackValidator, _driverNotifier, configuration);
+            _dbContext, _cache, logger, walletDomainService, paymentGateways, callbackValidator, Substitute.For<IPushNotificationService>(), _driverNotifier, configuration);
     }
 
     [Fact]

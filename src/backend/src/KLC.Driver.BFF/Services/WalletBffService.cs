@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using KLC.EntityFrameworkCore;
 using KLC.Enums;
+using KLC.Notifications;
 using KLC.Payments;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -33,6 +34,7 @@ public class WalletBffService : IWalletBffService
     private readonly WalletDomainService _walletDomainService;
     private readonly IEnumerable<IPaymentGatewayService> _paymentGateways;
     private readonly IPaymentCallbackValidator _callbackValidator;
+    private readonly IPushNotificationService _pushNotificationService;
     private readonly IDriverHubNotifier _driverNotifier;
     private readonly IConfiguration _configuration;
 
@@ -43,6 +45,7 @@ public class WalletBffService : IWalletBffService
         WalletDomainService walletDomainService,
         IEnumerable<IPaymentGatewayService> paymentGateways,
         IPaymentCallbackValidator callbackValidator,
+        IPushNotificationService pushNotificationService,
         IDriverHubNotifier driverNotifier,
         IConfiguration configuration)
     {
@@ -52,6 +55,7 @@ public class WalletBffService : IWalletBffService
         _walletDomainService = walletDomainService;
         _paymentGateways = paymentGateways;
         _callbackValidator = callbackValidator;
+        _pushNotificationService = pushNotificationService;
         _driverNotifier = driverNotifier;
         _configuration = configuration;
     }
@@ -349,6 +353,25 @@ public class WalletBffService : IWalletBffService
             _dbContext.SetAuditFields(successNotification);
             _dbContext.Notifications.Add(successNotification);
             await _dbContext.SaveChangesAsync();
+
+            // Push notification: topup success
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _pushNotificationService.SendToUserAsync(
+                        transaction.UserId,
+                        "Nạp ví thành công 💰",
+                        $"Đã nạp {transaction.Amount:N0}đ vào ví. Số dư: {newBalance:N0}đ",
+                        new Dictionary<string, string>
+                        {
+                            { "type", "wallet_topup" },
+                            { "amount", transaction.Amount.ToString("F0") },
+                            { "newBalance", newBalance.ToString("F0") }
+                        });
+                }
+                catch { /* best-effort push */ }
+            });
 
             _logger.LogInformation(
                 "[VnPay IPN] Wallet top-up completed: UserId={UserId}, Amount={Amount}, NewBalance={NewBalance}",

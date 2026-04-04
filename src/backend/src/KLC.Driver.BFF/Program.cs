@@ -118,6 +118,7 @@ builder.Services.AddScoped<IFeedbackBffService, FeedbackBffService>();
 // SMS: configurable via Sms:Provider ("eSMS" | "SpeedSMS" | "Log")
 // Default: "Log" — OTP logged to Cloud Logging (dev/testing mode)
 builder.Services.AddTransient<KLC.Notifications.ISmsService, KLC.Notifications.SmsService>();
+builder.Services.AddTransient<KLC.Notifications.IPushNotificationService, KLC.Notifications.FirebasePushNotificationService>();
 builder.Services.AddTransient<KLC.Files.IFileUploadService, KLC.Files.GcsFileUploadService>();
 builder.Services.AddTransient<KLC.Auditing.IAuditEventLogger, KLC.Auditing.AuditEventLogger>();
 
