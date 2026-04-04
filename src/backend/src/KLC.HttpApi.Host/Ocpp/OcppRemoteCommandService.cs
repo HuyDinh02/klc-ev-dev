@@ -1,27 +1,37 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Json;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace KLC.Ocpp;
 
 /// <summary>
 /// Host-layer implementation of IOcppRemoteCommandService.
-/// Bridges the Application layer to the OcppConnectionManager singleton.
+/// First tries the local OcppConnectionManager. If station not found locally,
+/// forwards to the OCPP Gateway via internal API (for separated architecture).
 /// </summary>
 public class OcppRemoteCommandService : IOcppRemoteCommandService
 {
     private readonly OcppConnectionManager _connectionManager;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<OcppRemoteCommandService> _logger;
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
 
     public OcppRemoteCommandService(
         OcppConnectionManager connectionManager,
+        IHttpClientFactory httpClientFactory,
+        IConfiguration configuration,
         ILogger<OcppRemoteCommandService> logger)
     {
         _connectionManager = connectionManager;
+        _httpClientFactory = httpClientFactory;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -325,6 +335,14 @@ public class OcppRemoteCommandService : IOcppRemoteCommandService
         var connection = _connectionManager.GetConnection(stationCode);
         if (connection == null)
         {
+            // Fallback: forward to OCPP Gateway if configured (separated architecture)
+            var gatewayUrl = _configuration["Ocpp:GatewayUrl"];
+            if (!string.IsNullOrEmpty(gatewayUrl))
+            {
+                _logger.LogInformation("Station {StationCode} not local — forwarding {Action} to Gateway", stationCode, action);
+                return await ForwardToGatewayAsync(gatewayUrl, stationCode, action, payload);
+            }
+
             _logger.LogWarning("Station {StationCode} not connected for {Action}", stationCode, action);
             return new RemoteCommandResult(false, "Station not connected");
         }
@@ -364,6 +382,68 @@ public class OcppRemoteCommandService : IOcppRemoteCommandService
         {
             // If we can't parse, consider it accepted (we got a response)
             return new RemoteCommandResult(true);
+        }
+    }
+
+    /// <summary>
+    /// Forward a remote command to the OCPP Gateway via its internal API.
+    /// Used when the charger is connected to a separate Gateway service.
+    /// </summary>
+    private async Task<RemoteCommandResult> ForwardToGatewayAsync(
+        string gatewayUrl, string stationCode, string action, object payload)
+    {
+        try
+        {
+            var client = _httpClientFactory.CreateClient();
+            var internalKey = _configuration["Internal:ApiKey"];
+            if (!string.IsNullOrEmpty(internalKey))
+            {
+                client.DefaultRequestHeaders.Add("X-Internal-Key", internalKey);
+            }
+
+            // Map OCPP action to internal API endpoint
+            var endpoint = action switch
+            {
+                "RemoteStartTransaction" => "remote-start",
+                "RemoteStopTransaction" => "remote-stop",
+                _ => null
+            };
+
+            if (endpoint == null)
+            {
+                // For non-mapped commands, try the Gateway's public OCPP management API
+                // These require the same auth — not supported via proxy yet
+                _logger.LogWarning("Command {Action} not supported via Gateway forwarding", action);
+                return new RemoteCommandResult(false, $"Command {action} not supported via Gateway proxy");
+            }
+
+            var response = await client.PostAsJsonAsync(
+                $"{gatewayUrl}/api/internal/ocpp/{endpoint}",
+                payload);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                try
+                {
+                    using var doc = JsonDocument.Parse(body);
+                    var success = doc.RootElement.TryGetProperty("success", out var s) && s.GetBoolean();
+                    var message = doc.RootElement.TryGetProperty("message", out var m) ? m.GetString() : null;
+                    return new RemoteCommandResult(success, message);
+                }
+                catch
+                {
+                    return new RemoteCommandResult(true);
+                }
+            }
+
+            _logger.LogWarning("Gateway forwarding failed for {Action}: {Status}", action, response.StatusCode);
+            return new RemoteCommandResult(false, $"Gateway returned {response.StatusCode}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to forward {Action} to Gateway for {StationCode}", action, stationCode);
+            return new RemoteCommandResult(false, "Gateway communication error");
         }
     }
 }

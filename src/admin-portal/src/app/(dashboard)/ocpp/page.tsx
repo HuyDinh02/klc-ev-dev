@@ -11,7 +11,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Dialog, DialogHeader, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonTable } from "@/components/ui/skeleton";
-import { api, ocppApi } from "@/lib/api";
+import { api } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
 import { parseAsUtc } from "@/lib/utils";
 import {
@@ -181,7 +181,7 @@ export default function OcppManagementPage() {
     queryFn: async () => {
       const params = new URLSearchParams({ limit: "100" });
       if (eventFilter) params.set("chargePointId", eventFilter);
-      return (await ocppApi.get(`/ocpp/events?${params}`)).data;
+      return (await api.get(`/ocpp/events?${params}`)).data;
     },
     refetchInterval: autoRefreshEvents ? 5000 : 15000,
   });
@@ -200,7 +200,7 @@ export default function OcppManagementPage() {
 
   const remoteStartMutation = useMutation({
     mutationFn: async () => {
-      return (await ocppApi.post(`/ocpp/connections/${selectedCp}/remote-start`, remoteStartForm)).data;
+      return (await api.post(`/ocpp/connections/${selectedCp}/remote-start`, remoteStartForm)).data;
     },
     onSuccess: () => {
       setShowRemoteStart(false);
@@ -210,7 +210,7 @@ export default function OcppManagementPage() {
 
   const remoteStopMutation = useMutation({
     mutationFn: async () => {
-      return (await ocppApi.post(`/ocpp/connections/${selectedCp}/remote-stop`, remoteStopForm)).data;
+      return (await api.post(`/ocpp/connections/${selectedCp}/remote-stop`, remoteStopForm)).data;
     },
     onSuccess: () => {
       setShowRemoteStop(false);
@@ -219,37 +219,37 @@ export default function OcppManagementPage() {
   });
 
   const resetMutation = useMutation({
-    mutationFn: async () => (await ocppApi.post(`/ocpp/connections/${selectedCp}/reset`, resetForm)).data,
+    mutationFn: async () => (await api.post(`/ocpp/connections/${selectedCp}/reset`, resetForm)).data,
     onSuccess: (data) => { setShowReset(false); setCommandResult(data); },
   });
 
   const unlockMutation = useMutation({
-    mutationFn: async () => (await ocppApi.post(`/ocpp/connections/${selectedCp}/unlock`, unlockForm)).data,
+    mutationFn: async () => (await api.post(`/ocpp/connections/${selectedCp}/unlock`, unlockForm)).data,
     onSuccess: (data) => { setShowUnlock(false); setCommandResult(data); },
   });
 
   const availabilityMutation = useMutation({
-    mutationFn: async () => (await ocppApi.post(`/ocpp/connections/${selectedCp}/availability`, availabilityForm)).data,
+    mutationFn: async () => (await api.post(`/ocpp/connections/${selectedCp}/availability`, availabilityForm)).data,
     onSuccess: (data) => { setShowAvailability(false); setCommandResult(data); },
   });
 
   const getConfigMutation = useMutation({
-    mutationFn: async () => (await ocppApi.get(`/ocpp/connections/${selectedCp}/configuration`)).data,
+    mutationFn: async () => (await api.get(`/ocpp/connections/${selectedCp}/configuration`)).data,
     onSuccess: (data) => { setConfigData(data.configurationKey || []); setShowConfig(true); },
   });
 
   const changeConfigMutation = useMutation({
-    mutationFn: async () => (await ocppApi.post(`/ocpp/connections/${selectedCp}/configuration`, changeConfigForm)).data,
+    mutationFn: async () => (await api.post(`/ocpp/connections/${selectedCp}/configuration`, changeConfigForm)).data,
     onSuccess: (data) => { setShowChangeConfig(false); setCommandResult(data); },
   });
 
   const triggerMutation = useMutation({
-    mutationFn: async () => (await ocppApi.post(`/ocpp/connections/${selectedCp}/trigger`, triggerForm)).data,
+    mutationFn: async () => (await api.post(`/ocpp/connections/${selectedCp}/trigger`, triggerForm)).data,
     onSuccess: (data) => { setShowTrigger(false); setCommandResult(data); },
   });
 
   const powerLimitMutation = useMutation({
-    mutationFn: async () => (await ocppApi.post(`/ocpp/connections/${selectedCp}/set-power-limit`, powerLimitForm)).data,
+    mutationFn: async () => (await api.post(`/ocpp/connections/${selectedCp}/set-power-limit`, powerLimitForm)).data,
     onSuccess: (data) => { setShowPowerLimit(false); setCommandResult(data); },
   });
 
@@ -261,7 +261,7 @@ export default function OcppManagementPage() {
       };
       if (updateFirmwareForm.retries != null) payload.retries = updateFirmwareForm.retries;
       if (updateFirmwareForm.retryInterval != null) payload.retryInterval = updateFirmwareForm.retryInterval;
-      return (await ocppApi.post(`/ocpp/connections/${selectedCp}/update-firmware`, payload)).data;
+      return (await api.post(`/ocpp/connections/${selectedCp}/update-firmware`, payload)).data;
     },
     onSuccess: (data) => { setShowUpdateFirmware(false); setCommandResult(data); },
   });
@@ -271,13 +271,13 @@ export default function OcppManagementPage() {
       const payload: Record<string, unknown> = { location: getDiagnosticsForm.location };
       if (getDiagnosticsForm.startTime) payload.startTime = new Date(getDiagnosticsForm.startTime).toISOString();
       if (getDiagnosticsForm.stopTime) payload.stopTime = new Date(getDiagnosticsForm.stopTime).toISOString();
-      return (await ocppApi.post(`/ocpp/connections/${selectedCp}/get-diagnostics`, payload)).data;
+      return (await api.post(`/ocpp/connections/${selectedCp}/get-diagnostics`, payload)).data;
     },
     onSuccess: (data) => { setShowGetDiagnostics(false); setCommandResult(data); },
   });
 
   const syncLocalListMutation = useMutation({
-    mutationFn: async () => (await ocppApi.post(`/ocpp/connections/${selectedCp}/sync-local-list`)).data,
+    mutationFn: async () => (await api.post(`/ocpp/connections/${selectedCp}/sync-local-list`)).data,
     onSuccess: (data) => { setCommandResult(data); },
   });
 
