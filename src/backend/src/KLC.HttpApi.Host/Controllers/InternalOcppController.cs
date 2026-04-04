@@ -87,6 +87,40 @@ public class InternalOcppController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Generic OCPP command forwarding — sends any action to the charger via WebSocket.
+    /// Used by Admin API to forward commands when charger is on a separate Gateway.
+    /// </summary>
+    [HttpPost("command")]
+    public async Task<ActionResult<RemoteCommandResultDto>> SendCommand(
+        [FromBody] GenericCommandRequest request)
+    {
+        if (!ValidateApiKey())
+            return Unauthorized();
+
+        var connection = _connectionManager.GetConnection(request.StationCode);
+        if (connection == null)
+            return Ok(new RemoteCommandResultDto { Success = false, Message = "Station not connected to this gateway" });
+
+        try
+        {
+            var response = await connection.SendCallAsync(
+                request.Action, request.Payload, System.TimeSpan.FromSeconds(30));
+
+            if (response == null)
+                return Ok(new RemoteCommandResultDto { Success = false, Message = "Command timed out" });
+
+            if (response.StartsWith("ERROR:"))
+                return Ok(new RemoteCommandResultDto { Success = false, Message = response });
+
+            return Ok(new RemoteCommandResultDto { Success = true, Message = "Command accepted" });
+        }
+        catch (System.Exception ex)
+        {
+            return Ok(new RemoteCommandResultDto { Success = false, Message = ex.Message });
+        }
+    }
+
     private bool ValidateApiKey()
     {
         var expectedKey = _configuration["Internal:ApiKey"];
@@ -96,6 +130,13 @@ public class InternalOcppController : ControllerBase
         var providedKey = Request.Headers["X-Internal-Key"].ToString();
         return providedKey == expectedKey;
     }
+}
+
+public record GenericCommandRequest
+{
+    public string StationCode { get; init; } = "";
+    public string Action { get; init; } = "";
+    public object? Payload { get; init; }
 }
 
 public record InternalRemoteStartRequest

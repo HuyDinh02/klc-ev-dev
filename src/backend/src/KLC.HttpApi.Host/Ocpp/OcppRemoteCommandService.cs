@@ -401,25 +401,10 @@ public class OcppRemoteCommandService : IOcppRemoteCommandService
                 client.DefaultRequestHeaders.Add("X-Internal-Key", internalKey);
             }
 
-            // Map OCPP action to internal API endpoint
-            var endpoint = action switch
-            {
-                "RemoteStartTransaction" => "remote-start",
-                "RemoteStopTransaction" => "remote-stop",
-                _ => null
-            };
-
-            if (endpoint == null)
-            {
-                // For non-mapped commands, try the Gateway's public OCPP management API
-                // These require the same auth — not supported via proxy yet
-                _logger.LogWarning("Command {Action} not supported via Gateway forwarding", action);
-                return new RemoteCommandResult(false, $"Command {action} not supported via Gateway proxy");
-            }
-
+            // Forward any OCPP command to the Gateway's generic command endpoint
             var response = await client.PostAsJsonAsync(
-                $"{gatewayUrl}/api/internal/ocpp/{endpoint}",
-                payload);
+                $"{gatewayUrl}/api/internal/ocpp/command",
+                new { stationCode, action, payload });
 
             if (response.IsSuccessStatusCode)
             {
