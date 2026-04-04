@@ -136,7 +136,6 @@ export default function StationsPage() {
             <option value="0">{t("stations.offline")}</option>
             <option value="1">{t("stations.online")}</option>
             <option value="2">{t("stations.disabled")}</option>
-            <option value="3">{t("stations.decommissioned")}</option>
           </select>
           <div className="flex items-center rounded-md border">
             <Button

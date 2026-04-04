@@ -246,11 +246,6 @@ export default function StationDetailPage() {
                 <Power className="mr-2 h-4 w-4" /> {t("stations.enable")}
               </Button>
             ))}
-            {canDecommission && (
-              <Button variant="destructive" onClick={() => { if (confirm(t("stations.decommissionConfirm"))) decommissionMutation.mutate(); }}>
-                {t("stations.decommission")}
-              </Button>
-            )}
             {canDecommission && !station?.isEnabled && (
               <Button variant="destructive" size="sm" onClick={() => {
                 if (confirm("Delete this station? Historical data (sessions, faults) will be preserved but the station will be hidden from all lists.")) {
