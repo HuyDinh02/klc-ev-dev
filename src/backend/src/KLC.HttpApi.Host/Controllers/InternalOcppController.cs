@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Threading.Tasks;
 using KLC.Ocpp;
 using Microsoft.AspNetCore.Authorization;
@@ -16,14 +17,36 @@ namespace KLC.Controllers;
 public class InternalOcppController : ControllerBase
 {
     private readonly IOcppRemoteCommandService _remoteCommandService;
+    private readonly OcppConnectionManager _connectionManager;
     private readonly IConfiguration _configuration;
 
     public InternalOcppController(
         IOcppRemoteCommandService remoteCommandService,
+        OcppConnectionManager connectionManager,
         IConfiguration configuration)
     {
         _remoteCommandService = remoteCommandService;
+        _connectionManager = connectionManager;
         _configuration = configuration;
+    }
+
+    [HttpGet("connections")]
+    public ActionResult GetConnections()
+    {
+        if (!ValidateApiKey()) return Unauthorized();
+
+        var connections = _connectionManager.GetAllConnections()
+            .Select(c => new
+            {
+                c.ChargePointId,
+                c.ConnectedAt,
+                c.LastHeartbeat,
+                c.IsRegistered,
+                c.StationId,
+                c.VendorProfileType
+            }).ToList();
+
+        return Ok(connections);
     }
 
     [HttpPost("remote-start")]

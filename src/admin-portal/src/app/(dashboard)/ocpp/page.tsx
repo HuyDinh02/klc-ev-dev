@@ -165,13 +165,13 @@ export default function OcppManagementPage() {
 
   const { data: connections = [], isLoading: connectionsLoading } = useQuery<OcppConnection[]>({
     queryKey: ["ocpp-connections"],
-    queryFn: async () => (await ocppApi.get("/ocpp/connections")).data,
+    queryFn: async () => (await api.get("/ocpp-proxy/connections")).data,
     refetchInterval: 10000,
   });
 
   const { data: detail } = useQuery<OcppConnectionDetail>({
     queryKey: ["ocpp-connection", selectedCp],
-    queryFn: async () => (await ocppApi.get(`/ocpp/connections/${selectedCp}`)).data,
+    queryFn: async () => (await api.get(`/ocpp-proxy/connections/${selectedCp}`)).data,
     enabled: !!selectedCp,
     refetchInterval: 10000,
   });
