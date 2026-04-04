@@ -154,6 +154,7 @@ jobs:
           IMAGE="${{ env.AR_REPO }}/admin-portal:${{ github.sha }}"
           docker build -t "${IMAGE}" \
             --build-arg NEXT_PUBLIC_API_URL=https://api.ev.odcall.com \
+            --build-arg NEXT_PUBLIC_OCPP_URL=https://ocpp.ev.odcall.com \
             -f src/admin-portal/Dockerfile src/admin-portal
           docker tag "${IMAGE}" "${{ env.AR_REPO }}/admin-portal:latest"
           docker push "${IMAGE}"
