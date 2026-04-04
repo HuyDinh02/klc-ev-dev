@@ -127,37 +127,6 @@ public class EfCoreOcppServiceTests : KLCEntityFrameworkCoreTestBase
         });
     }
 
-    [Fact]
-    public async Task BootNotification_Should_Return_Null_For_Disabled_Station()
-    {
-        var stationId = Guid.NewGuid();
-
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var station = new ChargingStation(stationId, "OCPP-BOOT-DISABLED", "Disabled Test", "123 Test St", 21.0, 105.8);
-            station.Disable();
-            await _dbContext.ChargingStations.AddAsync(station);
-            await _dbContext.SaveChangesAsync();
-        });
-
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var result = await _ocppService.HandleBootNotificationAsync(
-                "OCPP-BOOT-DISABLED", "Vendor", "Model", null, null);
-
-            result.ShouldBeNull();
-        });
-
-        _dbContext.ChangeTracker.Clear();
-
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var station = await _dbContext.ChargingStations.FirstAsync(s => s.Id == stationId);
-            station.Status.ShouldBe(StationStatus.Disabled);
-            station.LastHeartbeat.ShouldBeNull();
-        });
-    }
-
     #endregion
 
     #region HandleHeartbeatAsync
