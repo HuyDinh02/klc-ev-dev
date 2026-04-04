@@ -370,7 +370,7 @@ public class WalletBffService : IWalletBffService
                             { "newBalance", newBalance.ToString("F0") }
                         });
                 }
-                catch { /* best-effort push */ }
+                catch (Exception ex) { _logger.LogWarning(ex, "Push notification failed for wallet topup"); }
             });
 
             _logger.LogInformation(
