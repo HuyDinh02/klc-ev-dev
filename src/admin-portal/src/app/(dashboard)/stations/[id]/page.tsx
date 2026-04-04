@@ -58,7 +58,7 @@ const AMENITY_TYPES = [
 export default function StationDetailPage() {
   const hasAccess = useRequirePermission("KLC.Stations");
   const canUpdate = useHasPermission("KLC.Stations.Update");
-  const canDecommission = useHasPermission("KLC.Stations.Decommission");
+  const canDelete = useHasPermission("KLC.Stations.Decommission");
   const canCreateConnector = useHasPermission("KLC.Connectors.Create");
   const canToggleConnector = useHasPermission("KLC.Connectors.Enable");
   const canDeleteConnector = useHasPermission("KLC.Connectors.Delete");
@@ -123,11 +123,6 @@ export default function StationDetailPage() {
   const disableMutation = useMutation({
     mutationFn: () => stationsApi.disable(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["station", id] }),
-  });
-
-  const decommissionMutation = useMutation({
-    mutationFn: () => stationsApi.decommission(id),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["station", id] }); router.push("/stations"); },
   });
 
   const deleteMutation = useMutation({
@@ -246,7 +241,7 @@ export default function StationDetailPage() {
                 <Power className="mr-2 h-4 w-4" /> {t("stations.enable")}
               </Button>
             ))}
-            {canDecommission && !station?.isEnabled && (
+            {canDelete && !station?.isEnabled && (
               <Button variant="destructive" size="sm" onClick={() => {
                 if (confirm("Delete this station? Historical data (sessions, faults) will be preserved but the station will be hidden from all lists.")) {
                   deleteMutation.mutate();

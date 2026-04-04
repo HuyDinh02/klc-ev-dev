@@ -75,6 +75,7 @@ export const stationsApi = {
   update: (id: string, data: UpdateStationDto) => api.put(`/stations/${id}`, data),
   enable: (id: string) => api.post(`/stations/${id}/enable`),
   disable: (id: string) => api.post(`/stations/${id}/disable`),
+  /** @deprecated Use disable() + delete() instead. Kept for backward compatibility — backend delegates to Disable(). */
   decommission: (id: string) => api.post(`/stations/${id}/decommission`),
   delete: (id: string) => api.delete(`/stations/${id}`),
   // Photos
