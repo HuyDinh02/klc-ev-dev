@@ -459,20 +459,23 @@ public class SessionBffService : ISessionBffService
 
         var sessions = await query
             .Take(pageSize + 1)
-            .Join(_dbContext.Connectors.AsNoTracking(),
+            .GroupJoin(_dbContext.Connectors.AsNoTracking(),
                 s => new { s.StationId, s.ConnectorNumber },
                 c => new { c.StationId, c.ConnectorNumber },
-                (s, c) => new SessionHistoryDto
+                (s, connectors) => new { Session = s, Connectors = connectors })
+            .SelectMany(
+                x => x.Connectors.DefaultIfEmpty(),
+                (x, c) => new SessionHistoryDto
                 {
-                    SessionId = s.Id,
-                    StationId = s.StationId,
-                    ConnectorNumber = s.ConnectorNumber,
-                    ConnectorType = c.ConnectorType.ToString(),
-                    Status = s.Status,
-                    StartTime = s.StartTime,
-                    EndTime = s.EndTime,
-                    EnergyKwh = s.TotalEnergyKwh,
-                    TotalCost = s.TotalCost
+                    SessionId = x.Session.Id,
+                    StationId = x.Session.StationId,
+                    ConnectorNumber = x.Session.ConnectorNumber,
+                    ConnectorType = c != null ? c.ConnectorType.ToString() : string.Empty,
+                    Status = x.Session.Status,
+                    StartTime = x.Session.StartTime,
+                    EndTime = x.Session.EndTime,
+                    EnergyKwh = x.Session.TotalEnergyKwh,
+                    TotalCost = x.Session.TotalCost
                 })
             .ToListAsync();
 
