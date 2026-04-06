@@ -334,10 +334,13 @@ public class OcppMessageHandlerTests
         // Act
         var response = await _handler.HandleMessageAsync(connection, message);
 
-        // Assert — CallResult returned
+        // Assert — CallResult returned immediately (RemoteStop is fire-and-forget)
         response.ShouldNotBeNull();
         var parsed = JsonSerializer.Deserialize<JsonElement[]>(response!);
         parsed![0].GetInt32().ShouldBe(OcppMessageType.CallResult);
+
+        // Wait for the background Task.Run (200ms delay + execution time)
+        await Task.Delay(500);
 
         // Assert — RemoteStopTransaction sent for transaction 12345 on station TEST-001
         _remoteCommandService.RemoteStopCalls.Count.ShouldBe(1);
@@ -362,6 +365,7 @@ public class OcppMessageHandlerTests
 
         // Act
         await _handler.HandleMessageAsync(connection, message);
+        await Task.Delay(500); // ensure no background task fires
 
         // Assert — no RemoteStopTransaction for partial charge
         _remoteCommandService.RemoteStopCalls.Count.ShouldBe(0);

@@ -637,14 +637,33 @@ public class OcppMessageHandler
                             "Battery full (SoC={SoC}%) for session {SessionId} on {ChargePointId}. Sending RemoteStopTransaction.",
                             meterResult.SocPercent, meterResult.SessionId, connection.ChargePointId);
 
-                        var stopResult = await _remoteCommandService.SendRemoteStopTransactionAsync(
-                            connection.ChargePointId,
-                            request.TransactionId.Value);
-
-                        if (stopResult.Accepted)
-                            _logger.LogInformation("RemoteStopTransaction accepted for full-battery session {SessionId}", meterResult.SessionId);
-                        else
-                            _logger.LogWarning("RemoteStopTransaction rejected for full-battery session {SessionId}: {Error}", meterResult.SessionId, stopResult.ErrorMessage);
+                        // Fire-and-forget: must NOT await inside the message handler because
+                        // SendCallAsync blocks waiting for the charger's Accepted response,
+                        // but the WebSocket receive loop is blocked here → deadlock.
+                        // We send the response first, then let the receive loop process the Accepted.
+                        var chargePointId = connection.ChargePointId;
+                        var ocppTxId = request.TransactionId.Value;
+                        var sessionId = meterResult.SessionId;
+                        var remoteCommandService = _remoteCommandService;
+                        var logger = _logger;
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                // Brief delay so MeterValues response is sent and receive loop is free
+                                await Task.Delay(200);
+                                var stopResult = await remoteCommandService.SendRemoteStopTransactionAsync(
+                                    chargePointId, ocppTxId);
+                                if (stopResult.Accepted)
+                                    logger.LogInformation("RemoteStopTransaction accepted for full-battery session {SessionId}", sessionId);
+                                else
+                                    logger.LogWarning("RemoteStopTransaction rejected for full-battery session {SessionId}: {Error}", sessionId, stopResult.ErrorMessage);
+                            }
+                            catch (Exception ex)
+                            {
+                                logger.LogError(ex, "Failed to send RemoteStopTransaction for full-battery session {SessionId}", sessionId);
+                            }
+                        });
                     }
                 }
             }
