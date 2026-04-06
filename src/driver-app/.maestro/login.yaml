@@ -1,28 +1,38 @@
 appId: vn.klc.driver
 name: Login Flow
 ---
-# Login flow - verifies user can log in with valid credentials
+# Login flow — verifies user can log in with valid credentials
 - launchApp:
     appId: vn.klc.driver
     clearState: true
 
-# Wait for login screen to appear
-- assertVisible: "K-Charge"
-- assertVisible: "Sign In"
+# Wait for login screen
+- extendedWaitUntil:
+    visible: "K-Charge"
+    timeout: 10000
 
-# Enter credentials
-- tapOn:
-    label: "Email"
-- inputText: "0901234567"
+- assertVisible: "Đăng nhập"
 
+# Enter phone number
 - tapOn:
-    label: "Password"
-- inputText: "Driver@123"
+    id: "login-phone-input"
+- inputText: "0901234001"
+
+# Enter password
+- tapOn:
+    id: "login-password-input"
+- inputText: "Admin@123"
 
 # Submit login
-- tapOn: "Sign In"
+- tapOn:
+    id: "login-submit-button"
 
-# Wait for home screen (map or tab bar)
-- assertVisible:
-    text: ".*"
-    timeout: 10000
+# Wait for home screen — tabs should appear
+- extendedWaitUntil:
+    visible: "Trạm sạc"
+    timeout: 15000
+
+# Verify bottom tabs are visible (home loaded successfully)
+- assertVisible: "Yêu thích"
+- assertVisible: "Ví"
+- assertVisible: "Tài khoản"

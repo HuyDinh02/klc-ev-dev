@@ -1,32 +1,48 @@
 appId: vn.klc.driver
 name: Login Validation
 ---
-# Verifies login form validation (empty fields, invalid credentials)
+# Verifies login form validation (empty fields, wrong credentials)
 - launchApp:
     appId: vn.klc.driver
     clearState: true
 
 # Wait for login screen
-- assertVisible: "Sign In"
+- extendedWaitUntil:
+    visible: "Đăng nhập"
+    timeout: 10000
 
-# Try to sign in with empty fields — should show error alert
-- tapOn: "Sign In"
-- assertVisible:
-    text: ".*"
+# Try login with empty fields — should show alert
+- tapOn:
+    id: "login-submit-button"
+
+# Dismiss error alert
+- extendedWaitUntil:
+    visible: "Lỗi"
     timeout: 3000
+- tapOn: "OK"
 
-# Dismiss alert if present
+# Enter only phone, no password — should still fail
 - tapOn:
-    text: "OK"
-    optional: true
+    id: "login-phone-input"
+- inputText: "0901234001"
+- tapOn:
+    id: "login-submit-button"
 
-# Enter only email, leave password empty
-- tapOn:
-    label: "Email"
-- inputText: "test@example.com"
-- tapOn: "Sign In"
+# Dismiss error alert
+- extendedWaitUntil:
+    visible: "Lỗi"
+    timeout: 3000
+- tapOn: "OK"
 
-# Dismiss alert
+# Enter wrong password
 - tapOn:
-    text: "OK"
-    optional: true
+    id: "login-password-input"
+- inputText: "WrongPassword"
+- tapOn:
+    id: "login-submit-button"
+
+# Should show invalid credentials error
+- extendedWaitUntil:
+    visible: "Lỗi"
+    timeout: 10000
+- tapOn: "OK"

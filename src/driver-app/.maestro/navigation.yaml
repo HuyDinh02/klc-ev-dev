@@ -2,48 +2,54 @@ appId: vn.klc.driver
 name: Tab Navigation
 ---
 # Verifies all bottom tab navigation works after login
-# Prerequisite: User must be logged in (run login.yaml first or use saved state)
 - launchApp:
     appId: vn.klc.driver
+    clearState: true
 
-# Wait for app to load
-- extendedWaitUntil:
-    visible: ".*"
+# Login first
+- assertVisible:
+    text: "Đăng nhập"
     timeout: 10000
+- tapOn:
+    id: "login-phone-input"
+- inputText: "0901234001"
+- tapOn:
+    id: "login-password-input"
+- inputText: "Admin@123"
+- tapOn:
+    id: "login-submit-button"
 
-# Navigate through each tab
-- tapOn:
-    id: "tab-favorites"
-    optional: true
-- tapOn:
-    text: "Favorites"
-    optional: true
+# Wait for home screen
+- assertVisible:
+    text: "Trạm sạc"
+    timeout: 15000
 
-- tapOn:
-    id: "tab-history"
-    optional: true
-- tapOn:
-    text: "History"
-    optional: true
+# Navigate to Favorites tab
+- tapOn: "Yêu thích"
+- assertVisible:
+    text: "Yêu thích"
+    timeout: 5000
 
-- tapOn:
-    id: "tab-wallet"
-    optional: true
-- tapOn:
-    text: "Wallet"
-    optional: true
+# Navigate to History tab
+- tapOn: "Lịch sử"
+- assertVisible:
+    text: "Lịch sử sạc"
+    timeout: 5000
 
-- tapOn:
-    id: "tab-profile"
-    optional: true
-- tapOn:
-    text: "Profile"
-    optional: true
+# Navigate to Wallet tab
+- tapOn: "Ví"
+- assertVisible:
+    text: "Số dư ví"
+    timeout: 5000
 
-# Navigate back to home
-- tapOn:
-    id: "tab-home"
-    optional: true
-- tapOn:
-    text: "Home"
-    optional: true
+# Navigate to Profile tab
+- tapOn: "Tài khoản"
+- assertVisible:
+    text: "Tài khoản"
+    timeout: 5000
+
+# Navigate back to Home tab
+- tapOn: "Trạm sạc"
+- assertVisible:
+    text: "Trạm sạc gần đây"
+    timeout: 5000

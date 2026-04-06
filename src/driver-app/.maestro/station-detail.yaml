@@ -2,41 +2,49 @@ appId: vn.klc.driver
 name: Station Detail Flow
 ---
 # Verifies station detail screen from home station list
-# Prerequisite: User must be logged in
 - launchApp:
     appId: vn.klc.driver
+    clearState: true
 
-# Wait for home screen to load
+# Login first
+- assertVisible:
+    text: "Đăng nhập"
+    timeout: 10000
+- tapOn:
+    id: "login-phone-input"
+- inputText: "0901234001"
+- tapOn:
+    id: "login-password-input"
+- inputText: "Admin@123"
+- tapOn:
+    id: "login-submit-button"
+
+# Wait for home screen with stations
+- assertVisible:
+    text: "Trạm sạc gần đây"
+    timeout: 15000
+
+# Switch to list view if needed
+- tapOn:
+    text: "Danh sách"
+    optional: true
+
+# Wait for station list to load
 - extendedWaitUntil:
-    visible: "Nearby Stations"
+    visible: ".*km"
     timeout: 10000
 
-# Wait for stations to load
-- extendedWaitUntil:
-    visible: ".*stations.*"
-    timeout: 5000
-
-# Tap on first station card (if stations are available)
+# Tap on first station
 - tapOn:
-    text: ".*Station.*"
+    text: ".*km"
     index: 0
     optional: true
 
-# Verify station detail screen elements
+# Verify station detail screen
 - assertVisible:
-    text: "Connectors"
+    text: "Đầu sạc"
     timeout: 5000
     optional: true
 
-# Verify connector info is shown
-- assertVisible:
-    text: ".*kW.*"
-    optional: true
-
-# Verify QR scan button
-- assertVisible:
-    text: "Scan QR Code to Start"
-    optional: true
-
-# Go back to home
+# Go back
 - back

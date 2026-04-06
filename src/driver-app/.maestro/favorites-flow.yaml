@@ -1,48 +1,40 @@
 appId: vn.klc.driver
-name: Favorites Flow
+name: Favorites & History Flow
 ---
-# Verifies favorites screen and empty state
-# Prerequisite: User must be logged in
+# Verifies favorites and history screens
 - launchApp:
     appId: vn.klc.driver
+    clearState: true
 
-# Wait for app to load
-- extendedWaitUntil:
-    visible: ".*"
-    timeout: 10000
-
-# Navigate to Favorites tab
-- tapOn:
-    id: "tab-favorites"
-    optional: true
-- tapOn:
-    text: "Favorites"
-    optional: true
-
-# Verify favorites screen
+# Login first
 - assertVisible:
-    text: "Favorites"
+    text: "Đăng nhập"
+    timeout: 10000
+- tapOn:
+    id: "login-phone-input"
+- inputText: "0901234001"
+- tapOn:
+    id: "login-password-input"
+- inputText: "Admin@123"
+- tapOn:
+    id: "login-submit-button"
+
+# Wait for home
+- assertVisible:
+    text: "Trạm sạc"
+    timeout: 15000
+
+# Navigate to Favorites
+- tapOn: "Yêu thích"
+- assertVisible:
+    text: "Yêu thích"
     timeout: 5000
 
-# Check for stations or empty state
+# Navigate to History
+- tapOn: "Lịch sử"
 - assertVisible:
-    text: ".*"
-    timeout: 3000
-
-# Navigate to History tab
-- tapOn:
-    id: "tab-history"
-    optional: true
-- tapOn:
-    text: "History"
-    optional: true
-
-# Verify history screen
-- assertVisible:
-    text: "Charging History"
+    text: "Lịch sử sạc"
     timeout: 5000
 
 # Navigate back to home
-- tapOn:
-    id: "tab-home"
-    optional: true
+- tapOn: "Trạm sạc"

@@ -1,0 +1,86 @@
+appId: vn.klc.driver
+name: Register & OTP Flow
+---
+# Verifies registration form navigation and validation
+- launchApp:
+    appId: vn.klc.driver
+    clearState: true
+
+# Wait for login screen
+- extendedWaitUntil:
+    visible: "Đăng nhập"
+    timeout: 10000
+
+# Tap "Đăng ký" link
+- tapOn: "Đăng ký"
+
+# Verify register screen
+- extendedWaitUntil:
+    visible: "Đăng ký"
+    timeout: 5000
+
+# Try submit empty form — should fail validation
+- tapOn:
+    id: "register-submit-button"
+- extendedWaitUntil:
+    visible: "Lỗi"
+    timeout: 3000
+- tapOn: "OK"
+
+# Fill name
+- tapOn:
+    id: "register-name-input"
+- inputText: "Nguyễn Test"
+
+# Fill invalid phone — should fail
+- tapOn:
+    id: "register-phone-input"
+- inputText: "123"
+- tapOn:
+    id: "register-submit-button"
+- extendedWaitUntil:
+    visible: "Lỗi"
+    timeout: 3000
+- tapOn: "OK"
+
+# Fix phone to valid format
+- clearText:
+    id: "register-phone-input"
+- tapOn:
+    id: "register-phone-input"
+- inputText: "0911222333"
+
+# Fill password too short — should fail
+- tapOn:
+    id: "register-password-input"
+- inputText: "short"
+- tapOn:
+    id: "register-submit-button"
+- extendedWaitUntil:
+    visible: "Lỗi"
+    timeout: 3000
+- tapOn: "OK"
+
+# Fix password
+- clearText:
+    id: "register-password-input"
+- tapOn:
+    id: "register-password-input"
+- inputText: "TestPass@123"
+
+# Confirm password mismatch — should fail
+- tapOn:
+    id: "register-confirm-password-input"
+- inputText: "WrongConfirm"
+- tapOn:
+    id: "register-submit-button"
+- extendedWaitUntil:
+    visible: "Lỗi"
+    timeout: 3000
+- tapOn: "OK"
+
+# Go back to login
+- tapOn: "Đăng nhập"
+- extendedWaitUntil:
+    visible: "Đăng nhập"
+    timeout: 5000

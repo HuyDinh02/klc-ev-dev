@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MainNavigator } from './MainNavigator';
-import { LoginScreen, StationDetailScreen, SessionScreen, VehiclesScreen, NotificationsScreen, SettingsScreen, QRScannerScreen, PaymentMethodsScreen, HelpSupportScreen, PromotionsScreen } from '../screens';
+import { LoginScreen, RegisterScreen, OtpVerificationScreen, StationDetailScreen, SessionScreen, VehiclesScreen, NotificationsScreen, SettingsScreen, QRScannerScreen, PaymentMethodsScreen, HelpSupportScreen, PromotionsScreen } from '../screens';
 import { useAuthStore, useSessionStore } from '../stores';
 import { Colors } from '../constants/colors';
 import type { RootStackParamList } from './types';
@@ -185,11 +185,23 @@ export function RootNavigator() {
           />
         </>
       ) : (
-        <Stack.Screen
-          name="Login"
-          component={LoginScreen}
-          options={{ headerShown: false }}
-        />
+        <>
+          <Stack.Screen
+            name="Login"
+            component={LoginScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="Register"
+            component={RegisterScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="OtpVerification"
+            component={OtpVerificationScreen}
+            options={{ headerShown: false }}
+          />
+        </>
       )}
     </Stack.Navigator>
   );
