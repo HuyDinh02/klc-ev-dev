@@ -261,6 +261,11 @@ public class OcppWebSocketMiddleware
                         var message = messageBuilder.ToString();
                         messageBuilder.Clear();
 
+                        // Wrap message processing in its own try-catch so that any exception
+                        // from the handler or uow.CompleteAsync() (e.g. transient DB error)
+                        // is logged and the receive loop continues rather than closing the WebSocket.
+                        try
+                        {
                         // Create a fresh DI scope per message so scoped services
                         // (DbContext, repositories, etc.) get a fresh lifetime.
                         using var scope = _scopeFactory.CreateScope();
@@ -275,6 +280,17 @@ public class OcppWebSocketMiddleware
                         if (!string.IsNullOrEmpty(response))
                         {
                             await SendMessageAsync(connection.WebSocket, response);
+                        }
+                        }
+                        catch (WebSocketException)
+                        {
+                            throw; // Let WebSocket errors propagate to the outer handler
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex,
+                                "Unhandled error processing OCPP message from {ChargePointId} — receive loop continues",
+                                connection.ChargePointId);
                         }
 
                         // After sending BootNotification response, push configuration to the charger
