@@ -173,39 +173,46 @@ public class OcppWebSocketMiddleware
         }
         finally
         {
-            connectionManager.RemoveConnection(chargePointId);
+            // Only run disconnect cleanup if this connection is still the active one.
+            // A charger may reconnect before the old receive loop exits; in that case
+            // RemoveConnection returns false and we skip station disconnect to avoid
+            // stomping on the new connection.
+            var wasActive = connectionManager.RemoveConnection(chargePointId, connection);
 
-            // Clean up orphaned sessions for the disconnected station
-            try
+            if (wasActive)
             {
-                using var cleanupScope = _scopeFactory.CreateScope();
-                var uowManager = cleanupScope.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
-                var ocppService = cleanupScope.ServiceProvider.GetRequiredService<IOcppService>();
-                var notifier = cleanupScope.ServiceProvider.GetRequiredService<IMonitoringNotifier>();
-                var stationRepo = cleanupScope.ServiceProvider.GetRequiredService<IRepository<Stations.ChargingStation, Guid>>();
-
-                using var uow = uowManager.Begin(requiresNew: true);
-
-                // Capture status before disconnect processing
-                var station = await stationRepo.FirstOrDefaultAsync(s => s.StationCode == chargePointId);
-                var previousStatus = station?.Status;
-
-                await ocppService.HandleStationDisconnectAsync(chargePointId);
-                await uow.CompleteAsync();
-
-                // Broadcast station status change via SignalR
-                if (station != null && previousStatus.HasValue && previousStatus.Value != StationStatus.Offline)
+                // Clean up orphaned sessions for the disconnected station
+                try
                 {
-                    await notifier.NotifyStationStatusChangedAsync(
-                        station.Id,
-                        station.Name,
-                        previousStatus.Value,
-                        StationStatus.Offline);
+                    using var cleanupScope = _scopeFactory.CreateScope();
+                    var uowManager = cleanupScope.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
+                    var ocppService = cleanupScope.ServiceProvider.GetRequiredService<IOcppService>();
+                    var notifier = cleanupScope.ServiceProvider.GetRequiredService<IMonitoringNotifier>();
+                    var stationRepo = cleanupScope.ServiceProvider.GetRequiredService<IRepository<Stations.ChargingStation, Guid>>();
+
+                    using var uow = uowManager.Begin(requiresNew: true);
+
+                    // Capture status before disconnect processing
+                    var station = await stationRepo.FirstOrDefaultAsync(s => s.StationCode == chargePointId);
+                    var previousStatus = station?.Status;
+
+                    await ocppService.HandleStationDisconnectAsync(chargePointId);
+                    await uow.CompleteAsync();
+
+                    // Broadcast station status change via SignalR
+                    if (station != null && previousStatus.HasValue && previousStatus.Value != StationStatus.Offline)
+                    {
+                        await notifier.NotifyStationStatusChangedAsync(
+                            station.Id,
+                            station.Name,
+                            previousStatus.Value,
+                            StationStatus.Offline);
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to clean up orphaned sessions for {ChargePointId}", chargePointId);
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to clean up orphaned sessions for {ChargePointId}", chargePointId);
+                }
             }
 
             if (webSocket.State == WebSocketState.Open)
