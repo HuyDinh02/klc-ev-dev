@@ -279,7 +279,7 @@ public class OcppWebSocketMiddleware
 
                         if (!string.IsNullOrEmpty(response))
                         {
-                            await SendMessageAsync(connection.WebSocket, response);
+                            await connection.SendTextAsync(response);
                         }
                         }
                         catch (WebSocketException)

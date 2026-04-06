@@ -67,6 +67,12 @@ public class OcppConnection
     private readonly Dictionary<string, TaskCompletionSource<string>> _pendingRequests = new();
     private readonly object _lock = new();
 
+    /// <summary>
+    /// Serializes concurrent WebSocket send operations. WebSocket.SendAsync is NOT thread-safe;
+    /// the receive loop and background tasks (post-boot config, SoC auto-stop) can race.
+    /// </summary>
+    private readonly SemaphoreSlim _sendLock = new(1, 1);
+
     public OcppConnection(string chargePointId, WebSocket webSocket, OcppProtocolVersion ocppVersion = OcppProtocolVersion.Ocpp16J)
     {
         ChargePointId = chargePointId;
@@ -139,6 +145,30 @@ public class OcppConnection
     }
 
     /// <summary>
+    /// Send a raw text message over the WebSocket, serializing concurrent sends via _sendLock.
+    /// </summary>
+    public async Task SendTextAsync(string message, CancellationToken cancellationToken = default)
+    {
+        if (WebSocket.State != WebSocketState.Open)
+            return;
+
+        var bytes = Encoding.UTF8.GetBytes(message);
+        await _sendLock.WaitAsync(cancellationToken);
+        try
+        {
+            await WebSocket.SendAsync(
+                new ArraySegment<byte>(bytes),
+                WebSocketMessageType.Text,
+                true,
+                cancellationToken);
+        }
+        finally
+        {
+            _sendLock.Release();
+        }
+    }
+
+    /// <summary>
     /// Send an OCPP Call message and wait for a response with timeout.
     /// Uses the connection's negotiated protocol version for framing.
     /// </summary>
@@ -160,12 +190,8 @@ public class OcppConnection
 
         var tcs = RegisterPendingRequest(uniqueId);
 
-        var bytes = Encoding.UTF8.GetBytes(message);
-        await WebSocket.SendAsync(
-            new ArraySegment<byte>(bytes),
-            WebSocketMessageType.Text,
-            true,
-            CancellationToken.None);
+        // Use _sendLock to serialize concurrent sends (receive loop vs background tasks)
+        await SendTextAsync(message);
 
         using var cts = new CancellationTokenSource(timeout);
         cts.Token.Register(() => tcs.TrySetCanceled());
