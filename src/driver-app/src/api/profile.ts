@@ -28,14 +28,21 @@ export const profileApi = {
 
   getStatistics: async (): Promise<UserStatistics> => {
     const { data } = await api.get('/profile/statistics');
-    return data;
+    // BFF returns totalSpentVnd and co2SavedKg — normalize to mobile field names
+    return {
+      totalSessions: data.totalSessions ?? 0,
+      totalEnergyKwh: data.totalEnergyKwh ?? 0,
+      totalSpent: data.totalSpent ?? data.totalSpentVnd ?? 0,
+      co2Saved: data.co2Saved ?? data.co2SavedKg ?? 0,
+    };
   },
 };
 
 export const vehiclesApi = {
   getAll: async (): Promise<Vehicle[]> => {
     const { data } = await api.get('/vehicles');
-    return data;
+    // BFF returns { data: [...] } — extract the array
+    return Array.isArray(data) ? data : (data.data ?? []);
   },
 
   getDefault: async (): Promise<Vehicle | null> => {

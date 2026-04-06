@@ -459,16 +459,21 @@ public class SessionBffService : ISessionBffService
 
         var sessions = await query
             .Take(pageSize + 1)
-            .Select(s => new SessionHistoryDto
-            {
-                SessionId = s.Id,
-                StationId = s.StationId,
-                ConnectorNumber = s.ConnectorNumber,
-                StartTime = s.StartTime,
-                EndTime = s.EndTime,
-                EnergyKwh = s.TotalEnergyKwh,
-                TotalCost = s.TotalCost
-            })
+            .Join(_dbContext.Connectors.AsNoTracking(),
+                s => new { s.StationId, s.ConnectorNumber },
+                c => new { c.StationId, c.ConnectorNumber },
+                (s, c) => new SessionHistoryDto
+                {
+                    SessionId = s.Id,
+                    StationId = s.StationId,
+                    ConnectorNumber = s.ConnectorNumber,
+                    ConnectorType = c.ConnectorType.ToString(),
+                    Status = s.Status,
+                    StartTime = s.StartTime,
+                    EndTime = s.EndTime,
+                    EnergyKwh = s.TotalEnergyKwh,
+                    TotalCost = s.TotalCost
+                })
             .ToListAsync();
 
         // Get station names
@@ -567,10 +572,16 @@ public record SessionHistoryDto
     public Guid StationId { get; init; }
     public string StationName { get; set; } = string.Empty;
     public int ConnectorNumber { get; init; }
+    public string ConnectorType { get; init; } = string.Empty;
+    public SessionStatus Status { get; init; }
     public DateTime? StartTime { get; init; }
     public DateTime? EndTime { get; init; }
     public decimal EnergyKwh { get; init; }
     public decimal TotalCost { get; init; }
+
+    public int DurationMinutes => StartTime.HasValue && EndTime.HasValue
+        ? (int)(EndTime.Value - StartTime.Value).TotalMinutes
+        : 0;
 }
 
 public record PagedResult<T>

@@ -35,6 +35,7 @@ public class OcppMessageHandler
     private readonly IOperatorWebhookService? _webhookService;
     private readonly ISettingProvider _settingProvider;
     private readonly IPushNotificationService? _pushNotificationService;
+    private readonly IOcppRemoteCommandService _remoteCommandService;
 
     public OcppMessageHandler(
         ILogger<OcppMessageHandler> logger,
@@ -47,6 +48,7 @@ public class OcppMessageHandler
         OcppMessageParserFactory parserFactory,
         IAuditEventLogger auditLogger,
         ISettingProvider settingProvider,
+        IOcppRemoteCommandService remoteCommandService,
         PowerBalancingService? powerBalancingService = null,
         IOperatorWebhookService? webhookService = null,
         IPushNotificationService? pushNotificationService = null)
@@ -61,6 +63,7 @@ public class OcppMessageHandler
         _parserFactory = parserFactory;
         _auditLogger = auditLogger;
         _settingProvider = settingProvider;
+        _remoteCommandService = remoteCommandService;
         _powerBalancingService = powerBalancingService;
         _webhookService = webhookService;
         _pushNotificationService = pushNotificationService;
@@ -626,6 +629,23 @@ public class OcppMessageHandler
                         meterResult.TotalEnergyKwh,
                         meterResult.PowerKw,
                         meterResult.SocPercent);
+
+                    // Auto-stop when battery is full (SoC ≥ 100%)
+                    if (meterResult.SocPercent >= 100m && request.TransactionId.HasValue)
+                    {
+                        _logger.LogInformation(
+                            "Battery full (SoC={SoC}%) for session {SessionId} on {ChargePointId}. Sending RemoteStopTransaction.",
+                            meterResult.SocPercent, meterResult.SessionId, connection.ChargePointId);
+
+                        var stopResult = await _remoteCommandService.SendRemoteStopTransactionAsync(
+                            connection.ChargePointId,
+                            request.TransactionId.Value);
+
+                        if (stopResult.Accepted)
+                            _logger.LogInformation("RemoteStopTransaction accepted for full-battery session {SessionId}", meterResult.SessionId);
+                        else
+                            _logger.LogWarning("RemoteStopTransaction rejected for full-battery session {SessionId}: {Error}", meterResult.SessionId, stopResult.ErrorMessage);
+                    }
                 }
             }
         }
