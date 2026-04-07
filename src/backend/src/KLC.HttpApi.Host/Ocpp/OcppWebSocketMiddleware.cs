@@ -275,12 +275,16 @@ public class OcppWebSocketMiddleware
                         // ABP repositories require an active Unit of Work.
                         using var uow = uowManager.Begin(requiresNew: true);
                         var response = await messageHandler.HandleMessageAsync(connection, message);
-                        await uow.CompleteAsync();
 
+                        // Always send the OCPP response BEFORE committing the DB.
+                        // The charger must not be blocked waiting; a DB failure should
+                        // never prevent the charger from receiving its CallResult.
                         if (!string.IsNullOrEmpty(response))
                         {
                             await connection.SendTextAsync(response);
                         }
+
+                        await uow.CompleteAsync();
                         }
                         catch (WebSocketException)
                         {
