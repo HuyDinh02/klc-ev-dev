@@ -477,7 +477,7 @@ public static class KLCDbContextModelCreatingExtensions
             // xmin system column (updated on every row write — no extra column needed).
             // EF Core will include it in UPDATE WHERE clauses; a stale read throws
             // DbUpdateConcurrencyException, which callers should retry.
-            b.Property<uint>("xmin").HasColumnType("xid").IsRowVersion();
+            b.Property<uint>("xmin").HasColumnType("xid").IsRowVersion().HasDefaultValue(0u);
 
             b.HasIndex(x => x.IdentityUserId).IsUnique();
             b.HasIndex(x => x.PhoneNumber);
