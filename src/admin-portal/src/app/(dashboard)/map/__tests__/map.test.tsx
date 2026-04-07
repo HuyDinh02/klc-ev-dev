@@ -45,7 +45,7 @@ vi.mock('@/lib/api', () => ({
 
 import StationMapPage from '../page';
 
-// Station statuses: 0=Offline, 1=Online, 2=Disabled, 3=Decommissioned
+// Station statuses: 0=Offline, 1=Online, 2=Disabled, 3=Disabled (legacy, was Decommissioned)
 const mockStationsWithCoords = [
   {
     stationId: 'station-1',
@@ -129,8 +129,9 @@ describe('StationMapPage', () => {
     await waitFor(() => {
       expect(screen.getByText(/Online/)).toBeInTheDocument();
       expect(screen.getByText(/Offline/)).toBeInTheDocument();
-      expect(screen.getByText(/Disabled/)).toBeInTheDocument();
-      expect(screen.getByText(/Decommissioned/)).toBeInTheDocument();
+      // Status 2 and 3 both render as "Disabled" — expect at least one
+      const disabledBadges = screen.getAllByText(/Disabled/);
+      expect(disabledBadges.length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -168,11 +169,10 @@ describe('StationMapPage', () => {
   it('shows status badges for stations without coordinates', async () => {
     renderWithProviders(<StationMapPage />);
     await waitFor(() => {
-      // Station Gamma (status 2 = Disabled), Station Delta (status 3 = Decommissioned)
+      // Station Gamma (status 2 = Disabled), Station Delta (status 3 = also Disabled now)
+      // Both render as "Disabled" — expect at least 2 Disabled labels
       const disabledBadges = screen.getAllByText('Disabled');
-      expect(disabledBadges.length).toBeGreaterThanOrEqual(1);
-      const decommissionedBadges = screen.getAllByText('Decommissioned');
-      expect(decommissionedBadges.length).toBeGreaterThanOrEqual(1);
+      expect(disabledBadges.length).toBeGreaterThanOrEqual(2);
     });
   });
 
@@ -223,8 +223,10 @@ describe('StationMapPage', () => {
   it('renders disabled count (status 2) in Disabled badge', async () => {
     renderWithProviders(<StationMapPage />);
     await waitFor(() => {
-      // disabled = status 2 (Station Gamma) = 1
-      expect(screen.getByText(/Disabled \(1\)/)).toBeInTheDocument();
+      // status 2 (Station Gamma) = 1, status 3 (Station Delta, legacy) = 1
+      // Both show as "Disabled (1)" — expect at least one
+      const disabledCounts = screen.getAllByText(/Disabled \(1\)/);
+      expect(disabledCounts.length).toBeGreaterThanOrEqual(1);
     });
   });
 });
