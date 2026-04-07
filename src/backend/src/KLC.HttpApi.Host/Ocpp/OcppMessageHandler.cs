@@ -547,6 +547,15 @@ public class OcppMessageHandler
                 stopResult.TotalEnergyKwh,
                 stopResult.TotalCost);
 
+            // Notify connector reset to Available so the monitoring dashboard updates
+            // immediately. Without this, the UI stays "Charging" until the charger
+            // sends StatusNotification(Available), which may be delayed or never arrive.
+            await _notifier.NotifyConnectorStatusChangedAsync(
+                stopResult.StationId,
+                stopResult.ConnectorNumber,
+                ConnectorStatus.Charging,   // previous
+                ConnectorStatus.Available); // new
+
             // Deliver webhook: SessionCompleted
             if (_webhookService != null)
             {
