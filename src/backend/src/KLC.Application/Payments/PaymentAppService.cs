@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Logging;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
+using Volo.Abp.DistributedLocking;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Users;
 
@@ -31,6 +32,8 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
     private readonly WalletDomainService _walletDomainService;
     private readonly IPaymentCallbackValidator _callbackValidator;
     private readonly IAuditEventLogger _auditLogger;
+    private readonly IInvoiceNumberService _invoiceNumberService;
+    private readonly IAbpDistributedLock _distributedLock;
 
     public PaymentAppService(
         IRepository<PaymentTransaction, Guid> paymentRepository,
@@ -43,7 +46,9 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
         IEnumerable<IPaymentGatewayService> gateways,
         WalletDomainService walletDomainService,
         IPaymentCallbackValidator callbackValidator,
-        IAuditEventLogger auditLogger)
+        IAuditEventLogger auditLogger,
+        IInvoiceNumberService invoiceNumberService,
+        IAbpDistributedLock distributedLock)
     {
         _paymentRepository = paymentRepository;
         _invoiceRepository = invoiceRepository;
@@ -56,6 +61,8 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
         _walletDomainService = walletDomainService;
         _callbackValidator = callbackValidator;
         _auditLogger = auditLogger;
+        _invoiceNumberService = invoiceNumberService;
+        _distributedLock = distributedLock;
     }
 
     public async Task<PaymentResultDto> ProcessPaymentAsync(ProcessPaymentDto input)
@@ -370,7 +377,7 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
 
             // Generate invoice
             var session = await _sessionRepository.GetAsync(payment.SessionId);
-            var invoiceNumber = Invoice.GenerateInvoiceNumber(await GetNextInvoiceSequenceAsync());
+            var invoiceNumber = await _invoiceNumberService.GenerateNextAsync();
             var invoice = new Invoice(
                 GuidGenerator.Create(),
                 payment.Id,
@@ -400,6 +407,16 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
         if (string.IsNullOrEmpty(txnRef))
             return VnPayIpnResponse.OrderNotFound();
 
+        // Idempotency lock: VnPay retries IPN on timeout — prevent double invoice creation.
+        // Uses per-txnRef key so unrelated payments are not blocked.
+        await using var lockHandle = await _distributedLock.TryAcquireAsync(
+            $"ipn:payment:{txnRef}", TimeSpan.FromSeconds(60));
+        if (lockHandle == null)
+        {
+            Logger.LogWarning("[VnPay IPN] Concurrent IPN for TxnRef={TxnRef} — skipping duplicate", txnRef);
+            return VnPayIpnResponse.AlreadyConfirmed();
+        }
+
         var payment = await _paymentRepository.FirstOrDefaultAsync(p => p.ReferenceCode == txnRef);
         if (payment == null)
         {
@@ -427,9 +444,9 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
             payment.MarkCompleted(validation.GatewayTransactionId ?? "");
             _auditLogger.LogPaymentEvent("PaymentCompleted", payment.Id, payment.Amount, payment.Gateway.ToString(), payment.UserId.ToString());
 
-            // Generate invoice
+            // Generate invoice — sequence is atomic at DB level, safe under concurrency
             var session = await _sessionRepository.GetAsync(payment.SessionId);
-            var invoiceNumber = Invoice.GenerateInvoiceNumber(await GetNextInvoiceSequenceAsync());
+            var invoiceNumber = await _invoiceNumberService.GenerateNextAsync();
             var invoice = new Invoice(
                 GuidGenerator.Create(),
                 payment.Id,
@@ -553,12 +570,6 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
             NewWalletBalance = newBalance,
             NewStatus = payment.Status
         };
-    }
-
-    private async Task<int> GetNextInvoiceSequenceAsync()
-    {
-        var count = await _invoiceRepository.CountAsync();
-        return (int)count + 1;
     }
 
     private static PaymentTransactionDto MapToDto(PaymentTransaction payment, string? stationName, decimal energyKwh)

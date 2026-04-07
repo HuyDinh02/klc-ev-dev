@@ -465,6 +465,12 @@ public static class KLCDbContextModelCreatingExtensions
             b.Property(x => x.WalletBalance).HasPrecision(18, 0);
             b.Property(x => x.Gender).HasMaxLength(1);
 
+            // Optimistic concurrency on WalletBalance: uses PostgreSQL's built-in
+            // xmin system column (updated on every row write — no extra column needed).
+            // EF Core will include it in UPDATE WHERE clauses; a stale read throws
+            // DbUpdateConcurrencyException, which callers should retry.
+            b.Property<uint>("xmin").HasColumnType("xid").IsRowVersion();
+
             b.HasIndex(x => x.IdentityUserId).IsUnique();
             b.HasIndex(x => x.PhoneNumber);
             b.HasIndex(x => x.Email);

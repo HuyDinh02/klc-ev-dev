@@ -135,18 +135,35 @@ public class PaymentReconciliationService : BackgroundService
 
                 if (queryResult.IsValid && queryResult.IsSuccess)
                 {
-                    // VnPay confirms payment was successful — credit wallet
-                    var user = await userRepo.FirstOrDefaultAsync(u => u.Id == txn.UserId);
+                    // VnPay confirms payment was successful — credit wallet.
+                    // Look up by IdentityUserId (WalletTransaction.UserId stores IdentityUserId,
+                    // not AppUser.Id — using the wrong field was a bug that silently skipped credits).
+                    var user = await userRepo.FirstOrDefaultAsync(u => u.IdentityUserId == txn.UserId);
                     if (user != null)
                     {
-                        user.AddToWallet(txn.Amount);
+                        // Go through WalletDomainService to create an audit WalletTransaction
+                        // and properly update LastTopUpAt — direct AddToWallet() was missing both.
+                        var (_, walletTx) = walletDomainService.TopUp(
+                            user,
+                            txn.Amount,
+                            txn.PaymentGateway ?? PaymentGateway.VnPay,
+                            queryResult.GatewayTransactionId);
+
                         txn.MarkCompleted(queryResult.GatewayTransactionId);
                         await userRepo.UpdateAsync(user);
                         await walletTxnRepo.UpdateAsync(txn);
+                        await walletTxnRepo.InsertAsync(walletTx);
+                        await uow.CompleteAsync();
 
                         _logger.LogInformation(
                             "Reconciled VnPay top-up: {RefCode}, amount={Amount}, user={UserId}",
                             txn.ReferenceCode, txn.Amount, txn.UserId);
+                    }
+                    else
+                    {
+                        _logger.LogWarning(
+                            "Reconciliation: AppUser not found for IdentityUserId={UserId}, skipping {RefCode}",
+                            txn.UserId, txn.ReferenceCode);
                     }
                 }
                 else if (queryResult.IsValid && !queryResult.IsSuccess)
@@ -154,13 +171,12 @@ public class PaymentReconciliationService : BackgroundService
                     // VnPay confirms payment failed
                     txn.MarkFailed();
                     await walletTxnRepo.UpdateAsync(txn);
+                    await uow.CompleteAsync();
                     _logger.LogInformation(
                         "VnPay confirms failure for {RefCode}: {Error}",
                         txn.ReferenceCode, queryResult.ErrorMessage);
                 }
                 // If query itself failed (network error), skip — retry next cycle
-
-                await uow.CompleteAsync();
             }
             catch (Exception ex)
             {

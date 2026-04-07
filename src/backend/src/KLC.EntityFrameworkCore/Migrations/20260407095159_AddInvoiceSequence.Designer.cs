@@ -3,6 +3,7 @@ using System;
 using KLC.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NetTopologySuite.Geometries;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -13,9 +14,11 @@ using Volo.Abp.EntityFrameworkCore;
 namespace KLC.Migrations
 {
     [DbContext(typeof(KLCDbContext))]
-    partial class KLCDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260407095159_AddInvoiceSequence")]
+    partial class AddInvoiceSequence
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2515,12 +2518,6 @@ namespace KLC.Migrations
                     b.Property<decimal>("WalletBalance")
                         .HasPrecision(18)
                         .HasColumnType("numeric(18,0)");
-
-                    b.Property<uint>("xmin")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 

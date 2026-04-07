@@ -6,6 +6,7 @@ using KLC.Notifications;
 using KLC.Payments;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using StackExchange.Redis;
 
 namespace KLC.Driver.Services;
 
@@ -37,6 +38,7 @@ public class WalletBffService : IWalletBffService
     private readonly IPushNotificationService _pushNotificationService;
     private readonly IDriverHubNotifier _driverNotifier;
     private readonly IConfiguration _configuration;
+    private readonly IDatabase _redis;
 
     public WalletBffService(
         KLCDbContext dbContext,
@@ -47,7 +49,8 @@ public class WalletBffService : IWalletBffService
         IPaymentCallbackValidator callbackValidator,
         IPushNotificationService pushNotificationService,
         IDriverHubNotifier driverNotifier,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IConnectionMultiplexer redis)
     {
         _dbContext = dbContext;
         _cache = cache;
@@ -58,6 +61,7 @@ public class WalletBffService : IWalletBffService
         _pushNotificationService = pushNotificationService;
         _driverNotifier = driverNotifier;
         _configuration = configuration;
+        _redis = redis.GetDatabase();
     }
 
     public async Task<WalletBalanceDto> GetBalanceAsync(Guid userId)
@@ -284,6 +288,20 @@ public class WalletBffService : IWalletBffService
         if (string.IsNullOrEmpty(txnRef))
             return VnPayIpnResponse.OrderNotFound();
 
+        // Idempotency lock: VnPay guarantees at-least-once IPN delivery and can retry
+        // within milliseconds. Without this lock, two concurrent requests can both pass
+        // the Status == Completed check and double-credit the wallet.
+        // The lock is per-txnRef so unrelated top-ups are never blocked.
+        var lockKey = $"ipn:wallet:{txnRef}";
+        var lockAcquired = await _redis.StringSetAsync(
+            lockKey, "1", TimeSpan.FromSeconds(60), When.NotExists);
+        if (!lockAcquired)
+        {
+            _logger.LogWarning(
+                "[VnPay IPN] Concurrent IPN for TxnRef={TxnRef} — skipping duplicate", txnRef);
+            return VnPayIpnResponse.AlreadyConfirmed();
+        }
+
         var transaction = await _dbContext.WalletTransactions
             .FirstOrDefaultAsync(t => t.ReferenceCode == txnRef);
 
@@ -319,14 +337,38 @@ public class WalletBffService : IWalletBffService
                 return VnPayIpnResponse.UnknownError();
             }
 
-            var (newBalance, _) = _walletDomainService.TopUp(
-                user,
-                transaction.Amount,
-                transaction.PaymentGateway ?? PaymentGateway.VnPay,
-                validation.GatewayTransactionId);
+            // Retry loop handles the rare case where a concurrent operation (e.g.
+            // a session payment) modified the user row between our read and save.
+            // xmin concurrency token causes DbUpdateConcurrencyException in that case.
+            decimal newBalance = 0;
+            for (var attempt = 0; attempt < 3; attempt++)
+            {
+                try
+                {
+                    if (attempt > 0)
+                    {
+                        // Reload the user so xmin is fresh before retrying
+                        await _dbContext.Entry(user).ReloadAsync();
+                    }
 
-            transaction.MarkCompleted(validation.GatewayTransactionId);
-            await _dbContext.SaveChangesAsync();
+                    var (balance, _) = _walletDomainService.TopUp(
+                        user,
+                        transaction.Amount,
+                        transaction.PaymentGateway ?? PaymentGateway.VnPay,
+                        validation.GatewayTransactionId);
+                    newBalance = balance;
+
+                    transaction.MarkCompleted(validation.GatewayTransactionId);
+                    await _dbContext.SaveChangesAsync();
+                    break;
+                }
+                catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException) when (attempt < 2)
+                {
+                    _logger.LogWarning(
+                        "[VnPay IPN] Concurrency conflict on wallet update for {UserId}, retrying (attempt {Attempt})",
+                        transaction.UserId, attempt + 1);
+                }
+            }
 
             // Invalidate cache
             await _cache.RemoveAsync(CacheKeys.UserWalletBalance(transaction.UserId));
