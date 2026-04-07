@@ -24,7 +24,7 @@ public class OcppWebSocketMiddleware
     private readonly RequestDelegate _next;
     private readonly ILogger<OcppWebSocketMiddleware> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
-    private const int BufferSize = 4096;
+    private const int BufferSize = 16384; // 16 KB — OCPP messages (MeterValues with many samples) can exceed 4 KB
     private static readonly Regex CpIdPattern = new(@"^[A-Za-z0-9\-_.]{1,64}$", RegexOptions.Compiled);
 
     /// <summary>

@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using KLC.Enums;
 using KLC.Sessions;
 using KLC.Stations;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -82,8 +84,6 @@ public class OrphanedSessionCleanupService : BackgroundService
         var totalCleaned = 0;
 
         // --- 1. Timeout Pending/Starting/Stopping sessions ---
-        // Pending/Starting: user scanned QR but charger never responded
-        // Stopping: user tapped Stop but charger never sent StopTransaction
         var cutoff = DateTime.UtcNow - _pendingTimeout;
         var stuckSessions = await sessionRepo.GetListAsync(
             s => (s.Status == SessionStatus.Pending ||
@@ -91,30 +91,52 @@ public class OrphanedSessionCleanupService : BackgroundService
                   s.Status == SessionStatus.Stopping) &&
                  s.StartTime < cutoff);
 
-        foreach (var session in stuckSessions)
+        if (stuckSessions.Count > 0)
         {
-            var reason = session.Status == SessionStatus.Stopping
-                ? $"Timed out after {_pendingTimeout.TotalMinutes:0} minutes — charger never confirmed stop"
-                : $"Timed out after {_pendingTimeout.TotalMinutes:0} minutes — charger never started";
-            var tariff = session.TariffPlanId.HasValue
-                ? await tariffRepo.FirstOrDefaultAsync(t => t.Id == session.TariffPlanId.Value)
-                : null;
-            session.MarkFailed(reason, tariff);
-            await sessionRepo.UpdateAsync(session);
+            // Batch-load tariffs and connectors to avoid N+1
+            var stuckTariffIds = stuckSessions
+                .Where(s => s.TariffPlanId.HasValue)
+                .Select(s => s.TariffPlanId!.Value)
+                .Distinct().ToList();
+            var stuckTariffs = stuckTariffIds.Count > 0
+                ? (await (await tariffRepo.GetQueryableAsync())
+                    .Where(t => stuckTariffIds.Contains(t.Id))
+                    .ToListAsync())
+                    .ToDictionary(t => t.Id)
+                : new Dictionary<Guid, Tariffs.TariffPlan>();
 
-            // Reset connector to Available so other users can charge
-            var connector = await connectorRepo.FirstOrDefaultAsync(
-                c => c.StationId == session.StationId && c.ConnectorNumber == session.ConnectorNumber);
-            if (connector != null && (connector.Status == ConnectorStatus.Preparing || connector.Status == ConnectorStatus.Finishing))
+            var stuckConnectorKeys = stuckSessions
+                .Select(s => new { s.StationId, s.ConnectorNumber })
+                .Distinct().ToList();
+            var stuckStationIds = stuckConnectorKeys.Select(k => k.StationId).Distinct().ToList();
+            var stuckConnectors = (await (await connectorRepo.GetQueryableAsync())
+                .Where(c => stuckStationIds.Contains(c.StationId))
+                .ToListAsync())
+                .ToDictionary(c => (c.StationId, c.ConnectorNumber));
+
+            foreach (var session in stuckSessions)
             {
-                connector.UpdateStatus(ConnectorStatus.Available);
-                await connectorRepo.UpdateAsync(connector);
-            }
+                var reason = session.Status == SessionStatus.Stopping
+                    ? $"Timed out after {_pendingTimeout.TotalMinutes:0} minutes — charger never confirmed stop"
+                    : $"Timed out after {_pendingTimeout.TotalMinutes:0} minutes — charger never started";
+                var tariff = session.TariffPlanId.HasValue
+                    ? stuckTariffs.GetValueOrDefault(session.TariffPlanId.Value)
+                    : null;
+                session.MarkFailed(reason, tariff);
+                await sessionRepo.UpdateAsync(session);
 
-            totalCleaned++;
-            _logger.LogInformation(
-                "Stuck {Status} session {SessionId} timed out after {Minutes}min (user: {UserId}, station: {StationId})",
-                session.Status, session.Id, _pendingTimeout.TotalMinutes, session.UserId, session.StationId);
+                if (stuckConnectors.TryGetValue((session.StationId, session.ConnectorNumber), out var connector)
+                    && (connector.Status == ConnectorStatus.Preparing || connector.Status == ConnectorStatus.Finishing))
+                {
+                    connector.UpdateStatus(ConnectorStatus.Available);
+                    await connectorRepo.UpdateAsync(connector);
+                }
+
+                totalCleaned++;
+                _logger.LogInformation(
+                    "Stuck {Status} session {SessionId} timed out after {Minutes}min (user: {UserId}, station: {StationId})",
+                    session.Status, session.Id, _pendingTimeout.TotalMinutes, session.UserId, session.StationId);
+            }
         }
 
         // --- 2. Timeout InProgress sessions with offline station ---
@@ -122,29 +144,46 @@ public class OrphanedSessionCleanupService : BackgroundService
             s => s.OcppTransactionId != null &&
                  (s.Status == SessionStatus.InProgress || s.Status == SessionStatus.Suspended));
 
-        foreach (var session in activeSessions)
+        if (activeSessions.Count > 0)
         {
-            var station = await stationRepo.FirstOrDefaultAsync(s => s.Id == session.StationId);
-            if (station == null) continue;
-            if (station.Status != StationStatus.Offline) continue;
-            if (station.LastHeartbeat.HasValue &&
-                DateTime.UtcNow - station.LastHeartbeat.Value < _offlineGracePeriod) continue;
+            var activeStationIds = activeSessions.Select(s => s.StationId).Distinct().ToList();
+            var activeStations = (await (await stationRepo.GetQueryableAsync())
+                .Where(s => activeStationIds.Contains(s.Id))
+                .ToListAsync())
+                .ToDictionary(s => s.Id);
 
-            var offlineTariff = session.TariffPlanId.HasValue
-                ? await tariffRepo.FirstOrDefaultAsync(t => t.Id == session.TariffPlanId.Value)
-                : null;
-            session.MarkFailed("Station offline beyond grace period — no StopTransaction received", offlineTariff);
-            await sessionRepo.UpdateAsync(session);
-            totalCleaned++;
+            var activeTariffIds = activeSessions
+                .Where(s => s.TariffPlanId.HasValue)
+                .Select(s => s.TariffPlanId!.Value)
+                .Distinct().ToList();
+            var activeTariffs = activeTariffIds.Count > 0
+                ? (await (await tariffRepo.GetQueryableAsync())
+                    .Where(t => activeTariffIds.Contains(t.Id))
+                    .ToListAsync())
+                    .ToDictionary(t => t.Id)
+                : new Dictionary<Guid, Tariffs.TariffPlan>();
 
-            _logger.LogWarning(
-                "InProgress session {SessionId} (txn={TransactionId}) failed — station offline. Last heartbeat: {LastHeartbeat}",
-                session.Id, session.OcppTransactionId, station.LastHeartbeat);
+            foreach (var session in activeSessions)
+            {
+                if (!activeStations.TryGetValue(session.StationId, out var station)) continue;
+                if (station.Status != StationStatus.Offline) continue;
+                if (station.LastHeartbeat.HasValue &&
+                    DateTime.UtcNow - station.LastHeartbeat.Value < _offlineGracePeriod) continue;
+
+                var offlineTariff = session.TariffPlanId.HasValue
+                    ? activeTariffs.GetValueOrDefault(session.TariffPlanId.Value)
+                    : null;
+                session.MarkFailed("Station offline beyond grace period — no StopTransaction received", offlineTariff);
+                await sessionRepo.UpdateAsync(session);
+                totalCleaned++;
+
+                _logger.LogWarning(
+                    "InProgress session {SessionId} (txn={TransactionId}) failed — station offline. Last heartbeat: {LastHeartbeat}",
+                    session.Id, session.OcppTransactionId, station.LastHeartbeat);
+            }
         }
 
         // --- 3. Deduplicate: only keep the NEWEST InProgress session per connector ---
-        // Multiple InProgress sessions on the same connector means older ones are orphaned
-        // (simulator disconnected before sending StopTransaction)
         var inProgressSessions = await sessionRepo.GetListAsync(
             s => s.Status == SessionStatus.InProgress && s.OcppTransactionId != null);
 
@@ -152,14 +191,27 @@ public class OrphanedSessionCleanupService : BackgroundService
             .GroupBy(s => new { s.StationId, s.ConnectorNumber })
             .Where(g => g.Count() > 1);
 
-        foreach (var group in grouped)
+        var staleSessions = grouped
+            .SelectMany(g => g.OrderByDescending(s => s.StartTime).Skip(1))
+            .ToList();
+
+        if (staleSessions.Count > 0)
         {
-            // Keep the newest, fail all older ones
-            var ordered = group.OrderByDescending(s => s.StartTime).ToList();
-            foreach (var stale in ordered.Skip(1))
+            var dupTariffIds = staleSessions
+                .Where(s => s.TariffPlanId.HasValue)
+                .Select(s => s.TariffPlanId!.Value)
+                .Distinct().ToList();
+            var dupTariffs = dupTariffIds.Count > 0
+                ? (await (await tariffRepo.GetQueryableAsync())
+                    .Where(t => dupTariffIds.Contains(t.Id))
+                    .ToListAsync())
+                    .ToDictionary(t => t.Id)
+                : new Dictionary<Guid, Tariffs.TariffPlan>();
+
+            foreach (var stale in staleSessions)
             {
                 var staleTariff = stale.TariffPlanId.HasValue
-                    ? await tariffRepo.FirstOrDefaultAsync(t => t.Id == stale.TariffPlanId.Value)
+                    ? dupTariffs.GetValueOrDefault(stale.TariffPlanId.Value)
                     : null;
                 stale.MarkFailed("Superseded by newer session on same connector", staleTariff);
                 await sessionRepo.UpdateAsync(stale);
@@ -172,38 +224,53 @@ public class OrphanedSessionCleanupService : BackgroundService
         }
 
         // --- 4. Stale InProgress sessions — no meter values received recently ---
-        // Charger may have stopped sending data (disconnected, battery full, power off)
-        // but never sent StopTransaction. Complete the session using last known data.
         var staleCutoff = DateTime.UtcNow - _staleInProgressTimeout;
         var remainingInProgress = await sessionRepo.GetListAsync(
             s => s.Status == SessionStatus.InProgress && s.OcppTransactionId != null);
 
-        foreach (var session in remainingInProgress)
+        var staleInProgress = remainingInProgress
+            .Where(s => (s.LastModificationTime ?? s.StartTime ?? s.CreationTime) < staleCutoff)
+            .ToList();
+
+        if (staleInProgress.Count > 0)
         {
-            // Check last activity: either LastModificationTime or StartTime
-            var lastActivity = session.LastModificationTime ?? session.StartTime ?? session.CreationTime;
-            if (lastActivity >= staleCutoff) continue; // Still active
+            var staleMeterTariffIds = staleInProgress
+                .Where(s => s.TariffPlanId.HasValue)
+                .Select(s => s.TariffPlanId!.Value)
+                .Distinct().ToList();
+            var staleMeterTariffs = staleMeterTariffIds.Count > 0
+                ? (await (await tariffRepo.GetQueryableAsync())
+                    .Where(t => staleMeterTariffIds.Contains(t.Id))
+                    .ToListAsync())
+                    .ToDictionary(t => t.Id)
+                : new Dictionary<Guid, Tariffs.TariffPlan>();
 
-            // Session has had no updates for StaleInProgressMinutes — complete it
-            var staleMeterTariff = session.TariffPlanId.HasValue
-                ? await tariffRepo.FirstOrDefaultAsync(t => t.Id == session.TariffPlanId.Value)
-                : null;
-            session.MarkFailed($"No meter data received for {_staleInProgressTimeout.TotalMinutes:0} minutes", staleMeterTariff);
-            await sessionRepo.UpdateAsync(session);
+            var staleConnectorStationIds = staleInProgress.Select(s => s.StationId).Distinct().ToList();
+            var staleConnectors = (await (await connectorRepo.GetQueryableAsync())
+                .Where(c => staleConnectorStationIds.Contains(c.StationId))
+                .ToListAsync())
+                .ToDictionary(c => (c.StationId, c.ConnectorNumber));
 
-            // Reset connector
-            var connector = await connectorRepo.FirstOrDefaultAsync(
-                c => c.StationId == session.StationId && c.ConnectorNumber == session.ConnectorNumber);
-            if (connector != null && connector.Status != ConnectorStatus.Available)
+            foreach (var session in staleInProgress)
             {
-                connector.UpdateStatus(ConnectorStatus.Available);
-                await connectorRepo.UpdateAsync(connector);
-            }
+                var staleMeterTariff = session.TariffPlanId.HasValue
+                    ? staleMeterTariffs.GetValueOrDefault(session.TariffPlanId.Value)
+                    : null;
+                session.MarkFailed($"No meter data received for {_staleInProgressTimeout.TotalMinutes:0} minutes", staleMeterTariff);
+                await sessionRepo.UpdateAsync(session);
 
-            totalCleaned++;
-            _logger.LogWarning(
-                "Stale InProgress session {SessionId} failed — no meter data for {Minutes}min. Energy={Energy}kWh",
-                session.Id, _staleInProgressTimeout.TotalMinutes, session.TotalEnergyKwh);
+                if (staleConnectors.TryGetValue((session.StationId, session.ConnectorNumber), out var connector)
+                    && connector.Status != ConnectorStatus.Available)
+                {
+                    connector.UpdateStatus(ConnectorStatus.Available);
+                    await connectorRepo.UpdateAsync(connector);
+                }
+
+                totalCleaned++;
+                _logger.LogWarning(
+                    "Stale InProgress session {SessionId} failed — no meter data for {Minutes}min. Energy={Energy}kWh",
+                    session.Id, _staleInProgressTimeout.TotalMinutes, session.TotalEnergyKwh);
+            }
         }
 
         await uow.CompleteAsync();
