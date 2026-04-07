@@ -10,10 +10,12 @@ using KLC.Notifications;
 using KLC.Ocpp.Messages;
 using KLC.Ocpp.Vendors;
 using KLC.Operators;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Guids;
 using Volo.Abp.Settings;
+using Volo.Abp.Uow;
 
 namespace KLC.Ocpp;
 
@@ -36,6 +38,7 @@ public class OcppMessageHandler
     private readonly ISettingProvider _settingProvider;
     private readonly IPushNotificationService? _pushNotificationService;
     private readonly IOcppRemoteCommandService _remoteCommandService;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     public OcppMessageHandler(
         ILogger<OcppMessageHandler> logger,
@@ -49,6 +52,7 @@ public class OcppMessageHandler
         IAuditEventLogger auditLogger,
         ISettingProvider settingProvider,
         IOcppRemoteCommandService remoteCommandService,
+        IServiceScopeFactory scopeFactory,
         PowerBalancingService? powerBalancingService = null,
         IOperatorWebhookService? webhookService = null,
         IPushNotificationService? pushNotificationService = null)
@@ -64,6 +68,7 @@ public class OcppMessageHandler
         _auditLogger = auditLogger;
         _settingProvider = settingProvider;
         _remoteCommandService = remoteCommandService;
+        _scopeFactory = scopeFactory;
         _powerBalancingService = powerBalancingService;
         _webhookService = webhookService;
         _pushNotificationService = pushNotificationService;
@@ -428,29 +433,49 @@ public class OcppMessageHandler
         }
 
         // Push notification: charging started
-        if (sessionId.HasValue && _pushNotificationService != null)
+        // Use a fresh DI scope — push service queries device tokens from DB and must NOT
+        // share the DbContext that the current handler UoW is still committing.
+        if (sessionId.HasValue)
         {
-            // Fire-and-forget — don't block OCPP response
+            var capturedSessionId = sessionId.Value;
+            var capturedConnectorId = request.ConnectorId;
+            var capturedChargePointId = connection.ChargePointId;
+            var scopeFactory = _scopeFactory;
+            var logger = _logger;
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    var session = await _ocppService.GetActiveSessionForConnectorAsync(
-                        connection.ChargePointId, request.ConnectorId);
+                    using var scope = scopeFactory.CreateScope();
+                    var uowManager = scope.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
+                    var ocppService = scope.ServiceProvider.GetRequiredService<IOcppService>();
+                    var pushService = scope.ServiceProvider.GetService<IPushNotificationService>();
+                    if (pushService == null) return;
+
+                    using var uow = uowManager.Begin(requiresNew: true);
+                    var session = await ocppService.GetActiveSessionForConnectorAsync(
+                        capturedChargePointId, capturedConnectorId);
+                    await uow.CompleteAsync();
+
                     if (session != null && session.UserId != Guid.Empty)
                     {
-                        await _pushNotificationService.SendToUserAsync(
+                        using var pushScope = scopeFactory.CreateScope();
+                        var pushUowManager = pushScope.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
+                        var pushSvc = pushScope.ServiceProvider.GetRequiredService<IPushNotificationService>();
+                        using var pushUow = pushUowManager.Begin(requiresNew: true);
+                        await pushSvc.SendToUserAsync(
                             session.UserId,
                             "Đang sạc ⚡",
-                            $"Phiên sạc đã bắt đầu tại cổng {request.ConnectorId}",
+                            $"Phiên sạc đã bắt đầu tại cổng {capturedConnectorId}",
                             new System.Collections.Generic.Dictionary<string, string>
                             {
                                 { "type", "session_started" },
-                                { "sessionId", sessionId.Value.ToString() }
+                                { "sessionId", capturedSessionId.ToString() }
                             });
+                        await pushUow.CompleteAsync();
                     }
                 }
-                catch (Exception ex) { _logger.LogWarning(ex, "Push notification failed for session start"); }
+                catch (Exception ex) { logger.LogWarning(ex, "Push notification failed for session start"); }
             });
         }
 
@@ -541,27 +566,40 @@ public class OcppMessageHandler
         }
 
         // Push notification: charging completed
-        if (stopResult != null && stopResult.UserId != Guid.Empty && _pushNotificationService != null)
+        // Use a fresh DI scope — push service queries device tokens from DB and must NOT
+        // share the DbContext that the current handler UoW is still committing.
+        if (stopResult != null && stopResult.UserId != Guid.Empty)
         {
+            var userId = stopResult.UserId;
             var energy = stopResult.TotalEnergyKwh;
             var cost = stopResult.TotalCost;
+            var capturedSessionId = stopResult.SessionId;
+            var scopeFactory = _scopeFactory;
+            var logger = _logger;
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    await _pushNotificationService.SendToUserAsync(
-                        stopResult.UserId,
+                    using var scope = scopeFactory.CreateScope();
+                    var uowManager = scope.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
+                    var pushSvc = scope.ServiceProvider.GetService<IPushNotificationService>();
+                    if (pushSvc == null) return;
+
+                    using var uow = uowManager.Begin(requiresNew: true);
+                    await pushSvc.SendToUserAsync(
+                        userId,
                         "Sạc hoàn tất ✅",
                         $"Đã sạc {energy:F2} kWh — Chi phí: {cost:N0}đ",
                         new System.Collections.Generic.Dictionary<string, string>
                         {
                             { "type", "session_completed" },
-                            { "sessionId", stopResult.SessionId.ToString() },
+                            { "sessionId", capturedSessionId.ToString() },
                             { "energyKwh", energy.ToString("F2") },
                             { "cost", cost.ToString("F0") }
                         });
+                    await uow.CompleteAsync();
                 }
-                catch (Exception ex) { _logger.LogWarning(ex, "Push notification failed for session complete"); }
+                catch (Exception ex) { logger.LogWarning(ex, "Push notification failed for session complete"); }
             });
         }
 
