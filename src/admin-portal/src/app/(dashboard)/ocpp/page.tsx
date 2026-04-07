@@ -163,11 +163,12 @@ export default function OcppManagementPage() {
   const [configData, setConfigData] = useState<{ key: string; value: string | null; readonly: boolean }[] | null>(null);
   const [commandResult, setCommandResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  const { data: connections = [], isLoading: connectionsLoading } = useQuery<OcppConnection[]>({
+  const { data: connectionsRaw, isLoading: connectionsLoading } = useQuery<OcppConnection[]>({
     queryKey: ["ocpp-connections"],
     queryFn: async () => (await api.get("/ocpp-proxy/connections")).data,
     refetchInterval: 10000,
   });
+  const connections = connectionsRaw ?? [];
 
   const { data: detail } = useQuery<OcppConnectionDetail>({
     queryKey: ["ocpp-connection", selectedCp],
