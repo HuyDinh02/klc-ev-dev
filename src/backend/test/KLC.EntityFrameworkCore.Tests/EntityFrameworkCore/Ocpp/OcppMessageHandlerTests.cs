@@ -10,6 +10,7 @@ using KLC.Ocpp.Messages;
 using KLC.Ocpp.Vendors;
 using KLC.Sessions;
 using KLC.TestDoubles;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -54,6 +55,8 @@ public class OcppMessageHandlerTests
         var auditLogger = Substitute.For<IAuditEventLogger>();
         var settingProvider = Substitute.For<ISettingProvider>();
 
+        var scopeFactory = Substitute.For<IServiceScopeFactory>();
+
         _handler = new OcppMessageHandler(
             NullLogger<OcppMessageHandler>.Instance,
             connectionManager,
@@ -66,6 +69,7 @@ public class OcppMessageHandlerTests
             auditLogger,
             settingProvider,
             _remoteCommandService,
+            scopeFactory,
             powerBalancingService: null);
     }
 
