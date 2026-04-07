@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using KLC.Permissions;
 using KLC.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
@@ -14,9 +15,25 @@ namespace KLC.Hubs;
 [Authorize]
 public class MonitoringHub : Hub<IMonitoringHubClient>
 {
+    private readonly IAuthorizationService _authorizationService;
+
+    public MonitoringHub(IAuthorizationService authorizationService)
+    {
+        _authorizationService = authorizationService;
+    }
+
     public override async Task OnConnectedAsync()
     {
-        // Add to general monitoring group
+        // SEC-3: verify caller holds Monitoring.Default permission before joining the group.
+        // [Authorize] only validates the JWT; it does not check ABP permissions.
+        var authResult = await _authorizationService.AuthorizeAsync(
+            Context.User!, KLCPermissions.Monitoring.Default);
+        if (!authResult.Succeeded)
+        {
+            Context.Abort();
+            return;
+        }
+
         await Groups.AddToGroupAsync(Context.ConnectionId, "Monitoring");
         await base.OnConnectedAsync();
     }

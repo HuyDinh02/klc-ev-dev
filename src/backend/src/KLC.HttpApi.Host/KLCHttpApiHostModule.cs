@@ -620,9 +620,29 @@ public class KLCHttpApiHostModule : AbpModule
         var vnpaySecret = config["Payment:VnPay:HashSecret"] ?? "";
         if (string.IsNullOrWhiteSpace(vnpaySecret))
         {
-            logger.LogWarning(
-                "PRODUCTION CONFIG WARNING: Payment:VnPay:HashSecret is not configured. " +
-                "VnPay payments will not work until this is set.");
+            logger.LogCritical(
+                "PRODUCTION CONFIG ERROR: Payment:VnPay:HashSecret is not configured. " +
+                "VnPay IPN validation will fail until this is set via Secret Manager.");
+            hasErrors = true;
+        }
+
+        var vnpayTmnCode = config["Payment:VnPay:TmnCode"] ?? "";
+        if (string.IsNullOrWhiteSpace(vnpayTmnCode))
+        {
+            logger.LogCritical(
+                "PRODUCTION CONFIG ERROR: Payment:VnPay:TmnCode is not configured. " +
+                "VnPay IPN validation will fail until this is set via Secret Manager.");
+            hasErrors = true;
+        }
+
+        // SEC-4: AllowUnregisteredIdTags must be false in production to prevent anonymous charging
+        var allowUnregistered = config.GetValue<bool>("Ocpp:AllowUnregisteredIdTags", true);
+        if (allowUnregistered)
+        {
+            logger.LogCritical(
+                "PRODUCTION CONFIG ERROR: Ocpp:AllowUnregisteredIdTags is true (or not set — default is true). " +
+                "Set Ocpp:AllowUnregisteredIdTags=false to require registered RFID tags in production.");
+            hasErrors = true;
         }
 
         // Optional: Sentry DSN

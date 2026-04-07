@@ -279,6 +279,25 @@ static void ValidateProductionConfiguration(IConfiguration config, ILogger logge
         hasErrors = true;
     }
 
+    // Critical: VnPay credentials must be configured (payments will silently fail without them)
+    var vnpaySecret = config["Payment:VnPay:HashSecret"] ?? "";
+    if (string.IsNullOrWhiteSpace(vnpaySecret))
+    {
+        logger.LogCritical(
+            "PRODUCTION CONFIG ERROR: Payment:VnPay:HashSecret is not configured. " +
+            "VnPay top-ups will fail until this is set via Secret Manager.");
+        hasErrors = true;
+    }
+
+    var vnpayTmnCode = config["Payment:VnPay:TmnCode"] ?? "";
+    if (string.IsNullOrWhiteSpace(vnpayTmnCode))
+    {
+        logger.LogCritical(
+            "PRODUCTION CONFIG ERROR: Payment:VnPay:TmnCode is not configured. " +
+            "VnPay top-ups will fail until this is set via Secret Manager.");
+        hasErrors = true;
+    }
+
     // Optional: Sentry DSN
     var sentryDsn = config["Sentry:Dsn"] ?? "";
     if (string.IsNullOrWhiteSpace(sentryDsn))
