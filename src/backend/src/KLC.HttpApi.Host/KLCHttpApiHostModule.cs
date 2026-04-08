@@ -278,6 +278,8 @@ public class KLCHttpApiHostModule : AbpModule
         context.Services.AddHostedService<PaymentReconciliationService>();
         context.Services.AddSingleton<PowerBalancingService>();
         context.Services.AddHostedService<PowerBalancingService>(sp => sp.GetRequiredService<PowerBalancingService>());
+        context.Services.AddSingleton<OcppRedisCommandBridge>();
+        context.Services.AddHostedService<OcppRedisCommandBridge>(sp => sp.GetRequiredService<OcppRedisCommandBridge>());
         context.Services.AddScoped<IOcppRemoteCommandService, OcppRemoteCommandService>();
         context.Services.AddScoped<OcppPostBootConfigService>();
 

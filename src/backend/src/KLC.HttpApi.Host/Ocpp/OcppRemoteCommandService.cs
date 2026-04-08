@@ -21,18 +21,21 @@ public class OcppRemoteCommandService : IOcppRemoteCommandService
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IConfiguration _configuration;
     private readonly ILogger<OcppRemoteCommandService> _logger;
+    private readonly OcppRedisCommandBridge? _redisBridge;
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
 
     public OcppRemoteCommandService(
         OcppConnectionManager connectionManager,
         IHttpClientFactory httpClientFactory,
         IConfiguration configuration,
-        ILogger<OcppRemoteCommandService> logger)
+        ILogger<OcppRemoteCommandService> logger,
+        OcppRedisCommandBridge? redisBridge = null)
     {
         _connectionManager = connectionManager;
         _httpClientFactory = httpClientFactory;
         _configuration = configuration;
         _logger = logger;
+        _redisBridge = redisBridge;
     }
 
     public async Task<RemoteCommandResult> SendRemoteStartTransactionAsync(string stationCode, int connectorId, string idTag)
@@ -335,11 +338,23 @@ public class OcppRemoteCommandService : IOcppRemoteCommandService
         var connection = _connectionManager.GetConnection(stationCode);
         if (connection == null)
         {
-            // Fallback: forward to OCPP Gateway if configured (separated architecture)
+            // Fallback 1: Try Redis pub/sub (reaches charger on any Cloud Run instance)
+            if (_redisBridge is { IsAvailable: true })
+            {
+                _logger.LogInformation("Station {StationCode} not local — sending {Action} via Redis pub/sub", stationCode, action);
+                var redisResponse = await _redisBridge.SendCommandViaRedisAsync(stationCode, action, payload);
+                if (redisResponse != null)
+                {
+                    return ParseCommandResponse(stationCode, action, redisResponse);
+                }
+                _logger.LogWarning("Redis pub/sub: no instance has {StationCode} connected (timeout)", stationCode);
+            }
+
+            // Fallback 2: Forward to OCPP Gateway via HTTP (legacy)
             var gatewayUrl = _configuration["Ocpp:GatewayUrl"];
             if (!string.IsNullOrEmpty(gatewayUrl))
             {
-                _logger.LogInformation("Station {StationCode} not local — forwarding {Action} to Gateway", stationCode, action);
+                _logger.LogInformation("Station {StationCode} not local — forwarding {Action} to Gateway via HTTP", stationCode, action);
                 return await ForwardToGatewayAsync(gatewayUrl, stationCode, action, payload);
             }
 
@@ -393,6 +408,31 @@ public class OcppRemoteCommandService : IOcppRemoteCommandService
             // If we can't parse, consider it accepted (we got a response)
             _logger.LogInformation("OCPP_OUT_RESULT: {Action} to {StationCode}: raw response (non-JSON), treating as accepted",
                 action, stationCode);
+            return new RemoteCommandResult(true);
+        }
+    }
+
+    private RemoteCommandResult ParseCommandResponse(string stationCode, string action, string response)
+    {
+        if (response.StartsWith("ERROR:"))
+        {
+            _logger.LogWarning("OCPP_OUT_RESULT: {Action} error from {StationCode} (via Redis): {Response}", action, stationCode, response);
+            return new RemoteCommandResult(false, response);
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(response);
+            var status = doc.RootElement.TryGetProperty("status", out var s) ? s.GetString() : null;
+            var accepted = string.Equals(status, "Accepted", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(status, "Unlocked", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(status, "Scheduled", StringComparison.OrdinalIgnoreCase);
+
+            _logger.LogInformation("OCPP_OUT_RESULT: {Action} to {StationCode} (via Redis): status={Status}", action, stationCode, status);
+            return accepted ? new RemoteCommandResult(true) : new RemoteCommandResult(false, $"Charger responded: {status}");
+        }
+        catch (JsonException)
+        {
             return new RemoteCommandResult(true);
         }
     }

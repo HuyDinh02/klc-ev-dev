@@ -1,11 +1,16 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using KLC.Enums;
 using KLC.Files;
 using KLC.MobileUsers;
+using KLC.Notifications;
 using KLC.Permissions;
+using KLC.Users;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Logging;
 using Volo.Abp;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Validation;
@@ -17,13 +22,19 @@ public class PromotionAppService : KLCAppService, IPromotionAppService
 {
     private readonly IRepository<Promotion, Guid> _promotionRepository;
     private readonly IFileUploadService _fileUploadService;
+    private readonly IPushNotificationService _pushNotificationService;
+    private readonly IRepository<AppUser, Guid> _appUserRepository;
 
     public PromotionAppService(
         IRepository<Promotion, Guid> promotionRepository,
-        IFileUploadService fileUploadService)
+        IFileUploadService fileUploadService,
+        IPushNotificationService pushNotificationService,
+        IRepository<AppUser, Guid> appUserRepository)
     {
         _promotionRepository = promotionRepository;
         _fileUploadService = fileUploadService;
+        _pushNotificationService = pushNotificationService;
+        _appUserRepository = appUserRepository;
     }
 
     public async Task<CursorPagedResultDto<PromotionListDto>> GetListAsync(GetPromotionListDto input)
@@ -98,6 +109,36 @@ public class PromotionAppService : KLCAppService, IPromotionAppService
             input.ImageUrl);
 
         await _promotionRepository.InsertAsync(promo);
+
+        // Send push notification to all active users when promotion is active
+        if (promo.IsActive)
+        {
+            try
+            {
+                var userQuery = await _appUserRepository.GetQueryableAsync();
+                var userIds = await AsyncExecuter.ToListAsync(
+                    userQuery
+                        .Where(u => u.IsActive && !u.IsDeleted)
+                        .Select(u => u.IdentityUserId));
+
+                if (userIds.Any())
+                {
+                    await _pushNotificationService.SendToUsersAsync(
+                        userIds,
+                        promo.Title,
+                        promo.Description ?? "Khám phá ưu đãi mới dành cho bạn!",
+                        new Dictionary<string, string>
+                        {
+                            ["type"] = "promotion",
+                            ["promotionId"] = promo.Id.ToString()
+                        });
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to send Promotion push notification for promotion {PromotionId}", promo.Id);
+            }
+        }
 
         return new CreatePromotionResultDto { Id = promo.Id, Title = promo.Title };
     }
