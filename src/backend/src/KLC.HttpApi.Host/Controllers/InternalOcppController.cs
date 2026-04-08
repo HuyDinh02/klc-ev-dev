@@ -1,5 +1,7 @@
+using System;
 using System.Linq;
 using System.Threading.Tasks;
+using KLC.Enums;
 using KLC.Ocpp;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,15 +20,18 @@ public class InternalOcppController : ControllerBase
 {
     private readonly IOcppRemoteCommandService _remoteCommandService;
     private readonly OcppConnectionManager _connectionManager;
+    private readonly IOcppService _ocppService;
     private readonly IConfiguration _configuration;
 
     public InternalOcppController(
         IOcppRemoteCommandService remoteCommandService,
         OcppConnectionManager connectionManager,
+        IOcppService ocppService,
         IConfiguration configuration)
     {
         _remoteCommandService = remoteCommandService;
         _connectionManager = connectionManager;
+        _ocppService = ocppService;
         _configuration = configuration;
     }
 
@@ -47,6 +52,54 @@ public class InternalOcppController : ControllerBase
             }).ToList();
 
         return Ok(connections);
+    }
+
+    /// <summary>
+    /// Get connection detail for a specific charger.
+    /// Checks the in-memory connection manager first (this instance), then falls back to the
+    /// DB station status to handle multi-instance Cloud Run deployments where the HTTP request
+    /// may land on a different instance than the one holding the charger's WebSocket.
+    /// </summary>
+    [HttpGet("connections/{chargePointId}")]
+    public async Task<ActionResult> GetConnection(string chargePointId)
+    {
+        if (!ValidateApiKey()) return Unauthorized();
+
+        // Fast path: connection is on this instance
+        var connection = _connectionManager.GetConnection(chargePointId);
+        if (connection != null)
+        {
+            return Ok(new
+            {
+                connection.ChargePointId,
+                connection.ConnectedAt,
+                connection.LastHeartbeat,
+                connection.IsRegistered,
+                connection.StationId,
+                connection.VendorProfileType,
+                Source = "local"
+            });
+        }
+
+        // Fallback: check DB station status (authoritative across all instances).
+        // When BootNotification is processed on any instance, the station is set Online in the DB.
+        // When the charger disconnects (or heartbeat monitor expires it), it is set Offline.
+        var station = await _ocppService.GetStationByChargePointIdAsync(chargePointId);
+        if (station != null && station.Status == StationStatus.Online)
+        {
+            return Ok(new
+            {
+                ChargePointId = chargePointId,
+                ConnectedAt = (DateTime?)null,
+                LastHeartbeat = (DateTime?)null,
+                IsRegistered = true,
+                StationId = station.Id,
+                VendorProfileType = "Generic",
+                Source = "db"
+            });
+        }
+
+        return NotFound();
     }
 
     [HttpPost("remote-start")]

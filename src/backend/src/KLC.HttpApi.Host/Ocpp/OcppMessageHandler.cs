@@ -124,6 +124,17 @@ public class OcppMessageHandler
         _logger.LogInformation("Handling {Action} from {ChargePointId} [uid={UniqueId}, proto={OcppVersion}]",
             action, connection.ChargePointId, uniqueId, connection.OcppVersion);
 
+        // OCPP 1.6J §4.1.1 idempotency: if charger retries the same uniqueId (no response received
+        // in time), return the cached response instead of re-processing — prevents duplicate sessions.
+        var cachedResponse = connection.GetCachedResponse(uniqueId);
+        if (cachedResponse != null)
+        {
+            _logger.LogWarning(
+                "Idempotent retry: returning cached response for {Action} uid={UniqueId} from {ChargePointId}",
+                action, uniqueId, connection.ChargePointId);
+            return cachedResponse;
+        }
+
         var result = action switch
         {
             "BootNotification" => await HandleBootNotificationAsync(connection, uniqueId, payload, parser),
@@ -144,6 +155,10 @@ public class OcppMessageHandler
         _logger.LogInformation(
             "Completed {Action} from {ChargePointId} [uid={UniqueId}] in {LatencyMs}ms",
             action, connection.ChargePointId, uniqueId, sw.ElapsedMilliseconds);
+
+        // Cache response for idempotency — charger may retry if it doesn't receive our response
+        // in time. 5-minute TTL covers any reasonable retry window.
+        connection.CacheResponse(uniqueId, result, TimeSpan.FromMinutes(5));
 
         // Persist raw event for auditable actions (fire-and-forget style, inside same UoW)
         await PersistRawEventAsync(connection, action, uniqueId, payload, sw.ElapsedMilliseconds);
