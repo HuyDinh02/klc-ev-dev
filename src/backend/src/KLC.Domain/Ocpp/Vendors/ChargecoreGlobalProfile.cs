@@ -32,6 +32,7 @@ public class ChargecoreGlobalProfile : VendorProfileBase
         var vendor = chargePointVendor.Trim();
         return vendor.Contains("Chargecore", StringComparison.OrdinalIgnoreCase)
                || vendor.Contains("ChargeCore Global", StringComparison.OrdinalIgnoreCase)
+               || vendor.Contains("cnchargepoint", StringComparison.OrdinalIgnoreCase)
                || vendor.Contains("CCG", StringComparison.OrdinalIgnoreCase);
     }
 
