@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using KLC.Enums;
 using KLC.Stations;
@@ -136,4 +137,12 @@ public interface IOcppService
     /// Used for auto-stop when connector goes Available/Finishing during active session.
     /// </summary>
     Task<Sessions.ChargingSession?> GetActiveSessionForConnectorAsync(string chargePointId, int connectorNumber);
+
+    /// <summary>
+    /// Gets all stations currently marked Online in the database.
+    /// Used by the connection status endpoint to support multi-instance deployments where
+    /// the HTTP request may land on a different Cloud Run instance than the one holding
+    /// a charger's WebSocket connection.
+    /// </summary>
+    Task<IList<Stations.ChargingStation>> GetOnlineStationsAsync();
 }

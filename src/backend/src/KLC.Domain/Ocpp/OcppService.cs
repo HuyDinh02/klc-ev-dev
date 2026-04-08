@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using KLC.Enums;
 using KLC.Stations;
@@ -70,4 +71,7 @@ public class OcppService : DomainService, IOcppService
 
     public Task<Sessions.ChargingSession?> GetActiveSessionForConnectorAsync(string chargePointId, int connectorNumber)
         => _stationHandler.GetActiveSessionForConnectorAsync(chargePointId, connectorNumber);
+
+    public Task<IList<Stations.ChargingStation>> GetOnlineStationsAsync()
+        => _stationHandler.GetOnlineStationsAsync();
 }

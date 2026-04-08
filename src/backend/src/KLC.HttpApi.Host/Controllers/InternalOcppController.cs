@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using KLC.Enums;
@@ -35,12 +36,27 @@ public class InternalOcppController : ControllerBase
         _configuration = configuration;
     }
 
+    /// <summary>
+    /// Get all connected chargers.
+    /// Merges in-memory WebSocket connections (this instance) with DB Online stations
+    /// to handle multi-instance Cloud Run deployments. In-memory data takes priority
+    /// (richer: includes real-time heartbeat, vendor profile). DB-only entries appear
+    /// when the charger's WebSocket is held by a different Cloud Run instance.
+    /// </summary>
     [HttpGet("connections")]
-    public ActionResult GetConnections()
+    public async Task<ActionResult> GetConnections()
     {
         if (!ValidateApiKey()) return Unauthorized();
 
-        var connections = _connectionManager.GetAllConnections()
+        // In-memory connections on this instance (richest data)
+        var localConnections = _connectionManager.GetAllConnections()
+            .ToDictionary(c => c.ChargePointId, c => c);
+
+        // DB Online stations (authoritative across all instances)
+        var onlineStations = await _ocppService.GetOnlineStationsAsync();
+
+        // Merge: start with local in-memory, add DB-only entries for other instances
+        var result = localConnections.Values
             .Select(c => new
             {
                 c.ChargePointId,
@@ -48,10 +64,27 @@ public class InternalOcppController : ControllerBase
                 c.LastHeartbeat,
                 c.IsRegistered,
                 c.StationId,
-                c.VendorProfileType
-            }).ToList();
+                VendorProfile = (int)c.VendorProfileType,
+            })
+            .ToList<object>();
 
-        return Ok(connections);
+        foreach (var station in onlineStations)
+        {
+            if (!localConnections.ContainsKey(station.StationCode))
+            {
+                result.Add(new
+                {
+                    ChargePointId = station.StationCode,
+                    ConnectedAt = (DateTime?)null,
+                    LastHeartbeat = station.LastHeartbeat,
+                    IsRegistered = true,
+                    StationId = (Guid?)station.Id,
+                    VendorProfile = (int)station.VendorProfile,
+                });
+            }
+        }
+
+        return Ok(result);
     }
 
     /// <summary>
@@ -76,7 +109,7 @@ public class InternalOcppController : ControllerBase
                 connection.LastHeartbeat,
                 connection.IsRegistered,
                 connection.StationId,
-                connection.VendorProfileType,
+                VendorProfile = (int)connection.VendorProfileType,
                 Source = "local"
             });
         }
@@ -91,10 +124,10 @@ public class InternalOcppController : ControllerBase
             {
                 ChargePointId = chargePointId,
                 ConnectedAt = (DateTime?)null,
-                LastHeartbeat = (DateTime?)null,
+                LastHeartbeat = station.LastHeartbeat,
                 IsRegistered = true,
-                StationId = station.Id,
-                VendorProfileType = "Generic",
+                StationId = (Guid?)station.Id,
+                VendorProfile = (int)station.VendorProfile,
                 Source = "db"
             });
         }

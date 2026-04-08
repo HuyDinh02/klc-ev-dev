@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using KLC.Enums;
@@ -319,6 +320,11 @@ public class OcppStationHandler : DomainService
     public async Task<ChargingStation?> GetStationByChargePointIdAsync(string chargePointId)
     {
         return await _stationRepository.FirstOrDefaultAsync(s => s.StationCode == chargePointId);
+    }
+
+    public async Task<IList<ChargingStation>> GetOnlineStationsAsync()
+    {
+        return await _stationRepository.GetListAsync(s => s.Status == StationStatus.Online);
     }
 
     public async Task<bool> ValidateIdTagAsync(string idTag)
