@@ -98,10 +98,11 @@ public class InternalOcppController : ControllerBase
     {
         if (!ValidateApiKey()) return Unauthorized();
 
-        // Fast path: connection is on this instance
+        // Fast path: connection is on this instance — enrich with DB station details
         var connection = _connectionManager.GetConnection(chargePointId);
         if (connection != null)
         {
+            var dbStation = await _ocppService.GetStationByChargePointIdAsync(chargePointId);
             return Ok(new
             {
                 connection.ChargePointId,
@@ -110,13 +111,16 @@ public class InternalOcppController : ControllerBase
                 connection.IsRegistered,
                 connection.StationId,
                 VendorProfile = (int)connection.VendorProfileType,
+                IsOnline = true,
+                Vendor = dbStation?.Vendor,
+                Model = dbStation?.Model,
+                FirmwareVersion = dbStation?.FirmwareVersion,
+                SerialNumber = dbStation?.SerialNumber,
                 Source = "local"
             });
         }
 
         // Fallback: check DB station status (authoritative across all instances).
-        // When BootNotification is processed on any instance, the station is set Online in the DB.
-        // When the charger disconnects (or heartbeat monitor expires it), it is set Offline.
         var station = await _ocppService.GetStationByChargePointIdAsync(chargePointId);
         if (station != null && station.Status == StationStatus.Online)
         {
@@ -128,6 +132,11 @@ public class InternalOcppController : ControllerBase
                 IsRegistered = true,
                 StationId = (Guid?)station.Id,
                 VendorProfile = (int)station.VendorProfile,
+                IsOnline = true,
+                Vendor = station.Vendor,
+                Model = station.Model,
+                FirmwareVersion = station.FirmwareVersion,
+                SerialNumber = station.SerialNumber,
                 Source = "db"
             });
         }

@@ -80,10 +80,11 @@ public class OcppStationHandler : DomainService
 
         station.SetStationInfo(vendor, model, serialNumber, firmwareVersion);
         station.RecordHeartbeat();
+        station.MarkOnline();
 
         await _stationRepository.UpdateAsync(station);
 
-        _logger.LogInformation("Station {StationCode} updated: Vendor={Vendor}, Model={Model}, FW={Firmware}",
+        _logger.LogInformation("Station {StationCode} updated: Vendor={Vendor}, Model={Model}, FW={Firmware}, Status=Online",
             chargePointId, vendor, model, firmwareVersion);
 
         return station.Id;
