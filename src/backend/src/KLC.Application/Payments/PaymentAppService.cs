@@ -198,11 +198,15 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
         var totalCount = await AsyncExecuter.CountAsync(query);
         var payments = await AsyncExecuter.ToListAsync(query.Take(input.MaxResultCount));
 
-        // Get station names
+        // Get station names and user names
         var sessionIds = payments.Select(p => p.SessionId).Distinct().ToList();
         var sessions = await _sessionRepository.GetListAsync(s => sessionIds.Contains(s.Id));
         var stationIds = sessions.Select(s => s.StationId).Distinct().ToList();
         var stations = await _stationRepository.GetListAsync(st => stationIds.Contains(st.Id));
+
+        var userIds = payments.Select(p => p.UserId).Distinct().ToList();
+        var users = await _appUserRepository.GetListAsync(u => userIds.Contains(u.IdentityUserId));
+        var userMap = users.ToDictionary(u => u.IdentityUserId, u => u.FullName ?? u.PhoneNumber);
 
         var sessionMap = sessions.ToDictionary(s => s.Id);
         var stationMap = stations.ToDictionary(st => st.Id, st => st.Name);
@@ -220,7 +224,8 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
                 Status = p.Status,
                 ReferenceCode = p.ReferenceCode,
                 CreationTime = p.CreationTime,
-                StationName = stationName
+                StationName = stationName,
+                UserName = userMap.GetValueOrDefault(p.UserId)
             };
         }).ToList();
 

@@ -42,6 +42,7 @@ interface Payment {
   gateway: number;
   referenceCode?: string;
   stationName?: string;
+  userName?: string;
   creationTime?: string;
 }
 
@@ -166,10 +167,11 @@ export default function PaymentsPage() {
           variant="outline"
           disabled={payments.length === 0}
           onClick={() => {
-            const headers = [t("payments.transaction"), t("payments.station"), t("payments.session"), t("payments.amount"), t("payments.method"), t("common.status"), t("payments.date")];
+            const headers = [t("payments.transaction"), t("payments.station"), t("common.user"), t("payments.session"), t("payments.amount"), t("payments.method"), t("common.status"), t("payments.date")];
             const rows = payments.map((p) => [
               p.referenceCode || p.id.slice(0, 8),
               p.stationName || "—",
+              p.userName || "—",
               p.sessionId?.slice(0, 8) || "—",
               formatCurrency(p.amount),
               PAYMENT_GATEWAY_LABELS[p.gateway] ?? "—",
@@ -313,6 +315,7 @@ export default function PaymentsPage() {
                       {t("payments.transaction")}
                     </th>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-medium">{t("payments.station")}</th>
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium">{t("common.user")}</th>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-medium">
                       {t("payments.session")}
                     </th>
@@ -345,6 +348,7 @@ export default function PaymentsPage() {
                           <span>{payment.stationName || "—"}</span>
                         </div>
                       </td>
+                      <td className="px-4 py-3 text-sm">{payment.userName || "—"}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <Zap className="h-4 w-4 text-yellow-500" aria-hidden="true" />
