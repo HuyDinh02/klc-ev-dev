@@ -403,6 +403,9 @@ jobs:
             sleep 1
           done
 
+      - name: Restore NuGet packages
+        run: dotnet restore src/backend
+
       - name: Run database migrations
         run: |
           dotnet ef database update \
