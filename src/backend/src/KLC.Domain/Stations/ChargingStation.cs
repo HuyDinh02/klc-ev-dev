@@ -94,6 +94,12 @@ public class ChargingStation : FullAuditedAggregateRoot<Guid>
     public VendorProfileType VendorProfile { get; private set; } = VendorProfileType.Generic;
 
     /// <summary>
+    /// Human-readable name of the detected vendor profile (e.g., "ChargecoreGlobal").
+    /// Stored alongside VendorProfile enum for diagnostics and custom profile support.
+    /// </summary>
+    public string? VendorProfileName { get; private set; }
+
+    /// <summary>
     /// OCPP WebSocket authentication password. Null = no auth required.
     /// Used in HTTP Basic Auth where username = StationCode, password = this value.
     /// </summary>
@@ -188,6 +194,11 @@ public class ChargingStation : FullAuditedAggregateRoot<Guid>
     public void SetVendorProfile(VendorProfileType vendorProfile)
     {
         VendorProfile = vendorProfile;
+    }
+
+    public void SetVendorProfileName(string? name)
+    {
+        VendorProfileName = name;
     }
 
     public void SetOcppPassword(string? password)

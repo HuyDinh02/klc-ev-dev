@@ -35,6 +35,7 @@ import {
   ChevronDown,
   ChevronRight,
   Pause,
+  Save,
 } from "lucide-react";
 
 interface ConnectorStatusSummary {
@@ -64,6 +65,8 @@ interface OcppConnectionDetail {
   model: string | null;
   firmwareVersion: string | null;
   serialNumber: string | null;
+  firmwareUpdateStatus: string | null;
+  diagnosticsStatus: string | null;
 }
 
 interface OcppRawEvent {
@@ -89,6 +92,27 @@ const vendorProfileVariant = (vp: number): "info" | "warning" | "secondary" => {
     case 1: return "info";
     case 2: return "warning";
     default: return "secondary";
+  }
+};
+
+const firmwareDiagBadge = (status: string | null | undefined): { label: string; variant: BadgeProps["variant"] } => {
+  if (!status) return { label: "Idle", variant: "secondary" };
+  switch (status) {
+    case "Downloading":
+    case "Downloaded":
+      return { label: status, variant: "info" };
+    case "Installing":
+    case "Uploading":
+      return { label: status, variant: "warning" };
+    case "Installed":
+    case "Uploaded":
+      return { label: status, variant: "success" };
+    case "InstallationFailed":
+    case "DownloadFailed":
+    case "UploadFailed":
+      return { label: status, variant: "destructive" };
+    default:
+      return { label: status, variant: "secondary" };
   }
 };
 
@@ -161,6 +185,8 @@ export default function OcppManagementPage() {
   const [updateFirmwareForm, setUpdateFirmwareForm] = useState({ location: "", retrieveDate: "", retries: undefined as number | undefined, retryInterval: undefined as number | undefined });
   const [getDiagnosticsForm, setGetDiagnosticsForm] = useState({ location: "", startTime: "", stopTime: "" });
   const [configData, setConfigData] = useState<{ key: string; value: string | null; readonly: boolean }[] | null>(null);
+  const [configEditValues, setConfigEditValues] = useState<Record<string, string>>({});
+  const [configSavingKey, setConfigSavingKey] = useState<string | null>(null);
   const [commandResult, setCommandResult] = useState<{ success: boolean; message: string } | null>(null);
 
   const { data: connectionsRaw, isLoading: connectionsLoading } = useQuery<OcppConnection[]>({
@@ -236,12 +262,37 @@ export default function OcppManagementPage() {
 
   const getConfigMutation = useMutation({
     mutationFn: async () => (await api.get(`/ocpp/connections/${selectedCp}/configuration`)).data,
-    onSuccess: (data) => { setConfigData(data.configurationKey || []); setShowConfig(true); },
+    onSuccess: (data) => {
+      const keys: { key: string; value: string | null; readonly: boolean }[] = data.configurationKey || [];
+      const sorted = [...keys].sort((a, b) => a.key.localeCompare(b.key));
+      setConfigData(sorted);
+      const editVals: Record<string, string> = {};
+      sorted.forEach((entry) => {
+        if (!entry.readonly) editVals[entry.key] = entry.value ?? "";
+      });
+      setConfigEditValues(editVals);
+      setShowConfig(true);
+    },
   });
 
   const changeConfigMutation = useMutation({
     mutationFn: async () => (await api.post(`/ocpp/connections/${selectedCp}/configuration`, changeConfigForm)).data,
     onSuccess: (data) => { setShowChangeConfig(false); setCommandResult(data); },
+  });
+
+  const saveConfigKeyMutation = useMutation({
+    mutationFn: async ({ key, value }: { key: string; value: string }) => {
+      setConfigSavingKey(key);
+      return (await api.post(`/ocpp/connections/${selectedCp}/configuration`, { key, value })).data;
+    },
+    onSuccess: (data) => {
+      setConfigSavingKey(null);
+      setCommandResult(data);
+    },
+    onError: () => {
+      setConfigSavingKey(null);
+      setCommandResult({ success: false, message: t("ocpp.configSaveFailed") });
+    },
   });
 
   const triggerMutation = useMutation({
@@ -571,6 +622,20 @@ export default function OcppManagementPage() {
                     <span className="text-muted-foreground">{t("ocpp.lastHeartbeat")}</span>
                     <span className="text-xs">{formatTime(detail.lastHeartbeat)}</span>
                   </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">{t("ocpp.firmwareStatus")}</span>
+                    {(() => {
+                      const fw = firmwareDiagBadge(detail.firmwareUpdateStatus);
+                      return <Badge variant={fw.variant}>{fw.label}</Badge>;
+                    })()}
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">{t("ocpp.diagnosticsStatusLabel")}</span>
+                    {(() => {
+                      const dg = firmwareDiagBadge(detail.diagnosticsStatus);
+                      return <Badge variant={dg.variant}>{dg.label}</Badge>;
+                    })()}
+                  </div>
                 </div>
 
                 {detail.isOnline && (
@@ -858,32 +923,72 @@ export default function OcppManagementPage() {
         </DialogFooter>
       </Dialog>
 
-      {/* Configuration Viewer Dialog */}
+      {/* Configuration Viewer Dialog — Interactive Table */}
       <Dialog open={showConfig} onClose={() => setShowConfig(false)} size="lg">
         <DialogHeader onClose={() => setShowConfig(false)}>
           <div className="flex items-center gap-2">
             {t("ocpp.chargerConfiguration")}
-            <Button size="sm" variant="outline" onClick={() => { setShowConfig(false); setShowChangeConfig(true); }}>
-              {t("ocpp.editKey")}
-            </Button>
+            <Badge variant="secondary" className="text-xs">{configData?.length ?? 0} {t("ocpp.key").toLowerCase()}s</Badge>
           </div>
         </DialogHeader>
         <DialogContent className="max-h-[60vh] overflow-y-auto">
           {configData && configData.length > 0 ? (
             <table className="w-full text-sm">
-              <thead>
+              <thead className="sticky top-0 bg-background">
                 <tr className="border-b text-left text-muted-foreground">
                   <th className="pb-2">{t("ocpp.key")}</th>
                   <th className="pb-2">{t("ocpp.value")}</th>
                   <th className="pb-2 text-center">{t("ocpp.readOnly")}</th>
+                  <th className="pb-2 text-right">{t("ocpp.configAction")}</th>
                 </tr>
               </thead>
               <tbody>
                 {configData.map((entry) => (
                   <tr key={entry.key} className="border-b">
                     <td className="py-1.5 font-mono text-xs">{entry.key}</td>
-                    <td className="py-1.5 text-xs break-all">{entry.value ?? "-"}</td>
-                    <td className="py-1.5 text-center text-xs">{entry.readonly ? t("ocpp.yes") : t("ocpp.no")}</td>
+                    <td className="py-1.5 text-xs break-all">
+                      {entry.readonly ? (
+                        <span>{entry.value ?? "-"}</span>
+                      ) : (
+                        <Input
+                          className="h-7 text-xs"
+                          value={configEditValues[entry.key] ?? entry.value ?? ""}
+                          onChange={(e) =>
+                            setConfigEditValues((prev) => ({ ...prev, [entry.key]: e.target.value }))
+                          }
+                        />
+                      )}
+                    </td>
+                    <td className="py-1.5 text-center text-xs">
+                      {entry.readonly ? (
+                        <Badge variant="secondary" className="text-[10px]">{t("ocpp.yes")}</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px]">{t("ocpp.no")}</Badge>
+                      )}
+                    </td>
+                    <td className="py-1.5 text-right">
+                      {!entry.readonly && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs px-2"
+                          disabled={configSavingKey === entry.key}
+                          onClick={() =>
+                            saveConfigKeyMutation.mutate({
+                              key: entry.key,
+                              value: configEditValues[entry.key] ?? entry.value ?? "",
+                            })
+                          }
+                        >
+                          {configSavingKey === entry.key ? (
+                            <RefreshCw className="mr-1 h-3 w-3 animate-spin" />
+                          ) : (
+                            <Save className="mr-1 h-3 w-3" />
+                          )}
+                          {t("common.save")}
+                        </Button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

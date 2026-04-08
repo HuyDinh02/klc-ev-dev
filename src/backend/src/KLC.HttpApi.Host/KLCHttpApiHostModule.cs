@@ -283,10 +283,12 @@ public class KLCHttpApiHostModule : AbpModule
         context.Services.AddScoped<IOcppRemoteCommandService, OcppRemoteCommandService>();
         context.Services.AddScoped<OcppPostBootConfigService>();
 
-        // Vendor profiles
-        context.Services.AddSingleton<IVendorProfile, GenericProfile>();
-        context.Services.AddSingleton<IVendorProfile, ChargecoreGlobalProfile>();
-        context.Services.AddSingleton<IVendorProfile, JuhangProfile>();
+        // Auto-discover all IVendorProfile implementations (add new vendor = add 1 class file)
+        var vendorProfileTypes = typeof(IVendorProfile).Assembly
+            .GetTypes()
+            .Where(t => !t.IsAbstract && !t.IsInterface && typeof(IVendorProfile).IsAssignableFrom(t));
+        foreach (var profileType in vendorProfileTypes)
+            context.Services.AddSingleton(typeof(IVendorProfile), profileType);
         context.Services.AddSingleton<VendorProfileFactory>();
     }
 

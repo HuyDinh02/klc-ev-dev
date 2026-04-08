@@ -293,6 +293,7 @@ export interface CreateMaintenanceTaskDto {
 export const settingsApi = {
   get: () => api.get<SystemSettings>("/settings"),
   update: (data: SystemSettings) => api.put("/settings", data),
+  applyToChargers: () => api.post<{ successCount: number; failureCount: number }>("/settings/apply-to-chargers"),
 };
 
 export const powerSharingApi = {

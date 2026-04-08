@@ -6,12 +6,14 @@ using KLC.Enums;
 using KLC.Faults;
 using KLC.Fleets;
 using KLC.Sessions;
+using KLC.Settings;
 using KLC.Stations;
 using KLC.Users;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
+using Volo.Abp.Settings;
 
 namespace KLC.Ocpp;
 
@@ -28,6 +30,7 @@ public class OcppStationHandler : DomainService
     private readonly IRepository<AppUser, Guid> _userRepository;
     private readonly IRepository<UserIdTag, Guid> _userIdTagRepository;
     private readonly IFleetChargingPolicyService _fleetChargingPolicyService;
+    private readonly ISettingProvider _settingProvider;
     private readonly IConfiguration _configuration;
     private readonly ILogger<OcppStationHandler> _logger;
 
@@ -39,6 +42,7 @@ public class OcppStationHandler : DomainService
         IRepository<AppUser, Guid> userRepository,
         IRepository<UserIdTag, Guid> userIdTagRepository,
         IFleetChargingPolicyService fleetChargingPolicyService,
+        ISettingProvider settingProvider,
         IConfiguration configuration,
         ILogger<OcppStationHandler> logger)
     {
@@ -49,6 +53,7 @@ public class OcppStationHandler : DomainService
         _userRepository = userRepository;
         _userIdTagRepository = userIdTagRepository;
         _fleetChargingPolicyService = fleetChargingPolicyService;
+        _settingProvider = settingProvider;
         _configuration = configuration;
         _logger = logger;
     }
@@ -64,8 +69,28 @@ public class OcppStationHandler : DomainService
 
         if (station == null)
         {
-            _logger.LogWarning("BootNotification from unknown station: {ChargePointId}", chargePointId);
-            return null;
+            // Check if auto-registration is enabled
+            var autoRegister = await _settingProvider.GetOrNullAsync(KLCSettings.Ocpp.AutoRegisterStations);
+            if (string.Equals(autoRegister, "true", StringComparison.OrdinalIgnoreCase))
+            {
+                station = new ChargingStation(
+                    GuidGenerator.Create(),
+                    chargePointId,
+                    $"{vendor} {model}".Trim(),
+                    "Auto-registered",
+                    0, 0);
+                station.SetStationInfo(vendor, model, serialNumber, firmwareVersion);
+                station.MarkOnline();
+                await _stationRepository.InsertAsync(station);
+                _logger.LogInformation(
+                    "AUTO_REGISTER: Created station {StationCode} — {Vendor} {Model}",
+                    chargePointId, vendor, model);
+            }
+            else
+            {
+                _logger.LogWarning("BootNotification from unknown station: {ChargePointId}", chargePointId);
+                return null;
+            }
         }
 
         if (!station.IsEnabled || station.Status == StationStatus.Disabled)

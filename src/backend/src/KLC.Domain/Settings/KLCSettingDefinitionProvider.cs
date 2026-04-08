@@ -27,6 +27,7 @@ public class KLCSettingDefinitionProvider : SettingDefinitionProvider
         context.Add(new SettingDefinition(KLCSettings.Ocpp.StopTxnSampledData, "Energy.Active.Import.Register,Current.Import,Voltage,Power.Active.Import,SoC"));
         context.Add(new SettingDefinition(KLCSettings.Ocpp.StopTransactionOnEVSideDisconnect, "true"));
         context.Add(new SettingDefinition(KLCSettings.Ocpp.AutoConfigOnBoot, "true"));
+        context.Add(new SettingDefinition(KLCSettings.Ocpp.AutoRegisterStations, "false"));
 
         // Payments
         context.Add(new SettingDefinition(KLCSettings.Payments.DefaultGateway, "VNPay"));

@@ -1,10 +1,14 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
+using KLC.Ocpp;
 using KLC.Permissions;
 using KLC.Settings;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Volo.Abp.SettingManagement;
 using Volo.Abp.Settings;
 
@@ -16,11 +20,25 @@ public class SettingsController : KLCController
 {
     private readonly ISettingProvider _settingProvider;
     private readonly ISettingManager _settingManager;
+    private readonly OcppConnectionManager _connectionManager;
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly OcppRedisCommandBridge _redisCommandBridge;
+    private readonly ILogger<SettingsController> _logger;
 
-    public SettingsController(ISettingProvider settingProvider, ISettingManager settingManager)
+    public SettingsController(
+        ISettingProvider settingProvider,
+        ISettingManager settingManager,
+        OcppConnectionManager connectionManager,
+        IServiceScopeFactory scopeFactory,
+        OcppRedisCommandBridge redisCommandBridge,
+        ILogger<SettingsController> logger)
     {
         _settingProvider = settingProvider;
         _settingManager = settingManager;
+        _connectionManager = connectionManager;
+        _scopeFactory = scopeFactory;
+        _redisCommandBridge = redisCommandBridge;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -90,6 +108,85 @@ public class SettingsController : KLCController
         await _settingManager.SetGlobalAsync(KLCSettings.Security.RequireMfa, input.RequireMfa.ToString().ToLower());
         await _settingManager.SetGlobalAsync(KLCSettings.Security.PasswordMinLength, input.PasswordMinLength.ToString());
     }
+
+    /// <summary>
+    /// Push current OCPP configuration to all online chargers.
+    /// Sends ChangeConfiguration commands for each managed OCPP key.
+    /// </summary>
+    [HttpPost("apply-to-chargers")]
+    [Authorize(KLCPermissions.Settings.Update)]
+    public async Task<ApplyToChargersResultDto> ApplyToChargersAsync()
+    {
+        var connections = _connectionManager.GetAllConnections();
+        var results = new List<ApplyToChargerItemDto>();
+        var successCount = 0;
+        var failCount = 0;
+
+        foreach (var connection in connections)
+        {
+            if (!connection.IsRegistered || !connection.StationId.HasValue)
+                continue;
+
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var configService = scope.ServiceProvider.GetRequiredService<OcppPostBootConfigService>();
+                await configService.SendPostBootConfigurationAsync(connection);
+
+                results.Add(new ApplyToChargerItemDto
+                {
+                    ChargePointId = connection.ChargePointId,
+                    Success = true,
+                    Message = "Configuration sent successfully"
+                });
+                successCount++;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to push config to {ChargePointId}", connection.ChargePointId);
+                results.Add(new ApplyToChargerItemDto
+                {
+                    ChargePointId = connection.ChargePointId,
+                    Success = false,
+                    Message = ex.Message
+                });
+                failCount++;
+            }
+        }
+
+        // Also try Redis pub/sub for chargers on other instances
+        if (_redisCommandBridge.IsAvailable)
+        {
+            _logger.LogInformation("APPLY_CONFIG: Redis bridge available — chargers on other instances will receive config on next BootNotification");
+        }
+
+        _logger.LogInformation(
+            "APPLY_CONFIG: Pushed config to {Total} chargers — {Success} succeeded, {Fail} failed",
+            successCount + failCount, successCount, failCount);
+
+        return new ApplyToChargersResultDto
+        {
+            TotalChargers = successCount + failCount,
+            SuccessCount = successCount,
+            FailCount = failCount,
+            Results = results
+        };
+    }
+}
+
+public class ApplyToChargersResultDto
+{
+    public int TotalChargers { get; set; }
+    public int SuccessCount { get; set; }
+    public int FailCount { get; set; }
+    public List<ApplyToChargerItemDto> Results { get; set; } = new();
+}
+
+public class ApplyToChargerItemDto
+{
+    public string ChargePointId { get; set; } = "";
+    public bool Success { get; set; }
+    public string Message { get; set; } = "";
 }
 
 public class SystemSettingsDto

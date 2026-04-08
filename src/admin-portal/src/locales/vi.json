@@ -731,7 +731,14 @@
     "saveFailed": "Lưu thất bại",
     "failedToLoad": "Không thể tải cài đặt",
     "note": "Lưu ý:",
-    "alertEmailPlaceholder": "admin@example.com"
+    "alertEmailPlaceholder": "admin@example.com",
+    "applyToChargers": "Áp dụng cho trạm sạc đang kết nối",
+    "applyToChargersDesc": "Đẩy cài đặt OCPP hiện tại đến tất cả trạm sạc đang kết nối",
+    "applyToChargersResult": "Kết quả áp dụng cho trạm sạc",
+    "successCount": "Thành công",
+    "failureCount": "Thất bại",
+    "applyPartialFailure": "Một số trạm sạc không cập nhật được. Kiểm tra nhật ký để biết chi tiết.",
+    "applyToChargersFailed": "Không thể áp dụng cài đặt cho trạm sạc."
   },
   "groups": {
     "title": "Nhóm trạm sạc",
@@ -1019,7 +1026,11 @@
     "hoursMinutesAgo": "{hours}h {mins}p trước",
     "unknown": "Không xác định",
     "firmwareUrlPlaceholder": "https://example.com/firmware.bin",
-    "diagnosticsUrlPlaceholder": "https://example.com/upload"
+    "diagnosticsUrlPlaceholder": "https://example.com/upload",
+    "firmwareStatus": "Trạng thái firmware",
+    "diagnosticsStatusLabel": "Trạng thái chẩn đoán",
+    "configAction": "Thao tác",
+    "configSaveFailed": "Lưu cấu hình thất bại"
   },
   "mobileUsers": {
     "title": "Người dùng di động",

@@ -22,6 +22,8 @@ public abstract class VendorProfileBase : IVendorProfile
     public virtual bool MeterValuesMayOmitTransactionId => false;
     public virtual int HeartbeatIntervalSeconds => 60;
     public virtual bool MayRetryStartTransaction => false;
+    public virtual bool OmitNullFieldsInResponse => false;
+    public virtual TimeZoneInfo? ResponseTimezone => null;
     public abstract bool MatchesVendor(string? chargePointVendor, string? chargePointModel);
 
     public virtual decimal NormalizeEnergyToWh(string rawValue, string? unit, string? measurand)

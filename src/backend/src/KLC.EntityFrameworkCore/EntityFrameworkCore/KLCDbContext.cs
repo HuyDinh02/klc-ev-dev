@@ -188,6 +188,7 @@ public static class KLCDbContextModelCreatingExtensions
             b.Property(x => x.Model).HasMaxLength(100);
             b.Property(x => x.Vendor).HasMaxLength(100);
             b.Property(x => x.SerialNumber).HasMaxLength(100);
+            b.Property(x => x.VendorProfileName).HasMaxLength(100);
             b.Property(x => x.FirmwareUpdateStatus).HasMaxLength(50);
             b.Property(x => x.DiagnosticsStatus).HasMaxLength(50);
 

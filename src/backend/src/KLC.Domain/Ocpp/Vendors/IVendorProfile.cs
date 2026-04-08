@@ -55,4 +55,21 @@ public interface IVendorProfile
     /// Used for auto-detection during BootNotification.
     /// </summary>
     bool MatchesVendor(string? chargePointVendor, string? chargePointModel);
+
+    /// <summary>
+    /// Whether to omit null fields in OCPP JSON responses.
+    /// Some chargers (e.g., ChargeCore B0207) report "data mismatch"
+    /// when optional fields like expiryDate/parentIdTag are present as null.
+    /// Default: false. Currently applied globally via serializer options,
+    /// but this flag documents the vendor requirement.
+    /// </summary>
+    bool OmitNullFieldsInResponse => false;
+
+    /// <summary>
+    /// Timezone for Heartbeat/BootNotification currentTime responses.
+    /// Some chargers sync their display clock from this timestamp.
+    /// Return null to use UTC (OCPP standard). Return a specific timezone
+    /// (e.g., Asia/Ho_Chi_Minh) for chargers that display the CPO time directly.
+    /// </summary>
+    TimeZoneInfo? ResponseTimezone => null;
 }

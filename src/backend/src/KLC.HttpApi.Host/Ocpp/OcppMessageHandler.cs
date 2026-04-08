@@ -238,6 +238,7 @@ public class OcppMessageHandler
                 {
                     station.SetVendorProfile(vendorProfile.ProfileType);
                 }
+                station.SetVendorProfileName(vendorProfile.ProfileType.ToString());
 
                 // Broadcast station status change via SignalR (Offline → Online)
                 if (previousStationStatus.HasValue && previousStationStatus.Value != station.Status)
@@ -271,14 +272,14 @@ public class OcppMessageHandler
             ? parsed
             : vendorProfile.HeartbeatIntervalSeconds;
 
-        // Return Vietnam time (GMT+7) — chargers sync their display clock from this timestamp
-        var vnTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
-            TimeZoneInfo.FindSystemTimeZoneById("Asia/Ho_Chi_Minh"));
+        // Use vendor profile timezone if set, otherwise UTC (OCPP standard)
+        var bootTz = vendorProfile.ResponseTimezone ?? TimeZoneInfo.Utc;
+        var bootResponseTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, bootTz);
 
         var response = new BootNotificationResponse
         {
             Status = status,
-            CurrentTime = vnTime.ToString("o"),
+            CurrentTime = bootResponseTime.ToString("o"),
             Interval = heartbeatInterval
         };
 
@@ -293,13 +294,14 @@ public class OcppMessageHandler
         // Persist to database
         await _ocppService.HandleHeartbeatAsync(connection.ChargePointId);
 
-        // Return Vietnam time (GMT+7) — chargers sync their display clock from this timestamp
-        var vnTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
-            TimeZoneInfo.FindSystemTimeZoneById("Asia/Ho_Chi_Minh"));
+        // Use vendor profile timezone if set, otherwise UTC (OCPP standard)
+        var vendorProfile = _vendorProfileFactory.Resolve(connection.VendorProfileType);
+        var tz = vendorProfile.ResponseTimezone ?? TimeZoneInfo.Utc;
+        var responseTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz);
 
         var response = new HeartbeatResponse
         {
-            CurrentTime = vnTime.ToString("o")
+            CurrentTime = responseTime.ToString("o")
         };
 
         return parser.SerializeCallResult(uniqueId, response);

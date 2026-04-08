@@ -33,6 +33,7 @@ public static class KLCSettings
         public const string StopTxnSampledData = GroupPrefix + ".StopTxnSampledData";
         public const string StopTransactionOnEVSideDisconnect = GroupPrefix + ".StopTransactionOnEVSideDisconnect";
         public const string AutoConfigOnBoot = GroupPrefix + ".AutoConfigOnBoot";
+        public const string AutoRegisterStations = GroupPrefix + ".AutoRegisterStations";
     }
 
     public static class Payments

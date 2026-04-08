@@ -16,7 +16,10 @@ import {
   RefreshCw,
   AlertCircle,
   CheckCircle2,
+  Send,
 } from "lucide-react";
+import { Dialog, DialogHeader, DialogContent, DialogFooter } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { settingsApi, type SystemSettings } from "@/lib/api";
 import { useTranslation, type Locale } from "@/lib/i18n";
 import { useRequirePermission, useHasPermission } from "@/lib/use-permission";
@@ -31,6 +34,8 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("general");
   const [localSettings, setLocalSettings] = useState<SystemSettings | null>(null);
   const [showSaved, setShowSaved] = useState(false);
+  const [showApplyResult, setShowApplyResult] = useState(false);
+  const [applyResult, setApplyResult] = useState<{ successCount: number; failureCount: number } | null>(null);
   const { t, setLocale } = useTranslation();
 
   const { data, isLoading, error } = useQuery({
@@ -56,6 +61,18 @@ export default function SettingsPage() {
       setLocalSettings(null);
       setShowSaved(true);
       setTimeout(() => setShowSaved(false), 3000);
+    },
+  });
+
+  const applyToChargersMutation = useMutation({
+    mutationFn: () => settingsApi.applyToChargers(),
+    onSuccess: (res) => {
+      setApplyResult(res.data);
+      setShowApplyResult(true);
+    },
+    onError: () => {
+      setApplyResult(null);
+      setShowApplyResult(true);
     },
   });
 
@@ -401,6 +418,23 @@ export default function SettingsPage() {
                     <strong>{t("settings.note")}</strong> {t("settings.ocppNote")}
                   </p>
                 </div>
+                <div className="flex items-center gap-3 pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => applyToChargersMutation.mutate()}
+                    disabled={applyToChargersMutation.isPending || !canUpdate}
+                  >
+                    {applyToChargersMutation.isPending ? (
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="mr-2 h-4 w-4" />
+                    )}
+                    {t("settings.applyToChargers")}
+                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    {t("settings.applyToChargersDesc")}
+                  </span>
+                </div>
               </CardContent>
             </Card>
           )}
@@ -554,6 +588,42 @@ export default function SettingsPage() {
           )}
         </div>
       </div>
+
+      {/* Apply to Chargers Result Dialog */}
+      <Dialog open={showApplyResult} onClose={() => setShowApplyResult(false)} size="sm">
+        <DialogHeader onClose={() => setShowApplyResult(false)}>
+          {t("settings.applyToChargersResult")}
+        </DialogHeader>
+        <DialogContent>
+          {applyResult ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <Badge variant="success">{t("settings.successCount")}</Badge>
+                <span className="text-lg font-semibold">{applyResult.successCount}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Badge variant="destructive">{t("settings.failureCount")}</Badge>
+                <span className="text-lg font-semibold">{applyResult.failureCount}</span>
+              </div>
+              {applyResult.failureCount > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  {t("settings.applyPartialFailure")}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="h-5 w-5" />
+              {t("settings.applyToChargersFailed")}
+            </div>
+          )}
+        </DialogContent>
+        <DialogFooter>
+          <Button onClick={() => setShowApplyResult(false)}>
+            {t("common.close")}
+          </Button>
+        </DialogFooter>
+      </Dialog>
     </div>
   );
 }

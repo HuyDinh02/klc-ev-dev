@@ -226,6 +226,24 @@ public class OcppPostBootConfigService
 
             var connectors = await _connectorRepository.GetListAsync(c => c.StationId == station.Id);
 
+            // Auto-create missing connectors if charger reports more than we have
+            if (numberOfConnectors > 0 && connectors.Count < numberOfConnectors)
+            {
+                for (int i = 1; i <= numberOfConnectors; i++)
+                {
+                    if (!connectors.Any(c => c.ConnectorNumber == i))
+                    {
+                        var newConnector = station.AddConnector(
+                            Guid.NewGuid(), i, KLC.Enums.ConnectorType.CCS2, maxPowerKw ?? 0);
+                        await _connectorRepository.InsertAsync(newConnector);
+                        connectors.Add(newConnector);
+                        _logger.LogInformation(
+                            "AUTO_CONNECTOR: Created connector #{Number} for {ChargePointId}",
+                            i, connection.ChargePointId);
+                    }
+                }
+            }
+
             var updated = false;
             foreach (var connector in connectors)
             {
