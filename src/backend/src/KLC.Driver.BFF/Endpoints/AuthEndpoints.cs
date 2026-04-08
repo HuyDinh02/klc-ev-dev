@@ -116,8 +116,15 @@ public static class AuthEndpoints
             [FromBody] ResetPasswordRequest request,
             IAuthBffService authService) =>
         {
-            await authService.ResetPasswordAsync(request);
-            return Results.Ok(new { message = "Password reset successful" });
+            try
+            {
+                await authService.ResetPasswordAsync(request);
+                return Results.Ok(new { message = "Password reset successful" });
+            }
+            catch (Volo.Abp.BusinessException ex)
+            {
+                return Results.BadRequest(new { error = new { code = ex.Code ?? "RESET_FAILED", message = ex.Message } });
+            }
         })
         .WithName("ResetPassword")
         .WithSummary("Reset password with OTP")
@@ -130,9 +137,16 @@ public static class AuthEndpoints
             ClaimsPrincipal user,
             IAuthBffService authService) =>
         {
-            var userId = GetUserId(user);
-            await authService.ChangePasswordAsync(userId, request);
-            return Results.Ok(new { message = "Password changed successfully" });
+            try
+            {
+                var userId = GetUserId(user);
+                await authService.ChangePasswordAsync(userId, request);
+                return Results.Ok(new { message = "Password changed successfully" });
+            }
+            catch (Volo.Abp.BusinessException ex)
+            {
+                return Results.BadRequest(new { error = new { code = ex.Code ?? "CHANGE_PASSWORD_FAILED", message = ex.Message } });
+            }
         })
         .WithName("ChangePassword")
         .WithSummary("Change password (authenticated)")
