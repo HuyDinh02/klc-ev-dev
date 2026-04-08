@@ -234,7 +234,7 @@ public class OcppConnection
                 uniqueId,
                 action,
                 payload
-            });
+            }, new JsonSerializerOptions { DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull });
 
         var tcs = RegisterPendingRequest(uniqueId);
 
