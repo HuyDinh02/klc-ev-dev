@@ -379,7 +379,28 @@ jobs:
           dotnet-version: "10.0.x"
 
       - name: Install EF Core tools
-        run: dotnet tool install --global dotnet-ef
+        run: |
+          dotnet tool install --global dotnet-ef || true
+          echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
+
+      - name: Start Cloud SQL Auth Proxy
+        run: |
+          # Download Cloud SQL Auth Proxy if not already present
+          if ! command -v cloud-sql-proxy &>/dev/null; then
+            curl -o /usr/local/bin/cloud-sql-proxy \
+              "https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.14.1/cloud-sql-proxy.linux.amd64"
+            chmod +x /usr/local/bin/cloud-sql-proxy
+          fi
+          # Start proxy in background (IAM auth via workload identity)
+          cloud-sql-proxy \
+            "klc-ev-charging:asia-southeast1:klc-postgres" \
+            --port 5433 --quiet &
+          echo "CLOUD_SQL_PROXY_PID=$!" >> $GITHUB_ENV
+          # Wait for proxy to be ready
+          for i in $(seq 1 15); do
+            if nc -z localhost 5433 2>/dev/null; then echo "Cloud SQL Proxy ready"; break; fi
+            sleep 1
+          done
 
       - name: Run database migrations
         run: |
@@ -387,4 +408,11 @@ jobs:
             --project src/backend/src/KLC.EntityFrameworkCore \
             --startup-project src/backend/src/KLC.HttpApi.Host
         env:
-          ConnectionStrings__Default: ${{ secrets.DB_CONNECTION_STRING }}
+          ConnectionStrings__Default: ${{ secrets.DB_MIGRATION_CONNECTION_STRING }}
+
+      - name: Stop Cloud SQL Auth Proxy
+        if: always()
+        run: |
+          if [ -n "$CLOUD_SQL_PROXY_PID" ]; then
+            kill "$CLOUD_SQL_PROXY_PID" || true
+          fi
