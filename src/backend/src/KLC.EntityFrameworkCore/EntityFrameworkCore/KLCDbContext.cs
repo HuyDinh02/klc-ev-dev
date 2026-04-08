@@ -480,7 +480,7 @@ public static class KLCDbContextModelCreatingExtensions
             b.Property<uint>("xmin").HasColumnType("xid").IsRowVersion().HasDefaultValue(0u);
 
             b.HasIndex(x => x.IdentityUserId).IsUnique();
-            b.HasIndex(x => x.PhoneNumber);
+            b.HasIndex(x => x.PhoneNumber).IsUnique().HasFilter("\"IsDeleted\" = false");
             b.HasIndex(x => x.Email);
             b.HasIndex(x => x.IsActive);
         });
