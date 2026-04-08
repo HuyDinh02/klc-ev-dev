@@ -184,11 +184,13 @@ public class SessionBffService : ISessionBffService
             connector.UpdateStatus(ConnectorStatus.Preparing);
             await _dbContext.SaveChangesAsync();
 
-            // Send RemoteStartTransaction to the charger via Admin API (internal endpoint)
+            // Send RemoteStartTransaction to the charger via OCPP Gateway (internal endpoint)
+            var remoteStartAccepted = false;
             try
             {
                 var adminApiUrl = _configuration["Ocpp:GatewayUrl"] ?? _configuration["Auth:Authority"] ?? "https://localhost:44305";
                 using var httpClient = _httpClientFactory.CreateClient();
+                httpClient.Timeout = TimeSpan.FromSeconds(35); // OCPP command timeout is 30s
                 httpClient.DefaultRequestHeaders.Accept.Add(
                     new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
 
@@ -198,29 +200,64 @@ public class SessionBffService : ISessionBffService
                     httpClient.DefaultRequestHeaders.Add("X-Internal-Key", internalApiKey);
                 }
 
+                var idTag = session.Id.ToString("N")[..20];
+                _logger.LogInformation(
+                    "REMOTE_START: Sending to {GatewayUrl} — Station={StationCode}, Connector={ConnectorNumber}, IdTag={IdTag}, SessionId={SessionId}",
+                    adminApiUrl, connector.Station!.StationCode, connector.ConnectorNumber, idTag, session.Id);
+
                 var remoteStartResponse = await httpClient.PostAsJsonAsync(
                     $"{adminApiUrl}/api/internal/ocpp/remote-start",
-                    new { stationCode = connector.Station!.StationCode, connectorId = connector.ConnectorNumber, idTag = session.Id.ToString("N")[..20] });
+                    new { stationCode = connector.Station.StationCode, connectorId = connector.ConnectorNumber, idTag });
 
+                var responseBody = await remoteStartResponse.Content.ReadAsStringAsync();
+                _logger.LogInformation(
+                    "REMOTE_START_RESPONSE: Station={StationCode}, HttpStatus={HttpStatus}, Body={Body}",
+                    connector.Station.StationCode, (int)remoteStartResponse.StatusCode, responseBody);
+
+                // Parse the gateway response to check if charger actually accepted
                 if (remoteStartResponse.IsSuccessStatusCode)
                 {
-                    _logger.LogInformation(
-                        "RemoteStartTransaction sent: Station={StationCode}, Connector={ConnectorNumber}, User={UserId}",
-                        connector.Station.StationCode, connector.ConnectorNumber, userId);
+                    try
+                    {
+                        using var doc = System.Text.Json.JsonDocument.Parse(responseBody);
+                        remoteStartAccepted = doc.RootElement.TryGetProperty("success", out var s) && s.GetBoolean();
+                    }
+                    catch { /* parse failure = not accepted */ }
                 }
-                else
-                {
-                    _logger.LogWarning(
-                        "RemoteStartTransaction failed: Station={StationCode}, Status={StatusCode}",
-                        connector.Station.StationCode, remoteStartResponse.StatusCode);
-                }
+            }
+            catch (TaskCanceledException)
+            {
+                _logger.LogWarning(
+                    "REMOTE_START_TIMEOUT: Request to OCPP Gateway timed out — Station={StationCode}, SessionId={SessionId}",
+                    connector.Station?.StationCode, session.Id);
             }
             catch (Exception remoteEx)
             {
                 _logger.LogWarning(remoteEx,
-                    "Failed to send RemoteStartTransaction for station {StationCode}. Session created but charger not started.",
-                    connector.Station?.StationCode);
-                // Don't fail the session creation — charger may start via local RFID instead
+                    "REMOTE_START_FAIL: Failed to send RemoteStartTransaction — Station={StationCode}, SessionId={SessionId}",
+                    connector.Station?.StationCode, session.Id);
+            }
+
+            // If charger did not accept, mark session as Failed immediately
+            // instead of leaving it stuck at Pending forever
+            if (!remoteStartAccepted)
+            {
+                _logger.LogWarning(
+                    "REMOTE_START_REJECTED: Charger did not accept. Marking session Failed — SessionId={SessionId}, Station={StationCode}",
+                    session.Id, connector.Station?.StationCode);
+                session.MarkFailed("Charger did not accept RemoteStartTransaction");
+                connector.UpdateStatus(ConnectorStatus.Available);
+                await _dbContext.SaveChangesAsync();
+
+                await _cache.RemoveAsync(CacheKeys.StationConnectors(connector.StationId));
+                await _cache.RemoveAsync(CacheKeys.StationDetail(connector.StationId));
+
+                return new SessionResponseDto
+                {
+                    Success = false,
+                    SessionId = session.Id,
+                    Error = "Trạm sạc không phản hồi. Vui lòng thử lại."
+                };
             }
 
             // Invalidate cache

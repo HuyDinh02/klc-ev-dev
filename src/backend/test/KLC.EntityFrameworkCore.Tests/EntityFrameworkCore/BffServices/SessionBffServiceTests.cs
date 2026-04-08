@@ -1,6 +1,8 @@
+using System.Net;
 using System.Net.Http;
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using KLC.Driver.Services;
 using KLC.EntityFrameworkCore;
@@ -36,7 +38,25 @@ public class SessionBffServiceTests : KLCEntityFrameworkCoreTestBase
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?> { ["Wallet:MinBalanceToStart"] = "10000" })
             .Build();
-        _service = new SessionBffService(_dbContext, _cache, fleetPolicyService, configuration, Substitute.For<IHttpClientFactory>(), logger);
+
+        // Mock HttpClientFactory to return a successful RemoteStart response
+        var httpClientFactory = Substitute.For<IHttpClientFactory>();
+        var mockHandler = new MockHttpMessageHandler(
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("{\"success\":true,\"message\":\"RemoteStartTransaction accepted\"}")
+            });
+        httpClientFactory.CreateClient(Arg.Any<string>()).Returns(new HttpClient(mockHandler));
+
+        _service = new SessionBffService(_dbContext, _cache, fleetPolicyService, configuration, httpClientFactory, logger);
+    }
+
+    private class MockHttpMessageHandler : HttpMessageHandler
+    {
+        private readonly HttpResponseMessage _response;
+        public MockHttpMessageHandler(HttpResponseMessage response) => _response = response;
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+            => Task.FromResult(_response);
     }
 
     [Fact]
