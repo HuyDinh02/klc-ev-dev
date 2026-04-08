@@ -179,7 +179,19 @@ public class StationBffService : IStationBffService
 
         if (station == null) return null;
 
-        return await GetStationDetailAsync(station.Id);
+        var detail = await GetStationDetailAsync(station.Id);
+
+        if (detail != null)
+        {
+            _logger.LogInformation(
+                "QR_SCAN: StationCode={StationCode}, StationId={StationId}, StationStatus={StationStatus}, " +
+                "Connectors=[{Connectors}]",
+                stationCode, station.Id, detail.Status,
+                string.Join(", ", detail.Connectors.Select(c =>
+                    $"#{c.ConnectorNumber}:{c.Status}(enabled={c.IsEnabled},id={c.Id})")));
+        }
+
+        return detail;
     }
 
     public async Task<List<ConnectorStatusDto>> GetConnectorStatusAsync(Guid stationId)

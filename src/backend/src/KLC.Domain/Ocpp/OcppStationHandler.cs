@@ -125,6 +125,13 @@ public class OcppStationHandler : DomainService
                 previousStatus = connector.Status;
                 connector.UpdateStatus(status);
                 await _connectorRepository.UpdateAsync(connector);
+
+                _logger.LogInformation(
+                    "CONNECTOR_STATUS_DB_UPDATE: Station={ChargePointId}, ConnectorId={ConnectorDbId}, " +
+                    "ConnectorNumber={ConnectorNumber}, PreviousStatus={PreviousStatus}, NewStatus={NewStatus}, " +
+                    "IsEnabled={IsEnabled}, ErrorCode={ErrorCode}",
+                    chargePointId, connector.Id, connectorId, previousStatus, status,
+                    connector.IsEnabled, errorCode);
             }
             else
             {

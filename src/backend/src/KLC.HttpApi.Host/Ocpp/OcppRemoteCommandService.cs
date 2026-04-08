@@ -347,17 +347,24 @@ public class OcppRemoteCommandService : IOcppRemoteCommandService
             return new RemoteCommandResult(false, "Station not connected");
         }
 
+        var payloadJson = JsonSerializer.Serialize(payload);
+        _logger.LogInformation(
+            "OCPP_OUT: Sending {Action} to {StationCode}: {Payload}",
+            action, stationCode, payloadJson);
+
         var response = await connection.SendCallAsync(action, payload, Timeout);
 
         if (response == null)
         {
-            _logger.LogWarning("{Action} timeout for station {StationCode}", action, stationCode);
+            _logger.LogWarning("OCPP_OUT_RESULT: {Action} timeout for {StationCode} (no response within {TimeoutSec}s)",
+                action, stationCode, Timeout.TotalSeconds);
             return new RemoteCommandResult(false, "Command timed out");
         }
 
         if (response.StartsWith("ERROR:"))
         {
-            _logger.LogWarning("{Action} error from {StationCode}: {Response}", action, stationCode, response);
+            _logger.LogWarning("OCPP_OUT_RESULT: {Action} error from {StationCode}: {Response}",
+                action, stationCode, response);
             return new RemoteCommandResult(false, response);
         }
 
@@ -370,9 +377,12 @@ public class OcppRemoteCommandService : IOcppRemoteCommandService
                         || string.Equals(status, "Unlocked", StringComparison.OrdinalIgnoreCase)
                         || string.Equals(status, "Scheduled", StringComparison.OrdinalIgnoreCase);
 
+            _logger.LogInformation(
+                "OCPP_OUT_RESULT: {Action} to {StationCode}: status={Status}, accepted={Accepted}",
+                action, stationCode, status, accepted);
+
             if (!accepted)
             {
-                _logger.LogWarning("{Action} rejected by {StationCode}: status={Status}", action, stationCode, status);
                 return new RemoteCommandResult(false, $"Charger responded: {status}");
             }
 
@@ -381,6 +391,8 @@ public class OcppRemoteCommandService : IOcppRemoteCommandService
         catch (JsonException)
         {
             // If we can't parse, consider it accepted (we got a response)
+            _logger.LogInformation("OCPP_OUT_RESULT: {Action} to {StationCode}: raw response (non-JSON), treating as accepted",
+                action, stationCode);
             return new RemoteCommandResult(true);
         }
     }

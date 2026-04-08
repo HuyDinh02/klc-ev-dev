@@ -35,7 +35,7 @@ public class OcppPostBootConfigService
         var autoConfigSetting = await _settingProvider.GetOrNullAsync(KLCSettings.Ocpp.AutoConfigOnBoot);
         if (!string.Equals(autoConfigSetting, "true", StringComparison.OrdinalIgnoreCase))
         {
-            _logger.LogDebug("Post-boot auto-configuration disabled for {ChargePointId}", connection.ChargePointId);
+            _logger.LogInformation("Post-boot auto-configuration disabled for {ChargePointId}", connection.ChargePointId);
             return;
         }
 
@@ -62,7 +62,7 @@ public class OcppPostBootConfigService
                 var value = await _settingProvider.GetOrNullAsync(settingKey);
                 if (string.IsNullOrEmpty(value))
                 {
-                    _logger.LogDebug("Skipping {OcppKey} for {ChargePointId}: setting value is empty",
+                    _logger.LogInformation("Skipping {OcppKey} for {ChargePointId}: setting value is empty",
                         ocppKey, connection.ChargePointId);
                     continue;
                 }
@@ -86,7 +86,7 @@ public class OcppPostBootConfigService
                 }
                 else
                 {
-                    _logger.LogDebug("ChangeConfiguration({OcppKey}={Value}) accepted by {ChargePointId}",
+                    _logger.LogInformation("ChangeConfiguration({OcppKey}={Value}) accepted by {ChargePointId}",
                         ocppKey, value, connection.ChargePointId);
                     successCount++;
                 }
@@ -110,7 +110,7 @@ public class OcppPostBootConfigService
         {
             await connection.SendCallAsync("TriggerMessage",
                 new { requestedMessage = "StatusNotification" }, CommandTimeout);
-            _logger.LogDebug("TriggerMessage(StatusNotification) sent to {ChargePointId}", connection.ChargePointId);
+            _logger.LogInformation("TriggerMessage(StatusNotification) sent to {ChargePointId}", connection.ChargePointId);
         }
         catch (Exception ex)
         {

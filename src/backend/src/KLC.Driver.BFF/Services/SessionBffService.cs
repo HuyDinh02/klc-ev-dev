@@ -78,11 +78,32 @@ public class SessionBffService : ISessionBffService
 
         if (connector == null)
         {
+            _logger.LogWarning(
+                "StartSession: connector not found. UserId={UserId}, ConnectorId={ConnectorId}, " +
+                "StationId={StationId}, StationCode={StationCode}, ConnectorNumber={ConnectorNumber}",
+                userId, request.ConnectorId, request.StationId, request.StationCode, request.ConnectorNumber);
             return new SessionResponseDto { Success = false, Error = "Connector not found" };
         }
 
-        if (!connector.IsEnabled || connector.Status != ConnectorStatus.Available)
+        _logger.LogInformation(
+            "StartSession: connector resolved. UserId={UserId}, ConnectorId={ConnectorId}, " +
+            "StationId={StationId}, ConnectorNumber={ConnectorNumber}, IsEnabled={IsEnabled}, " +
+            "Status={Status}, StationCode={StationCode}",
+            userId, connector.Id, connector.StationId, connector.ConnectorNumber,
+            connector.IsEnabled, connector.Status, connector.Station?.StationCode);
+
+        // Allow both Available (idle) and Preparing (cable plugged in, waiting for authorization)
+        var canStartSession = connector.IsEnabled &&
+            (connector.Status == ConnectorStatus.Available || connector.Status == ConnectorStatus.Preparing);
+
+        if (!canStartSession)
         {
+            _logger.LogWarning(
+                "StartSession rejected: connector not available. UserId={UserId}, ConnectorId={ConnectorId}, " +
+                "StationId={StationId}, ConnectorNumber={ConnectorNumber}, IsEnabled={IsEnabled}, " +
+                "Status={Status}, StationCode={StationCode}",
+                userId, connector.Id, connector.StationId, connector.ConnectorNumber,
+                connector.IsEnabled, connector.Status, connector.Station?.StationCode);
             return new SessionResponseDto { Success = false, Error = "Connector is not available" };
         }
 

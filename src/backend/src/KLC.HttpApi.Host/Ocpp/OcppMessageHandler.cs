@@ -81,7 +81,7 @@ public class OcppMessageHandler
     {
         try
         {
-            _logger.LogDebug("Received from {ChargePointId} ({OcppVersion}): {Message}",
+            _logger.LogInformation("OCPP_RAW_IN from {ChargePointId} ({OcppVersion}): {Message}",
                 connection.ChargePointId, connection.OcppVersion, message);
 
             var parser = _parserFactory.GetParser(connection.OcppVersion);
@@ -187,12 +187,16 @@ public class OcppMessageHandler
                 vendorProfile,
                 latencyMs);
 
-            await _rawEventRepository.InsertAsync(rawEvent, autoSave: false);
+            // autoSave: true ensures the raw event is flushed to DB immediately.
+            // Previously autoSave: false relied on UoW commit, but handler repo calls
+            // (UpdateAsync with default autoSave: true) had already flushed the DbContext,
+            // and any subsequent UoW commit failure silently lost the raw event.
+            await _rawEventRepository.InsertAsync(rawEvent, autoSave: true);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to persist raw OCPP event for {ChargePointId}/{Action}",
-                connection.ChargePointId, action);
+            _logger.LogError(ex, "OCPP_RAW_PERSIST_FAIL: Failed to persist raw OCPP event for {ChargePointId}/{Action}/{UniqueId}",
+                connection.ChargePointId, action, uniqueId);
         }
     }
 
@@ -650,7 +654,7 @@ public class OcppMessageHandler
         // Resolve vendor profile for this connection
         var vendorProfile = _vendorProfileFactory.Resolve(connection.VendorProfileType);
 
-        _logger.LogDebug("MeterValues from {ChargePointId}: Connector={ConnectorId}, TransactionId={TransactionId}, " +
+        _logger.LogInformation("MeterValues from {ChargePointId}: Connector={ConnectorId}, TransactionId={TransactionId}, " +
             "Values={Count}, VendorProfile={VendorProfile}",
             connection.ChargePointId, request.ConnectorId, request.TransactionId,
             request.MeterValue?.Length ?? 0, vendorProfile.ProfileType);
@@ -800,13 +804,13 @@ public class OcppMessageHandler
 
         if (connection.TryCompletePendingRequest(parsed.UniqueId, payload))
         {
-            _logger.LogDebug("Received CallResult for {UniqueId} from {ChargePointId}",
-                parsed.UniqueId, connection.ChargePointId);
+            _logger.LogInformation("OCPP_CALL_RESULT from {ChargePointId} [uid={UniqueId}]: {Payload}",
+                connection.ChargePointId, parsed.UniqueId, payload);
         }
         else
         {
-            _logger.LogWarning("Received unexpected CallResult for {UniqueId} from {ChargePointId}",
-                parsed.UniqueId, connection.ChargePointId);
+            _logger.LogWarning("OCPP_CALL_RESULT unexpected from {ChargePointId} [uid={UniqueId}]: {Payload}",
+                connection.ChargePointId, parsed.UniqueId, payload);
         }
 
         return null; // No response needed for CallResult
