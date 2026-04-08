@@ -25,6 +25,7 @@ public interface IAuthBffService
     Task LogoutAsync(Guid userId, string? refreshToken);
     Task ForgotPasswordAsync(ForgotPasswordRequest request);
     Task ResetPasswordAsync(ResetPasswordRequest request);
+    Task ResetPasswordWithFirebaseAsync(FirebaseResetPasswordRequest request);
     Task ChangePasswordAsync(Guid userId, ChangePasswordRequest request);
     Task<LoginResultDto> SocialLoginAsync(SocialLoginRequest request);
 }
@@ -395,6 +396,59 @@ public class AuthBffService : IAuthBffService
         await _redis.KeyDeleteAsync($"otp:reset:{request.PhoneNumber}");
     }
 
+    public async Task ResetPasswordWithFirebaseAsync(FirebaseResetPasswordRequest request)
+    {
+        // Verify Firebase ID token (proves the user owns the phone number)
+        FirebaseAdmin.Auth.FirebaseToken? firebaseToken;
+        try
+        {
+            var auth = FirebaseAdmin.Auth.FirebaseAuth.DefaultInstance;
+            if (auth == null)
+                throw new Volo.Abp.BusinessException("FIREBASE_NOT_CONFIGURED", "Firebase Auth not configured");
+
+            firebaseToken = await auth.VerifyIdTokenAsync(request.IdToken);
+        }
+        catch (FirebaseAdmin.Auth.FirebaseAuthException ex)
+        {
+            _logger.LogWarning(ex, "Firebase token verification failed for password reset");
+            throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.Auth.InvalidOtp, "Invalid or expired Firebase token");
+        }
+
+        // Extract phone number from Firebase token
+        var phoneNumber = firebaseToken.Claims.TryGetValue("phone_number", out var phone)
+            ? phone?.ToString() : null;
+
+        if (string.IsNullOrEmpty(phoneNumber))
+            throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.Auth.InvalidCredentials, "Phone number not found in token");
+
+        var localPhone = phoneNumber.StartsWith("+84") ? "0" + phoneNumber[3..] : phoneNumber;
+
+        _logger.LogInformation("Firebase password reset: phone={Phone}", localPhone);
+
+        // Override phone from request if token is valid (token is the source of truth)
+        var appUser = await _dbContext.AppUsers
+            .FirstOrDefaultAsync(u => u.PhoneNumber == localPhone && !u.IsDeleted);
+
+        if (appUser == null)
+            throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.Auth.InvalidCredentials);
+
+        var identityUser = await _userManager.FindByIdAsync(appUser.IdentityUserId.ToString());
+        if (identityUser == null)
+            throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.Auth.InvalidCredentials);
+
+        var token = await _userManager.GeneratePasswordResetTokenAsync(identityUser);
+        var result = await _userManager.ResetPasswordAsync(identityUser, token, request.NewPassword);
+
+        if (!result.Succeeded)
+        {
+            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+            _logger.LogWarning("Password reset failed for {Phone}: {Errors}", localPhone, errors);
+            throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.PasswordResetFailed, errors);
+        }
+
+        _logger.LogInformation("Password reset successful via Firebase for {Phone}", localPhone);
+    }
+
     public async Task ChangePasswordAsync(Guid userId, ChangePasswordRequest request)
     {
         var appUser = await _dbContext.AppUsers
@@ -567,6 +621,13 @@ public record ResetPasswordRequest
 {
     public string PhoneNumber { get; init; } = string.Empty;
     public string Otp { get; init; } = string.Empty;
+    public string NewPassword { get; init; } = string.Empty;
+}
+
+public record FirebaseResetPasswordRequest
+{
+    /// <summary>Firebase ID token proving phone ownership</summary>
+    public string IdToken { get; init; } = string.Empty;
     public string NewPassword { get; init; } = string.Empty;
 }
 

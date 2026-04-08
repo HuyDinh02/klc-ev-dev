@@ -131,6 +131,26 @@ public static class AuthEndpoints
         .Produces<object>(200)
         .Produces(400);
 
+        // POST /api/v1/auth/firebase-reset-password — Reset password using Firebase Phone Auth token
+        group.MapPost("/firebase-reset-password", async (
+            [FromBody] FirebaseResetPasswordRequest request,
+            IAuthBffService authService) =>
+        {
+            try
+            {
+                await authService.ResetPasswordWithFirebaseAsync(request);
+                return Results.Ok(new { message = "Password reset successful" });
+            }
+            catch (Volo.Abp.BusinessException ex)
+            {
+                return Results.BadRequest(new { error = new { code = ex.Code ?? "RESET_FAILED", message = ex.Message } });
+            }
+        })
+        .WithName("FirebaseResetPassword")
+        .WithSummary("Reset password using Firebase Phone Auth ID token")
+        .Produces<object>(200)
+        .Produces(400);
+
         // POST /api/v1/auth/change-password
         group.MapPost("/change-password", async (
             [FromBody] ChangePasswordRequest request,
