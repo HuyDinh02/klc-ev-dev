@@ -409,6 +409,29 @@ public class OcppMessageHandler
         _logger.LogInformation("StartTransaction from {ChargePointId}: Connector={ConnectorId}, IdTag={IdTag}, MeterStart={MeterStart}",
             connection.ChargePointId, request.ConnectorId, request.IdTag, request.MeterStart);
 
+        // Deduplicate: if this connector already has an active session, return the existing
+        // transactionId instead of creating a new one. Some chargers (e.g., ChargeCore) retry
+        // StartTransaction with new uniqueIds every ~10s, creating duplicate sessions.
+        var existingSession = await _ocppService.GetActiveSessionForConnectorAsync(
+            connection.ChargePointId, request.ConnectorId);
+        if (existingSession != null && existingSession.OcppTransactionId.HasValue)
+        {
+            _logger.LogInformation(
+                "StartTransaction DEDUP: Connector {ConnectorId} on {ChargePointId} already has active session " +
+                "{SessionId} with txnId={TransactionId}. Returning existing transactionId.",
+                request.ConnectorId, connection.ChargePointId, existingSession.Id, existingSession.OcppTransactionId.Value);
+
+            var dedupResponse = new StartTransactionResponse
+            {
+                TransactionId = existingSession.OcppTransactionId.Value,
+                IdTagInfo = new IdTagInfo { Status = AuthorizationStatus.Accepted }
+            };
+            var dedupResult = parser.SerializeCallResult(uniqueId, dedupResponse);
+            _logger.LogInformation("OCPP_RESPONSE StartTransaction DEDUP to {ChargePointId}: {Response}",
+                connection.ChargePointId, dedupResult);
+            return dedupResult;
+        }
+
         // Generate transaction ID
         var transactionId = Math.Abs(Guid.NewGuid().GetHashCode());
 
@@ -510,7 +533,10 @@ public class OcppMessageHandler
             }
         };
 
-        return parser.SerializeCallResult(uniqueId, response);
+        var result = parser.SerializeCallResult(uniqueId, response);
+        _logger.LogInformation("OCPP_RESPONSE StartTransaction to {ChargePointId}: {Response}",
+            connection.ChargePointId, result);
+        return result;
     }
 
     private async Task<string> HandleStopTransactionAsync(OcppConnection connection, string uniqueId, JsonElement payload, IOcppMessageParser parser)
