@@ -178,7 +178,7 @@ public class NotificationBffServiceTests : KLCEntityFrameworkCoreTestBase
 
         await WithUnitOfWorkAsync(async () =>
         {
-            await _service.RegisterDeviceAsync(userId, "fcm_token_123");
+            await _service.RegisterDeviceAsync(userId, "fcm_token_123", KLC.Enums.DevicePlatform.Android);
         });
 
         _dbContext.ChangeTracker.Clear();

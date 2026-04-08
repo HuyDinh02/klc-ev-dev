@@ -453,6 +453,25 @@ public class WalletBffService : IWalletBffService
                 _logger.LogWarning(notifyEx, "Failed to send failure notification via SignalR");
             }
 
+            // Push notification: topup failure
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _pushNotificationService.SendToUserAsync(
+                        transaction.UserId,
+                        "Nạp ví thất bại ❌",
+                        $"Giao dịch nạp {transaction.Amount:N0}đ qua VnPay không thành công. Vui lòng thử lại.",
+                        new Dictionary<string, string>
+                        {
+                            { "type", "wallet_topup_failed" },
+                            { "amount", transaction.Amount.ToString("F0") },
+                            { "referenceCode", transaction.ReferenceCode }
+                        });
+                }
+                catch (Exception ex) { _logger.LogWarning(ex, "Push notification failed for wallet topup failure"); }
+            });
+
             _logger.LogWarning(
                 "[VnPay IPN] Wallet top-up failed: TxnRef={TxnRef}, ResponseCode={ResponseCode}",
                 txnRef, validation.ResponseCode);
