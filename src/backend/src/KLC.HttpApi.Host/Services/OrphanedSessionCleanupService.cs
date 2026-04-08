@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using KLC.Enums;
+using KLC.Notifications;
 using KLC.Sessions;
 using KLC.Stations;
 using Microsoft.EntityFrameworkCore;
@@ -136,6 +137,32 @@ public class OrphanedSessionCleanupService : BackgroundService
                 _logger.LogInformation(
                     "Stuck {Status} session {SessionId} timed out after {Minutes}min (user: {UserId}, station: {StationId})",
                     session.Status, session.Id, _pendingTimeout.TotalMinutes, session.UserId, session.StationId);
+
+                // Send push notification for failed session
+                if (session.UserId != Guid.Empty)
+                {
+                    try
+                    {
+                        var pushService = scope.ServiceProvider.GetService<IPushNotificationService>();
+                        if (pushService != null)
+                        {
+                            await pushService.SendToUserAsync(
+                                session.UserId,
+                                "Phiên sạc thất bại ❌",
+                                reason,
+                                new Dictionary<string, string>
+                                {
+                                    { "type", "session_failed" },
+                                    { "sessionId", session.Id.ToString() }
+                                },
+                                NotificationType.ChargingFailed);
+                        }
+                    }
+                    catch (Exception pushEx)
+                    {
+                        _logger.LogWarning(pushEx, "Failed to send push for failed session {SessionId}", session.Id);
+                    }
+                }
             }
         }
 
