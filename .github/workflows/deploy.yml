@@ -319,9 +319,10 @@ jobs:
         run: |
           dotnet ef database update \
             --project src/backend/src/KLC.EntityFrameworkCore \
-            --startup-project src/backend/src/KLC.HttpApi.Host
+            --startup-project src/backend/src/KLC.HttpApi.Host \
+            --connection "$DB_MIGRATION_CONNECTION_STRING"
         env:
-          ConnectionStrings__Default: ${{ secrets.DB_MIGRATION_CONNECTION_STRING }}
+          DB_MIGRATION_CONNECTION_STRING: ${{ secrets.DB_MIGRATION_CONNECTION_STRING }}
 
       - name: Stop Cloud SQL Auth Proxy
         if: always()
