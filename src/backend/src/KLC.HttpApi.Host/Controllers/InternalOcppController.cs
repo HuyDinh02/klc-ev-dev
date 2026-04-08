@@ -7,6 +7,7 @@ using KLC.Ocpp;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace KLC.Controllers;
 
@@ -146,13 +147,26 @@ public class InternalOcppController : ControllerBase
 
     [HttpPost("remote-start")]
     public async Task<ActionResult<RemoteCommandResultDto>> RemoteStart(
-        [FromBody] InternalRemoteStartRequest request)
+        [FromBody] InternalRemoteStartRequest request,
+        [FromServices] ILogger<InternalOcppController> logger)
     {
         if (!ValidateApiKey())
             return Unauthorized();
 
+        // Diagnostic: log connection state to debug Cloud Run multi-instance issues
+        var localConn = _connectionManager.GetConnection(request.StationCode);
+        var allConns = _connectionManager.GetAllConnections().Select(c => c.ChargePointId).ToList();
+        logger.LogInformation(
+            "INTERNAL_REMOTE_START: Station={StationCode}, LocalConnection={Found}, " +
+            "TotalConnections={Count}, AllConnectedStations=[{Stations}]",
+            request.StationCode, localConn != null, allConns.Count, string.Join(",", allConns));
+
         var result = await _remoteCommandService.SendRemoteStartTransactionAsync(
             request.StationCode, request.ConnectorId, request.IdTag);
+
+        logger.LogInformation(
+            "INTERNAL_REMOTE_START_RESULT: Station={StationCode}, Accepted={Accepted}, Message={Message}",
+            request.StationCode, result.Accepted, result.ErrorMessage);
 
         return Ok(new RemoteCommandResultDto
         {
