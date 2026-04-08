@@ -271,10 +271,14 @@ public class OcppMessageHandler
             ? parsed
             : vendorProfile.HeartbeatIntervalSeconds;
 
+        // Return Vietnam time (GMT+7) — chargers sync their display clock from this timestamp
+        var vnTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+            TimeZoneInfo.FindSystemTimeZoneById("Asia/Ho_Chi_Minh"));
+
         var response = new BootNotificationResponse
         {
             Status = status,
-            CurrentTime = DateTime.UtcNow.ToString("o"),
+            CurrentTime = vnTime.ToString("o"),
             Interval = heartbeatInterval
         };
 
@@ -289,9 +293,13 @@ public class OcppMessageHandler
         // Persist to database
         await _ocppService.HandleHeartbeatAsync(connection.ChargePointId);
 
+        // Return Vietnam time (GMT+7) — chargers sync their display clock from this timestamp
+        var vnTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+            TimeZoneInfo.FindSystemTimeZoneById("Asia/Ho_Chi_Minh"));
+
         var response = new HeartbeatResponse
         {
-            CurrentTime = DateTime.UtcNow.ToString("o")
+            CurrentTime = vnTime.ToString("o")
         };
 
         return parser.SerializeCallResult(uniqueId, response);
