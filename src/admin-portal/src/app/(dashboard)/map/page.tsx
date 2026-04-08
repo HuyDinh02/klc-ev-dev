@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { monitoringApi } from "@/lib/api";
+import { formatDateTime } from "@/lib/utils";
 import { STATION_STATUS, CONNECTOR_STATUS } from "@/lib/constants";
 import { useTranslation } from "@/lib/i18n";
 import { MapPin, WifiOff } from "lucide-react";
@@ -104,7 +105,7 @@ function StationMapInner({ stations }: { stations: StationSummary[] }) {
 
       const faulted = station.totalConnectors - station.availableConnectors - station.chargingConnectors;
       const heartbeat = station.lastHeartbeat
-        ? new Date(station.lastHeartbeat).toLocaleString("vi-VN")
+        ? formatDateTime(station.lastHeartbeat)
         : "N/A";
 
       const popup = `

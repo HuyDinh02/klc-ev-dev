@@ -11,6 +11,7 @@ import { Dialog, DialogHeader, DialogContent } from "@/components/ui/dialog";
 import { SkeletonTable } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { api } from "@/lib/api";
+import { formatDateTime } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
 import { useRequirePermission } from "@/lib/use-permission";
 import { AccessDenied } from "@/components/ui/access-denied";
@@ -169,10 +170,6 @@ export default function AuditLogsPage() {
     return `${(ms / 1000).toFixed(2)}s`;
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString("vi-VN");
-  };
-
   if (!hasAccess) return <AccessDenied />;
 
   return (
@@ -317,7 +314,7 @@ export default function AuditLogsPage() {
                       <td className="px-4 py-3 text-sm">
                         <div className="flex items-center gap-2">
                           <Clock className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                          {formatDate(log.executionTime)}
+                          {formatDateTime(log.executionTime)}
                         </div>
                       </td>
                       <td className="px-4 py-3">
@@ -419,7 +416,7 @@ export default function AuditLogsPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">{t("auditLogs.time")}</p>
                   <p className="font-medium">
-                    {formatDate(detail.executionTime)}
+                    {formatDateTime(detail.executionTime)}
                   </p>
                 </div>
                 <div>

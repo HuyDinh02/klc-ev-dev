@@ -5,6 +5,7 @@ import { useCallback, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { monitoringApi } from "@/lib/api";
+import { formatDateTime } from "@/lib/utils";
 import {
   useMonitoringHub,
   type StationStatusUpdate,
@@ -201,7 +202,7 @@ export default function MonitoringPage() {
           {lastEvent && (
             <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
               <Clock className="h-4 w-4" aria-hidden="true" />
-              <span>{t("monitoring.lastEvent")} {lastEvent.toLocaleTimeString()}</span>
+              <span>{t("monitoring.lastEvent")} {formatDateTime(lastEvent)}</span>
             </div>
           )}
         </PageHeader>
@@ -391,9 +392,7 @@ export default function MonitoringPage() {
                         <div className="text-xs text-muted-foreground">
                           {t("monitoring.lastHeartbeat")}{" "}
                           {station.lastHeartbeat
-                            ? new Date(
-                                station.lastHeartbeat
-                              ).toLocaleTimeString()
+                            ? formatDateTime(station.lastHeartbeat)
                             : t("common.na")}
                         </div>
                       </div>
@@ -429,7 +428,7 @@ export default function MonitoringPage() {
                       <p className="text-sm truncate">{alert.message}</p>
                     </div>
                     <span className="text-xs text-amber-600 shrink-0">
-                      {new Date(alert.timestamp).toLocaleTimeString()}
+                      {formatDateTime(alert.timestamp)}
                     </span>
                   </div>
                 ))

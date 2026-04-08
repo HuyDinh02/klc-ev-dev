@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonCard } from "@/components/ui/skeleton";
 import { useTranslation } from "@/lib/i18n";
 import { api } from "@/lib/api";
+import { formatDateTime } from "@/lib/utils";
 import { useMonitoringHub } from "@/lib/signalr";
 import { useAlertsStore } from "@/lib/store";
 import { useRequirePermission } from "@/lib/use-permission";
@@ -146,10 +147,6 @@ export default function AlertsPage() {
       case "info": return "default";
       default: return "secondary";
     }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString("vi-VN");
   };
 
   const getTimeAgo = (dateString: string) => {
@@ -321,7 +318,7 @@ export default function AlertsPage() {
                         </div>
                         {alert.status >= 1 && alert.acknowledgedBy && (
                           <p className="text-xs text-muted-foreground">
-                            {t("alerts.acknowledgedBy")} {alert.acknowledgedBy}{alert.acknowledgedAt ? ` ${t("alerts.at")} ${formatDate(alert.acknowledgedAt)}` : ""}
+                            {t("alerts.acknowledgedBy")} {alert.acknowledgedBy}{alert.acknowledgedAt ? ` ${t("alerts.at")} ${formatDateTime(alert.acknowledgedAt)}` : ""}
                           </p>
                         )}
                       </div>
@@ -439,13 +436,13 @@ export default function AlertsPage() {
               )}
               <div>
                 <p className="text-sm text-muted-foreground">{t("alerts.createdLabel")}</p>
-                <p>{formatDate(selectedAlert.createdAt)}</p>
+                <p>{formatDateTime(selectedAlert.createdAt)}</p>
               </div>
               {selectedAlert.status >= 1 && selectedAlert.acknowledgedBy && (
                 <div>
                   <p className="text-sm text-muted-foreground">{t("alerts.acknowledgedLabel")}</p>
                   <p>
-                    {selectedAlert.acknowledgedBy}{selectedAlert.acknowledgedAt ? ` ${t("alerts.at")} ${formatDate(selectedAlert.acknowledgedAt)}` : ""}
+                    {selectedAlert.acknowledgedBy}{selectedAlert.acknowledgedAt ? ` ${t("alerts.at")} ${formatDateTime(selectedAlert.acknowledgedAt)}` : ""}
                   </p>
                 </div>
               )}

@@ -15,6 +15,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
+import { formatDate } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
 import { useRequirePermission } from "@/lib/use-permission";
 import { AccessDenied } from "@/components/ui/access-denied";
@@ -279,9 +280,7 @@ export default function FeedbackPage() {
                           {getStatusBadge(feedback.status)}
                         </td>
                         <td className="px-4 py-3 text-sm">
-                          {new Date(feedback.createdAt).toLocaleDateString(
-                            "vi-VN"
-                          )}
+                          {formatDate(feedback.createdAt)}
                         </td>
                         <td className="px-4 py-3">
                           <Button
@@ -343,9 +342,7 @@ export default function FeedbackPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">{t("feedback.tableCreatedAt")}</p>
                   <p className="font-medium">
-                    {new Date(selectedFeedback.createdAt).toLocaleDateString(
-                      "vi-VN"
-                    )}
+                    {formatDate(selectedFeedback.createdAt)}
                   </p>
                 </div>
               </div>

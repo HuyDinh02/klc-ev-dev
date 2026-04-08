@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonCard } from "@/components/ui/skeleton";
 import { Dialog, DialogHeader, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { operatorsApi, stationsApi } from "@/lib/api";
+import { formatDateTime } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
 import { useRequirePermission, useHasPermission } from "@/lib/use-permission";
 import { AccessDenied } from "@/components/ui/access-denied";
@@ -476,7 +477,7 @@ export default function OperatorsPage() {
                               </td>
                               <td className="py-2 px-3">{log.httpStatusCode ?? "—"}</td>
                               <td className="py-2 px-3">{log.attemptCount}</td>
-                              <td className="py-2 px-3 text-muted-foreground">{new Date(log.creationTime).toLocaleString()}</td>
+                              <td className="py-2 px-3 text-muted-foreground">{formatDateTime(log.creationTime)}</td>
                             </tr>
                           ))}
                         </tbody>
