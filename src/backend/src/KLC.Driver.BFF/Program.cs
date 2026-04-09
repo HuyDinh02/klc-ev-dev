@@ -1,6 +1,8 @@
 using System.Threading.RateLimiting;
+using KLC.Configuration;
 using KLC.Driver;
 using KLC.Driver.Endpoints;
+using KLC.Driver.Middleware;
 using KLC.Driver.Services;
 using Scalar.AspNetCore;
 using StackExchange.Redis;
@@ -97,6 +99,12 @@ if (FirebaseAdmin.FirebaseApp.DefaultInstance == null)
         catch { /* Firebase will be unavailable — auth falls back to password login */ }
     }
 }
+
+// Typed configuration (Options Pattern)
+builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection(JwtSettings.Section));
+builder.Services.Configure<VnPaySettings>(builder.Configuration.GetSection(VnPaySettings.Section));
+builder.Services.Configure<MoMoSettings>(builder.Configuration.GetSection(MoMoSettings.Section));
+builder.Services.Configure<WalletSettings>(builder.Configuration.GetSection(WalletSettings.Section));
 
 // Add BFF services
 builder.Services.AddScoped<IStationBffService, StationBffService>();
@@ -209,6 +217,7 @@ if (enableApiDocs)
     });
 }
 
+app.UseMiddleware<GlobalExceptionMiddleware>();
 app.UseSentryTracing();
 app.UseCors("MobileApp");
 app.UseRateLimiter();

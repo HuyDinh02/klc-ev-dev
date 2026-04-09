@@ -6,6 +6,7 @@ using KLC.Enums;
 using KLC.Hubs;
 using KLC.Auditing;
 using KLC.Ocpp;
+using KLC.Ocpp.Handlers;
 using KLC.Ocpp.Messages;
 using KLC.Ocpp.Vendors;
 using KLC.Sessions;
@@ -40,7 +41,6 @@ public class OcppMessageHandlerTests
         _notifier = Substitute.For<IMonitoringNotifier>();
         _remoteCommandService = new FakeOcppRemoteCommandService();
 
-        var connectionManager = new OcppConnectionManager(NullLogger<OcppConnectionManager>.Instance);
         var rawEventRepo = Substitute.For<IRepository<OcppRawEvent, Guid>>();
         var guidGenerator = Substitute.For<IGuidGenerator>();
         guidGenerator.Create().Returns(_ => Guid.NewGuid());
@@ -57,20 +57,38 @@ public class OcppMessageHandlerTests
 
         var scopeFactory = Substitute.For<IServiceScopeFactory>();
 
+        // Create individual action handlers
+        var handlers = new IOcppActionHandler[]
+        {
+            new BootNotificationHandler(
+                NullLogger<BootNotificationHandler>.Instance, _ocppService, _notifier,
+                vendorFactory, auditLogger, settingProvider),
+            new HeartbeatHandler(
+                NullLogger<HeartbeatHandler>.Instance, _ocppService, vendorFactory),
+            new StatusNotificationHandler(
+                NullLogger<StatusNotificationHandler>.Instance, _ocppService, _notifier),
+            new StartTransactionHandler(
+                NullLogger<StartTransactionHandler>.Instance, _ocppService, _notifier,
+                auditLogger, scopeFactory),
+            new StopTransactionHandler(
+                NullLogger<StopTransactionHandler>.Instance, _ocppService, _notifier,
+                vendorFactory, auditLogger, scopeFactory),
+            new MeterValuesHandler(
+                NullLogger<MeterValuesHandler>.Instance, _ocppService, _notifier,
+                vendorFactory, _remoteCommandService),
+            new AuthorizeHandler(
+                NullLogger<AuthorizeHandler>.Instance, _ocppService),
+            new DataTransferHandler(
+                NullLogger<DataTransferHandler>.Instance),
+        };
+
         _handler = new OcppMessageHandler(
             NullLogger<OcppMessageHandler>.Instance,
-            connectionManager,
-            _ocppService,
-            _notifier,
-            vendorFactory,
+            parserFactory,
             rawEventRepo,
             guidGenerator,
-            parserFactory,
-            auditLogger,
-            settingProvider,
-            _remoteCommandService,
-            scopeFactory,
-            powerBalancingService: null);
+            _ocppService,
+            handlers);
     }
 
     private static OcppConnection CreateConnection(string chargePointId = "TEST-001")

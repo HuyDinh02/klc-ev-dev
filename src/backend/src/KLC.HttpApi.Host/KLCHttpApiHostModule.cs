@@ -13,10 +13,12 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using KLC.Configuration;
 using KLC.EntityFrameworkCore;
 using KLC.Hubs;
 using KLC.MultiTenancy;
 using KLC.Ocpp;
+using KLC.Ocpp.Handlers;
 using KLC.Ocpp.Vendors;
 using KLC.Operators;
 using KLC.Services;
@@ -129,6 +131,12 @@ public class KLCHttpApiHostModule : AbpModule
         {
             options.CheckLibs = false;
         });
+
+        // Typed configuration (Options Pattern)
+        context.Services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.Section));
+        context.Services.Configure<VnPaySettings>(configuration.GetSection(VnPaySettings.Section));
+        context.Services.Configure<MoMoSettings>(configuration.GetSection(MoMoSettings.Section));
+        context.Services.Configure<WalletSettings>(configuration.GetSection(WalletSettings.Section));
 
         ConfigureAuthentication(context);
         ConfigureBundles();
@@ -270,6 +278,13 @@ public class KLCHttpApiHostModule : AbpModule
         // Register OCPP services
         context.Services.AddSingleton<OcppConnectionManager>();
         context.Services.AddSingleton<OcppMessageParserFactory>();
+
+        // Auto-discover all IOcppActionHandler implementations (Strategy Pattern)
+        var handlerTypes = typeof(IOcppActionHandler).Assembly.GetTypes()
+            .Where(t => !t.IsAbstract && !t.IsInterface && typeof(IOcppActionHandler).IsAssignableFrom(t));
+        foreach (var type in handlerTypes)
+            context.Services.AddScoped(typeof(IOcppActionHandler), type);
+
         context.Services.AddScoped<OcppMessageHandler>();
         context.Services.AddHostedService<HeartbeatMonitorService>();
         context.Services.AddHostedService<OrphanedSessionCleanupService>();

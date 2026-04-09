@@ -116,15 +116,8 @@ public static class AuthEndpoints
             [FromBody] ResetPasswordRequest request,
             IAuthBffService authService) =>
         {
-            try
-            {
-                await authService.ResetPasswordAsync(request);
-                return Results.Ok(new { message = "Password reset successful" });
-            }
-            catch (Volo.Abp.BusinessException ex)
-            {
-                return Results.BadRequest(new { error = new { code = ex.Code ?? "RESET_FAILED", message = ex.Message } });
-            }
+            await authService.ResetPasswordAsync(request);
+            return Results.Ok(new { message = "Password reset successful" });
         })
         .WithName("ResetPassword")
         .WithSummary("Reset password with OTP")
@@ -136,15 +129,8 @@ public static class AuthEndpoints
             [FromBody] FirebaseResetPasswordRequest request,
             IAuthBffService authService) =>
         {
-            try
-            {
-                await authService.ResetPasswordWithFirebaseAsync(request);
-                return Results.Ok(new { message = "Password reset successful" });
-            }
-            catch (Volo.Abp.BusinessException ex)
-            {
-                return Results.BadRequest(new { error = new { code = ex.Code ?? "RESET_FAILED", message = ex.Message } });
-            }
+            await authService.ResetPasswordWithFirebaseAsync(request);
+            return Results.Ok(new { message = "Password reset successful" });
         })
         .WithName("FirebaseResetPassword")
         .WithSummary("Reset password using Firebase Phone Auth ID token")
@@ -157,16 +143,9 @@ public static class AuthEndpoints
             ClaimsPrincipal user,
             IAuthBffService authService) =>
         {
-            try
-            {
-                var userId = GetUserId(user);
-                await authService.ChangePasswordAsync(userId, request);
-                return Results.Ok(new { message = "Password changed successfully" });
-            }
-            catch (Volo.Abp.BusinessException ex)
-            {
-                return Results.BadRequest(new { error = new { code = ex.Code ?? "CHANGE_PASSWORD_FAILED", message = ex.Message } });
-            }
+            var userId = GetUserId(user);
+            await authService.ChangePasswordAsync(userId, request);
+            return Results.Ok(new { message = "Password changed successfully" });
         })
         .WithName("ChangePassword")
         .WithSummary("Change password (authenticated)")

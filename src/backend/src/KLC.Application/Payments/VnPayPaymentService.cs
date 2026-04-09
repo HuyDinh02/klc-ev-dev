@@ -2,15 +2,17 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Net;
 using System.Web;
+using KLC.Configuration;
 using KLC.Enums;
+using KLC.Security;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Volo.Abp.DependencyInjection;
 
 namespace KLC.Payments;
@@ -24,15 +26,18 @@ public class VnPayPaymentService : IPaymentGatewayService, ITransientDependency
 {
     private readonly ILogger<VnPayPaymentService> _logger;
     private readonly IConfiguration _configuration;
+    private readonly VnPaySettings _vnPaySettings;
     private readonly IHttpClientFactory _httpClientFactory;
 
     public VnPayPaymentService(
         ILogger<VnPayPaymentService> logger,
         IConfiguration configuration,
+        IOptions<VnPaySettings> vnPaySettings,
         IHttpClientFactory httpClientFactory)
     {
         _logger = logger;
         _configuration = configuration;
+        _vnPaySettings = vnPaySettings.Value;
         _httpClientFactory = httpClientFactory;
     }
 
@@ -40,10 +45,10 @@ public class VnPayPaymentService : IPaymentGatewayService, ITransientDependency
 
     public Task<PaymentGatewayResult> CreateTopUpAsync(CreateTopUpRequest request)
     {
-        var tmnCode = _configuration["Payment:VnPay:TmnCode"];
-        var hashSecret = _configuration["Payment:VnPay:HashSecret"];
-        var baseUrl = _configuration["Payment:VnPay:BaseUrl"] ?? "https://sandbox.vnpayment.vn";
-        var version = _configuration["Payment:VnPay:Version"] ?? "2.1.0";
+        var tmnCode = _vnPaySettings.TmnCode;
+        var hashSecret = _vnPaySettings.HashSecret;
+        var baseUrl = _vnPaySettings.BaseUrl;
+        var version = _vnPaySettings.Version;
 
         if (string.IsNullOrEmpty(tmnCode) || string.IsNullOrEmpty(hashSecret))
         {
@@ -94,7 +99,7 @@ public class VnPayPaymentService : IPaymentGatewayService, ITransientDependency
         var queryString = BuildQueryString(vnpParams);
 
         // Compute HMAC-SHA512 signature over the sorted query string
-        var secureHash = ComputeHmacSha512(queryString, hashSecret);
+        var secureHash = CryptoService.HmacSha512(hashSecret, queryString);
 
         // Append signature to the query string
         var fullQueryString = $"{queryString}&vnp_SecureHash={secureHash}";
@@ -167,9 +172,9 @@ public class VnPayPaymentService : IPaymentGatewayService, ITransientDependency
         }
 
         var dataToSign = BuildQueryString(sortedParams);
-        var expectedHash = ComputeHmacSha512(dataToSign, hashSecret);
+        var expectedHash = CryptoService.HmacSha512(hashSecret, dataToSign);
 
-        if (!ConstantTimeEquals(expectedHash, vnpSecureHash))
+        if (!CryptoService.ConstantTimeEquals(expectedHash, vnpSecureHash))
         {
             _logger.LogWarning(
                 "[VnPay] Callback rejected: signature mismatch for data length={Length}",
@@ -247,9 +252,9 @@ public class VnPayPaymentService : IPaymentGatewayService, ITransientDependency
         }
 
         var dataToSign = BuildQueryString(sortedParams);
-        var expectedHash = ComputeHmacSha512(dataToSign, hashSecret);
+        var expectedHash = CryptoService.HmacSha512(hashSecret, dataToSign);
 
-        return ConstantTimeEquals(expectedHash, signature);
+        return CryptoService.ConstantTimeEquals(expectedHash, signature);
     }
 
     public async Task<PaymentCallbackResult> QueryTransactionAsync(QueryTransactionRequest request)
@@ -273,7 +278,7 @@ public class VnPayPaymentService : IPaymentGatewayService, ITransientDependency
 
         // VNPay querydr uses pipe-delimited hash
         var hashData = $"{requestId}|{version}|querydr|{tmnCode}|{request.TxnRef}|{request.TransactionDate}|{createDate}|{ipAddr}|{orderInfo}";
-        var secureHash = ComputeHmacSha512(hashData, hashSecret);
+        var secureHash = CryptoService.HmacSha512(hashSecret, hashData);
 
         var payload = new Dictionary<string, string>
         {
@@ -363,7 +368,7 @@ public class VnPayPaymentService : IPaymentGatewayService, ITransientDependency
 
         // VNPay refund uses pipe-delimited hash
         var hashData = $"{requestId}|{version}|refund|{tmnCode}|{transactionType}|{request.TxnRef}|{vnpAmount}|{request.GatewayTransactionId}|{request.TransactionDate}|{request.CreatedBy}|{createDate}|{request.ClientIpAddress}|{request.OrderInfo}";
-        var secureHash = ComputeHmacSha512(hashData, hashSecret);
+        var secureHash = CryptoService.HmacSha512(hashSecret, hashData);
 
         var payload = new Dictionary<string, string>
         {
@@ -452,16 +457,6 @@ public class VnPayPaymentService : IPaymentGatewayService, ITransientDependency
     }
 
     /// <summary>
-    /// Compute HMAC-SHA512 hash. VnPay requires SHA512 (not SHA256).
-    /// </summary>
-    private static string ComputeHmacSha512(string data, string key)
-    {
-        using var hmac = new HMACSHA512(Encoding.UTF8.GetBytes(key));
-        var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(data));
-        return Convert.ToHexString(hash).ToLowerInvariant();
-    }
-
-    /// <summary>
     /// VNPay requires vnp_OrderInfo to be Vietnamese without diacritics and no special characters.
     /// Remove diacritics and strip non-alphanumeric chars (except spaces, hyphens, underscores).
     /// </summary>
@@ -500,13 +495,4 @@ public class VnPayPaymentService : IPaymentGatewayService, ITransientDependency
         return string.IsNullOrEmpty(sanitized) ? "Payment" : sanitized;
     }
 
-    /// <summary>
-    /// Constant-time string comparison to prevent timing attacks on HMAC signatures.
-    /// </summary>
-    private static bool ConstantTimeEquals(string a, string b)
-    {
-        var aBytes = Encoding.UTF8.GetBytes(a.ToLowerInvariant());
-        var bBytes = Encoding.UTF8.GetBytes(b.ToLowerInvariant());
-        return CryptographicOperations.FixedTimeEquals(aBytes, bBytes);
-    }
 }

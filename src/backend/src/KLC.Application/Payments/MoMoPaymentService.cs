@@ -2,14 +2,16 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using KLC.Configuration;
 using KLC.Enums;
+using KLC.Security;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Volo.Abp.DependencyInjection;
 
 namespace KLC.Payments;
@@ -26,15 +28,18 @@ public class MoMoPaymentService : IPaymentGatewayService, ITransientDependency
 
     private readonly ILogger<MoMoPaymentService> _logger;
     private readonly IConfiguration _configuration;
+    private readonly MoMoSettings _momoSettings;
     private readonly IHttpClientFactory _httpClientFactory;
 
     public MoMoPaymentService(
         ILogger<MoMoPaymentService> logger,
         IConfiguration configuration,
+        IOptions<MoMoSettings> momoSettings,
         IHttpClientFactory httpClientFactory)
     {
         _logger = logger;
         _configuration = configuration;
+        _momoSettings = momoSettings.Value;
         _httpClientFactory = httpClientFactory;
     }
 
@@ -42,10 +47,10 @@ public class MoMoPaymentService : IPaymentGatewayService, ITransientDependency
 
     public async Task<PaymentGatewayResult> CreateTopUpAsync(CreateTopUpRequest request)
     {
-        var partnerCode = _configuration["Payment:MoMo:PartnerCode"];
-        var accessKey = _configuration["Payment:MoMo:AccessKey"];
-        var secretKey = _configuration["Payment:MoMo:SecretKey"];
-        var baseUrl = _configuration["Payment:MoMo:BaseUrl"] ?? DefaultSandboxUrl;
+        var partnerCode = _momoSettings.PartnerCode;
+        var accessKey = _momoSettings.AccessKey;
+        var secretKey = _momoSettings.SecretKey;
+        var baseUrl = !string.IsNullOrEmpty(_momoSettings.BaseUrl) ? _momoSettings.BaseUrl : DefaultSandboxUrl;
 
         if (string.IsNullOrEmpty(partnerCode) || string.IsNullOrEmpty(accessKey))
         {
@@ -79,7 +84,7 @@ public class MoMoPaymentService : IPaymentGatewayService, ITransientDependency
                            $"&requestId={requestId}" +
                            $"&requestType={RequestType}";
 
-        var signature = ComputeHmacSha256(rawSignature, secretKey!);
+        var signature = CryptoService.HmacSha256(secretKey!, rawSignature);
 
         var requestBody = new MoMoCreateRequest
         {
@@ -196,9 +201,9 @@ public class MoMoPaymentService : IPaymentGatewayService, ITransientDependency
             });
         }
 
-        var expectedSignature = ComputeHmacSha256(rawData, secretKey);
+        var expectedSignature = CryptoService.HmacSha256(secretKey, rawData);
 
-        if (!ConstantTimeEquals(expectedSignature, signature))
+        if (!CryptoService.ConstantTimeEquals(expectedSignature, signature))
         {
             _logger.LogWarning(
                 "[MoMo] Callback rejected: signature mismatch for data length={Length}",
@@ -267,27 +272,11 @@ public class MoMoPaymentService : IPaymentGatewayService, ITransientDependency
 
         var rawData = string.Join("&", sorted.Select(kvp => $"{kvp.Key}={kvp.Value}"));
 
-        var expectedSignature = ComputeHmacSha256(rawData, secretKey);
+        var expectedSignature = CryptoService.HmacSha256(secretKey, rawData);
 
-        return ConstantTimeEquals(expectedSignature, signature);
+        return CryptoService.ConstantTimeEquals(expectedSignature, signature);
     }
 
-    private static string ComputeHmacSha256(string data, string key)
-    {
-        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(key));
-        var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(data));
-        return Convert.ToHexString(hash).ToLowerInvariant();
-    }
-
-    /// <summary>
-    /// Constant-time string comparison to prevent timing attacks on HMAC signatures.
-    /// </summary>
-    private static bool ConstantTimeEquals(string a, string b)
-    {
-        var aBytes = Encoding.UTF8.GetBytes(a.ToLowerInvariant());
-        var bBytes = Encoding.UTF8.GetBytes(b.ToLowerInvariant());
-        return CryptographicOperations.FixedTimeEquals(aBytes, bBytes);
-    }
 }
 
 #region MoMo API Models

@@ -3,11 +3,13 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using KLC.Auditing;
+using KLC.Configuration;
 using KLC.EntityFrameworkCore;
 using KLC.Enums;
 using KLC.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using StackExchange.Redis;
 using Volo.Abp.Identity;
@@ -36,6 +38,7 @@ public class AuthBffService : IAuthBffService
     private readonly IdentityUserManager _userManager;
     private readonly IDatabase _redis;
     private readonly IConfiguration _configuration;
+    private readonly JwtSettings _jwtSettings;
     private readonly ILogger<AuthBffService> _logger;
     private readonly KLC.Notifications.ISmsService _smsService;
     private readonly IAuditEventLogger _auditLogger;
@@ -49,6 +52,7 @@ public class AuthBffService : IAuthBffService
         IdentityUserManager userManager,
         IConnectionMultiplexer redis,
         IConfiguration configuration,
+        IOptions<JwtSettings> jwtSettings,
         ILogger<AuthBffService> logger,
         KLC.Notifications.ISmsService smsService,
         IAuditEventLogger auditLogger)
@@ -57,6 +61,7 @@ public class AuthBffService : IAuthBffService
         _userManager = userManager;
         _redis = redis.GetDatabase();
         _configuration = configuration;
+        _jwtSettings = jwtSettings.Value;
         _logger = logger;
         _smsService = smsService;
         _auditLogger = auditLogger;
@@ -518,9 +523,10 @@ public class AuthBffService : IAuthBffService
 
     private string GenerateAccessToken(AppUser user)
     {
-        var key = _configuration["Jwt:SecretKey"]
-            ?? throw new InvalidOperationException("Jwt:SecretKey is not configured.");
-        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
+        if (string.IsNullOrEmpty(_jwtSettings.SecretKey))
+            throw new InvalidOperationException("Jwt:SecretKey is not configured.");
+
+        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
         var claims = new[]
@@ -531,12 +537,11 @@ public class AuthBffService : IAuthBffService
             new Claim("name", user.FullName),
         };
 
-        var expiry = TimeSpan.FromMinutes(
-            int.TryParse(_configuration["Jwt:ExpiryMinutes"], out var m) ? m : 60);
+        var expiry = TimeSpan.FromMinutes(_jwtSettings.ExpiryMinutes);
 
         var token = new JwtSecurityToken(
-            issuer: _configuration["Jwt:Issuer"] ?? "KLC.Driver.BFF",
-            audience: _configuration["Jwt:Audience"] ?? "KLC.Driver.App",
+            issuer: _jwtSettings.Issuer,
+            audience: _jwtSettings.Audience,
             claims: claims,
             expires: DateTime.UtcNow.Add(expiry),
             signingCredentials: credentials);
@@ -546,7 +551,7 @@ public class AuthBffService : IAuthBffService
 
     private int GetAccessTokenExpirySeconds()
     {
-        return (int.TryParse(_configuration["Jwt:ExpiryMinutes"], out var m) ? m : 60) * 60;
+        return _jwtSettings.ExpiryMinutes * 60;
     }
 
     private static string GenerateRefreshToken()
