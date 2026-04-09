@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
 using StackExchange.Redis;
 
@@ -12,6 +13,9 @@ public class RedisCacheService : ICacheService
     private readonly IDatabase _db;
     private readonly ILogger<RedisCacheService> _logger;
     private readonly TimeSpan _defaultExpiration = TimeSpan.FromMinutes(5);
+    // Per-key locks to prevent thundering herd: multiple concurrent misses for the same
+    // key will queue behind a single factory call rather than all hitting the DB.
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _keyLocks = new();
 
     public RedisCacheService(
         IConnectionMultiplexer redis,
@@ -66,22 +70,36 @@ public class RedisCacheService : ICacheService
 
     public async Task<T> GetOrSetAsync<T>(string key, Func<Task<T>> factory, TimeSpan? expiration = null)
     {
-        // Try cache first
+        // Fast path: cache hit without acquiring any lock
         var cached = await GetAsync<T>(key);
         if (cached is not null)
         {
             return cached;
         }
 
-        // Cache miss - fetch from source
-        var value = await factory();
-
-        // Cache the result
-        if (value is not null)
+        // Slow path: serialize concurrent misses for the same key to avoid thundering herd
+        var sem = _keyLocks.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
+        await sem.WaitAsync();
+        try
         {
-            await SetAsync(key, value, expiration);
-        }
+            // Re-check after acquiring lock — a prior waiter may have populated it
+            cached = await GetAsync<T>(key);
+            if (cached is not null)
+            {
+                return cached;
+            }
 
-        return value;
+            var value = await factory();
+            if (value is not null)
+            {
+                await SetAsync(key, value, expiration);
+            }
+            return value;
+        }
+        finally
+        {
+            sem.Release();
+            _keyLocks.TryRemove(key, out _);
+        }
     }
 }

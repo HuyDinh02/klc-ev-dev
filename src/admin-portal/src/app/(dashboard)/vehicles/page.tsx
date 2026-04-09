@@ -9,6 +9,7 @@ import { StatCard } from "@/components/ui/stat-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonCard, SkeletonTable } from "@/components/ui/skeleton";
 import { vehiclesApi } from "@/lib/api";
+import { formatDate } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
 import { Car, Battery, Plug, Star, Search } from "lucide-react";
 
@@ -211,9 +212,7 @@ export default function VehiclesPage() {
                             </Badge>
                           </td>
                           <td className="px-4 py-3 text-muted-foreground">
-                            {new Date(vehicle.creationTime).toLocaleDateString(
-                              "vi-VN"
-                            )}
+                            {formatDate(vehicle.creationTime)}
                           </td>
                         </tr>
                       ))}

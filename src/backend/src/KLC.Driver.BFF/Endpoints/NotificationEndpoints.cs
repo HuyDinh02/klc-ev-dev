@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using KLC.Driver.Services;
+using KLC.Enums;
 using Microsoft.AspNetCore.Mvc;
 
 namespace KLC.Driver.Endpoints;
@@ -90,7 +91,10 @@ public static class NotificationEndpoints
             INotificationBffService notificationService) =>
         {
             var userId = GetUserId(user);
-            await notificationService.RegisterDeviceAsync(userId, request.FcmToken);
+            var platform = string.Equals(request.Platform, "ios", StringComparison.OrdinalIgnoreCase)
+                ? DevicePlatform.iOS
+                : DevicePlatform.Android;
+            await notificationService.RegisterDeviceAsync(userId, request.FcmToken, platform);
             return Results.NoContent();
         })
         .WithName("RegisterDevice")

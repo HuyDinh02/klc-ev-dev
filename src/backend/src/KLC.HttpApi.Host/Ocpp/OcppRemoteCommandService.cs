@@ -1,28 +1,41 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Json;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace KLC.Ocpp;
 
 /// <summary>
 /// Host-layer implementation of IOcppRemoteCommandService.
-/// Bridges the Application layer to the OcppConnectionManager singleton.
+/// First tries the local OcppConnectionManager. If station not found locally,
+/// forwards to the OCPP Gateway via internal API (for separated architecture).
 /// </summary>
 public class OcppRemoteCommandService : IOcppRemoteCommandService
 {
     private readonly OcppConnectionManager _connectionManager;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<OcppRemoteCommandService> _logger;
+    private readonly OcppRedisCommandBridge? _redisBridge;
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
 
     public OcppRemoteCommandService(
         OcppConnectionManager connectionManager,
-        ILogger<OcppRemoteCommandService> logger)
+        IHttpClientFactory httpClientFactory,
+        IConfiguration configuration,
+        ILogger<OcppRemoteCommandService> logger,
+        OcppRedisCommandBridge? redisBridge = null)
     {
         _connectionManager = connectionManager;
+        _httpClientFactory = httpClientFactory;
+        _configuration = configuration;
         _logger = logger;
+        _redisBridge = redisBridge;
     }
 
     public async Task<RemoteCommandResult> SendRemoteStartTransactionAsync(string stationCode, int connectorId, string idTag)
@@ -325,21 +338,48 @@ public class OcppRemoteCommandService : IOcppRemoteCommandService
         var connection = _connectionManager.GetConnection(stationCode);
         if (connection == null)
         {
+            // Fallback 1: Try Redis pub/sub (reaches charger on any Cloud Run instance)
+            if (_redisBridge is { IsAvailable: true })
+            {
+                _logger.LogInformation("Station {StationCode} not local — sending {Action} via Redis pub/sub", stationCode, action);
+                var redisResponse = await _redisBridge.SendCommandViaRedisAsync(stationCode, action, payload);
+                if (redisResponse != null)
+                {
+                    return ParseCommandResponse(stationCode, action, redisResponse);
+                }
+                _logger.LogWarning("Redis pub/sub: no instance has {StationCode} connected (timeout)", stationCode);
+            }
+
+            // Fallback 2: Forward to OCPP Gateway via HTTP (legacy)
+            var gatewayUrl = _configuration["Ocpp:GatewayUrl"];
+            if (!string.IsNullOrEmpty(gatewayUrl))
+            {
+                _logger.LogInformation("Station {StationCode} not local — forwarding {Action} to Gateway via HTTP", stationCode, action);
+                return await ForwardToGatewayAsync(gatewayUrl, stationCode, action, payload);
+            }
+
             _logger.LogWarning("Station {StationCode} not connected for {Action}", stationCode, action);
             return new RemoteCommandResult(false, "Station not connected");
         }
+
+        var payloadJson = JsonSerializer.Serialize(payload);
+        _logger.LogInformation(
+            "OCPP_OUT: Sending {Action} to {StationCode}: {Payload}",
+            action, stationCode, payloadJson);
 
         var response = await connection.SendCallAsync(action, payload, Timeout);
 
         if (response == null)
         {
-            _logger.LogWarning("{Action} timeout for station {StationCode}", action, stationCode);
+            _logger.LogWarning("OCPP_OUT_RESULT: {Action} timeout for {StationCode} (no response within {TimeoutSec}s)",
+                action, stationCode, Timeout.TotalSeconds);
             return new RemoteCommandResult(false, "Command timed out");
         }
 
         if (response.StartsWith("ERROR:"))
         {
-            _logger.LogWarning("{Action} error from {StationCode}: {Response}", action, stationCode, response);
+            _logger.LogWarning("OCPP_OUT_RESULT: {Action} error from {StationCode}: {Response}",
+                action, stationCode, response);
             return new RemoteCommandResult(false, response);
         }
 
@@ -352,9 +392,12 @@ public class OcppRemoteCommandService : IOcppRemoteCommandService
                         || string.Equals(status, "Unlocked", StringComparison.OrdinalIgnoreCase)
                         || string.Equals(status, "Scheduled", StringComparison.OrdinalIgnoreCase);
 
+            _logger.LogInformation(
+                "OCPP_OUT_RESULT: {Action} to {StationCode}: status={Status}, accepted={Accepted}",
+                action, stationCode, status, accepted);
+
             if (!accepted)
             {
-                _logger.LogWarning("{Action} rejected by {StationCode}: status={Status}", action, stationCode, status);
                 return new RemoteCommandResult(false, $"Charger responded: {status}");
             }
 
@@ -363,7 +406,81 @@ public class OcppRemoteCommandService : IOcppRemoteCommandService
         catch (JsonException)
         {
             // If we can't parse, consider it accepted (we got a response)
+            _logger.LogInformation("OCPP_OUT_RESULT: {Action} to {StationCode}: raw response (non-JSON), treating as accepted",
+                action, stationCode);
             return new RemoteCommandResult(true);
+        }
+    }
+
+    private RemoteCommandResult ParseCommandResponse(string stationCode, string action, string response)
+    {
+        if (response.StartsWith("ERROR:"))
+        {
+            _logger.LogWarning("OCPP_OUT_RESULT: {Action} error from {StationCode} (via Redis): {Response}", action, stationCode, response);
+            return new RemoteCommandResult(false, response);
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(response);
+            var status = doc.RootElement.TryGetProperty("status", out var s) ? s.GetString() : null;
+            var accepted = string.Equals(status, "Accepted", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(status, "Unlocked", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(status, "Scheduled", StringComparison.OrdinalIgnoreCase);
+
+            _logger.LogInformation("OCPP_OUT_RESULT: {Action} to {StationCode} (via Redis): status={Status}", action, stationCode, status);
+            return accepted ? new RemoteCommandResult(true) : new RemoteCommandResult(false, $"Charger responded: {status}");
+        }
+        catch (JsonException)
+        {
+            return new RemoteCommandResult(true);
+        }
+    }
+
+    /// <summary>
+    /// Forward a remote command to the OCPP Gateway via its internal API.
+    /// Used when the charger is connected to a separate Gateway service.
+    /// </summary>
+    private async Task<RemoteCommandResult> ForwardToGatewayAsync(
+        string gatewayUrl, string stationCode, string action, object payload)
+    {
+        try
+        {
+            var client = _httpClientFactory.CreateClient();
+            var internalKey = _configuration["Internal:ApiKey"];
+            if (!string.IsNullOrEmpty(internalKey))
+            {
+                client.DefaultRequestHeaders.Add("X-Internal-Key", internalKey);
+            }
+
+            // Forward any OCPP command to the Gateway's generic command endpoint
+            var response = await client.PostAsJsonAsync(
+                $"{gatewayUrl}/api/internal/ocpp/command",
+                new { stationCode, action, payload });
+
+            if (response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                try
+                {
+                    using var doc = JsonDocument.Parse(body);
+                    var success = doc.RootElement.TryGetProperty("success", out var s) && s.GetBoolean();
+                    var message = doc.RootElement.TryGetProperty("message", out var m) ? m.GetString() : null;
+                    return new RemoteCommandResult(success, message);
+                }
+                catch
+                {
+                    return new RemoteCommandResult(true);
+                }
+            }
+
+            _logger.LogWarning("Gateway forwarding failed for {Action}: {Status}", action, response.StatusCode);
+            return new RemoteCommandResult(false, $"Gateway returned {response.StatusCode}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to forward {Action} to Gateway for {StationCode}", action, stationCode);
+            return new RemoteCommandResult(false, "Gateway communication error");
         }
     }
 }

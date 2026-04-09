@@ -12,7 +12,6 @@ public class KLCDbContextFactory : IDesignTimeDbContextFactory<KLCDbContext>
 {
     public KLCDbContext CreateDbContext(string[] args)
     {
-        // https://www.npgsql.org/efcore/release-notes/6.0.html#opting-out-of-the-new-timestamp-mapping-logic
         AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
         KLCEfCoreEntityExtensionMappings.Configure();

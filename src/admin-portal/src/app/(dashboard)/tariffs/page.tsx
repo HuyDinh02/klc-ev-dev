@@ -225,7 +225,7 @@ export default function TariffsPage() {
   const activeTariffs = tariffs?.filter((t) => t.isActive).length ?? 0;
   const defaultTariff = tariffs?.find((t) => t.isDefault);
   const avgRate = totalTariffs > 0
-    ? (tariffs!.reduce((sum, t) => sum + t.totalRatePerKwh, 0) / totalTariffs)
+    ? (tariffs!.reduce((sum, t) => sum + (t.totalRatePerKwh || t.baseRatePerKwh * (1 + t.taxRatePercent / 100)), 0) / totalTariffs)
     : 0;
 
   if (!hasAccess) return <AccessDenied />;

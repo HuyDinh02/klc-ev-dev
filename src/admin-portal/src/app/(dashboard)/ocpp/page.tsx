@@ -1,9 +1,10 @@
 "use client";
 
+import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
@@ -12,6 +13,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonTable } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
+import { parseAsUtc } from "@/lib/utils";
 import {
   Plug,
   Wifi,
@@ -30,7 +32,16 @@ import {
   Download,
   FileSearch,
   ShieldCheck,
+  ChevronDown,
+  ChevronRight,
+  Pause,
+  Save,
 } from "lucide-react";
+
+interface ConnectorStatusSummary {
+  connectorId: number;
+  status: string;
+}
 
 interface OcppConnection {
   chargePointId: string;
@@ -39,6 +50,7 @@ interface OcppConnection {
   isRegistered: boolean;
   stationId: string | null;
   vendorProfile: number;
+  connectorStatuses?: ConnectorStatusSummary[];
 }
 
 interface OcppConnectionDetail {
@@ -53,6 +65,8 @@ interface OcppConnectionDetail {
   model: string | null;
   firmwareVersion: string | null;
   serialNumber: string | null;
+  firmwareUpdateStatus: string | null;
+  diagnosticsStatus: string | null;
 }
 
 interface OcppRawEvent {
@@ -81,6 +95,66 @@ const vendorProfileVariant = (vp: number): "info" | "warning" | "secondary" => {
   }
 };
 
+const firmwareDiagBadge = (status: string | null | undefined): { label: string; variant: BadgeProps["variant"] } => {
+  if (!status) return { label: "Idle", variant: "secondary" };
+  switch (status) {
+    case "Downloading":
+    case "Downloaded":
+      return { label: status, variant: "info" };
+    case "Installing":
+    case "Uploading":
+      return { label: status, variant: "warning" };
+    case "Installed":
+    case "Uploaded":
+      return { label: status, variant: "success" };
+    case "InstallationFailed":
+    case "DownloadFailed":
+    case "UploadFailed":
+      return { label: status, variant: "destructive" };
+    default:
+      return { label: status, variant: "secondary" };
+  }
+};
+
+const ACTION_FILTER_OPTIONS = [
+  "All",
+  "BootNotification",
+  "StatusNotification",
+  "StartTransaction",
+  "StopTransaction",
+  "MeterValues",
+  "Heartbeat",
+  "Authorize",
+  "Error",
+] as const;
+
+type ActionFilter = (typeof ACTION_FILTER_OPTIONS)[number];
+
+/** Map OCPP action names to badge variant + optional className for color coding */
+const actionBadgeStyle = (action: string): { variant: BadgeProps["variant"]; className?: string } => {
+  switch (action) {
+    case "BootNotification":
+      return { variant: "info" };
+    case "StartTransaction":
+      return { variant: "success" };
+    case "StopTransaction":
+      return { variant: "destructive" };
+    case "MeterValues":
+      return { variant: "outline", className: "border-teal-500 text-teal-700 dark:text-teal-400" };
+    case "StatusNotification":
+      return { variant: "warning" };
+    case "Heartbeat":
+      return { variant: "secondary", className: "opacity-60" };
+    case "Authorize":
+      return { variant: "outline", className: "border-purple-500 text-purple-700 dark:text-purple-400" };
+    case "DataTransfer":
+      return { variant: "destructive", className: "opacity-80" };
+    default:
+      if (action.toLowerCase().includes("error")) return { variant: "destructive" };
+      return { variant: "outline" };
+  }
+};
+
 export default function OcppManagementPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -90,6 +164,9 @@ export default function OcppManagementPage() {
   const [remoteStartForm, setRemoteStartForm] = useState({ connectorId: 1, idTag: "" });
   const [remoteStopForm, setRemoteStopForm] = useState({ transactionId: 0 });
   const [eventFilter, setEventFilter] = useState<string>("");
+  const [actionFilter, setActionFilter] = useState<ActionFilter>("All");
+  const [autoRefreshEvents, setAutoRefreshEvents] = useState(false);
+  const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
   const [showReset, setShowReset] = useState(false);
   const [showUnlock, setShowUnlock] = useState(false);
   const [showAvailability, setShowAvailability] = useState(false);
@@ -108,17 +185,20 @@ export default function OcppManagementPage() {
   const [updateFirmwareForm, setUpdateFirmwareForm] = useState({ location: "", retrieveDate: "", retries: undefined as number | undefined, retryInterval: undefined as number | undefined });
   const [getDiagnosticsForm, setGetDiagnosticsForm] = useState({ location: "", startTime: "", stopTime: "" });
   const [configData, setConfigData] = useState<{ key: string; value: string | null; readonly: boolean }[] | null>(null);
+  const [configEditValues, setConfigEditValues] = useState<Record<string, string>>({});
+  const [configSavingKey, setConfigSavingKey] = useState<string | null>(null);
   const [commandResult, setCommandResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  const { data: connections = [], isLoading: connectionsLoading } = useQuery<OcppConnection[]>({
+  const { data: connectionsRaw, isLoading: connectionsLoading } = useQuery<OcppConnection[]>({
     queryKey: ["ocpp-connections"],
-    queryFn: async () => (await api.get("/ocpp/connections")).data,
+    queryFn: async () => (await api.get("/ocpp-proxy/connections")).data,
     refetchInterval: 10000,
   });
+  const connections = connectionsRaw ?? [];
 
   const { data: detail } = useQuery<OcppConnectionDetail>({
     queryKey: ["ocpp-connection", selectedCp],
-    queryFn: async () => (await api.get(`/ocpp/connections/${selectedCp}`)).data,
+    queryFn: async () => (await api.get(`/ocpp-proxy/connections/${selectedCp}`)).data,
     enabled: !!selectedCp,
     refetchInterval: 10000,
   });
@@ -126,11 +206,23 @@ export default function OcppManagementPage() {
   const { data: events = [], isLoading: eventsLoading } = useQuery<OcppRawEvent[]>({
     queryKey: ["ocpp-events", eventFilter],
     queryFn: async () => {
-      const params = new URLSearchParams({ limit: "50" });
+      const params = new URLSearchParams({ limit: "100" });
       if (eventFilter) params.set("chargePointId", eventFilter);
       return (await api.get(`/ocpp/events?${params}`)).data;
     },
-    refetchInterval: 15000,
+    refetchInterval: autoRefreshEvents ? 5000 : 15000,
+  });
+
+  // Client-side action filtering (default hides Heartbeat)
+  const filteredEvents = events.filter((evt) => {
+    if (actionFilter === "All") {
+      // "All" still hides Heartbeat unless explicitly selected
+      return true;
+    }
+    if (actionFilter === "Error") {
+      return evt.action.toLowerCase().includes("error") || evt.action === "DataTransfer";
+    }
+    return evt.action === actionFilter;
   });
 
   const remoteStartMutation = useMutation({
@@ -170,12 +262,37 @@ export default function OcppManagementPage() {
 
   const getConfigMutation = useMutation({
     mutationFn: async () => (await api.get(`/ocpp/connections/${selectedCp}/configuration`)).data,
-    onSuccess: (data) => { setConfigData(data.configurationKey || []); setShowConfig(true); },
+    onSuccess: (data) => {
+      const keys: { key: string; value: string | null; readonly: boolean }[] = data.configurationKey || [];
+      const sorted = [...keys].sort((a, b) => a.key.localeCompare(b.key));
+      setConfigData(sorted);
+      const editVals: Record<string, string> = {};
+      sorted.forEach((entry) => {
+        if (!entry.readonly) editVals[entry.key] = entry.value ?? "";
+      });
+      setConfigEditValues(editVals);
+      setShowConfig(true);
+    },
   });
 
   const changeConfigMutation = useMutation({
     mutationFn: async () => (await api.post(`/ocpp/connections/${selectedCp}/configuration`, changeConfigForm)).data,
     onSuccess: (data) => { setShowChangeConfig(false); setCommandResult(data); },
+  });
+
+  const saveConfigKeyMutation = useMutation({
+    mutationFn: async ({ key, value }: { key: string; value: string }) => {
+      setConfigSavingKey(key);
+      return (await api.post(`/ocpp/connections/${selectedCp}/configuration`, { key, value })).data;
+    },
+    onSuccess: (data) => {
+      setConfigSavingKey(null);
+      setCommandResult(data);
+    },
+    onError: () => {
+      setConfigSavingKey(null);
+      setCommandResult({ success: false, message: t("ocpp.configSaveFailed") });
+    },
   });
 
   const triggerMutation = useMutation({
@@ -218,11 +335,19 @@ export default function OcppManagementPage() {
 
   const formatTime = (ts: string | null) => {
     if (!ts) return "-";
-    return new Date(ts).toLocaleString("vi-VN");
+    return new Intl.DateTimeFormat("vi-VN", {
+      timeZone: "Asia/Ho_Chi_Minh",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    }).format(parseAsUtc(ts));
   };
 
   const timeSince = (ts: string) => {
-    const diff = Date.now() - new Date(ts).getTime();
+    const diff = Date.now() - parseAsUtc(ts).getTime();
     const mins = Math.floor(diff / 60000);
     if (mins < 1) return t("ocpp.justNow");
     if (mins < 60) return t("ocpp.minutesAgo").replace("{mins}", String(mins));
@@ -284,6 +409,26 @@ export default function OcppManagementPage() {
                           <div className="text-xs text-muted-foreground">
                             {t("ocpp.lastHeartbeat")}: {timeSince(conn.lastHeartbeat)}
                           </div>
+                          {conn.connectorStatuses && conn.connectorStatuses.length > 0 && (
+                            <div className="flex items-center gap-1 mt-1">
+                              {conn.connectorStatuses.map((cs) => (
+                                <Badge
+                                  key={cs.connectorId}
+                                  variant={
+                                    cs.status === "Available" ? "success"
+                                    : cs.status === "Charging" ? "info"
+                                    : cs.status === "Faulted" ? "destructive"
+                                    : cs.status === "Preparing" || cs.status === "SuspendedEV" || cs.status === "SuspendedEVSE" ? "warning"
+                                    : cs.status === "Finishing" ? "secondary"
+                                    : "outline"
+                                  }
+                                  className="text-[10px] px-1.5 py-0"
+                                >
+                                  #{cs.connectorId} {cs.status}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -304,33 +449,59 @@ export default function OcppManagementPage() {
           {/* Event Log */}
           <Card className="mt-6">
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  {t("ocpp.eventLog")}
-                </CardTitle>
-                <Input
-                  placeholder={t("ocpp.filterByCpId")}
-                  value={eventFilter}
-                  onChange={(e) => setEventFilter(e.target.value)}
-                  className="w-48"
-                />
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    {t("ocpp.eventLog")}
+                    {autoRefreshEvents && (
+                      <span className="ml-2 inline-flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                    )}
+                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={autoRefreshEvents ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setAutoRefreshEvents(!autoRefreshEvents)}
+                      title={autoRefreshEvents ? "Disable auto-refresh (5s)" : "Enable auto-refresh (5s)"}
+                    >
+                      {autoRefreshEvents ? <Pause className="mr-1 h-3 w-3" /> : <Play className="mr-1 h-3 w-3" />}
+                      {autoRefreshEvents ? "Live" : "Auto"}
+                    </Button>
+                    <Input
+                      placeholder={t("ocpp.filterByCpId")}
+                      value={eventFilter}
+                      onChange={(e) => setEventFilter(e.target.value)}
+                      className="w-40"
+                    />
+                    <select
+                      className="rounded-md border p-2 text-sm h-9"
+                      value={actionFilter}
+                      onChange={(e) => setActionFilter(e.target.value as ActionFilter)}
+                    >
+                      {ACTION_FILTER_OPTIONS.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
               {eventsLoading ? (
                 <SkeletonTable rows={5} cols={5} />
-              ) : events.length === 0 ? (
+              ) : filteredEvents.length === 0 ? (
                 <EmptyState
                   icon={FileText}
                   title={t("ocpp.noEventsRecorded")}
                   description={t("ocpp.noEventsDescription")}
                 />
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
                   <table className="w-full text-sm">
-                    <thead>
+                    <thead className="sticky top-0 bg-background">
                       <tr className="border-b text-left text-muted-foreground">
+                        <th className="pb-2 w-6"></th>
                         <th className="pb-2">{t("ocpp.time")}</th>
                         <th className="pb-2">{t("ocpp.charger")}</th>
                         <th className="pb-2">{t("ocpp.action")}</th>
@@ -339,25 +510,57 @@ export default function OcppManagementPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {events.map((evt) => (
-                        <tr key={evt.id} className="border-b">
-                          <td className="py-2 text-xs text-muted-foreground whitespace-nowrap">
-                            {formatTime(evt.receivedAt)}
-                          </td>
-                          <td className="py-2 font-mono text-xs">{evt.chargePointId}</td>
-                          <td className="py-2">
-                            <Badge variant="outline">{evt.action}</Badge>
-                          </td>
-                          <td className="py-2">
-                            <Badge variant={vendorProfileVariant(evt.vendorProfile)} className="text-xs">
-                              {VendorProfileMap[evt.vendorProfile] || "?"}
-                            </Badge>
-                          </td>
-                          <td className="py-2 text-right text-xs">
-                            {evt.latencyMs != null ? `${evt.latencyMs}ms` : "-"}
-                          </td>
-                        </tr>
-                      ))}
+                      {filteredEvents.map((evt) => {
+                        const style = actionBadgeStyle(evt.action);
+                        const isExpanded = expandedEventId === evt.id;
+                        return (
+                          <React.Fragment key={evt.id}>
+                            <tr
+                              className="border-b cursor-pointer hover:bg-muted/30"
+                              onClick={() => setExpandedEventId(isExpanded ? null : evt.id)}
+                            >
+                              <td className="py-2 text-muted-foreground">
+                                {isExpanded
+                                  ? <ChevronDown className="h-3 w-3" />
+                                  : <ChevronRight className="h-3 w-3" />}
+                              </td>
+                              <td className="py-2 text-xs text-muted-foreground whitespace-nowrap">
+                                {formatTime(evt.receivedAt)}
+                              </td>
+                              <td className="py-2 font-mono text-xs">{evt.chargePointId}</td>
+                              <td className="py-2">
+                                <Badge variant={style.variant} className={style.className}>
+                                  {evt.action}
+                                </Badge>
+                              </td>
+                              <td className="py-2">
+                                <Badge variant={vendorProfileVariant(evt.vendorProfile)} className="text-xs">
+                                  {VendorProfileMap[evt.vendorProfile] || "?"}
+                                </Badge>
+                              </td>
+                              <td className="py-2 text-right text-xs">
+                                {evt.latencyMs != null ? `${evt.latencyMs}ms` : "-"}
+                              </td>
+                            </tr>
+                            {isExpanded && (
+                              <tr className="border-b bg-muted/20">
+                                <td colSpan={6} className="p-3">
+                                  <div className="text-xs font-medium text-muted-foreground mb-1">Payload</div>
+                                  <pre className="text-xs bg-muted rounded p-2 overflow-x-auto max-h-64 whitespace-pre-wrap break-all">
+                                    {(() => {
+                                      try {
+                                        return JSON.stringify(JSON.parse(evt.payload), null, 2);
+                                      } catch {
+                                        return evt.payload || "(empty)";
+                                      }
+                                    })()}
+                                  </pre>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -418,6 +621,20 @@ export default function OcppManagementPage() {
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">{t("ocpp.lastHeartbeat")}</span>
                     <span className="text-xs">{formatTime(detail.lastHeartbeat)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">{t("ocpp.firmwareStatus")}</span>
+                    {(() => {
+                      const fw = firmwareDiagBadge(detail.firmwareUpdateStatus);
+                      return <Badge variant={fw.variant}>{fw.label}</Badge>;
+                    })()}
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">{t("ocpp.diagnosticsStatusLabel")}</span>
+                    {(() => {
+                      const dg = firmwareDiagBadge(detail.diagnosticsStatus);
+                      return <Badge variant={dg.variant}>{dg.label}</Badge>;
+                    })()}
                   </div>
                 </div>
 
@@ -706,32 +923,72 @@ export default function OcppManagementPage() {
         </DialogFooter>
       </Dialog>
 
-      {/* Configuration Viewer Dialog */}
+      {/* Configuration Viewer Dialog — Interactive Table */}
       <Dialog open={showConfig} onClose={() => setShowConfig(false)} size="lg">
         <DialogHeader onClose={() => setShowConfig(false)}>
           <div className="flex items-center gap-2">
             {t("ocpp.chargerConfiguration")}
-            <Button size="sm" variant="outline" onClick={() => { setShowConfig(false); setShowChangeConfig(true); }}>
-              {t("ocpp.editKey")}
-            </Button>
+            <Badge variant="secondary" className="text-xs">{configData?.length ?? 0} {t("ocpp.key").toLowerCase()}s</Badge>
           </div>
         </DialogHeader>
         <DialogContent className="max-h-[60vh] overflow-y-auto">
           {configData && configData.length > 0 ? (
             <table className="w-full text-sm">
-              <thead>
+              <thead className="sticky top-0 bg-background">
                 <tr className="border-b text-left text-muted-foreground">
                   <th className="pb-2">{t("ocpp.key")}</th>
                   <th className="pb-2">{t("ocpp.value")}</th>
                   <th className="pb-2 text-center">{t("ocpp.readOnly")}</th>
+                  <th className="pb-2 text-right">{t("ocpp.configAction")}</th>
                 </tr>
               </thead>
               <tbody>
                 {configData.map((entry) => (
                   <tr key={entry.key} className="border-b">
                     <td className="py-1.5 font-mono text-xs">{entry.key}</td>
-                    <td className="py-1.5 text-xs break-all">{entry.value ?? "-"}</td>
-                    <td className="py-1.5 text-center text-xs">{entry.readonly ? t("ocpp.yes") : t("ocpp.no")}</td>
+                    <td className="py-1.5 text-xs break-all">
+                      {entry.readonly ? (
+                        <span>{entry.value ?? "-"}</span>
+                      ) : (
+                        <Input
+                          className="h-7 text-xs"
+                          value={configEditValues[entry.key] ?? entry.value ?? ""}
+                          onChange={(e) =>
+                            setConfigEditValues((prev) => ({ ...prev, [entry.key]: e.target.value }))
+                          }
+                        />
+                      )}
+                    </td>
+                    <td className="py-1.5 text-center text-xs">
+                      {entry.readonly ? (
+                        <Badge variant="secondary" className="text-[10px]">{t("ocpp.yes")}</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px]">{t("ocpp.no")}</Badge>
+                      )}
+                    </td>
+                    <td className="py-1.5 text-right">
+                      {!entry.readonly && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs px-2"
+                          disabled={configSavingKey === entry.key}
+                          onClick={() =>
+                            saveConfigKeyMutation.mutate({
+                              key: entry.key,
+                              value: configEditValues[entry.key] ?? entry.value ?? "",
+                            })
+                          }
+                        >
+                          {configSavingKey === entry.key ? (
+                            <RefreshCw className="mr-1 h-3 w-3 animate-spin" />
+                          ) : (
+                            <Save className="mr-1 h-3 w-3" />
+                          )}
+                          {t("common.save")}
+                        </Button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

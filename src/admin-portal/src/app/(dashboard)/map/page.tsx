@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { monitoringApi } from "@/lib/api";
+import { formatDateTime } from "@/lib/utils";
 import { STATION_STATUS, CONNECTOR_STATUS } from "@/lib/constants";
 import { useTranslation } from "@/lib/i18n";
 import { MapPin, WifiOff } from "lucide-react";
@@ -104,7 +105,7 @@ function StationMapInner({ stations }: { stations: StationSummary[] }) {
 
       const faulted = station.totalConnectors - station.availableConnectors - station.chargingConnectors;
       const heartbeat = station.lastHeartbeat
-        ? new Date(station.lastHeartbeat).toLocaleString("vi-VN")
+        ? formatDateTime(station.lastHeartbeat)
         : "N/A";
 
       const popup = `
@@ -166,7 +167,7 @@ export default function StationMapPage() {
     online: stations.filter((s) => s.status === 1).length,
     offline: stations.filter((s) => s.status === 0).length,
     disabled: stations.filter((s) => s.status === 2).length,
-    decommissioned: stations.filter((s) => s.status === 3).length,
+    disabled3: stations.filter((s) => s.status === 3).length, // legacy "Decommissioned" now shown as Disabled
   };
 
   return (
@@ -192,7 +193,7 @@ export default function StationMapPage() {
         </Badge>
         <Badge variant={STATION_STATUS[3].badgeVariant} className="gap-1">
           <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: STATION_STATUS[3].dotColor }} />
-          {STATION_STATUS[3].label} ({statusCounts.decommissioned})
+          {STATION_STATUS[3].label} ({statusCounts.disabled3})
         </Badge>
         <div className="ml-auto text-sm text-muted-foreground flex items-center gap-1">
           <MapPin className="h-4 w-4" />

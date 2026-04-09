@@ -73,6 +73,17 @@ public class StationController : KLCController
     }
 
     /// <summary>
+    /// Soft-deletes a station. Station must be disabled/decommissioned first.
+    /// Historical data (sessions, faults) is preserved.
+    /// </summary>
+    [HttpDelete("{id:guid}")]
+    public async Task<ActionResult> DeleteAsync(Guid id)
+    {
+        await _stationAppService.DeleteAsync(id);
+        return NoContent();
+    }
+
+    /// <summary>
     /// Enables a station.
     /// </summary>
     [HttpPost("{id:guid}/enable")]

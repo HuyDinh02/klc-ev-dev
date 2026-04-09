@@ -4,6 +4,8 @@ export { SessionScreen } from './SessionScreen';
 export { HistoryScreen } from './HistoryScreen';
 export { ProfileScreen } from './ProfileScreen';
 export { LoginScreen } from './LoginScreen';
+export { RegisterScreen } from './RegisterScreen';
+export { OtpVerificationScreen } from './OtpVerificationScreen';
 export { FavoritesScreen } from './FavoritesScreen';
 export { VehiclesScreen } from './VehiclesScreen';
 export { WalletScreen } from './WalletScreen';

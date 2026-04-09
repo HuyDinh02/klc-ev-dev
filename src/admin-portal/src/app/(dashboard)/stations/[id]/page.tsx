@@ -58,7 +58,7 @@ const AMENITY_TYPES = [
 export default function StationDetailPage() {
   const hasAccess = useRequirePermission("KLC.Stations");
   const canUpdate = useHasPermission("KLC.Stations.Update");
-  const canDecommission = useHasPermission("KLC.Stations.Decommission");
+  const canDelete = useHasPermission("KLC.Stations.Decommission");
   const canCreateConnector = useHasPermission("KLC.Connectors.Create");
   const canToggleConnector = useHasPermission("KLC.Connectors.Enable");
   const canDeleteConnector = useHasPermission("KLC.Connectors.Delete");
@@ -125,9 +125,13 @@ export default function StationDetailPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["station", id] }),
   });
 
-  const decommissionMutation = useMutation({
-    mutationFn: () => stationsApi.decommission(id),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["station", id] }); router.push("/stations"); },
+  const deleteMutation = useMutation({
+    mutationFn: () => stationsApi.delete(id),
+    onSuccess: () => { router.push("/stations"); },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.error?.message || "Cannot delete station. Disable it first and ensure no active sessions.";
+      alert(msg);
+    },
   });
 
   const addConnectorMutation = useMutation({
@@ -237,9 +241,13 @@ export default function StationDetailPage() {
                 <Power className="mr-2 h-4 w-4" /> {t("stations.enable")}
               </Button>
             ))}
-            {canDecommission && (
-              <Button variant="destructive" onClick={() => { if (confirm(t("stations.decommissionConfirm"))) decommissionMutation.mutate(); }}>
-                {t("stations.decommission")}
+            {canDelete && !station?.isEnabled && (
+              <Button variant="destructive" size="sm" onClick={() => {
+                if (confirm("Delete this station? Historical data (sessions, faults) will be preserved but the station will be hidden from all lists.")) {
+                  deleteMutation.mutate();
+                }
+              }}>
+                <Trash2 className="mr-2 h-4 w-4" /> Delete
               </Button>
             )}
           </div>

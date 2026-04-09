@@ -192,25 +192,26 @@ public class StationAppServiceTests
     }
 
     [Fact]
-    public void Decommission_Should_Set_Status_And_Disable()
+    public void Decommission_Should_Delegate_To_Disable()
     {
         var station = CreateTestStation();
 
-        station.Decommission();
+        station.Decommission(); // Deprecated — delegates to Disable()
 
-        station.Status.ShouldBe(StationStatus.Decommissioned);
+        station.Status.ShouldBe(StationStatus.Disabled);
         station.IsEnabled.ShouldBeFalse();
     }
 
     [Fact]
-    public void Enable_Should_Throw_For_Decommissioned_Station()
+    public void Enable_Should_Reactivate_Decommissioned_Station()
     {
         var station = CreateTestStation();
         station.Decommission();
 
-        var ex = Should.Throw<BusinessException>(() => station.Enable());
+        station.Enable();
 
-        ex.Code.ShouldBe(KLCDomainErrorCodes.Station.CannotEnableDecommissioned);
+        station.IsEnabled.ShouldBeTrue();
+        station.Status.ShouldBe(StationStatus.Offline);
     }
 
     [Fact]

@@ -4,10 +4,12 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using KLC.Configuration;
 using KLC.Enums;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Shouldly;
 using Xunit;
 
@@ -22,7 +24,7 @@ public class MoMoPaymentServiceTests
     {
         var config = BuildConfig(new() { { "Payment:MoMo:PartnerCode", "" } });
         var factory = new StubHttpClientFactory();
-        var svc = new MoMoPaymentService(_logger, config, factory);
+        var svc = CreateMoMoService(config, factory);
 
         var result = await svc.CreateTopUpAsync(new CreateTopUpRequest
         {
@@ -55,7 +57,7 @@ public class MoMoPaymentServiceTests
             Content = new StringContent(responseJson)
         });
 
-        var svc = new MoMoPaymentService(_logger, config, factory);
+        var svc = CreateMoMoService(config, factory);
         var result = await svc.CreateTopUpAsync(new CreateTopUpRequest
         {
             ReferenceCode = "REF002",
@@ -85,7 +87,7 @@ public class MoMoPaymentServiceTests
             Content = new StringContent(responseJson)
         });
 
-        var svc = new MoMoPaymentService(_logger, config, factory);
+        var svc = CreateMoMoService(config, factory);
         var result = await svc.CreateTopUpAsync(new CreateTopUpRequest
         {
             ReferenceCode = "REF003",
@@ -114,7 +116,7 @@ public class MoMoPaymentServiceTests
             Content = new StringContent("Server Error")
         });
 
-        var svc = new MoMoPaymentService(_logger, config, factory);
+        var svc = CreateMoMoService(config, factory);
         var result = await svc.CreateTopUpAsync(new CreateTopUpRequest
         {
             ReferenceCode = "REF004",
@@ -133,7 +135,7 @@ public class MoMoPaymentServiceTests
     {
         var config = BuildConfig(new() { { "Payment:MoMo:SecretKey", "" } });
         var factory = new StubHttpClientFactory();
-        var svc = new MoMoPaymentService(_logger, config, factory);
+        var svc = CreateMoMoService(config, factory);
 
         var result = await svc.VerifyCallbackAsync("some data", "any-signature");
 
@@ -146,7 +148,7 @@ public class MoMoPaymentServiceTests
     {
         var config = BuildConfig(new() { { "Payment:MoMo:SecretKey", "secret123" } });
         var factory = new StubHttpClientFactory();
-        var svc = new MoMoPaymentService(_logger, config, factory);
+        var svc = CreateMoMoService(config, factory);
 
         var result = await svc.VerifyCallbackAsync("some data", null);
 
@@ -159,7 +161,7 @@ public class MoMoPaymentServiceTests
     {
         var config = BuildConfig(new() { { "Payment:MoMo:SecretKey", "secret123" } });
         var factory = new StubHttpClientFactory();
-        var svc = new MoMoPaymentService(_logger, config, factory);
+        var svc = CreateMoMoService(config, factory);
 
         var result = await svc.VerifyCallbackAsync("some data", "wrong-sig");
 
@@ -172,9 +174,16 @@ public class MoMoPaymentServiceTests
     {
         var config = BuildConfig(new());
         var factory = new StubHttpClientFactory();
-        var svc = new MoMoPaymentService(_logger, config, factory);
+        var svc = CreateMoMoService(config, factory);
 
         svc.Gateway.ShouldBe(PaymentGateway.MoMo);
+    }
+
+    private MoMoPaymentService CreateMoMoService(IConfiguration config, IHttpClientFactory factory)
+    {
+        var settings = new MoMoSettings();
+        config.GetSection(MoMoSettings.Section).Bind(settings);
+        return new MoMoPaymentService(_logger, config, Options.Create(settings), factory);
     }
 
     private static IConfiguration BuildConfig(Dictionary<string, string?> values) =>
@@ -189,7 +198,7 @@ public class VnPayPaymentServiceTests
     public async Task CreateTopUp_Without_Credentials_Returns_Stub_Url()
     {
         var config = BuildConfig(new() { { "Payment:VnPay:TmnCode", "" } });
-        var svc = new VnPayPaymentService(_logger, config, new StubHttpClientFactory());
+        var svc = CreateVnPayService(config);
 
         var result = await svc.CreateTopUpAsync(new CreateTopUpRequest
         {
@@ -215,7 +224,7 @@ public class VnPayPaymentServiceTests
             { "Payment:VnPay:Version", "2.1.0" }
         });
 
-        var svc = new VnPayPaymentService(_logger, config, new StubHttpClientFactory());
+        var svc = CreateVnPayService(config);
         var result = await svc.CreateTopUpAsync(new CreateTopUpRequest
         {
             ReferenceCode = "REF002",
@@ -244,7 +253,7 @@ public class VnPayPaymentServiceTests
             { "Payment:VnPay:Version", "2.1.0" }
         });
 
-        var svc = new VnPayPaymentService(_logger, config, new StubHttpClientFactory());
+        var svc = CreateVnPayService(config);
         var result = await svc.CreateTopUpAsync(new CreateTopUpRequest
         {
             ReferenceCode = "REF003",
@@ -268,7 +277,7 @@ public class VnPayPaymentServiceTests
     public async Task VerifyCallback_Without_HashSecret_Accepts_All()
     {
         var config = BuildConfig(new() { { "Payment:VnPay:HashSecret", "" } });
-        var svc = new VnPayPaymentService(_logger, config, new StubHttpClientFactory());
+        var svc = CreateVnPayService(config);
 
         var result = await svc.VerifyCallbackAsync("vnp_TxnRef=REF001&vnp_ResponseCode=00", null);
 
@@ -280,7 +289,7 @@ public class VnPayPaymentServiceTests
     public async Task VerifyCallback_With_Missing_Signature_Rejects()
     {
         var config = BuildConfig(new() { { "Payment:VnPay:HashSecret", "secret123" } });
-        var svc = new VnPayPaymentService(_logger, config, new StubHttpClientFactory());
+        var svc = CreateVnPayService(config);
 
         var result = await svc.VerifyCallbackAsync("vnp_TxnRef=REF001", null);
 
@@ -292,7 +301,7 @@ public class VnPayPaymentServiceTests
     public async Task VerifyCallback_With_Invalid_Signature_Rejects()
     {
         var config = BuildConfig(new() { { "Payment:VnPay:HashSecret", "secret123" } });
-        var svc = new VnPayPaymentService(_logger, config, new StubHttpClientFactory());
+        var svc = CreateVnPayService(config);
 
         var rawData = "vnp_Amount=5000000&vnp_TxnRef=REF001&vnp_SecureHash=invalid_hash";
         var result = await svc.VerifyCallbackAsync(rawData, null);
@@ -305,9 +314,16 @@ public class VnPayPaymentServiceTests
     public void Gateway_Should_Be_VnPay()
     {
         var config = BuildConfig(new());
-        var svc = new VnPayPaymentService(_logger, config, new StubHttpClientFactory());
+        var svc = CreateVnPayService(config);
 
         svc.Gateway.ShouldBe(PaymentGateway.VnPay);
+    }
+
+    private VnPayPaymentService CreateVnPayService(IConfiguration config)
+    {
+        var settings = new VnPaySettings();
+        config.GetSection(VnPaySettings.Section).Bind(settings);
+        return new VnPayPaymentService(_logger, config, Options.Create(settings), new StubHttpClientFactory());
     }
 
     private static IConfiguration BuildConfig(Dictionary<string, string?> values) =>

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,21 +9,27 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Colors, Shadows } from '../constants/colors';
+import { Config } from '../constants/config';
 import { Card, Button } from '../components/common';
 import { sessionsApi } from '../api/sessions';
 import { useSessionStore } from '../stores';
 import { useSignalR } from '../hooks/useSignalR';
+import { formatDuration, formatCurrency, formatTime } from '../utils/formatting';
 
 export function SessionScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation();
-  const { activeSession, latestMeterValue, clearSession } = useSessionStore();
-  const { connect, subscribeToSession, unsubscribeFromSession } = useSignalR();
+  const { activeSession, latestMeterValue, clearSession, checkActiveSession } = useSessionStore();
+  const { connect, subscribeToSession, unsubscribeFromSession, isConnected } = useSignalR();
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // SignalR connection
   useEffect(() => {
     if (activeSession?.id) {
       connect().then(() => {
         subscribeToSession(activeSession.id);
+      }).catch(() => {
+        // SignalR failed — polling will handle updates
       });
 
       return () => {
@@ -31,6 +37,21 @@ export function SessionScreen() {
       };
     }
   }, [activeSession?.id, connect, subscribeToSession, unsubscribeFromSession]);
+
+  // Fallback polling when SignalR is not connected
+  useEffect(() => {
+    if (!activeSession?.id) return;
+
+    pollingRef.current = setInterval(() => {
+      if (!isConnected) {
+        checkActiveSession();
+      }
+    }, Config.SESSION_REFRESH_INTERVAL);
+
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, [activeSession?.id, isConnected, checkActiveSession]);
 
   const handleStopCharging = async () => {
     if (!activeSession) return;
@@ -56,23 +77,6 @@ export function SessionScreen() {
         },
       ]
     );
-  };
-
-  const formatDuration = (minutes: number): string => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    if (hours > 0) {
-      return `${hours}h ${mins}m`;
-    }
-    return `${mins}m`;
-  };
-
-  const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-      maximumFractionDigits: 0,
-    }).format(amount);
   };
 
   if (!activeSession) {
@@ -158,7 +162,7 @@ export function SessionScreen() {
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>{t('session.started')}</Text>
             <Text style={styles.infoValue}>
-              {new Date(activeSession.startTime).toLocaleTimeString('vi-VN')}
+              {formatTime(activeSession.startTime)}
             </Text>
           </View>
           <View style={styles.infoRow}>

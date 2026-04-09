@@ -78,11 +78,32 @@ public class SessionBffService : ISessionBffService
 
         if (connector == null)
         {
+            _logger.LogWarning(
+                "StartSession: connector not found. UserId={UserId}, ConnectorId={ConnectorId}, " +
+                "StationId={StationId}, StationCode={StationCode}, ConnectorNumber={ConnectorNumber}",
+                userId, request.ConnectorId, request.StationId, request.StationCode, request.ConnectorNumber);
             return new SessionResponseDto { Success = false, Error = "Connector not found" };
         }
 
-        if (!connector.IsEnabled || connector.Status != ConnectorStatus.Available)
+        _logger.LogInformation(
+            "StartSession: connector resolved. UserId={UserId}, ConnectorId={ConnectorId}, " +
+            "StationId={StationId}, ConnectorNumber={ConnectorNumber}, IsEnabled={IsEnabled}, " +
+            "Status={Status}, StationCode={StationCode}",
+            userId, connector.Id, connector.StationId, connector.ConnectorNumber,
+            connector.IsEnabled, connector.Status, connector.Station?.StationCode);
+
+        // Allow both Available (idle) and Preparing (cable plugged in, waiting for authorization)
+        var canStartSession = connector.IsEnabled &&
+            (connector.Status == ConnectorStatus.Available || connector.Status == ConnectorStatus.Preparing);
+
+        if (!canStartSession)
         {
+            _logger.LogWarning(
+                "StartSession rejected: connector not available. UserId={UserId}, ConnectorId={ConnectorId}, " +
+                "StationId={StationId}, ConnectorNumber={ConnectorNumber}, IsEnabled={IsEnabled}, " +
+                "Status={Status}, StationCode={StationCode}",
+                userId, connector.Id, connector.StationId, connector.ConnectorNumber,
+                connector.IsEnabled, connector.Status, connector.Station?.StationCode);
             return new SessionResponseDto { Success = false, Error = "Connector is not available" };
         }
 
@@ -154,48 +175,95 @@ public class SessionBffService : ISessionBffService
                 tariff?.Id,
                 tariff?.BaseRatePerKwh ?? 0);
 
+            // BFF uses raw EF Core (not ABP repositories), so audit fields must be set manually
+            _dbContext.SetAuditFields(session, userId);
+
             await _dbContext.ChargingSessions.AddAsync(session);
 
             // Update connector status
             connector.UpdateStatus(ConnectorStatus.Preparing);
             await _dbContext.SaveChangesAsync();
 
-            // Send RemoteStartTransaction to the charger via Admin API
+            // Send RemoteStartTransaction to the charger via OCPP Gateway (internal endpoint)
+            var remoteStartAccepted = false;
             try
             {
-                var adminApiUrl = _configuration["Auth:Authority"] ?? "https://localhost:44305";
+                var adminApiUrl = _configuration["Ocpp:GatewayUrl"] ?? _configuration["Auth:Authority"] ?? "https://localhost:44305";
                 using var httpClient = _httpClientFactory.CreateClient();
+                httpClient.Timeout = TimeSpan.FromSeconds(35); // OCPP command timeout is 30s
                 httpClient.DefaultRequestHeaders.Accept.Add(
                     new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
 
-                var remoteStartResponse = await httpClient.PostAsJsonAsync(
-                    $"{adminApiUrl}/api/v1/ocpp/connections/{connector.Station!.StationCode}/remote-start",
-                    new { connectorId = connector.ConnectorNumber, idTag = userId.ToString() });
+                var internalApiKey = _configuration["Internal:ApiKey"];
+                if (!string.IsNullOrEmpty(internalApiKey))
+                {
+                    httpClient.DefaultRequestHeaders.Add("X-Internal-Key", internalApiKey);
+                }
 
+                var idTag = session.Id.ToString("N")[..20];
+                _logger.LogInformation(
+                    "REMOTE_START: Sending to {GatewayUrl} — Station={StationCode}, Connector={ConnectorNumber}, IdTag={IdTag}, SessionId={SessionId}",
+                    adminApiUrl, connector.Station!.StationCode, connector.ConnectorNumber, idTag, session.Id);
+
+                var remoteStartResponse = await httpClient.PostAsJsonAsync(
+                    $"{adminApiUrl}/api/internal/ocpp/remote-start",
+                    new { stationCode = connector.Station.StationCode, connectorId = connector.ConnectorNumber, idTag });
+
+                var responseBody = await remoteStartResponse.Content.ReadAsStringAsync();
+                _logger.LogInformation(
+                    "REMOTE_START_RESPONSE: Station={StationCode}, HttpStatus={HttpStatus}, Body={Body}",
+                    connector.Station.StationCode, (int)remoteStartResponse.StatusCode, responseBody);
+
+                // Parse the gateway response to check if charger actually accepted
                 if (remoteStartResponse.IsSuccessStatusCode)
                 {
-                    _logger.LogInformation(
-                        "RemoteStartTransaction sent: Station={StationCode}, Connector={ConnectorNumber}, User={UserId}",
-                        connector.Station.StationCode, connector.ConnectorNumber, userId);
+                    try
+                    {
+                        using var doc = System.Text.Json.JsonDocument.Parse(responseBody);
+                        remoteStartAccepted = doc.RootElement.TryGetProperty("success", out var s) && s.GetBoolean();
+                    }
+                    catch { /* parse failure = not accepted */ }
                 }
-                else
-                {
-                    _logger.LogWarning(
-                        "RemoteStartTransaction failed: Station={StationCode}, Status={StatusCode}",
-                        connector.Station.StationCode, remoteStartResponse.StatusCode);
-                }
+            }
+            catch (TaskCanceledException)
+            {
+                _logger.LogWarning(
+                    "REMOTE_START_TIMEOUT: Request to OCPP Gateway timed out — Station={StationCode}, SessionId={SessionId}",
+                    connector.Station?.StationCode, session.Id);
             }
             catch (Exception remoteEx)
             {
                 _logger.LogWarning(remoteEx,
-                    "Failed to send RemoteStartTransaction for station {StationCode}. Session created but charger not started.",
-                    connector.Station?.StationCode);
-                // Don't fail the session creation — charger may start via local RFID instead
+                    "REMOTE_START_FAIL: Failed to send RemoteStartTransaction — Station={StationCode}, SessionId={SessionId}",
+                    connector.Station?.StationCode, session.Id);
+            }
+
+            // If charger did not accept, mark session as Failed immediately
+            // instead of leaving it stuck at Pending forever
+            if (!remoteStartAccepted)
+            {
+                _logger.LogWarning(
+                    "REMOTE_START_REJECTED: Charger did not accept. Marking session Failed — SessionId={SessionId}, Station={StationCode}",
+                    session.Id, connector.Station?.StationCode);
+                session.MarkFailed("Charger did not accept RemoteStartTransaction");
+                connector.UpdateStatus(ConnectorStatus.Available);
+                await _dbContext.SaveChangesAsync();
+
+                await _cache.RemoveAsync(CacheKeys.StationConnectors(connector.StationId));
+                await _cache.RemoveAsync(CacheKeys.StationDetail(connector.StationId));
+
+                return new SessionResponseDto
+                {
+                    Success = false,
+                    SessionId = session.Id,
+                    Error = "Trạm sạc không phản hồi. Vui lòng thử lại."
+                };
             }
 
             // Invalidate cache
-            await _cache.RemoveAsync($"station:{connector.StationId}:connectors");
-            await _cache.RemoveAsync($"user:{userId}:active-session");
+            await _cache.RemoveAsync(CacheKeys.StationConnectors(connector.StationId));
+            await _cache.RemoveAsync(CacheKeys.StationDetail(connector.StationId));
+            await _cache.RemoveAsync(CacheKeys.UserActiveSession(userId));
 
             return new SessionResponseDto
             {
@@ -231,9 +299,57 @@ public class SessionBffService : ISessionBffService
             session.MarkStopping();
             await _dbContext.SaveChangesAsync();
 
+            // Send RemoteStopTransaction to charger via Admin API internal endpoint
+            if (session.OcppTransactionId.HasValue)
+            {
+                try
+                {
+                    var station = await _dbContext.ChargingStations
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(s => s.Id == session.StationId);
+
+                    if (station != null)
+                    {
+                        var adminApiUrl = _configuration["Ocpp:GatewayUrl"] ?? _configuration["Auth:Authority"] ?? "https://localhost:44305";
+                        using var httpClient = _httpClientFactory.CreateClient();
+                        httpClient.DefaultRequestHeaders.Accept.Add(
+                            new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+
+                        var internalApiKey = _configuration["Internal:ApiKey"];
+                        if (!string.IsNullOrEmpty(internalApiKey))
+                        {
+                            httpClient.DefaultRequestHeaders.Add("X-Internal-Key", internalApiKey);
+                        }
+
+                        var remoteStopResponse = await httpClient.PostAsJsonAsync(
+                            $"{adminApiUrl}/api/internal/ocpp/remote-stop",
+                            new { stationCode = station.StationCode, transactionId = session.OcppTransactionId.Value });
+
+                        if (remoteStopResponse.IsSuccessStatusCode)
+                        {
+                            _logger.LogInformation(
+                                "RemoteStopTransaction sent: Station={StationCode}, TxnId={TransactionId}",
+                                station.StationCode, session.OcppTransactionId.Value);
+                        }
+                        else
+                        {
+                            _logger.LogWarning(
+                                "RemoteStopTransaction failed: Station={StationCode}, Status={StatusCode}",
+                                station.StationCode, remoteStopResponse.StatusCode);
+                        }
+                    }
+                }
+                catch (Exception remoteEx)
+                {
+                    _logger.LogWarning(remoteEx,
+                        "Failed to send RemoteStopTransaction for session {SessionId}",
+                        sessionId);
+                }
+            }
+
             // Invalidate cache
-            await _cache.RemoveAsync($"user:{userId}:active-session");
-            await _cache.RemoveAsync($"session:{sessionId}:detail");
+            await _cache.RemoveAsync(CacheKeys.UserActiveSession(userId));
+            await _cache.RemoveAsync(CacheKeys.SessionDetail(sessionId));
 
             return new SessionResponseDto
             {
@@ -251,7 +367,7 @@ public class SessionBffService : ISessionBffService
 
     public async Task<ActiveSessionDto?> GetActiveSessionAsync(Guid userId)
     {
-        var cacheKey = $"user:{userId}:active-session";
+        var cacheKey = CacheKeys.UserActiveSession(userId);
 
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
@@ -401,16 +517,24 @@ public class SessionBffService : ISessionBffService
 
         var sessions = await query
             .Take(pageSize + 1)
-            .Select(s => new SessionHistoryDto
-            {
-                SessionId = s.Id,
-                StationId = s.StationId,
-                ConnectorNumber = s.ConnectorNumber,
-                StartTime = s.StartTime,
-                EndTime = s.EndTime,
-                EnergyKwh = s.TotalEnergyKwh,
-                TotalCost = s.TotalCost
-            })
+            .GroupJoin(_dbContext.Connectors.AsNoTracking(),
+                s => new { s.StationId, s.ConnectorNumber },
+                c => new { c.StationId, c.ConnectorNumber },
+                (s, connectors) => new { Session = s, Connectors = connectors })
+            .SelectMany(
+                x => x.Connectors.DefaultIfEmpty(),
+                (x, c) => new SessionHistoryDto
+                {
+                    SessionId = x.Session.Id,
+                    StationId = x.Session.StationId,
+                    ConnectorNumber = x.Session.ConnectorNumber,
+                    ConnectorType = c != null ? c.ConnectorType.ToString() : string.Empty,
+                    Status = x.Session.Status,
+                    StartTime = x.Session.StartTime,
+                    EndTime = x.Session.EndTime,
+                    EnergyKwh = x.Session.TotalEnergyKwh,
+                    TotalCost = x.Session.TotalCost
+                })
             .ToListAsync();
 
         // Get station names
@@ -509,10 +633,16 @@ public record SessionHistoryDto
     public Guid StationId { get; init; }
     public string StationName { get; set; } = string.Empty;
     public int ConnectorNumber { get; init; }
+    public string ConnectorType { get; init; } = string.Empty;
+    public SessionStatus Status { get; init; }
     public DateTime? StartTime { get; init; }
     public DateTime? EndTime { get; init; }
     public decimal EnergyKwh { get; init; }
     public decimal TotalCost { get; init; }
+
+    public int DurationMinutes => StartTime.HasValue && EndTime.HasValue
+        ? (int)(EndTime.Value - StartTime.Value).TotalMinutes
+        : 0;
 }
 
 public record PagedResult<T>

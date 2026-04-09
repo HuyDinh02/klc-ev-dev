@@ -1,33 +1,45 @@
 appId: vn.klc.driver
 name: Settings Flow
 ---
-# Verifies settings screen access and language toggle
+# Verifies settings screen and notification preferences
 - launchApp:
     appId: vn.klc.driver
+    clearState: true
 
-# Wait for app to load
-- extendedWaitUntil:
-    visible: ".*"
-    timeout: 10000
-
-# Go to Profile tab
-- tapOn:
-    text: "Profile"
-    optional: true
-
-# Open Settings
-- tapOn:
-    text: "Settings"
-    optional: true
-
-# Verify settings screen elements
+# Login first
 - assertVisible:
-    text: ".*"
+    text: "Đăng nhập"
+    timeout: 10000
+- tapOn:
+    id: "login-phone-input"
+- inputText: "0901234001"
+- tapOn:
+    id: "login-password-input"
+- inputText: "Admin@123"
+- tapOn:
+    id: "login-submit-button"
+
+# Navigate to Profile > Settings
+- assertVisible:
+    text: "Trạm sạc"
+    timeout: 15000
+- tapOn: "Tài khoản"
+- tapOn: "Cài đặt"
+
+# Verify settings screen
+- assertVisible:
+    text: "Cài đặt"
     timeout: 5000
 
-# Try toggling language (if visible)
-- tapOn:
-    text: "English"
+# Verify notification preferences section
+- assertVisible:
+    text: "Tùy chọn thông báo"
+    optional: true
+- assertVisible:
+    text: "Hoàn tất sạc"
+    optional: true
+- assertVisible:
+    text: "Cảnh báo thanh toán"
     optional: true
 
 # Go back

@@ -98,7 +98,9 @@ public class AdminWalletTransactionController : AbpController
         var result = await vnpay.QueryTransactionAsync(new QueryTransactionRequest
         {
             TxnRef = txn.ReferenceCode,
-            TransactionDate = txn.CreationTime.AddHours(7).ToString("yyyyMMddHHmmss")
+            TransactionDate = txn.CreationTime.AddHours(7).ToString("yyyyMMddHHmmss"),
+            ClientIpAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1",
+            OrderInfo = $"Top-up {txn.ReferenceCode}"
         });
 
         // Auto-reconcile if VnPay confirms success and transaction is still pending

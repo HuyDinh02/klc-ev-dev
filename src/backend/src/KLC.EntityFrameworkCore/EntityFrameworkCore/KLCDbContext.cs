@@ -188,6 +188,7 @@ public static class KLCDbContextModelCreatingExtensions
             b.Property(x => x.Model).HasMaxLength(100);
             b.Property(x => x.Vendor).HasMaxLength(100);
             b.Property(x => x.SerialNumber).HasMaxLength(100);
+            b.Property(x => x.VendorProfileName).HasMaxLength(100);
             b.Property(x => x.FirmwareUpdateStatus).HasMaxLength(50);
             b.Property(x => x.DiagnosticsStatus).HasMaxLength(50);
 
@@ -274,12 +275,19 @@ public static class KLCDbContextModelCreatingExtensions
             b.Property(x => x.StopReason).HasMaxLength(200);
             b.Property(x => x.IdTag).HasMaxLength(50);
 
-            b.HasIndex(x => x.UserId);
+            b.HasIndex(x => new { x.UserId, x.Status }); // PERF-2: avoid full scans on active-session queries
             b.HasIndex(x => x.StationId);
             b.HasIndex(x => x.OcppTransactionId);
             b.HasIndex(x => x.Status);
             b.HasIndex(x => x.StartTime);
             b.HasIndex(x => x.EndTime);
+
+            // BUG-5: Prevent concurrent session starts — DB enforces one active session per user.
+            // Statuses 0=Pending, 1=Starting, 2=InProgress map to their int values.
+            b.HasIndex(x => x.UserId)
+                .IsUnique()
+                .HasFilter("\"Status\" IN (0, 1, 2)")
+                .HasDatabaseName("IX_AppChargingSessions_UserId_Active");
 
             b.HasMany(x => x.MeterValues)
                 .WithOne()
@@ -299,7 +307,8 @@ public static class KLCDbContextModelCreatingExtensions
             b.Property(x => x.PowerKw).HasPrecision(10, 3);
             b.Property(x => x.SocPercent).HasPrecision(5, 2);
 
-            b.HasIndex(x => x.SessionId);
+            b.HasIndex(x => new { x.SessionId, x.Timestamp }) // PERF-2: cover ORDER BY Timestamp DESC queries
+                .HasDatabaseName("IX_AppMeterValues_SessionId_Timestamp");
             b.HasIndex(x => x.Timestamp);
         });
 
@@ -465,8 +474,14 @@ public static class KLCDbContextModelCreatingExtensions
             b.Property(x => x.WalletBalance).HasPrecision(18, 0);
             b.Property(x => x.Gender).HasMaxLength(1);
 
+            // Optimistic concurrency on WalletBalance: uses PostgreSQL's built-in
+            // xmin system column (updated on every row write — no extra column needed).
+            // EF Core will include it in UPDATE WHERE clauses; a stale read throws
+            // DbUpdateConcurrencyException, which callers should retry.
+            b.Property<uint>("xmin").HasColumnType("xid").IsRowVersion().HasDefaultValue(0u);
+
             b.HasIndex(x => x.IdentityUserId).IsUnique();
-            b.HasIndex(x => x.PhoneNumber);
+            b.HasIndex(x => x.PhoneNumber).IsUnique().HasFilter("\"IsDeleted\" = false");
             b.HasIndex(x => x.Email);
             b.HasIndex(x => x.IsActive);
         });

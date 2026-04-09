@@ -3,6 +3,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.WebSockets;
+using System.Threading;
+using System.Threading.Tasks;
 using KLC.Enums;
 using Microsoft.Extensions.Logging;
 
@@ -48,16 +50,33 @@ public class OcppConnectionManager
     }
 
     /// <summary>
-    /// Remove a connection.
+    /// Remove a connection only if it is still the active connection for that ChargePoint.
+    /// Returns true if the connection was removed, false if it had already been replaced by a newer connection.
     /// </summary>
-    public void RemoveConnection(string chargePointId)
+    public bool RemoveConnection(string chargePointId, OcppConnection connection)
     {
-        if (_connections.TryRemove(chargePointId, out var connection))
+        // Only remove if the stored connection is still the same object we're closing.
+        // Without this guard, an old receive loop's finally block would remove the NEW connection
+        // when a charger reconnects before the old loop exits.
+        if (_connections.TryGetValue(chargePointId, out var current) && ReferenceEquals(current, connection))
         {
-            connection.CancelAllPendingRequests();
-            _logger.LogInformation("ChargePoint {ChargePointId} disconnected. Total connections: {Count}",
-                chargePointId, _connections.Count);
+            if (_connections.TryRemove(chargePointId, out _))
+            {
+                connection.CancelAllPendingRequests();
+                _logger.LogInformation("ChargePoint {ChargePointId} disconnected. Total connections: {Count}",
+                    chargePointId, _connections.Count);
+                return true;
+            }
         }
+        else
+        {
+            // Connection was already replaced by a newer one — skip cleanup to avoid stomping on it
+            _logger.LogInformation(
+                "ChargePoint {ChargePointId} old receive loop exiting but connection already replaced — skipping disconnect cleanup",
+                chargePointId);
+            connection.CancelAllPendingRequests();
+        }
+        return false;
     }
 
     /// <summary>
@@ -92,5 +111,36 @@ public class OcppConnectionManager
     {
         var threshold = DateTime.UtcNow - timeout;
         return _connections.Values.Where(c => c.LastHeartbeat < threshold);
+    }
+
+    /// <summary>
+    /// Close all WebSocket connections gracefully on shutdown.
+    /// Forces chargers to reconnect to the new instance after deploy.
+    /// </summary>
+    public async Task CloseAllConnectionsAsync()
+    {
+        var connections = _connections.Values.ToList();
+        _logger.LogInformation("Closing {Count} WebSocket connections for graceful shutdown", connections.Count);
+
+        foreach (var connection in connections)
+        {
+            try
+            {
+                if (connection.WebSocket.State == WebSocketState.Open)
+                {
+                    await connection.WebSocket.CloseAsync(
+                        WebSocketCloseStatus.EndpointUnavailable,
+                        "Server shutting down",
+                        CancellationToken.None);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error closing WebSocket for {ChargePointId}", connection.ChargePointId);
+            }
+        }
+
+        _connections.Clear();
+        _logger.LogInformation("All WebSocket connections closed");
     }
 }

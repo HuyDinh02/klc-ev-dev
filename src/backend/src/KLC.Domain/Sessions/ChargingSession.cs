@@ -123,6 +123,7 @@ public class ChargingSession : FullAuditedAggregateRoot<Guid>
         RatePerKwh = ratePerKwh;
         IdTag = idTag;
         Status = SessionStatus.Pending;
+        StartTime = DateTime.UtcNow;
         TotalEnergyKwh = 0;
         TotalCost = 0;
     }
@@ -217,11 +218,41 @@ public class ChargingSession : FullAuditedAggregateRoot<Guid>
         Status = SessionStatus.Completed;
     }
 
-    public void MarkFailed(string? reason = null)
+    /// <summary>
+    /// Mark session as terminated due to an incident (power failure, timeout, etc.)
+    /// If energy was delivered (TotalEnergyKwh > 0), the session is COMPLETED
+    /// with billing — the user received electricity and must pay for it.
+    /// If no energy was delivered, the session is FAILED — nothing to bill.
+    /// </summary>
+    public void MarkFailed(string? reason = null, TariffPlan? tariffPlan = null)
     {
         EndTime = DateTime.UtcNow;
         StopReason = reason ?? "Session failed";
-        Status = SessionStatus.Failed;
+
+        if (TotalEnergyKwh > 0)
+        {
+            // Energy was delivered — complete with billing
+            if (tariffPlan != null && tariffPlan.TariffType == TariffType.TimeOfUse && MeterValues.Count >= 2)
+            {
+                var meterData = MeterValues
+                    .OrderBy(mv => mv.Timestamp)
+                    .Select(mv => (mv.Timestamp, mv.EnergyKwh))
+                    .ToList();
+                var breakdown = tariffPlan.CalculateTouCost(meterData, MeterStart, MeterStop, StartTime, EndTime);
+                TotalCost = breakdown.TotalCost;
+            }
+            else
+            {
+                TotalCost = Math.Round(TotalEnergyKwh * RatePerKwh, 0);
+            }
+
+            Status = SessionStatus.Completed;
+        }
+        else
+        {
+            // No energy delivered — truly failed
+            Status = SessionStatus.Failed;
+        }
     }
 
     /// <summary>

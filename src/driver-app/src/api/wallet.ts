@@ -8,12 +8,15 @@ export interface WalletBalance {
 
 export interface TopUpRequest {
   amount: number;
-  paymentMethod: PaymentMethod;
+  gateway: string;
+  bankCode?: string;
 }
 
 export interface TopUpResponse {
-  transactionId: string;
+  success: boolean;
+  transactionId?: string;
   redirectUrl?: string;
+  error?: string;
 }
 
 export const walletApi = {
@@ -29,8 +32,8 @@ export const walletApi = {
     return data;
   },
 
-  topUp: async (amount: number, paymentMethod: PaymentMethod): Promise<TopUpResponse> => {
-    const { data } = await api.post('/wallet/topup', { amount, paymentMethod });
+  topUp: async (amount: number, gateway: string, bankCode?: string): Promise<TopUpResponse> => {
+    const { data } = await api.post('/wallet/topup', { amount, gateway, bankCode });
     return data;
   },
 };

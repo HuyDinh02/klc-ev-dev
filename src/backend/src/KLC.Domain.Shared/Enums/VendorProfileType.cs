@@ -13,5 +13,8 @@ public enum VendorProfileType
     ChargecoreGlobal = 1,
 
     /// <summary>JUHANG chargers (Chinese vendor, common in Vietnam).</summary>
-    Juhang = 2
+    Juhang = 2,
+
+    /// <summary>Custom vendor profile configured per-station.</summary>
+    Custom = 99
 }

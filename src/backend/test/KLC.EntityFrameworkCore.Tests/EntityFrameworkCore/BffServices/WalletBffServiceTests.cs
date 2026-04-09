@@ -6,12 +6,14 @@ using KLC.Driver;
 using KLC.Driver.Services;
 using KLC.EntityFrameworkCore;
 using KLC.Enums;
+using KLC.Notifications;
 using KLC.Payments;
 using KLC.Users;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
+using StackExchange.Redis;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Guids;
 using Xunit;
@@ -36,9 +38,14 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
         var walletDomainService = CreateWalletDomainService();
         var paymentGateways = CreateMockPaymentGateways();
 
+        var callbackValidator = Substitute.For<IPaymentCallbackValidator>();
         var configuration = new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build();
+        var redisDb = Substitute.For<IDatabase>();
+        redisDb.StringSetAsync(Arg.Any<RedisKey>(), Arg.Any<RedisValue>(), Arg.Any<TimeSpan?>(), Arg.Any<When>(), Arg.Any<CommandFlags>()).Returns(true);
+        var redis = Substitute.For<IConnectionMultiplexer>();
+        redis.GetDatabase(Arg.Any<int>(), Arg.Any<object>()).Returns(redisDb);
         _service = new WalletBffService(
-            _dbContext, _cache, logger, walletDomainService, paymentGateways, _driverNotifier, configuration);
+            _dbContext, _cache, logger, walletDomainService, paymentGateways, callbackValidator, Substitute.For<IPushNotificationService>(), _driverNotifier, configuration, redis);
     }
 
     [Fact]

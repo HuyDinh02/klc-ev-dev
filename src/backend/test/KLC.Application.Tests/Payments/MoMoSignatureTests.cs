@@ -4,10 +4,12 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using KLC.Configuration;
 using KLC.Enums;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Shouldly;
 using Xunit;
 
@@ -30,7 +32,9 @@ public class MoMoSignatureTests
             })
             .Build();
 
-        return new MoMoPaymentService(_logger, config, new StubHttpClientFactory());
+        var settings = new MoMoSettings();
+        config.GetSection(MoMoSettings.Section).Bind(settings);
+        return new MoMoPaymentService(_logger, config, Options.Create(settings), new StubHttpClientFactory());
     }
 
     /// <summary>

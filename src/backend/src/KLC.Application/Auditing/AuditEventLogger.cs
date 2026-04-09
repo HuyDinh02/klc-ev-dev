@@ -11,7 +11,7 @@ public interface IAuditEventLogger
     void LogSessionEvent(string action, Guid sessionId, string? userId = null, string? details = null);
 }
 
-public class AuditEventLogger : IAuditEventLogger
+public class AuditEventLogger : IAuditEventLogger, Volo.Abp.DependencyInjection.ITransientDependency
 {
     private readonly ILogger<AuditEventLogger> _logger;
 

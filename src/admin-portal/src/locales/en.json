@@ -731,7 +731,14 @@
     "saveFailed": "Save failed",
     "failedToLoad": "Failed to load settings",
     "note": "Note:",
-    "alertEmailPlaceholder": "admin@example.com"
+    "alertEmailPlaceholder": "admin@example.com",
+    "applyToChargers": "Apply to Online Chargers",
+    "applyToChargersDesc": "Push current OCPP settings to all connected chargers",
+    "applyToChargersResult": "Apply to Chargers Result",
+    "successCount": "Success",
+    "failureCount": "Failed",
+    "applyPartialFailure": "Some chargers failed to update. Check logs for details.",
+    "applyToChargersFailed": "Failed to apply settings to chargers."
   },
   "groups": {
     "title": "Station Groups",
@@ -918,7 +925,11 @@
     "hoursMinutesAgo": "{hours}h {mins}m ago",
     "unknown": "Unknown",
     "firmwareUrlPlaceholder": "https://example.com/firmware.bin",
-    "diagnosticsUrlPlaceholder": "https://example.com/upload"
+    "diagnosticsUrlPlaceholder": "https://example.com/upload",
+    "firmwareStatus": "Firmware Status",
+    "diagnosticsStatusLabel": "Diagnostics Status",
+    "configAction": "Action",
+    "configSaveFailed": "Failed to save configuration key"
   },
   "mobileUsers": {
     "title": "Mobile Users",

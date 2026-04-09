@@ -94,6 +94,12 @@ public class ChargingStation : FullAuditedAggregateRoot<Guid>
     public VendorProfileType VendorProfile { get; private set; } = VendorProfileType.Generic;
 
     /// <summary>
+    /// Human-readable name of the detected vendor profile (e.g., "ChargecoreGlobal").
+    /// Stored alongside VendorProfile enum for diagnostics and custom profile support.
+    /// </summary>
+    public string? VendorProfileName { get; private set; }
+
+    /// <summary>
     /// OCPP WebSocket authentication password. Null = no auth required.
     /// Used in HTTP Basic Auth where username = StationCode, password = this value.
     /// </summary>
@@ -190,6 +196,11 @@ public class ChargingStation : FullAuditedAggregateRoot<Guid>
         VendorProfile = vendorProfile;
     }
 
+    public void SetVendorProfileName(string? name)
+    {
+        VendorProfileName = name;
+    }
+
     public void SetOcppPassword(string? password)
     {
         OcppPassword = password;
@@ -221,7 +232,7 @@ public class ChargingStation : FullAuditedAggregateRoot<Guid>
 
     public void MarkOffline()
     {
-        if (Status != StationStatus.Decommissioned)
+        if (Status != StationStatus.Disabled)
             Status = StationStatus.Offline;
     }
 
@@ -231,31 +242,32 @@ public class ChargingStation : FullAuditedAggregateRoot<Guid>
             Status = StationStatus.Online;
     }
 
+    /// <summary>
+    /// Re-enable station. Transitions to Offline (becomes Online on next BootNotification).
+    /// </summary>
     public void Enable()
     {
-        if (Status == StationStatus.Decommissioned)
-        {
-            throw new BusinessException(KLCDomainErrorCodes.Station.CannotEnableDecommissioned);
-        }
-
         IsEnabled = true;
-        if (Status == StationStatus.Disabled)
-            Status = StationStatus.Offline; // Will become Online on next BootNotification
+        if (Status == StationStatus.Disabled || Status == StationStatus.Decommissioned)
+            Status = StationStatus.Offline;
     }
 
+    /// <summary>
+    /// Disable station. No charging allowed until re-enabled.
+    /// Use for: maintenance, temporary shutdown, pre-deletion.
+    /// </summary>
     public void Disable()
     {
         IsEnabled = false;
-        if (Status != StationStatus.Decommissioned)
-        {
-            Status = StationStatus.Disabled;
-        }
+        Status = StationStatus.Disabled;
     }
 
+    /// <summary>
+    /// [Deprecated] Use Disable() instead. Kept for backward compatibility.
+    /// </summary>
     public void Decommission()
     {
-        IsEnabled = false;
-        Status = StationStatus.Decommissioned;
+        Disable();
     }
 
     public void UpdateFirmwareStatus(string status)

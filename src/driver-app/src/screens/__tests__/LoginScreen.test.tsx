@@ -62,17 +62,17 @@ describe('LoginScreen', () => {
     expect(getByText('EV Charging Made Simple')).toBeTruthy();
     // "Sign In" appears as both heading and button text
     expect(getAllByText('Sign In').length).toBeGreaterThanOrEqual(2);
-    expect(getByLabelText('Email')).toBeTruthy();
+    expect(getByLabelText('Phone')).toBeTruthy();
     expect(getByLabelText('Password')).toBeTruthy();
   });
 
-  it('renders email and password inputs', () => {
+  it('renders phone and password inputs', () => {
     const { getByLabelText } = render(<LoginScreen />);
 
-    const emailInput = getByLabelText('Email');
+    const phoneInput = getByLabelText('Phone');
     const passwordInput = getByLabelText('Password');
 
-    expect(emailInput).toBeTruthy();
+    expect(phoneInput).toBeTruthy();
     expect(passwordInput).toBeTruthy();
   });
 
@@ -86,8 +86,8 @@ describe('LoginScreen', () => {
   it('renders demo credentials section', () => {
     const { getByText } = render(<LoginScreen />);
     expect(getByText('Demo Credentials')).toBeTruthy();
-    expect(getByText('Email: driver@klc.vn')).toBeTruthy();
-    expect(getByText('Password: driver123')).toBeTruthy();
+    expect(getByText('Phone: 0901234001')).toBeTruthy();
+    expect(getByText('Password: Admin@123')).toBeTruthy();
   });
 
   it('renders Forgot Password and Sign Up links', () => {
@@ -103,20 +103,20 @@ describe('LoginScreen', () => {
 
     expect(Alert.alert).toHaveBeenCalledWith(
       'Error',
-      'Please enter email and password'
+      'Please enter phone number and password'
     );
   });
 
-  it('allows typing in email and password fields', () => {
+  it('allows typing in phone and password fields', () => {
     const { getByLabelText } = render(<LoginScreen />);
 
-    const emailInput = getByLabelText('Email');
+    const phoneInput = getByLabelText('Phone');
     const passwordInput = getByLabelText('Password');
 
-    fireEvent.changeText(emailInput, 'driver@klc.vn');
+    fireEvent.changeText(phoneInput, '0901234567');
     fireEvent.changeText(passwordInput, 'driver123');
 
-    expect(emailInput.props.value).toBe('driver@klc.vn');
+    expect(phoneInput.props.value).toBe('0901234567');
     expect(passwordInput.props.value).toBe('driver123');
   });
 
@@ -127,7 +127,7 @@ describe('LoginScreen', () => {
 
     const { getByLabelText, getAllByText } = render(<LoginScreen />);
 
-    fireEvent.changeText(getByLabelText('Email'), '0901234567');
+    fireEvent.changeText(getByLabelText('Phone'), '0901234567');
     fireEvent.changeText(getByLabelText('Password'), 'driver123');
     fireEvent.press(getSignInButton(getAllByText));
 
@@ -156,7 +156,7 @@ describe('LoginScreen', () => {
 
     const { getByLabelText, getAllByText } = render(<LoginScreen />);
 
-    fireEvent.changeText(getByLabelText('Email'), 'wrong@email.com');
+    fireEvent.changeText(getByLabelText('Phone'), '0901234567');
     fireEvent.changeText(getByLabelText('Password'), 'wrongpass');
     fireEvent.press(getSignInButton(getAllByText));
 
@@ -178,14 +178,14 @@ describe('LoginScreen', () => {
 
     const { getByLabelText, getAllByText } = render(<LoginScreen />);
 
-    fireEvent.changeText(getByLabelText('Email'), 'wrong@email.com');
+    fireEvent.changeText(getByLabelText('Phone'), '0901234567');
     fireEvent.changeText(getByLabelText('Password'), 'wrongpass');
     fireEvent.press(getSignInButton(getAllByText));
 
     await waitFor(() => {
       expect(Alert.alert).toHaveBeenCalledWith(
         'Error',
-        'Invalid email or password'
+        'Invalid phone number or password'
       );
     });
   });
@@ -200,7 +200,7 @@ describe('LoginScreen', () => {
 
     const { getByLabelText, getAllByText } = render(<LoginScreen />);
 
-    fireEvent.changeText(getByLabelText('Email'), 'driver@klc.vn');
+    fireEvent.changeText(getByLabelText('Phone'), '0901234567');
     fireEvent.changeText(getByLabelText('Password'), 'driver123');
     fireEvent.press(getSignInButton(getAllByText));
 
@@ -221,7 +221,7 @@ describe('LoginScreen', () => {
 
     const { getByLabelText, getAllByText } = render(<LoginScreen />);
 
-    fireEvent.changeText(getByLabelText('Email'), 'driver@klc.vn');
+    fireEvent.changeText(getByLabelText('Phone'), '0901234567');
     fireEvent.changeText(getByLabelText('Password'), 'driver123');
     fireEvent.press(getSignInButton(getAllByText));
 
@@ -238,7 +238,7 @@ describe('LoginScreen', () => {
 
     const { getByLabelText, getAllByText } = render(<LoginScreen />);
 
-    fireEvent.changeText(getByLabelText('Email'), 'driver@klc.vn');
+    fireEvent.changeText(getByLabelText('Phone'), '0901234567');
     fireEvent.changeText(getByLabelText('Password'), 'driver123');
     fireEvent.press(getSignInButton(getAllByText));
 
@@ -261,7 +261,7 @@ describe('LoginScreen', () => {
 
     const { getByLabelText, getAllByText } = render(<LoginScreen />);
 
-    fireEvent.changeText(getByLabelText('Email'), 'driver@klc.vn');
+    fireEvent.changeText(getByLabelText('Phone'), '0901234567');
     fireEvent.changeText(getByLabelText('Password'), 'driver123');
 
     const signInButton = getSignInButton(getAllByText);

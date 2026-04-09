@@ -14,6 +14,7 @@ import { SkeletonTable, SkeletonCard } from "@/components/ui/skeleton";
 import { Tabs } from "@/components/ui/tabs";
 import { Dialog, DialogHeader, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
+import { formatDate, formatDateTime } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
 import { useRequirePermission, useHasPermission } from "@/lib/use-permission";
 import { AccessDenied } from "@/components/ui/access-denied";
@@ -106,15 +107,7 @@ const formatCurrency = (value?: number | null) => {
   return (value ?? 0).toLocaleString("vi-VN") + "đ";
 };
 
-const formatDate = (date?: string | null) => {
-  if (!date) return "—";
-  return new Date(date).toLocaleDateString("vi-VN");
-};
 
-const formatDateTime = (date?: string | null) => {
-  if (!date) return "—";
-  return new Date(date).toLocaleString("vi-VN");
-};
 
 export default function MobileUsersPage() {
   const hasAccess = useRequirePermission("KLC.MobileUsers");

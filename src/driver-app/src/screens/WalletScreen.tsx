@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -15,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { Colors, Shadows } from '../constants/colors';
 import { Card } from '../components/common';
 import { walletApi } from '../api/wallet';
+import { formatCurrency, formatDateTime } from '../utils/formatting';
 import { useSignalR } from '../hooks/useSignalR';
 import type { WalletBalanceChangedMessage } from '../hooks/useSignalR';
 import type { WalletTransaction } from '../types';
@@ -34,23 +36,6 @@ const TRANSACTION_COLORS: Record<WalletTransaction['type'], string> = {
   Refund: Colors.primary,
   Bonus: Colors.warning,
 };
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'decimal',
-    maximumFractionDigits: 0,
-  }).format(amount) + '\u0111';
-}
-
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  const day = date.getDate().toString().padStart(2, '0');
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  const year = date.getFullYear();
-  const hours = date.getHours().toString().padStart(2, '0');
-  const minutes = date.getMinutes().toString().padStart(2, '0');
-  return `${day}/${month}/${year} ${hours}:${minutes}`;
-}
 
 export function WalletScreen() {
   const { t } = useTranslation();
@@ -135,24 +120,29 @@ export function WalletScreen() {
 
   const handleTopUp = (amount: number) => {
     Alert.alert(
-      t('wallet.topUpTitle'),
+      t('wallet.selectPaymentMethod'),
       t('wallet.topUpMessage', { amount: formatCurrency(amount) }),
       [
         { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.confirm'),
-          onPress: () => processTopUp(amount),
-        },
+        { text: 'VnPay', onPress: () => processTopUp(amount, 'VnPay') },
+        { text: 'MoMo', onPress: () => processTopUp(amount, 'MoMo') },
       ]
     );
   };
 
-  const processTopUp = async (amount: number) => {
+  const processTopUp = async (amount: number, gateway: string = 'VnPay') => {
     setTopUpLoading(true);
     try {
-      await walletApi.topUp(amount, 'MoMo');
-      await loadData();
-      Alert.alert(t('common.success'), t('wallet.topUpSuccess', { amount: formatCurrency(amount) }));
+      const result = await walletApi.topUp(amount, gateway);
+
+      if (result.redirectUrl) {
+        // Open VnPay payment page in browser
+        await Linking.openURL(result.redirectUrl);
+      } else {
+        // Direct topup (wallet/bonus) — refresh balance
+        await loadData();
+        Alert.alert(t('common.success'), t('wallet.topUpSuccess', { amount: formatCurrency(amount) }));
+      }
     } catch (error) {
       console.error('Top up failed:', error);
       Alert.alert(t('common.error'), t('wallet.topUpError'));
@@ -171,7 +161,7 @@ export function WalletScreen() {
       <View
         style={styles.transactionItem}
         accessible={true}
-        accessibilityLabel={`${item.description}, ${amountPrefix}${formatCurrency(Math.abs(item.amount))}, ${formatDate(item.createdAt)}`}
+        accessibilityLabel={`${item.description}, ${amountPrefix}${formatCurrency(Math.abs(item.amount))}, ${formatDateTime(item.createdAt)}`}
       >
         <View style={[styles.transactionIcon, { backgroundColor: iconColor + '20' }]}>
           <Text style={[styles.transactionIconText, { color: iconColor }]}>
@@ -182,7 +172,7 @@ export function WalletScreen() {
           <Text style={styles.transactionDescription} numberOfLines={1}>
             {item.description}
           </Text>
-          <Text style={styles.transactionDate}>{formatDate(item.createdAt)}</Text>
+          <Text style={styles.transactionDate}>{formatDateTime(item.createdAt)}</Text>
         </View>
         <View style={styles.transactionAmountContainer}>
           <Text style={[styles.transactionAmount, { color: amountColor }]}>

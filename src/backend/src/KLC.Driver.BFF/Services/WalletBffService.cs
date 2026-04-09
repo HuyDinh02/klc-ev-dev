@@ -2,9 +2,11 @@ using System.Collections.Generic;
 using System.Linq;
 using KLC.EntityFrameworkCore;
 using KLC.Enums;
+using KLC.Notifications;
 using KLC.Payments;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using StackExchange.Redis;
 
 namespace KLC.Driver.Services;
 
@@ -32,8 +34,11 @@ public class WalletBffService : IWalletBffService
     private readonly ILogger<WalletBffService> _logger;
     private readonly WalletDomainService _walletDomainService;
     private readonly IEnumerable<IPaymentGatewayService> _paymentGateways;
+    private readonly IPaymentCallbackValidator _callbackValidator;
+    private readonly IPushNotificationService _pushNotificationService;
     private readonly IDriverHubNotifier _driverNotifier;
     private readonly IConfiguration _configuration;
+    private readonly IDatabase _redis;
 
     public WalletBffService(
         KLCDbContext dbContext,
@@ -41,21 +46,27 @@ public class WalletBffService : IWalletBffService
         ILogger<WalletBffService> logger,
         WalletDomainService walletDomainService,
         IEnumerable<IPaymentGatewayService> paymentGateways,
+        IPaymentCallbackValidator callbackValidator,
+        IPushNotificationService pushNotificationService,
         IDriverHubNotifier driverNotifier,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IConnectionMultiplexer redis)
     {
         _dbContext = dbContext;
         _cache = cache;
         _logger = logger;
         _walletDomainService = walletDomainService;
         _paymentGateways = paymentGateways;
+        _callbackValidator = callbackValidator;
+        _pushNotificationService = pushNotificationService;
         _driverNotifier = driverNotifier;
         _configuration = configuration;
+        _redis = redis.GetDatabase();
     }
 
     public async Task<WalletBalanceDto> GetBalanceAsync(Guid userId)
     {
-        var cacheKey = $"user:{userId}:wallet-balance";
+        var cacheKey = CacheKeys.UserWalletBalance(userId);
 
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
@@ -157,7 +168,8 @@ public class WalletBffService : IWalletBffService
                     Amount = request.Amount,
                     Description = $"Top-up via {request.Gateway}",
                     ReturnUrl = _configuration["Payment:VnPay:ReturnUrl"] ?? "klc://wallet/topup/callback",
-                    NotifyUrl = "/api/v1/wallet/topup/callback",
+                    NotifyUrl = _configuration["Payment:VnPay:IpnUrl"]
+                        ?? $"{_configuration["App:SelfUrl"] ?? "https://bff.ev.odcall.com"}/api/v1/wallet/topup/vnpay-ipn",
                     ClientIpAddress = request.ClientIpAddress,
                     BankCode = request.BankCode
                 })
@@ -224,8 +236,8 @@ public class WalletBffService : IWalletBffService
             await _dbContext.SaveChangesAsync();
 
             // Invalidate cache
-            await _cache.RemoveAsync($"user:{transaction.UserId}:wallet-balance");
-            await _cache.RemoveAsync($"user:{transaction.UserId}:profile");
+            await _cache.RemoveAsync(CacheKeys.UserWalletBalance(transaction.UserId));
+            await _cache.RemoveAsync(CacheKeys.UserProfile(transaction.UserId));
 
             _logger.LogInformation(
                 "Top-up completed: UserId={UserId}, Amount={Amount}, NewBalance={NewBalance}",
@@ -271,29 +283,23 @@ public class WalletBffService : IWalletBffService
 
     public async Task<VnPayIpnResponse> ProcessVnPayIpnAsync(Dictionary<string, string> queryParams)
     {
-        // Build raw query string for signature verification
-        var rawData = string.Join("&", queryParams.Select(kvp => $"{kvp.Key}={kvp.Value}"));
-
-        var vnpayGateway = _paymentGateways.FirstOrDefault(g => g.Gateway == PaymentGateway.VnPay);
-        if (vnpayGateway == null)
-        {
-            _logger.LogWarning("[VnPay IPN] VnPay gateway service not registered");
-            return VnPayIpnResponse.UnknownError();
-        }
-
-        // Step 1: Verify signature
-        var verifyResult = await vnpayGateway.VerifyCallbackAsync(rawData, null);
-        if (!verifyResult.IsValid)
-        {
-            _logger.LogWarning("[VnPay IPN] Invalid signature for wallet top-up");
-            return VnPayIpnResponse.InvalidSignature();
-        }
-
-        // Step 2: Find wallet transaction by TxnRef (= ReferenceCode)
+        // Step 1: Find wallet transaction by TxnRef
         var txnRef = queryParams.GetValueOrDefault("vnp_TxnRef");
         if (string.IsNullOrEmpty(txnRef))
-        {
             return VnPayIpnResponse.OrderNotFound();
+
+        // Idempotency lock: VnPay guarantees at-least-once IPN delivery and can retry
+        // within milliseconds. Without this lock, two concurrent requests can both pass
+        // the Status == Completed check and double-credit the wallet.
+        // The lock is per-txnRef so unrelated top-ups are never blocked.
+        var lockKey = $"ipn:wallet:{txnRef}";
+        var lockAcquired = await _redis.StringSetAsync(
+            lockKey, "1", TimeSpan.FromSeconds(60), When.NotExists);
+        if (!lockAcquired)
+        {
+            _logger.LogWarning(
+                "[VnPay IPN] Concurrent IPN for TxnRef={TxnRef} — skipping duplicate", txnRef);
+            return VnPayIpnResponse.AlreadyConfirmed();
         }
 
         var transaction = await _dbContext.WalletTransactions
@@ -305,24 +311,22 @@ public class WalletBffService : IWalletBffService
             return VnPayIpnResponse.OrderNotFound();
         }
 
-        // Step 3: Idempotency — already completed
         if (transaction.Status == TransactionStatus.Completed)
-        {
             return VnPayIpnResponse.AlreadyConfirmed();
-        }
 
-        // Step 4: Verify amount
-        if (verifyResult.CallbackAmount.HasValue && verifyResult.CallbackAmount.Value != transaction.Amount)
+        // Step 2: Validate signature and amount via shared validator
+        var validation = await _callbackValidator.ValidateVnPayIpnAsync(queryParams, transaction.Amount);
+        if (!validation.IsValid)
         {
-            _logger.LogWarning(
-                "[VnPay IPN] Amount mismatch: Expected={Expected}, Got={Got}, TxnRef={TxnRef}",
-                transaction.Amount, verifyResult.CallbackAmount.Value, txnRef);
-            return VnPayIpnResponse.InvalidAmount();
+            _logger.LogWarning("[VnPay IPN] Validation failed: {Error}, TxnRef={TxnRef}",
+                validation.ErrorMessage, txnRef);
+            return validation.ErrorMessage?.Contains("Amount") == true
+                ? VnPayIpnResponse.InvalidAmount()
+                : VnPayIpnResponse.InvalidSignature();
         }
 
-        // Step 5: Process based on response code
-        var responseCode = queryParams.GetValueOrDefault("vnp_ResponseCode");
-        if (responseCode == "00")
+        // Step 3: Process based on response code
+        if (validation.IsPaymentSuccess)
         {
             var user = await _dbContext.AppUsers
                 .FirstOrDefaultAsync(u => u.IdentityUserId == transaction.UserId);
@@ -333,18 +337,42 @@ public class WalletBffService : IWalletBffService
                 return VnPayIpnResponse.UnknownError();
             }
 
-            var (newBalance, _) = _walletDomainService.TopUp(
-                user,
-                transaction.Amount,
-                transaction.PaymentGateway ?? PaymentGateway.VnPay,
-                verifyResult.GatewayTransactionId);
+            // Retry loop handles the rare case where a concurrent operation (e.g.
+            // a session payment) modified the user row between our read and save.
+            // xmin concurrency token causes DbUpdateConcurrencyException in that case.
+            decimal newBalance = 0;
+            for (var attempt = 0; attempt < 3; attempt++)
+            {
+                try
+                {
+                    if (attempt > 0)
+                    {
+                        // Reload the user so xmin is fresh before retrying
+                        await _dbContext.Entry(user).ReloadAsync();
+                    }
 
-            transaction.MarkCompleted(verifyResult.GatewayTransactionId);
-            await _dbContext.SaveChangesAsync();
+                    var (balance, _) = _walletDomainService.TopUp(
+                        user,
+                        transaction.Amount,
+                        transaction.PaymentGateway ?? PaymentGateway.VnPay,
+                        validation.GatewayTransactionId);
+                    newBalance = balance;
+
+                    transaction.MarkCompleted(validation.GatewayTransactionId);
+                    await _dbContext.SaveChangesAsync();
+                    break;
+                }
+                catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException) when (attempt < 2)
+                {
+                    _logger.LogWarning(
+                        "[VnPay IPN] Concurrency conflict on wallet update for {UserId}, retrying (attempt {Attempt})",
+                        transaction.UserId, attempt + 1);
+                }
+            }
 
             // Invalidate cache
-            await _cache.RemoveAsync($"user:{transaction.UserId}:wallet-balance");
-            await _cache.RemoveAsync($"user:{transaction.UserId}:profile");
+            await _cache.RemoveAsync(CacheKeys.UserWalletBalance(transaction.UserId));
+            await _cache.RemoveAsync(CacheKeys.UserProfile(transaction.UserId));
 
             // Notify user via SignalR
             await _driverNotifier.NotifyWalletBalanceChangedAsync(transaction.UserId,
@@ -364,8 +392,28 @@ public class WalletBffService : IWalletBffService
                 KLC.Enums.NotificationType.WalletTopUp,
                 "Nạp ví thành công",
                 $"Bạn đã nạp thành công {transaction.Amount:N0}đ vào ví. Số dư hiện tại: {newBalance:N0}đ.");
+            _dbContext.SetAuditFields(successNotification);
             _dbContext.Notifications.Add(successNotification);
             await _dbContext.SaveChangesAsync();
+
+            // Push notification: topup success
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _pushNotificationService.SendToUserAsync(
+                        transaction.UserId,
+                        "Nạp ví thành công 💰",
+                        $"Đã nạp {transaction.Amount:N0}đ vào ví. Số dư: {newBalance:N0}đ",
+                        new Dictionary<string, string>
+                        {
+                            { "type", "wallet_topup" },
+                            { "amount", transaction.Amount.ToString("F0") },
+                            { "newBalance", newBalance.ToString("F0") }
+                        });
+                }
+                catch (Exception ex) { _logger.LogWarning(ex, "Push notification failed for wallet topup"); }
+            });
 
             _logger.LogInformation(
                 "[VnPay IPN] Wallet top-up completed: UserId={UserId}, Amount={Amount}, NewBalance={NewBalance}",
@@ -381,7 +429,8 @@ public class WalletBffService : IWalletBffService
                 transaction.UserId,
                 KLC.Enums.NotificationType.PaymentFailed,
                 "Nạp ví thất bại",
-                $"Giao dịch nạp {transaction.Amount:N0}đ qua VnPay không thành công (mã: {responseCode}). Vui lòng thử lại.");
+                $"Giao dịch nạp {transaction.Amount:N0}đ qua VnPay không thành công (mã: {validation.ResponseCode}). Vui lòng thử lại.");
+            _dbContext.SetAuditFields(failNotification);
             _dbContext.Notifications.Add(failNotification);
 
             await _dbContext.SaveChangesAsync();
@@ -395,7 +444,7 @@ public class WalletBffService : IWalletBffService
                         UserId = transaction.UserId,
                         NewBalance = 0, // unchanged
                         ChangeAmount = 0,
-                        Reason = $"Top-up failed (VnPay code: {responseCode})",
+                        Reason = $"Top-up failed (VnPay code: {validation.ResponseCode})",
                         Timestamp = DateTime.UtcNow
                     });
             }
@@ -404,9 +453,28 @@ public class WalletBffService : IWalletBffService
                 _logger.LogWarning(notifyEx, "Failed to send failure notification via SignalR");
             }
 
+            // Push notification: topup failure
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _pushNotificationService.SendToUserAsync(
+                        transaction.UserId,
+                        "Nạp ví thất bại ❌",
+                        $"Giao dịch nạp {transaction.Amount:N0}đ qua VnPay không thành công. Vui lòng thử lại.",
+                        new Dictionary<string, string>
+                        {
+                            { "type", "wallet_topup_failed" },
+                            { "amount", transaction.Amount.ToString("F0") },
+                            { "referenceCode", transaction.ReferenceCode }
+                        });
+                }
+                catch (Exception ex) { _logger.LogWarning(ex, "Push notification failed for wallet topup failure"); }
+            });
+
             _logger.LogWarning(
                 "[VnPay IPN] Wallet top-up failed: TxnRef={TxnRef}, ResponseCode={ResponseCode}",
-                txnRef, responseCode);
+                txnRef, validation.ResponseCode);
         }
 
         return VnPayIpnResponse.Success();
@@ -537,7 +605,7 @@ public class WalletBffService : IWalletBffService
 
     public async Task<TransactionSummaryDto> GetTransactionSummaryAsync(Guid userId)
     {
-        var cacheKey = $"user:{userId}:wallet-summary";
+        var cacheKey = CacheKeys.UserWalletSummary(userId);
 
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {

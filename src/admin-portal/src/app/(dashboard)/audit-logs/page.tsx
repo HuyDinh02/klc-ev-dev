@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTableQuery } from "@/hooks/use-table-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +11,7 @@ import { Dialog, DialogHeader, DialogContent } from "@/components/ui/dialog";
 import { SkeletonTable } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { api } from "@/lib/api";
+import { formatDateTime } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
 import { useRequirePermission } from "@/lib/use-permission";
 import { AccessDenied } from "@/components/ui/access-denied";
@@ -94,18 +96,23 @@ export default function AuditLogsPage() {
   const [hasException, setHasException] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [cursorStack, setCursorStack] = useState<(string | null)[]>([]);
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
-  const pageSize = 20;
 
   // Fetch audit logs
-  const { data: logsData, isLoading } = useQuery({
-    queryKey: ["audit-logs", searchQuery, httpMethod, userName, hasException, dateFrom, dateTo, cursor],
-    queryFn: async () => {
-      const params: Record<string, string | number | boolean> = {
-        maxResultCount: pageSize,
-      };
+  const {
+    data: logsData,
+    items: logs,
+    totalCount,
+    isLoading,
+    pageSize,
+    goNextPage,
+    goPrevPage,
+    hasNextPage,
+    hasPrevPage,
+    resetPage,
+  } = useTableQuery<AuditLog>({
+    queryKey: "audit-logs",
+    fetchFn: async (params) => {
       if (searchQuery) params.url = searchQuery;
       if (httpMethod !== "all") params.httpMethod = httpMethod;
       if (userName) params.userName = userName;
@@ -113,11 +120,11 @@ export default function AuditLogsPage() {
       if (hasException === "no") params.hasException = false;
       if (dateFrom) params.startTime = dateFrom;
       if (dateTo) params.endTime = dateTo;
-      if (cursor) params.cursor = cursor;
 
       const res = await api.get("/audit-logs", { params });
       return res.data;
     },
+    extraQueryKeys: [searchQuery, httpMethod, userName, hasException, dateFrom, dateTo],
   });
 
   // Fetch detail with entity changes when log is selected
@@ -156,17 +163,11 @@ export default function AuditLogsPage() {
     }
   };
 
-  const logs: AuditLog[] = logsData?.items || [];
-  const totalCount = logsData?.totalCount || 0;
   const detail = detailData || selectedLog;
 
   const formatDuration = (ms: number) => {
     if (ms < 1000) return `${ms}ms`;
     return `${(ms / 1000).toFixed(2)}s`;
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString("vi-VN");
   };
 
   if (!hasAccess) return <AccessDenied />;
@@ -195,7 +196,7 @@ export default function AuditLogsPage() {
                   type="text"
                   placeholder={t("auditLogs.searchByUrl")}
                   value={searchQuery}
-                  onChange={(e) => { setSearchQuery(e.target.value); setCursor(null); setCursorStack([]); }}
+                  onChange={(e) => { setSearchQuery(e.target.value); resetPage(); }}
                   className="w-full rounded-md border pl-10 pr-3 py-2"
                   aria-label={t("auditLogs.searchByUrl")}
                 />
@@ -208,7 +209,7 @@ export default function AuditLogsPage() {
                   type="text"
                   placeholder={t("auditLogs.searchByUser")}
                   value={userName}
-                  onChange={(e) => { setUserName(e.target.value); setCursor(null); setCursorStack([]); }}
+                  onChange={(e) => { setUserName(e.target.value); resetPage(); }}
                   className="w-full rounded-md border pl-10 pr-3 py-2"
                   aria-label={t("auditLogs.searchByUser")}
                 />
@@ -216,7 +217,7 @@ export default function AuditLogsPage() {
             </div>
             <select
               value={httpMethod}
-              onChange={(e) => { setHttpMethod(e.target.value); setCursor(null); setCursorStack([]); }}
+              onChange={(e) => { setHttpMethod(e.target.value); resetPage(); }}
               className="rounded-md border px-3 py-2"
               aria-label={t("auditLogs.filterByMethod")}
             >
@@ -228,7 +229,7 @@ export default function AuditLogsPage() {
             </select>
             <select
               value={hasException}
-              onChange={(e) => { setHasException(e.target.value); setCursor(null); setCursorStack([]); }}
+              onChange={(e) => { setHasException(e.target.value); resetPage(); }}
               className="rounded-md border px-3 py-2"
               aria-label={t("auditLogs.filterByStatus")}
             >
@@ -241,7 +242,7 @@ export default function AuditLogsPage() {
               <input
                 type="date"
                 value={dateFrom}
-                onChange={(e) => { setDateFrom(e.target.value); setCursor(null); setCursorStack([]); }}
+                onChange={(e) => { setDateFrom(e.target.value); resetPage(); }}
                 className="rounded-md border px-3 py-2"
                 aria-label={t("auditLogs.dateFrom")}
               />
@@ -249,7 +250,7 @@ export default function AuditLogsPage() {
               <input
                 type="date"
                 value={dateTo}
-                onChange={(e) => { setDateTo(e.target.value); setCursor(null); setCursorStack([]); }}
+                onChange={(e) => { setDateTo(e.target.value); resetPage(); }}
                 className="rounded-md border px-3 py-2"
                 aria-label={t("auditLogs.dateTo")}
               />
@@ -313,7 +314,7 @@ export default function AuditLogsPage() {
                       <td className="px-4 py-3 text-sm">
                         <div className="flex items-center gap-2">
                           <Clock className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                          {formatDate(log.executionTime)}
+                          {formatDateTime(log.executionTime)}
                         </div>
                       </td>
                       <td className="px-4 py-3">
@@ -370,39 +371,28 @@ export default function AuditLogsPage() {
             </div>
 
             {/* Pagination */}
-            {(totalCount > pageSize || cursorStack.length > 0) && (
+            {(totalCount > pageSize || hasPrevPage) && (
               <div className="flex items-center justify-between border-t px-4 py-3">
                 <div className="text-sm text-muted-foreground">
                   {totalCount} {t("auditLogs.totalLogs")}
                 </div>
                 <div className="flex gap-2">
-                  {cursorStack.length > 0 && (
+                  {hasPrevPage && (
                     <Button
                       variant="outline"
                       size="sm"
                       aria-label={t("common.previous")}
-                      onClick={() => {
-                        const prev = [...cursorStack];
-                        const prevCursor = prev.pop()!;
-                        setCursorStack(prev);
-                        setCursor(prevCursor);
-                      }}
+                      onClick={goPrevPage}
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
                   )}
-                  {logs.length === pageSize && (
+                  {hasNextPage && (
                     <Button
                       variant="outline"
                       size="sm"
                       aria-label={t("common.next")}
-                      onClick={() => {
-                        const lastId = logs[logs.length - 1]?.id;
-                        if (lastId) {
-                          setCursorStack([...cursorStack, cursor]);
-                          setCursor(lastId);
-                        }
-                      }}
+                      onClick={goNextPage}
                     >
                       <ChevronRight className="h-4 w-4" />
                     </Button>
@@ -426,7 +416,7 @@ export default function AuditLogsPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">{t("auditLogs.time")}</p>
                   <p className="font-medium">
-                    {formatDate(detail.executionTime)}
+                    {formatDateTime(detail.executionTime)}
                   </p>
                 </div>
                 <div>

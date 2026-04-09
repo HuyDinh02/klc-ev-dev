@@ -25,6 +25,7 @@ import {
   formatDateTime,
   formatEnergy,
   formatDuration,
+  parseAsUtc,
 } from "@/lib/utils";
 import { CHART_COLORS } from "@/lib/constants";
 import {
@@ -79,10 +80,11 @@ function computeDuration(startTime?: string | null, endTime?: string | null): nu
 
 function formatChartTime(timestamp: string): string {
   return new Intl.DateTimeFormat("vi-VN", {
+    timeZone: "Asia/Ho_Chi_Minh",
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
-  }).format(new Date(timestamp));
+  }).format(parseAsUtc(timestamp));
 }
 
 export default function SessionDetailPage() {

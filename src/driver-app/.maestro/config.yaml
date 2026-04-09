@@ -1,0 +1,10 @@
+flows:
+  - login.yaml
+  - login-validation.yaml
+  - register-flow.yaml
+  - navigation.yaml
+  - wallet-topup.yaml
+  - profile-flow.yaml
+  - favorites-flow.yaml
+  - station-detail.yaml
+  - settings.yaml

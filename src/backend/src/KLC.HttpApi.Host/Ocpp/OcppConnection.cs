@@ -65,7 +65,22 @@ public class OcppConnection
     /// Pending requests awaiting response from Charge Point.
     /// </summary>
     private readonly Dictionary<string, TaskCompletionSource<string>> _pendingRequests = new();
+
+    /// <summary>
+    /// Idempotency cache: uniqueId → (serialized response, expiry).
+    /// Chargers may retry the same message (same uniqueId) if they don't receive a response
+    /// in time. OCPP 1.6J §4.1.1 requires the CSMS to return the cached response for retries
+    /// rather than re-processing, to prevent duplicate sessions / double-billing.
+    /// </summary>
+    private readonly Dictionary<string, (string Response, DateTime ExpiresAt)> _responseCache = new();
+
     private readonly object _lock = new();
+
+    /// <summary>
+    /// Serializes concurrent WebSocket send operations. WebSocket.SendAsync is NOT thread-safe;
+    /// the receive loop and background tasks (post-boot config, SoC auto-stop) can race.
+    /// </summary>
+    private readonly SemaphoreSlim _sendLock = new(1, 1);
 
     public OcppConnection(string chargePointId, WebSocket webSocket, OcppProtocolVersion ocppVersion = OcppProtocolVersion.Ocpp16J)
     {
@@ -91,6 +106,45 @@ public class OcppConnection
     public void SetVendorProfile(VendorProfileType vendorProfileType)
     {
         VendorProfileType = vendorProfileType;
+    }
+
+    /// <summary>
+    /// Return the cached response for a given uniqueId, or null if not cached / expired.
+    /// </summary>
+    public string? GetCachedResponse(string uniqueId)
+    {
+        lock (_lock)
+        {
+            if (_responseCache.TryGetValue(uniqueId, out var cached))
+            {
+                if (cached.ExpiresAt > DateTime.UtcNow)
+                    return cached.Response;
+                _responseCache.Remove(uniqueId);
+            }
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Store a response in the idempotency cache so retries of the same uniqueId
+    /// return the same result without re-processing.
+    /// </summary>
+    public void CacheResponse(string uniqueId, string response, TimeSpan ttl)
+    {
+        lock (_lock)
+        {
+            _responseCache[uniqueId] = (response, DateTime.UtcNow + ttl);
+            // Evict expired entries if cache grows large (defensive, normally small)
+            if (_responseCache.Count > 500)
+            {
+                var now = DateTime.UtcNow;
+                foreach (var key in _responseCache.Keys.ToList())
+                {
+                    if (_responseCache[key].ExpiresAt <= now)
+                        _responseCache.Remove(key);
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -139,6 +193,30 @@ public class OcppConnection
     }
 
     /// <summary>
+    /// Send a raw text message over the WebSocket, serializing concurrent sends via _sendLock.
+    /// </summary>
+    public async Task SendTextAsync(string message, CancellationToken cancellationToken = default)
+    {
+        if (WebSocket.State != WebSocketState.Open)
+            return;
+
+        var bytes = Encoding.UTF8.GetBytes(message);
+        await _sendLock.WaitAsync(cancellationToken);
+        try
+        {
+            await WebSocket.SendAsync(
+                new ArraySegment<byte>(bytes),
+                WebSocketMessageType.Text,
+                true,
+                cancellationToken);
+        }
+        finally
+        {
+            _sendLock.Release();
+        }
+    }
+
+    /// <summary>
     /// Send an OCPP Call message and wait for a response with timeout.
     /// Uses the connection's negotiated protocol version for framing.
     /// </summary>
@@ -156,16 +234,12 @@ public class OcppConnection
                 uniqueId,
                 action,
                 payload
-            });
+            }, new JsonSerializerOptions { DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull });
 
         var tcs = RegisterPendingRequest(uniqueId);
 
-        var bytes = Encoding.UTF8.GetBytes(message);
-        await WebSocket.SendAsync(
-            new ArraySegment<byte>(bytes),
-            WebSocketMessageType.Text,
-            true,
-            CancellationToken.None);
+        // Use _sendLock to serialize concurrent sends (receive loop vs background tasks)
+        await SendTextAsync(message);
 
         using var cts = new CancellationTokenSource(timeout);
         cts.Token.Register(() => tcs.TrySetCanceled());

@@ -1,13 +1,19 @@
-name: Deploy
+name: Deploy Staging
 
 on:
   push:
-    branches: [main]
+    branches: [develop]
     paths:
       - "src/backend/**"
       - "src/admin-portal/**"
       - ".github/workflows/deploy.yml"
   workflow_dispatch:
+    inputs:
+      run_migrations:
+        description: "Run EF Core database migrations"
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: deploy-${{ github.ref }}
@@ -16,18 +22,22 @@ concurrency:
 env:
   GCP_REGION: ${{ secrets.GCP_REGION }}
   GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  AR_REPO: asia-southeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/klc-backend
+  AR_REPO: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/klc-backend
 
 permissions:
   contents: read
   id-token: write
 
 jobs:
+  # ---------------------------------------------------------------------------
+  # Detect which paths changed
+  # ---------------------------------------------------------------------------
   changes:
     name: Detect changes
     runs-on: [self-hosted, linux, x64, gce]
     outputs:
-      backend: ${{ steps.filter.outputs.backend }}
+      backend-api: ${{ steps.filter.outputs.backend-api }}
+      bff: ${{ steps.filter.outputs.bff }}
       admin-portal: ${{ steps.filter.outputs.admin-portal }}
     steps:
       - uses: actions/checkout@v4
@@ -35,55 +45,34 @@ jobs:
         id: filter
         with:
           filters: |
-            backend:
-              - 'src/backend/**'
+            backend-api:
+              - 'src/backend/src/KLC.HttpApi.Host/**'
+              - 'src/backend/src/KLC.HttpApi/**'
+              - 'src/backend/src/KLC.Application/**'
+              - 'src/backend/src/KLC.Application.Contracts/**'
+              - 'src/backend/src/KLC.Domain/**'
+              - 'src/backend/src/KLC.Domain.Shared/**'
+              - 'src/backend/src/KLC.EntityFrameworkCore/**'
+            bff:
+              - 'src/backend/src/KLC.Driver.BFF/**'
+              - 'src/backend/src/KLC.Application/**'
+              - 'src/backend/src/KLC.Application.Contracts/**'
+              - 'src/backend/src/KLC.Domain/**'
+              - 'src/backend/src/KLC.Domain.Shared/**'
+              - 'src/backend/src/KLC.EntityFrameworkCore/**'
             admin-portal:
               - 'src/admin-portal/**'
 
-  test:
-    name: Backend Tests
+  # ---------------------------------------------------------------------------
+  # Build, push & deploy in a single job
+  # (eliminates repeated GCP auth and runner queue waits between jobs)
+  # ---------------------------------------------------------------------------
+  build-and-deploy:
+    name: Build & Deploy
     runs-on: [self-hosted, linux, x64, gce]
     needs: changes
-    if: needs.changes.outputs.backend == 'true'
-    timeout-minutes: 15
-
-    services:
-      postgres:
-        image: postgis/postgis:16-3.4
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: KLC
-        ports:
-          - 5433:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: false
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "10.0.x"
-          dotnet-quality: "preview"
-
-      - name: Test
-        run: dotnet test src/backend -c Release
-        env:
-          ConnectionStrings__Default: "Host=localhost;Port=5433;Database=KLC;Username=postgres;Password=postgres"
-
-  deploy-admin-api:
-    name: Deploy Admin API
-    runs-on: [self-hosted, linux, x64, gce]
-    needs: [changes, test]
-    if: always() && needs.changes.outputs.backend == 'true' && (needs.test.result == 'success')
-    timeout-minutes: 15
+    if: needs.changes.outputs.backend-api == 'true' || needs.changes.outputs.bff == 'true' || needs.changes.outputs.admin-portal == 'true'
+    timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@v4
@@ -102,148 +91,175 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
 
-      - name: Build and push Admin API image
+      # -----------------------------------------------------------------------
+      # Summary: what will be built and deployed
+      # -----------------------------------------------------------------------
+      - name: Deploy summary
         run: |
-          IMAGE="${{ env.AR_REPO }}/admin-api:${{ github.sha }}"
-          docker build -t "${IMAGE}" -f src/backend/src/KLC.HttpApi.Host/Dockerfile src/backend
-          docker tag "${IMAGE}" "${{ env.AR_REPO }}/admin-api:latest"
-          docker push "${IMAGE}"
-          docker push "${{ env.AR_REPO }}/admin-api:latest"
+          echo "### Deploy Summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Changed | Action |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|---------|--------|" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.changes.outputs.backend-api }}" = "true" ]; then
+            echo "| Backend API | ✅ | Build + Deploy |" >> $GITHUB_STEP_SUMMARY
+            echo "| OCPP Gateway | ✅ | Deploy (same image) |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Backend API | — | Skipped |" >> $GITHUB_STEP_SUMMARY
+            echo "| OCPP Gateway | — | Skipped |" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "${{ needs.changes.outputs.bff }}" = "true" ]; then
+            echo "| Driver BFF | ✅ | Build + Deploy |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Driver BFF | — | Skipped |" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "${{ needs.changes.outputs.admin-portal }}" = "true" ]; then
+            echo "| Admin Portal | ✅ | Build + Deploy |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Admin Portal | — | Skipped |" >> $GITHUB_STEP_SUMMARY
+          fi
 
-      - name: Deploy Admin API to Cloud Run
-        id: deploy-api
+      # -----------------------------------------------------------------------
+      # Build Docker images (only changed components)
+      # -----------------------------------------------------------------------
+
+      # Admin API (also used for OCPP Gateway — same image)
+      - name: Build Backend API image
+        if: needs.changes.outputs.backend-api == 'true'
+        run: |
+          IMAGE="${{ env.AR_REPO }}/backend-api:${{ github.sha }}"
+          docker build -t "${IMAGE}" -f src/backend/src/KLC.HttpApi.Host/Dockerfile src/backend
+          docker tag "${IMAGE}" "${{ env.AR_REPO }}/backend-api:latest"
+          docker push "${IMAGE}"
+          docker push "${{ env.AR_REPO }}/backend-api:latest"
+
+      # Driver BFF
+      - name: Build BFF Socket image
+        if: needs.changes.outputs.bff == 'true'
+        run: |
+          IMAGE="${{ env.AR_REPO }}/bff-socket:${{ github.sha }}"
+          docker build -t "${IMAGE}" -f src/backend/src/KLC.Driver.BFF/Dockerfile src/backend
+          docker tag "${IMAGE}" "${{ env.AR_REPO }}/bff-socket:latest"
+          docker push "${IMAGE}"
+          docker push "${{ env.AR_REPO }}/bff-socket:latest"
+
+      # Admin Portal
+      - name: Build Admin Portal image
+        if: needs.changes.outputs.admin-portal == 'true'
+        run: |
+          IMAGE="${{ env.AR_REPO }}/admin-portal:${{ github.sha }}"
+          docker build -t "${IMAGE}" \
+            --build-arg NEXT_PUBLIC_API_URL=https://api.ev.odcall.com \
+            --build-arg NEXT_PUBLIC_OCPP_URL=https://ocpp.ev.odcall.com \
+            -f src/admin-portal/Dockerfile src/admin-portal
+          docker tag "${IMAGE}" "${{ env.AR_REPO }}/admin-portal:latest"
+          docker push "${IMAGE}"
+          docker push "${{ env.AR_REPO }}/admin-portal:latest"
+
+      # -----------------------------------------------------------------------
+      # Deploy to Cloud Run (sequential in same job — no runner queue waits)
+      # -----------------------------------------------------------------------
+
+      - name: Deploy Admin API
+        if: needs.changes.outputs.backend-api == 'true'
         uses: google-github-actions/deploy-cloudrun@v2
+        id: deploy-api
         with:
           service: klc-admin-api
           region: ${{ env.GCP_REGION }}
-          image: ${{ env.AR_REPO }}/admin-api:${{ github.sha }}
+          image: ${{ env.AR_REPO }}/backend-api:${{ github.sha }}
           flags: >-
             --port=8080
             --memory=1Gi
             --cpu=1
             --min-instances=1
-            --max-instances=3
-            --timeout=3600
-            --session-affinity
-            --add-cloudsql-instances=klc-ev-charging:asia-southeast1:klc-postgres
+            --max-instances=5
+            --concurrency=200
+            --timeout=300
+            --add-cloudsql-instances=${{ secrets.GCP_PROJECT_ID }}:${{ env.GCP_REGION }}:klc-postgres
             --vpc-connector=klc-connector
             --vpc-egress=private-ranges-only
             --cpu-boost
-            --set-env-vars=^||^ASPNETCORE_ENVIRONMENT=Production||App__CorsOrigins=https://ev.odcall.com,https://api.ev.odcall.com,http://localhost:3001
-            --set-secrets=ConnectionStrings__Default=db-connection-string:latest,ConnectionStrings__Redis=redis-connection-string:latest,Jwt__SecretKey=jwt-secret-key:latest,StringEncryption__DefaultPassPhrase=string-encryption-passphrase:latest,Payment__MoMo__PartnerCode=momo-partner-code:latest,Payment__MoMo__AccessKey=momo-access-key:latest,Payment__MoMo__SecretKey=momo-secret-key:latest,Payment__VnPay__TmnCode=vnpay-tmn-code:latest,Payment__VnPay__HashSecret=vnpay-hash-secret:latest,Payment__VnPay__BaseUrl=vnpay-base-url:latest,Payment__VnPay__QueryApiUrl=vnpay-query-api-url:latest,OPENIDDICT_SIGNING_CERT=openiddict-signing-cert:latest,OPENIDDICT_SIGNING_PASSWORD=openiddict-signing-password:latest,OPENIDDICT_ENCRYPTION_CERT=openiddict-encryption-cert:latest,OPENIDDICT_ENCRYPTION_PASSWORD=openiddict-encryption-password:latest
+            --set-env-vars=^||^ASPNETCORE_ENVIRONMENT=Production||App__CorsOrigins=https://ev.odcall.com,https://api.ev.odcall.com,http://localhost:3001||Ocpp__GatewayUrl=https://ocpp.ev.odcall.com||Firebase__CredentialPath=/secrets/firebase/service-account.json
+            --set-secrets=ConnectionStrings__Default=db-connection-string:latest,ConnectionStrings__Redis=redis-connection-string:latest,Jwt__SecretKey=jwt-secret-key:latest,Internal__ApiKey=internal-api-key:latest,StringEncryption__DefaultPassPhrase=string-encryption-passphrase:latest,Payment__MoMo__PartnerCode=momo-partner-code:latest,Payment__MoMo__AccessKey=momo-access-key:latest,Payment__MoMo__SecretKey=momo-secret-key:latest,Payment__VnPay__TmnCode=vnpay-tmn-code:latest,Payment__VnPay__HashSecret=vnpay-hash-secret:latest,Payment__VnPay__BaseUrl=vnpay-base-url:latest,Payment__VnPay__QueryApiUrl=vnpay-query-api-url:latest,OPENIDDICT_SIGNING_CERT=openiddict-signing-cert:latest,OPENIDDICT_SIGNING_PASSWORD=openiddict-signing-password:latest,OPENIDDICT_ENCRYPTION_CERT=openiddict-encryption-cert:latest,OPENIDDICT_ENCRYPTION_PASSWORD=openiddict-encryption-password:latest,/secrets/firebase/service-account.json=firebase-service-account:latest
 
-      - name: Smoke test Admin API
-        run: |
-          URL="${{ steps.deploy-api.outputs.url }}/health"
-          echo "Checking $URL ..."
-          for i in $(seq 1 10); do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$URL" || true)
-            if [ "$STATUS" = "200" ]; then echo "Admin API healthy"; exit 0; fi
-            echo "Attempt $i: status=$STATUS, retrying..."
-            sleep 10
-          done
-          echo "::error::Admin API smoke test failed after 10 attempts"
-          exit 1
-
-  deploy-driver-bff:
-    name: Deploy Driver BFF
-    runs-on: [self-hosted, linux, x64, gce]
-    needs: [changes, test]
-    if: always() && needs.changes.outputs.backend == 'true' && (needs.test.result == 'success')
-    timeout-minutes: 15
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: false
-
-      - name: Authenticate to GCP
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SA_EMAIL }}
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
-
-      - name: Build and push Driver BFF image
-        run: |
-          IMAGE="${{ env.AR_REPO }}/driver-bff:${{ github.sha }}"
-          docker build -t "${IMAGE}" -f src/backend/src/KLC.Driver.BFF/Dockerfile src/backend
-          docker tag "${IMAGE}" "${{ env.AR_REPO }}/driver-bff:latest"
-          docker push "${IMAGE}"
-          docker push "${{ env.AR_REPO }}/driver-bff:latest"
-
-      - name: Deploy Driver BFF to Cloud Run
-        id: deploy-bff
+      - name: Deploy OCPP Gateway
+        if: needs.changes.outputs.backend-api == 'true'
         uses: google-github-actions/deploy-cloudrun@v2
+        id: deploy-gateway
+        with:
+          service: klc-ocpp-gateway
+          region: ${{ env.GCP_REGION }}
+          image: ${{ env.AR_REPO }}/backend-api:${{ github.sha }}
+          flags: >-
+            --port=8080
+            --memory=1Gi
+            --cpu=1
+            --min-instances=1
+            --max-instances=1
+            --timeout=3600
+            --session-affinity
+            --add-cloudsql-instances=${{ secrets.GCP_PROJECT_ID }}:${{ env.GCP_REGION }}:klc-postgres
+            --vpc-connector=klc-connector
+            --vpc-egress=private-ranges-only
+            --cpu-boost
+            --set-env-vars=^||^ASPNETCORE_ENVIRONMENT=Production||App__CorsOrigins=https://ev.odcall.com,https://api.ev.odcall.com,http://localhost:3001||Firebase__CredentialPath=/secrets/firebase/service-account.json
+            --set-secrets=ConnectionStrings__Default=db-connection-string:latest,ConnectionStrings__Redis=redis-connection-string:latest,Jwt__SecretKey=jwt-secret-key:latest,Internal__ApiKey=internal-api-key:latest,StringEncryption__DefaultPassPhrase=string-encryption-passphrase:latest,OPENIDDICT_SIGNING_CERT=openiddict-signing-cert:latest,OPENIDDICT_SIGNING_PASSWORD=openiddict-signing-password:latest,OPENIDDICT_ENCRYPTION_CERT=openiddict-encryption-cert:latest,OPENIDDICT_ENCRYPTION_PASSWORD=openiddict-encryption-password:latest,/secrets/firebase/service-account.json=firebase-service-account:latest
+
+      # Force charger reconnection: delete old OCPP Gateway revisions so the
+      # old instance shuts down → OnApplicationShutdown closes WebSockets →
+      # chargers reconnect to the new revision within seconds.
+      - name: Force OCPP Gateway charger reconnection
+        if: needs.changes.outputs.backend-api == 'true'
+        run: |
+          echo "Waiting 10s for new OCPP Gateway revision to stabilize..."
+          sleep 10
+          LATEST=$(gcloud run revisions list \
+            --service=klc-ocpp-gateway \
+            --region=${{ env.GCP_REGION }} \
+            --format='value(REVISION)' \
+            --sort-by=~creationTimestamp \
+            --limit=1)
+          echo "Latest revision: $LATEST"
+          OLD_REVISIONS=$(gcloud run revisions list \
+            --service=klc-ocpp-gateway \
+            --region=${{ env.GCP_REGION }} \
+            --format='value(REVISION)' \
+            --sort-by=~creationTimestamp | tail -n +2)
+          if [ -n "$OLD_REVISIONS" ]; then
+            echo "Deleting old revisions to force charger reconnection..."
+            for rev in $OLD_REVISIONS; do
+              echo "  Deleting $rev"
+              gcloud run revisions delete "$rev" \
+                --region=${{ env.GCP_REGION }} --quiet || true
+            done
+            echo "Old revisions deleted. Chargers will reconnect to $LATEST."
+          else
+            echo "No old revisions to clean up."
+          fi
+
+      - name: Deploy Driver BFF
+        if: needs.changes.outputs.bff == 'true'
+        uses: google-github-actions/deploy-cloudrun@v2
+        id: deploy-bff
         with:
           service: klc-driver-bff
           region: ${{ env.GCP_REGION }}
-          image: ${{ env.AR_REPO }}/driver-bff:${{ github.sha }}
+          image: ${{ env.AR_REPO }}/bff-socket:${{ github.sha }}
           flags: >-
             --port=8080
             --memory=512Mi
             --cpu=1
             --min-instances=0
             --max-instances=5
-            --add-cloudsql-instances=klc-ev-charging:asia-southeast1:klc-postgres
+            --add-cloudsql-instances=${{ secrets.GCP_PROJECT_ID }}:${{ env.GCP_REGION }}:klc-postgres
             --vpc-connector=klc-connector
             --vpc-egress=private-ranges-only
-            --set-env-vars=ASPNETCORE_ENVIRONMENT=Production,EnableApiDocs=true
-            --set-secrets=ConnectionStrings__Default=db-connection-string:latest,ConnectionStrings__Redis=redis-connection-string:latest,Jwt__SecretKey=jwt-secret-key:latest,Payment__MoMo__PartnerCode=momo-partner-code:latest,Payment__MoMo__AccessKey=momo-access-key:latest,Payment__MoMo__SecretKey=momo-secret-key:latest,Payment__VnPay__TmnCode=vnpay-tmn-code:latest,Payment__VnPay__HashSecret=vnpay-hash-secret:latest,Payment__VnPay__BaseUrl=vnpay-base-url:latest,Payment__VnPay__QueryApiUrl=vnpay-query-api-url:latest
+            --set-env-vars=ASPNETCORE_ENVIRONMENT=Production,EnableApiDocs=true,Ocpp__GatewayUrl=https://ocpp.ev.odcall.com
+            --set-secrets=ConnectionStrings__Default=db-connection-string:latest,ConnectionStrings__Redis=redis-connection-string:latest,Jwt__SecretKey=jwt-secret-key:latest,Internal__ApiKey=internal-api-key:latest,Payment__MoMo__PartnerCode=momo-partner-code:latest,Payment__MoMo__AccessKey=momo-access-key:latest,Payment__MoMo__SecretKey=momo-secret-key:latest,Payment__VnPay__TmnCode=vnpay-tmn-code:latest,Payment__VnPay__HashSecret=vnpay-hash-secret:latest,Payment__VnPay__BaseUrl=vnpay-base-url:latest,Payment__VnPay__QueryApiUrl=vnpay-query-api-url:latest,Firebase__WebApiKey=firebase-web-api-key:latest
 
-      - name: Smoke test Driver BFF
-        run: |
-          URL="${{ steps.deploy-bff.outputs.url }}/health"
-          echo "Checking $URL ..."
-          for i in $(seq 1 10); do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$URL" || true)
-            if [ "$STATUS" = "200" ]; then echo "Driver BFF healthy"; exit 0; fi
-            echo "Attempt $i: status=$STATUS, retrying..."
-            sleep 10
-          done
-          echo "::error::Driver BFF smoke test failed after 10 attempts"
-          exit 1
-
-  deploy-admin-portal:
-    name: Deploy Admin Portal
-    runs-on: [self-hosted, linux, x64, gce]
-    needs: changes
-    if: needs.changes.outputs.admin-portal == 'true'
-    timeout-minutes: 15
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Authenticate to GCP
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SA_EMAIL }}
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
-
-      - name: Build Admin Portal image
-        run: |
-          IMAGE="${{ env.AR_REPO }}/admin-portal:${{ github.sha }}"
-          docker build -t "${IMAGE}" \
-            --build-arg NEXT_PUBLIC_API_URL=https://api.ev.odcall.com \
-            -f src/admin-portal/Dockerfile src/admin-portal
-          docker tag "${IMAGE}" "${{ env.AR_REPO }}/admin-portal:latest"
-          docker push "${IMAGE}"
-          docker push "${{ env.AR_REPO }}/admin-portal:latest"
-
-      - name: Deploy Admin Portal to Cloud Run
-        id: deploy-portal
+      - name: Deploy Admin Portal
+        if: needs.changes.outputs.admin-portal == 'true'
         uses: google-github-actions/deploy-cloudrun@v2
+        id: deploy-portal
         with:
           service: klc-admin-portal
           region: ${{ env.GCP_REGION }}
@@ -257,15 +273,100 @@ jobs:
             --set-env-vars=NODE_ENV=production,BACKEND_API_URL=https://api.ev.odcall.com,OIDC_CLIENT_ID=KLC_Api
             --set-secrets=OIDC_CLIENT_SECRET=oidc-client-secret:latest
 
-      - name: Smoke test Admin Portal
+      # -----------------------------------------------------------------------
+      # Smoke tests (run after all deploys to avoid blocking)
+      # -----------------------------------------------------------------------
+      - name: Smoke test services
         run: |
-          URL="${{ steps.deploy-portal.outputs.url }}"
-          echo "Checking $URL ..."
-          for i in 1 2 3 4 5; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$URL" || true)
-            if [ "$STATUS" = "200" ] || [ "$STATUS" = "307" ]; then echo "Admin Portal healthy"; exit 0; fi
-            echo "Attempt $i: status=$STATUS, retrying..."
-            sleep 5
+          FAILED=0
+          for PAIR in \
+            "Admin API|${{ steps.deploy-api.outputs.url }}/health" \
+            "OCPP Gateway|${{ steps.deploy-gateway.outputs.url }}/health" \
+            "Driver BFF|${{ steps.deploy-bff.outputs.url }}/health" \
+            "Admin Portal|${{ steps.deploy-portal.outputs.url }}"
+          do
+            NAME="${PAIR%%|*}"
+            URL="${PAIR##*|}"
+            if [ -z "$URL" ]; then continue; fi
+            echo "Checking ${NAME}..."
+            OK=0
+            for i in $(seq 1 6); do
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$URL" || true)
+              if [ "$STATUS" = "200" ] || [ "$STATUS" = "307" ]; then echo "  ✓ ${NAME} healthy"; OK=1; break; fi
+              echo "  Attempt $i: $STATUS"; sleep 5
+            done
+            if [ "$OK" = "0" ]; then echo "::error::${NAME} smoke test failed"; FAILED=1; fi
           done
-          echo "::error::Admin Portal smoke test failed after 5 attempts"
-          exit 1
+          exit $FAILED
+
+  # ---------------------------------------------------------------------------
+  # Database Migration (manual trigger only)
+  # ---------------------------------------------------------------------------
+  db-migrate:
+    name: Run Database Migrations
+    runs-on: [self-hosted, linux, x64, gce]
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.run_migrations == 'true'
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SA_EMAIL }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Install EF Core tools
+        run: |
+          dotnet tool install --global dotnet-ef || true
+          echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
+
+      - name: Start Cloud SQL Auth Proxy
+        run: |
+          # Use /tmp — runner does not have write access to /usr/local/bin
+          PROXY_BIN="/tmp/cloud-sql-proxy"
+          if [ ! -f "$PROXY_BIN" ]; then
+            curl -fsSL -o "$PROXY_BIN" \
+              "https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.14.1/cloud-sql-proxy.linux.amd64"
+            chmod +x "$PROXY_BIN"
+          fi
+          # Start proxy in background (IAM auth via workload identity)
+          "$PROXY_BIN" \
+            "klc-ev-charging:asia-southeast1:klc-postgres" \
+            --port 5433 --quiet &
+          echo "CLOUD_SQL_PROXY_PID=$!" >> $GITHUB_ENV
+          # Wait for proxy to be ready (up to 15s)
+          for i in $(seq 1 15); do
+            if nc -z localhost 5433 2>/dev/null; then echo "Cloud SQL Proxy ready"; break; fi
+            sleep 1
+          done
+
+      - name: Restore NuGet packages
+        run: dotnet restore src/backend
+
+      - name: Run database migrations
+        run: |
+          dotnet ef database update \
+            --project src/backend/src/KLC.EntityFrameworkCore \
+            --startup-project src/backend/src/KLC.HttpApi.Host \
+            --connection "$DB_MIGRATION_CONNECTION_STRING"
+        env:
+          DB_MIGRATION_CONNECTION_STRING: ${{ secrets.DB_MIGRATION_CONNECTION_STRING }}
+
+      - name: Stop Cloud SQL Auth Proxy
+        if: always()
+        run: |
+          if [ -n "$CLOUD_SQL_PROXY_PID" ]; then
+            kill "$CLOUD_SQL_PROXY_PID" || true
+          fi

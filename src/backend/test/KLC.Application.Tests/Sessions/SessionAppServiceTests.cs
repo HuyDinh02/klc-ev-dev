@@ -37,7 +37,7 @@ public class SessionAppServiceTests
         session.Status.ShouldBe(SessionStatus.Pending);
         session.TotalEnergyKwh.ShouldBe(0);
         session.TotalCost.ShouldBe(0);
-        session.StartTime.ShouldBeNull();
+        session.StartTime.ShouldNotBeNull(); // Set in constructor for immediate display
         session.EndTime.ShouldBeNull();
     }
 

@@ -160,6 +160,8 @@ describe('SessionScreen', () => {
 
   it('shows error when stop fails', async () => {
     (sessionsApi.stop as jest.Mock).mockRejectedValue(new Error('Failed'));
+    // Suppress expected console.error from the catch block — this is intentional
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
     const { getByText } = render(<SessionScreen />);
     fireEvent.press(getByText('Stop Charging'));
@@ -173,6 +175,7 @@ describe('SessionScreen', () => {
 
     // Second Alert.alert call is the error
     expect(Alert.alert).toHaveBeenCalledTimes(2);
+    consoleSpy.mockRestore();
   });
 
   it('shows -- for SOC when meter value has no soc', () => {

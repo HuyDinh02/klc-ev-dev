@@ -1,55 +1,49 @@
 appId: vn.klc.driver
 name: Wallet Top-Up Flow
 ---
-# Verifies wallet screen access, balance display, and top-up flow
-# Prerequisite: User must be logged in
+# Verifies wallet screen, balance display, and top-up options
 - launchApp:
     appId: vn.klc.driver
+    clearState: true
 
-# Wait for app to load
-- extendedWaitUntil:
-    visible: ".*"
+# Login first
+- assertVisible:
+    text: "Đăng nhập"
     timeout: 10000
+- tapOn:
+    id: "login-phone-input"
+- inputText: "0901234001"
+- tapOn:
+    id: "login-password-input"
+- inputText: "Admin@123"
+- tapOn:
+    id: "login-submit-button"
 
-# Navigate to Wallet tab
-- tapOn:
-    id: "tab-wallet"
-    optional: true
-- tapOn:
-    text: "Wallet"
-    optional: true
+# Wait for home, navigate to wallet
+- assertVisible:
+    text: "Trạm sạc"
+    timeout: 15000
+- tapOn: "Ví"
 
 # Verify wallet screen elements
 - assertVisible:
-    text: "Wallet"
+    text: "Số dư ví"
     timeout: 5000
 
-# Verify balance section is visible
+# Verify balance is shown (should have some amount for test account)
 - assertVisible:
-    text: "Wallet Balance"
-    optional: true
+    text: ".*đ"
+    timeout: 5000
 
-# Verify top-up button exists
-- assertVisible:
-    text: "Top Up"
-    optional: true
+# Verify top-up button
+- assertVisible: "Nạp tiền"
 
-# Verify quick top-up amounts are shown
+# Verify quick top-up section
 - assertVisible:
-    text: "Quick Top Up"
+    text: "Nạp nhanh"
     optional: true
 
 # Verify transaction history section
 - assertVisible:
-    text: "Transaction History"
-    optional: true
-
-# Try tapping top-up button
-- tapOn:
-    text: "Top Up"
-    optional: true
-
-# Dismiss any confirmation dialog
-- tapOn:
-    text: "Cancel"
+    text: "Lịch sử giao dịch"
     optional: true

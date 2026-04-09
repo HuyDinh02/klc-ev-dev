@@ -30,8 +30,5 @@
     </PackageReference>
   </ItemGroup>
 
-  <ItemGroup>
-    <EmbeddedResource Include="Properties/Resources.resx" />
-  </ItemGroup>
 
 </Project>

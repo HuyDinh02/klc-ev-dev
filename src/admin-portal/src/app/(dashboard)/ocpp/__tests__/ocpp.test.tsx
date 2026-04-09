@@ -84,16 +84,16 @@ describe('OcppManagementPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockApiGet.mockImplementation((url: string) => {
-      if (url === '/ocpp/connections') {
+      if (url === '/ocpp-proxy/connections') {
         return Promise.resolve({ data: mockConnections });
       }
-      if (url.startsWith('/ocpp/connections/')) {
+      if (url.startsWith('/ocpp-proxy/connections/')) {
         return Promise.resolve({ data: mockDetail });
       }
       if (url.startsWith('/ocpp/events')) {
         return Promise.resolve({ data: mockEvents });
       }
-      return Promise.resolve({ data: null });
+      return Promise.resolve({ data: [] });
     });
   });
 

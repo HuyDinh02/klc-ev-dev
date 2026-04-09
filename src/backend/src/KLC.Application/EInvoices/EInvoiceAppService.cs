@@ -8,8 +8,10 @@ using KLC.Payments;
 using KLC.Permissions;
 using KLC.Sessions;
 using KLC.Stations;
+using KLC.Notifications;
 using KLC.Users;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Logging;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Domain.Repositories;
@@ -27,6 +29,7 @@ public class EInvoiceAppService : KLCAppService, IEInvoiceAppService
     private readonly IRepository<ChargingStation, Guid> _stationRepository;
     private readonly IRepository<AppUser, Guid> _appUserRepository;
     private readonly IAsyncQueryableExecuter _asyncExecuter;
+    private readonly IPushNotificationService _pushNotificationService;
 
     public EInvoiceAppService(
         IRepository<EInvoice, Guid> eInvoiceRepository,
@@ -35,7 +38,8 @@ public class EInvoiceAppService : KLCAppService, IEInvoiceAppService
         IRepository<ChargingSession, Guid> sessionRepository,
         IRepository<ChargingStation, Guid> stationRepository,
         IRepository<AppUser, Guid> appUserRepository,
-        IAsyncQueryableExecuter asyncExecuter)
+        IAsyncQueryableExecuter asyncExecuter,
+        IPushNotificationService pushNotificationService)
     {
         _eInvoiceRepository = eInvoiceRepository;
         _invoiceRepository = invoiceRepository;
@@ -44,6 +48,7 @@ public class EInvoiceAppService : KLCAppService, IEInvoiceAppService
         _stationRepository = stationRepository;
         _appUserRepository = appUserRepository;
         _asyncExecuter = asyncExecuter;
+        _pushNotificationService = pushNotificationService;
     }
 
     public async Task<EInvoiceDetailDto> GetAsync(Guid id)
@@ -266,6 +271,33 @@ public class EInvoiceAppService : KLCAppService, IEInvoiceAppService
         }
 
         await _eInvoiceRepository.InsertAsync(eInvoice);
+
+        // Send push notification when e-invoice is successfully issued
+        if (eInvoice.Status == EInvoiceStatus.Issued)
+        {
+            try
+            {
+                var payment = await _paymentRepository.FirstOrDefaultAsync(p => p.Id == invoice.PaymentTransactionId);
+                if (payment != null)
+                {
+                    await _pushNotificationService.SendToUserAsync(
+                        payment.UserId,
+                        "Hóa đơn điện tử đã sẵn sàng",
+                        $"Hóa đơn #{eInvoice.EInvoiceNumber} cho phiên sạc của bạn đã sẵn sàng xem.",
+                        new Dictionary<string, string>
+                        {
+                            ["type"] = "einvoice_ready",
+                            ["eInvoiceId"] = eInvoice.Id.ToString(),
+                            ["viewUrl"] = eInvoice.ViewUrl ?? string.Empty
+                        },
+                        NotificationType.EInvoiceReady);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to send EInvoiceReady push notification for e-invoice {EInvoiceId}", eInvoice.Id);
+            }
+        }
 
         return new EInvoiceResultDto
         {

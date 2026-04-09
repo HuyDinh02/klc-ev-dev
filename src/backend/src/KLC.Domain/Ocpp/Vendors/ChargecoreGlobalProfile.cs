@@ -23,6 +23,8 @@ public class ChargecoreGlobalProfile : VendorProfileBase
     public override VendorProfileType ProfileType => VendorProfileType.ChargecoreGlobal;
     public override int HeartbeatIntervalSeconds => 60;
     public override bool MayRetryStartTransaction => true;
+    public override bool OmitNullFieldsInResponse => true;
+    public override TimeZoneInfo? ResponseTimezone => TimeZoneInfo.FindSystemTimeZoneById("Asia/Ho_Chi_Minh");
 
     public override bool MatchesVendor(string? chargePointVendor, string? chargePointModel)
     {
@@ -32,6 +34,7 @@ public class ChargecoreGlobalProfile : VendorProfileBase
         var vendor = chargePointVendor.Trim();
         return vendor.Contains("Chargecore", StringComparison.OrdinalIgnoreCase)
                || vendor.Contains("ChargeCore Global", StringComparison.OrdinalIgnoreCase)
+               || vendor.Contains("cnchargepoint", StringComparison.OrdinalIgnoreCase)
                || vendor.Contains("CCG", StringComparison.OrdinalIgnoreCase);
     }
 

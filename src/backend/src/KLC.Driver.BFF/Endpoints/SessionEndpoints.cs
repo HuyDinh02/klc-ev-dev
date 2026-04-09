@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using KLC.Driver.Services;
+using KLC.Enums;
 using Microsoft.AspNetCore.Mvc;
 
 namespace KLC.Driver.Endpoints;
@@ -96,13 +97,22 @@ public static class SessionEndpoints
             var result = await sessionService.GetSessionHistoryAsync(userId, cursor, pageSize);
             return Results.Ok(new
             {
-                data = result.Data,
-                pagination = new
+                items = result.Data.Select(s => new
                 {
-                    nextCursor = result.NextCursor,
-                    hasMore = result.HasMore,
-                    pageSize = result.PageSize
-                }
+                    id = s.SessionId,
+                    stationId = s.StationId,
+                    stationName = s.StationName,
+                    connectorType = s.ConnectorType,
+                    status = MapStatus(s.Status),
+                    startTime = s.StartTime,
+                    endTime = s.EndTime,
+                    energyKwh = s.EnergyKwh,
+                    durationMinutes = s.DurationMinutes,
+                    actualCost = s.TotalCost,
+                    estimatedCost = s.TotalCost
+                }),
+                nextCursor = result.NextCursor,
+                hasMore = result.HasMore
             });
         })
         .WithName("GetSessionHistory")
@@ -116,4 +126,12 @@ public static class SessionEndpoints
                   ?? user.FindFirst("sub")?.Value;
         return Guid.TryParse(sub, out var id) ? id : Guid.Empty;
     }
+
+    private static string MapStatus(SessionStatus status) => status switch
+    {
+        SessionStatus.Completed => "Completed",
+        SessionStatus.Failed => "Failed",
+        SessionStatus.InProgress or SessionStatus.Starting or SessionStatus.Stopping or SessionStatus.Suspended => "Active",
+        _ => "Active"
+    };
 }

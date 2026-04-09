@@ -1,4 +1,5 @@
 using KLC.EntityFrameworkCore;
+using KLC.Enums;
 using KLC.Notifications;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,7 +11,7 @@ public interface INotificationBffService
     Task<int> GetUnreadCountAsync(Guid userId);
     Task MarkAsReadAsync(Guid userId, Guid notificationId);
     Task MarkAllAsReadAsync(Guid userId);
-    Task RegisterDeviceAsync(Guid userId, string fcmToken);
+    Task RegisterDeviceAsync(Guid userId, string fcmToken, DevicePlatform platform);
     Task UnregisterDeviceAsync(Guid userId, string token);
     Task<NotificationPreferenceResultDto> GetPreferencesAsync(Guid userId);
     Task<NotificationPreferenceResultDto> UpdatePreferencesAsync(Guid userId, Endpoints.UpdateNotificationPreferenceRequest request);
@@ -82,7 +83,7 @@ public class NotificationBffService : INotificationBffService
 
     public async Task<int> GetUnreadCountAsync(Guid userId)
     {
-        var cacheKey = $"user:{userId}:unread-notifications";
+        var cacheKey = CacheKeys.UserUnreadNotifications(userId);
 
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
@@ -101,7 +102,7 @@ public class NotificationBffService : INotificationBffService
         {
             notification.MarkAsRead();
             await _dbContext.SaveChangesAsync();
-            await _cache.RemoveAsync($"user:{userId}:unread-notifications");
+            await _cache.RemoveAsync(CacheKeys.UserUnreadNotifications(userId));
         }
     }
 
@@ -117,10 +118,10 @@ public class NotificationBffService : INotificationBffService
         }
 
         await _dbContext.SaveChangesAsync();
-        await _cache.RemoveAsync($"user:{userId}:unread-notifications");
+        await _cache.RemoveAsync(CacheKeys.UserUnreadNotifications(userId));
     }
 
-    public async Task RegisterDeviceAsync(Guid userId, string fcmToken)
+    public async Task RegisterDeviceAsync(Guid userId, string fcmToken, DevicePlatform platform)
     {
         try
         {
@@ -135,7 +136,7 @@ public class NotificationBffService : INotificationBffService
             else
             {
                 var deviceToken = new Users.DeviceToken(
-                    Guid.NewGuid(), userId, fcmToken, Enums.DevicePlatform.Android);
+                    Guid.NewGuid(), userId, fcmToken, platform);
                 await _dbContext.DeviceTokens.AddAsync(deviceToken);
             }
 

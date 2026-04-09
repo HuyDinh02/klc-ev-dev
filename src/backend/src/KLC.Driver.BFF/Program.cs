@@ -1,6 +1,8 @@
 using System.Threading.RateLimiting;
+using KLC.Configuration;
 using KLC.Driver;
 using KLC.Driver.Endpoints;
+using KLC.Driver.Middleware;
 using KLC.Driver.Services;
 using Scalar.AspNetCore;
 using StackExchange.Redis;
@@ -19,6 +21,12 @@ builder.WebHost.UseSentry(o =>
 // Add ABP with Autofac
 builder.Host.UseAutofac();
 builder.Services.AddApplication<DriverBffModule>();
+
+// Configure JSON to accept string enum values (e.g., "VnPay" instead of 4)
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+});
 
 // Configure services
 builder.Services.AddOpenApi();
@@ -92,11 +100,18 @@ if (FirebaseAdmin.FirebaseApp.DefaultInstance == null)
     }
 }
 
+// Typed configuration (Options Pattern)
+builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection(JwtSettings.Section));
+builder.Services.Configure<VnPaySettings>(builder.Configuration.GetSection(VnPaySettings.Section));
+builder.Services.Configure<MoMoSettings>(builder.Configuration.GetSection(MoMoSettings.Section));
+builder.Services.Configure<WalletSettings>(builder.Configuration.GetSection(WalletSettings.Section));
+
 // Add BFF services
 builder.Services.AddScoped<IStationBffService, StationBffService>();
 builder.Services.AddScoped<ISessionBffService, SessionBffService>();
 builder.Services.AddScoped<IPaymentBffService, PaymentBffService>();
 builder.Services.AddTransient<KLC.Payments.IPaymentGatewayService, KLC.Payments.VnPayPaymentService>();
+builder.Services.AddScoped<KLC.Payments.IPaymentCallbackValidator, KLC.Payments.PaymentCallbackValidator>();
 builder.Services.AddScoped<IProfileBffService, ProfileBffService>();
 builder.Services.AddScoped<IVehicleBffService, VehicleBffService>();
 builder.Services.AddScoped<INotificationBffService, NotificationBffService>();
@@ -108,8 +123,10 @@ builder.Services.AddScoped<IPromotionBffService, PromotionBffService>();
 builder.Services.AddScoped<IFeedbackBffService, FeedbackBffService>();
 
 // Register services from Application layer (not auto-registered since BFF doesn't depend on KLCApplicationModule)
-// Uses TwilioSmsService which falls back to log-only when Twilio config is missing
-builder.Services.AddTransient<KLC.Notifications.ISmsService, KLC.Notifications.TwilioSmsService>();
+// SMS: configurable via Sms:Provider ("eSMS" | "SpeedSMS" | "Log")
+// Default: "Log" — OTP logged to Cloud Logging (dev/testing mode)
+builder.Services.AddTransient<KLC.Notifications.ISmsService, KLC.Notifications.SmsService>();
+builder.Services.AddTransient<KLC.Notifications.IPushNotificationService, KLC.Notifications.FirebasePushNotificationService>();
 builder.Services.AddTransient<KLC.Files.IFileUploadService, KLC.Files.GcsFileUploadService>();
 builder.Services.AddTransient<KLC.Auditing.IAuditEventLogger, KLC.Auditing.AuditEventLogger>();
 
@@ -200,6 +217,7 @@ if (enableApiDocs)
     });
 }
 
+app.UseMiddleware<GlobalExceptionMiddleware>();
 app.UseSentryTracing();
 app.UseCors("MobileApp");
 app.UseRateLimiter();
@@ -267,6 +285,25 @@ static void ValidateProductionConfiguration(IConfiguration config, ILogger logge
         logger.LogCritical(
             "PRODUCTION CONFIG ERROR: Jwt:SecretKey is missing or using the development default. " +
             "Configure a strong secret key via environment variable Jwt__SecretKey or Secret Manager.");
+        hasErrors = true;
+    }
+
+    // Critical: VnPay credentials must be configured (payments will silently fail without them)
+    var vnpaySecret = config["Payment:VnPay:HashSecret"] ?? "";
+    if (string.IsNullOrWhiteSpace(vnpaySecret))
+    {
+        logger.LogCritical(
+            "PRODUCTION CONFIG ERROR: Payment:VnPay:HashSecret is not configured. " +
+            "VnPay top-ups will fail until this is set via Secret Manager.");
+        hasErrors = true;
+    }
+
+    var vnpayTmnCode = config["Payment:VnPay:TmnCode"] ?? "";
+    if (string.IsNullOrWhiteSpace(vnpayTmnCode))
+    {
+        logger.LogCritical(
+            "PRODUCTION CONFIG ERROR: Payment:VnPay:TmnCode is not configured. " +
+            "VnPay top-ups will fail until this is set via Secret Manager.");
         hasErrors = true;
     }
 

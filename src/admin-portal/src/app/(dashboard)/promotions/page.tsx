@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { PROMOTION_TYPE } from "@/lib/constants";
 import { api } from "@/lib/api";
+import { formatDate } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
 import { useRequirePermission, useHasPermission } from "@/lib/use-permission";
 import { AccessDenied } from "@/components/ui/access-denied";
@@ -273,9 +274,6 @@ export default function PromotionsPage() {
       createMutation.mutate(formData);
     }
   };
-
-  const formatDate = (date: string) =>
-    new Date(date).toLocaleDateString("vi-VN");
 
   const isFormOpen = isCreating || editingId;
 

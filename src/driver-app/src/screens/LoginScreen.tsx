@@ -17,23 +17,27 @@ import { Button, Card } from '../components/common';
 import { useAuthStore } from '../stores';
 import { authApi, mapAuthUserToProfile } from '../api';
 import type { ApiError } from '../types';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
+import type { RootStackParamList } from '../navigation/types';
 
 export function LoginScreen() {
   const { t } = useTranslation();
   const { login } = useAuthStore();
-  const [email, setEmail] = useState('');
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-    if (!email || !password) {
+    if (!phone || !password) {
       Alert.alert(t('common.error'), t('login.errorEmpty'));
       return;
     }
 
     setLoading(true);
     try {
-      const result = await authApi.login({ phoneNumber: email, password });
+      const result = await authApi.login({ phoneNumber: phone, password });
 
       if (result.success && result.accessToken && result.user) {
         const userProfile = mapAuthUserToProfile(result.user);
@@ -81,18 +85,18 @@ export function LoginScreen() {
           <Text style={styles.formTitle} accessibilityRole="header">{t('login.formTitle')}</Text>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>{t('login.email')}</Text>
+            <Text style={styles.label}>{t('login.phone')}</Text>
             <TextInput
               style={styles.input}
-              value={email}
-              onChangeText={setEmail}
-              placeholder={t('login.emailPlaceholder')}
+              value={phone}
+              onChangeText={setPhone}
+              placeholder={t('login.phonePlaceholder')}
               placeholderTextColor={Colors.textLight}
-              keyboardType="email-address"
+              keyboardType="phone-pad"
               autoCapitalize="none"
               autoCorrect={false}
-              accessibilityLabel="Email"
-              testID="login-email-input"
+              accessibilityLabel="Phone"
+              testID="login-phone-input"
             />
           </View>
 
@@ -125,7 +129,11 @@ export function LoginScreen() {
 
           <View style={styles.registerContainer}>
             <Text style={styles.registerText}>{t('login.noAccount')}</Text>
-            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Sign Up">
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Sign Up"
+              onPress={() => navigation.navigate('Register')}
+            >
               <Text style={styles.registerLink}>{t('login.signUp')}</Text>
             </TouchableOpacity>
           </View>
@@ -133,7 +141,7 @@ export function LoginScreen() {
 
         <View style={styles.demoCredentials}>
           <Text style={styles.demoTitle}>{t('login.demoTitle')}</Text>
-          <Text style={styles.demoText}>{t('login.demoEmail')}</Text>
+          <Text style={styles.demoText}>{t('login.demoPhone')}</Text>
           <Text style={styles.demoText}>{t('login.demoPassword')}</Text>
         </View>
       </KeyboardAvoidingView>

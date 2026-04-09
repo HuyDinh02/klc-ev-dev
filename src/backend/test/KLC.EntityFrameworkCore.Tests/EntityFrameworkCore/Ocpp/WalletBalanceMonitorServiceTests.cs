@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
 using KLC.EntityFrameworkCore;
 using KLC.Enums;
 using KLC.Services;
+using Microsoft.Extensions.Configuration;
 using KLC.Sessions;
 using KLC.Stations;
 using KLC.TestDoubles;
@@ -54,7 +56,10 @@ public class WalletBalanceMonitorServiceTests : KLCEntityFrameworkCoreTestBase
             await _dbContext.SaveChangesAsync();
         });
 
-        var service = new WalletBalanceMonitorService(_serviceProvider, NullLogger<WalletBalanceMonitorService>.Instance);
+        var config = new Microsoft.Extensions.Configuration.ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Wallet:LowBalanceThreshold"] = "10000" })
+            .Build();
+        var service = new WalletBalanceMonitorService(_serviceProvider, config, NullLogger<WalletBalanceMonitorService>.Instance);
         var method = typeof(WalletBalanceMonitorService)
             .GetMethod("CheckActiveSessionsAsync", BindingFlags.Instance | BindingFlags.NonPublic);
 

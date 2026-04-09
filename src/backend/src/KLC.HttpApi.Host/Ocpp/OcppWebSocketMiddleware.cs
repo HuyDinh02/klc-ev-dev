@@ -24,7 +24,7 @@ public class OcppWebSocketMiddleware
     private readonly RequestDelegate _next;
     private readonly ILogger<OcppWebSocketMiddleware> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
-    private const int BufferSize = 4096;
+    private const int BufferSize = 16384; // 16 KB — OCPP messages (MeterValues with many samples) can exceed 4 KB
     private static readonly Regex CpIdPattern = new(@"^[A-Za-z0-9\-_.]{1,64}$", RegexOptions.Compiled);
 
     /// <summary>
@@ -100,7 +100,7 @@ public class OcppWebSocketMiddleware
                 return;
             }
 
-            if (!station.IsEnabled || station.Status == StationStatus.Disabled || station.Status == StationStatus.Decommissioned)
+            if (!station.IsEnabled || station.Status == StationStatus.Disabled)
             {
                 _logger.LogWarning(
                     "OCPP handshake rejected: station {ChargePointId} is not allowed to connect (enabled={IsEnabled}, status={Status})",
@@ -173,39 +173,46 @@ public class OcppWebSocketMiddleware
         }
         finally
         {
-            connectionManager.RemoveConnection(chargePointId);
+            // Only run disconnect cleanup if this connection is still the active one.
+            // A charger may reconnect before the old receive loop exits; in that case
+            // RemoveConnection returns false and we skip station disconnect to avoid
+            // stomping on the new connection.
+            var wasActive = connectionManager.RemoveConnection(chargePointId, connection);
 
-            // Clean up orphaned sessions for the disconnected station
-            try
+            if (wasActive)
             {
-                using var cleanupScope = _scopeFactory.CreateScope();
-                var uowManager = cleanupScope.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
-                var ocppService = cleanupScope.ServiceProvider.GetRequiredService<IOcppService>();
-                var notifier = cleanupScope.ServiceProvider.GetRequiredService<IMonitoringNotifier>();
-                var stationRepo = cleanupScope.ServiceProvider.GetRequiredService<IRepository<Stations.ChargingStation, Guid>>();
-
-                using var uow = uowManager.Begin(requiresNew: true);
-
-                // Capture status before disconnect processing
-                var station = await stationRepo.FirstOrDefaultAsync(s => s.StationCode == chargePointId);
-                var previousStatus = station?.Status;
-
-                await ocppService.HandleStationDisconnectAsync(chargePointId);
-                await uow.CompleteAsync();
-
-                // Broadcast station status change via SignalR
-                if (station != null && previousStatus.HasValue && previousStatus.Value != StationStatus.Offline)
+                // Clean up orphaned sessions for the disconnected station
+                try
                 {
-                    await notifier.NotifyStationStatusChangedAsync(
-                        station.Id,
-                        station.Name,
-                        previousStatus.Value,
-                        StationStatus.Offline);
+                    using var cleanupScope = _scopeFactory.CreateScope();
+                    var uowManager = cleanupScope.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
+                    var ocppService = cleanupScope.ServiceProvider.GetRequiredService<IOcppService>();
+                    var notifier = cleanupScope.ServiceProvider.GetRequiredService<IMonitoringNotifier>();
+                    var stationRepo = cleanupScope.ServiceProvider.GetRequiredService<IRepository<Stations.ChargingStation, Guid>>();
+
+                    using var uow = uowManager.Begin(requiresNew: true);
+
+                    // Capture status before disconnect processing
+                    var station = await stationRepo.FirstOrDefaultAsync(s => s.StationCode == chargePointId);
+                    var previousStatus = station?.Status;
+
+                    await ocppService.HandleStationDisconnectAsync(chargePointId);
+                    await uow.CompleteAsync();
+
+                    // Broadcast station status change via SignalR
+                    if (station != null && previousStatus.HasValue && previousStatus.Value != StationStatus.Offline)
+                    {
+                        await notifier.NotifyStationStatusChangedAsync(
+                            station.Id,
+                            station.Name,
+                            previousStatus.Value,
+                            StationStatus.Offline);
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to clean up orphaned sessions for {ChargePointId}", chargePointId);
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to clean up orphaned sessions for {ChargePointId}", chargePointId);
+                }
             }
 
             if (webSocket.State == WebSocketState.Open)
@@ -254,6 +261,11 @@ public class OcppWebSocketMiddleware
                         var message = messageBuilder.ToString();
                         messageBuilder.Clear();
 
+                        // Wrap message processing in its own try-catch so that any exception
+                        // from the handler or uow.CompleteAsync() (e.g. transient DB error)
+                        // is logged and the receive loop continues rather than closing the WebSocket.
+                        try
+                        {
                         // Create a fresh DI scope per message so scoped services
                         // (DbContext, repositories, etc.) get a fresh lifetime.
                         using var scope = _scopeFactory.CreateScope();
@@ -263,11 +275,26 @@ public class OcppWebSocketMiddleware
                         // ABP repositories require an active Unit of Work.
                         using var uow = uowManager.Begin(requiresNew: true);
                         var response = await messageHandler.HandleMessageAsync(connection, message);
-                        await uow.CompleteAsync();
 
+                        // Always send the OCPP response BEFORE committing the DB.
+                        // The charger must not be blocked waiting; a DB failure should
+                        // never prevent the charger from receiving its CallResult.
                         if (!string.IsNullOrEmpty(response))
                         {
-                            await SendMessageAsync(connection.WebSocket, response);
+                            await connection.SendTextAsync(response);
+                        }
+
+                        await uow.CompleteAsync();
+                        }
+                        catch (WebSocketException)
+                        {
+                            throw; // Let WebSocket errors propagate to the outer handler
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex,
+                                "Unhandled error processing OCPP message from {ChargePointId} — receive loop continues",
+                                connection.ChargePointId);
                         }
 
                         // After sending BootNotification response, push configuration to the charger

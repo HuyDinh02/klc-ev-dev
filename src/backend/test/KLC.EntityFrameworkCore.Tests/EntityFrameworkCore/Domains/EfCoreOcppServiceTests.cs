@@ -127,37 +127,6 @@ public class EfCoreOcppServiceTests : KLCEntityFrameworkCoreTestBase
         });
     }
 
-    [Fact]
-    public async Task BootNotification_Should_Return_Null_For_Decommissioned_Station()
-    {
-        var stationId = Guid.NewGuid();
-
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var station = new ChargingStation(stationId, "OCPP-BOOT-DECOM", "Decom Test", "123 Test St", 21.0, 105.8);
-            station.Decommission();
-            await _dbContext.ChargingStations.AddAsync(station);
-            await _dbContext.SaveChangesAsync();
-        });
-
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var result = await _ocppService.HandleBootNotificationAsync(
-                "OCPP-BOOT-DECOM", "Vendor", "Model", null, null);
-
-            result.ShouldBeNull();
-        });
-
-        _dbContext.ChangeTracker.Clear();
-
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var station = await _dbContext.ChargingStations.FirstAsync(s => s.Id == stationId);
-            station.Status.ShouldBe(StationStatus.Decommissioned);
-            station.LastHeartbeat.ShouldBeNull();
-        });
-    }
-
     #endregion
 
     #region HandleHeartbeatAsync
@@ -731,12 +700,14 @@ public class EfCoreOcppServiceTests : KLCEntityFrameworkCoreTestBase
 
         await WithUnitOfWorkAsync(async () =>
         {
+            // InProgress session with OcppTransactionId should be kept alive (grace period)
             var s1 = await _dbContext.ChargingSessions.FirstAsync(s => s.Id == sessionId1);
-            s1.Status.ShouldBe(SessionStatus.Failed);
-            s1.StopReason.ShouldBe("Station disconnected");
+            s1.Status.ShouldBe(SessionStatus.InProgress);
 
+            // Pending session (no OcppTransactionId) should be failed immediately
             var s2 = await _dbContext.ChargingSessions.FirstAsync(s => s.Id == sessionId2);
             s2.Status.ShouldBe(SessionStatus.Failed);
+            s2.StopReason.ShouldContain("Station disconnected");
         });
     }
 

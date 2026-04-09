@@ -32,6 +32,7 @@ public class PaymentListDto
     public string? ReferenceCode { get; set; }
     public DateTime CreationTime { get; set; }
     public string? StationName { get; set; }
+    public string? UserName { get; set; }
 }
 
 public class ProcessPaymentDto

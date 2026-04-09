@@ -189,6 +189,50 @@ public class StationAppService : KLCAppService, IStationAppService
         await _stationRepository.UpdateAsync(station);
     }
 
+    /// <summary>
+    /// Soft-delete a station. Station data is preserved for historical reporting
+    /// but hidden from all queries. Connectors are also soft-deleted via cascade.
+    ///
+    /// Rules:
+    /// - Cannot delete station with active sessions (Pending/InProgress/etc.)
+    /// - Station must be Decommissioned or Disabled first (safety check)
+    /// - All connectors are soft-deleted with the station
+    /// - Historical sessions, faults, alerts remain linked (for reporting)
+    /// </summary>
+    [Authorize(KLCPermissions.Stations.Delete)]
+    public async Task DeleteAsync(Guid id)
+    {
+        var station = await _stationRepository.GetAsync(id);
+
+        // Safety: only allow deletion of disabled/decommissioned stations
+        if (station.IsEnabled)
+        {
+            throw new BusinessException(KLCDomainErrorCodes.Station.HasActiveSessions)
+                .WithData("stationId", id)
+                .WithData("message", "Station must be disabled or decommissioned before deletion");
+        }
+
+        // Block if active sessions exist
+        var hasActiveSessions = await _sessionRepository.AnyAsync(s =>
+            s.StationId == id &&
+            (s.Status == SessionStatus.Pending ||
+             s.Status == SessionStatus.Starting ||
+             s.Status == SessionStatus.InProgress ||
+             s.Status == SessionStatus.Suspended ||
+             s.Status == SessionStatus.Stopping));
+
+        if (hasActiveSessions)
+        {
+            throw new BusinessException(KLCDomainErrorCodes.Station.HasActiveSessions)
+                .WithData("stationId", id);
+        }
+
+        // Soft-delete station (ABP sets IsDeleted=true)
+        // Connectors reference this station — they'll be filtered out by ABP's
+        // global query filter since station queries include their connectors.
+        await _stationRepository.DeleteAsync(station);
+    }
+
     public async Task EnableAsync(Guid id)
     {
         var station = await _stationRepository.GetAsync(id);

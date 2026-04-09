@@ -18,6 +18,7 @@ import { Colors, Shadows } from '../constants/colors';
 import { Card, Button } from '../components/common';
 import { profileApi, vehiclesApi } from '../api/profile';
 import { useAuthStore } from '../stores';
+import { formatCurrency } from '../utils/formatting';
 import type { UserProfile, UserStatistics, Vehicle } from '../types';
 
 export function ProfileScreen() {
@@ -72,14 +73,6 @@ export function ProfileScreen() {
         },
       ]
     );
-  };
-
-  const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-      maximumFractionDigits: 0,
-    }).format(amount);
   };
 
   if (loading) {

@@ -1775,7 +1775,12 @@ namespace KLC.Migrations
 
                     b.HasIndex("Status");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_AppChargingSessions_UserId_Active")
+                        .HasFilter("\"Status\" IN (0, 1, 2)");
+
+                    b.HasIndex("UserId", "Status");
 
                     b.ToTable("AppChargingSessions", (string)null);
                 });
@@ -1819,9 +1824,10 @@ namespace KLC.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("SessionId");
-
                     b.HasIndex("Timestamp");
+
+                    b.HasIndex("SessionId", "Timestamp")
+                        .HasDatabaseName("IX_AppMeterValues_SessionId_Timestamp");
 
                     b.ToTable("AppMeterValues", (string)null);
                 });
@@ -1941,6 +1947,10 @@ namespace KLC.Migrations
 
                     b.Property<int>("VendorProfile")
                         .HasColumnType("integer");
+
+                    b.Property<string>("VendorProfileName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.HasKey("Id");
 
@@ -2516,6 +2526,13 @@ namespace KLC.Migrations
                         .HasPrecision(18)
                         .HasColumnType("numeric(18,0)");
 
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Email");
@@ -2525,7 +2542,9 @@ namespace KLC.Migrations
 
                     b.HasIndex("IsActive");
 
-                    b.HasIndex("PhoneNumber");
+                    b.HasIndex("PhoneNumber")
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = false");
 
                     b.ToTable("AppAppUsers", (string)null);
                 });

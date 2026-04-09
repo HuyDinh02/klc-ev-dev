@@ -7,6 +7,7 @@ using KLC.Ocpp;
 using KLC.Sessions;
 using KLC.Stations;
 using KLC.Users;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -25,14 +26,16 @@ public class WalletBalanceMonitorService : BackgroundService
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<WalletBalanceMonitorService> _logger;
     private readonly TimeSpan _checkInterval = TimeSpan.FromSeconds(30);
-    private const decimal DefaultLowBalanceThreshold = 10_000m; // 10,000 VND
+    private readonly decimal _lowBalanceThreshold;
 
     public WalletBalanceMonitorService(
         IServiceProvider serviceProvider,
+        IConfiguration configuration,
         ILogger<WalletBalanceMonitorService> logger)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
+        _lowBalanceThreshold = configuration.GetValue("Wallet:LowBalanceThreshold", 10_000m);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -122,7 +125,7 @@ public class WalletBalanceMonitorService : BackgroundService
 
         var remainingBalance = user.WalletBalance - session.TotalCost;
 
-        if (remainingBalance >= DefaultLowBalanceThreshold)
+        if (remainingBalance >= _lowBalanceThreshold)
         {
             return;
         }
@@ -136,7 +139,7 @@ public class WalletBalanceMonitorService : BackgroundService
             user.WalletBalance,
             session.TotalCost,
             remainingBalance,
-            DefaultLowBalanceThreshold);
+            _lowBalanceThreshold);
 
         if (!session.OcppTransactionId.HasValue)
         {

@@ -112,7 +112,7 @@ const STATION_STATUS_NAME_TO_VALUE: Record<string, number> = {
   Offline: 0,
   Online: 1,
   Disabled: 2,
-  Decommissioned: 3,
+  Decommissioned: 2, // deprecated: map legacy "Decommissioned" to Disabled (2)
 };
 
 // --- Components ---

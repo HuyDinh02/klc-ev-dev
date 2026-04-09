@@ -11,6 +11,7 @@ import { SkeletonTable } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Dialog, DialogHeader, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
+import { formatDate } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
 import { useRequirePermission, useHasPermission } from "@/lib/use-permission";
 import { AccessDenied } from "@/components/ui/access-denied";
@@ -222,10 +223,6 @@ export default function VouchersPage() {
 
   const formatCurrency = (value?: number | null) => {
     return (value ?? 0).toLocaleString("vi-VN") + "đ";
-  };
-
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString("vi-VN");
   };
 
   const formatValue = (type: number, value: number) => {

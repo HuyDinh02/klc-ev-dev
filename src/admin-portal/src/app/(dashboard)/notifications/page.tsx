@@ -14,7 +14,7 @@ import { useTranslation } from "@/lib/i18n";
 import { broadcastApi } from "@/lib/api";
 import { useRequirePermission, useHasPermission } from "@/lib/use-permission";
 import { AccessDenied } from "@/components/ui/access-denied";
-import { formatDistanceToNow } from "@/lib/utils";
+import { formatDistanceToNow, formatDateTime } from "@/lib/utils";
 import {
   Bell,
   BellOff,
@@ -231,7 +231,7 @@ export default function NotificationsPage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">{t("notifications.sentAt")}</p>
-                  <p className="font-medium">{new Date(selectedBroadcast.sentAt).toLocaleString()}</p>
+                  <p className="font-medium">{formatDateTime(selectedBroadcast.sentAt)}</p>
                 </div>
               </div>
             </div>

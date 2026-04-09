@@ -3,11 +3,13 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using KLC.Auditing;
+using KLC.Configuration;
 using KLC.EntityFrameworkCore;
 using KLC.Enums;
 using KLC.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using StackExchange.Redis;
 using Volo.Abp.Identity;
@@ -25,6 +27,7 @@ public interface IAuthBffService
     Task LogoutAsync(Guid userId, string? refreshToken);
     Task ForgotPasswordAsync(ForgotPasswordRequest request);
     Task ResetPasswordAsync(ResetPasswordRequest request);
+    Task ResetPasswordWithFirebaseAsync(FirebaseResetPasswordRequest request);
     Task ChangePasswordAsync(Guid userId, ChangePasswordRequest request);
     Task<LoginResultDto> SocialLoginAsync(SocialLoginRequest request);
 }
@@ -35,6 +38,7 @@ public class AuthBffService : IAuthBffService
     private readonly IdentityUserManager _userManager;
     private readonly IDatabase _redis;
     private readonly IConfiguration _configuration;
+    private readonly JwtSettings _jwtSettings;
     private readonly ILogger<AuthBffService> _logger;
     private readonly KLC.Notifications.ISmsService _smsService;
     private readonly IAuditEventLogger _auditLogger;
@@ -48,6 +52,7 @@ public class AuthBffService : IAuthBffService
         IdentityUserManager userManager,
         IConnectionMultiplexer redis,
         IConfiguration configuration,
+        IOptions<JwtSettings> jwtSettings,
         ILogger<AuthBffService> logger,
         KLC.Notifications.ISmsService smsService,
         IAuditEventLogger auditLogger)
@@ -56,6 +61,7 @@ public class AuthBffService : IAuthBffService
         _userManager = userManager;
         _redis = redis.GetDatabase();
         _configuration = configuration;
+        _jwtSettings = jwtSettings.Value;
         _logger = logger;
         _smsService = smsService;
         _auditLogger = auditLogger;
@@ -384,15 +390,87 @@ public class AuthBffService : IAuthBffService
             throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.Auth.InvalidCredentials);
         }
 
-        var token = await _userManager.GeneratePasswordResetTokenAsync(identityUser);
-        var result = await _userManager.ResetPasswordAsync(identityUser, token, request.NewPassword);
-
-        if (!result.Succeeded)
+        // Direct hash — same approach as Firebase reset (no token provider in BFF)
+        var passwordValidator = _userManager.PasswordValidators.FirstOrDefault();
+        if (passwordValidator != null)
         {
-            throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.PasswordResetFailed);
+            var validateResult = await passwordValidator.ValidateAsync(_userManager, identityUser, request.NewPassword);
+            if (!validateResult.Succeeded)
+            {
+                var errors = string.Join(", ", validateResult.Errors.Select(e => e.Description));
+                throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.PasswordResetFailed, errors);
+            }
         }
 
+        // Set password hash directly via EF Core (ABP's PasswordHash setter is protected)
+        var newHash = _userManager.PasswordHasher.HashPassword(identityUser, request.NewPassword);
+        await _dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"UPDATE \"AbpUsers\" SET \"PasswordHash\" = {newHash} WHERE \"Id\" = {identityUser.Id}");
+
         await _redis.KeyDeleteAsync($"otp:reset:{request.PhoneNumber}");
+    }
+
+    public async Task ResetPasswordWithFirebaseAsync(FirebaseResetPasswordRequest request)
+    {
+        // Verify Firebase ID token (proves the user owns the phone number)
+        FirebaseAdmin.Auth.FirebaseToken? firebaseToken;
+        try
+        {
+            var auth = FirebaseAdmin.Auth.FirebaseAuth.DefaultInstance;
+            if (auth == null)
+                throw new Volo.Abp.BusinessException("FIREBASE_NOT_CONFIGURED", "Firebase Auth not configured");
+
+            firebaseToken = await auth.VerifyIdTokenAsync(request.IdToken);
+        }
+        catch (FirebaseAdmin.Auth.FirebaseAuthException ex)
+        {
+            _logger.LogWarning(ex, "Firebase token verification failed for password reset");
+            throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.Auth.InvalidOtp, "Invalid or expired Firebase token");
+        }
+
+        // Extract phone number from Firebase token
+        var phoneNumber = firebaseToken.Claims.TryGetValue("phone_number", out var phone)
+            ? phone?.ToString() : null;
+
+        if (string.IsNullOrEmpty(phoneNumber))
+            throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.Auth.InvalidCredentials, "Phone number not found in token");
+
+        var localPhone = phoneNumber.StartsWith("+84") ? "0" + phoneNumber[3..] : phoneNumber;
+
+        _logger.LogInformation("Firebase password reset: phone={Phone}", localPhone);
+
+        // Override phone from request if token is valid (token is the source of truth)
+        var appUser = await _dbContext.AppUsers
+            .FirstOrDefaultAsync(u => u.PhoneNumber == localPhone && !u.IsDeleted);
+
+        if (appUser == null)
+            throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.Auth.InvalidCredentials);
+
+        var identityUser = await _userManager.FindByIdAsync(appUser.IdentityUserId.ToString());
+        if (identityUser == null)
+            throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.Auth.InvalidCredentials);
+
+        // Directly hash and set the new password.
+        // Can't use GeneratePasswordResetToken (no token provider in BFF).
+        // Can't use RemovePassword+AddPassword (breaks SecurityStamp → login fails).
+        // Direct hash is safe here because Firebase ID token already proves identity.
+        var passwordValidator = _userManager.PasswordValidators.FirstOrDefault();
+        if (passwordValidator != null)
+        {
+            var validateResult = await passwordValidator.ValidateAsync(_userManager, identityUser, request.NewPassword);
+            if (!validateResult.Succeeded)
+            {
+                var errors = string.Join(", ", validateResult.Errors.Select(e => e.Description));
+                throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.PasswordResetFailed, errors);
+            }
+        }
+
+        // Set password hash directly via EF Core (ABP's PasswordHash setter is protected)
+        var newHash = _userManager.PasswordHasher.HashPassword(identityUser, request.NewPassword);
+        await _dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"UPDATE \"AbpUsers\" SET \"PasswordHash\" = {newHash} WHERE \"Id\" = {identityUser.Id}");
+
+        _logger.LogInformation("Password reset successful via Firebase for {Phone}", localPhone);
     }
 
     public async Task ChangePasswordAsync(Guid userId, ChangePasswordRequest request)
@@ -445,9 +523,10 @@ public class AuthBffService : IAuthBffService
 
     private string GenerateAccessToken(AppUser user)
     {
-        var key = _configuration["Jwt:SecretKey"]
-            ?? throw new InvalidOperationException("Jwt:SecretKey is not configured.");
-        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
+        if (string.IsNullOrEmpty(_jwtSettings.SecretKey))
+            throw new InvalidOperationException("Jwt:SecretKey is not configured.");
+
+        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
         var claims = new[]
@@ -458,12 +537,11 @@ public class AuthBffService : IAuthBffService
             new Claim("name", user.FullName),
         };
 
-        var expiry = TimeSpan.FromMinutes(
-            int.TryParse(_configuration["Jwt:ExpiryMinutes"], out var m) ? m : 60);
+        var expiry = TimeSpan.FromMinutes(_jwtSettings.ExpiryMinutes);
 
         var token = new JwtSecurityToken(
-            issuer: _configuration["Jwt:Issuer"] ?? "KLC.Driver.BFF",
-            audience: _configuration["Jwt:Audience"] ?? "KLC.Driver.App",
+            issuer: _jwtSettings.Issuer,
+            audience: _jwtSettings.Audience,
             claims: claims,
             expires: DateTime.UtcNow.Add(expiry),
             signingCredentials: credentials);
@@ -473,7 +551,7 @@ public class AuthBffService : IAuthBffService
 
     private int GetAccessTokenExpirySeconds()
     {
-        return (int.TryParse(_configuration["Jwt:ExpiryMinutes"], out var m) ? m : 60) * 60;
+        return _jwtSettings.ExpiryMinutes * 60;
     }
 
     private static string GenerateRefreshToken()
@@ -567,6 +645,13 @@ public record ResetPasswordRequest
 {
     public string PhoneNumber { get; init; } = string.Empty;
     public string Otp { get; init; } = string.Empty;
+    public string NewPassword { get; init; } = string.Empty;
+}
+
+public record FirebaseResetPasswordRequest
+{
+    /// <summary>Firebase ID token proving phone ownership</summary>
+    public string IdToken { get; init; } = string.Empty;
     public string NewPassword { get; init; } = string.Empty;
 }
 

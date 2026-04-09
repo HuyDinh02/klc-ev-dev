@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTableQuery } from "@/hooks/use-table-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +13,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonCard } from "@/components/ui/skeleton";
 import { useTranslation } from "@/lib/i18n";
 import { api } from "@/lib/api";
+import { formatDateTime } from "@/lib/utils";
 import { useMonitoringHub } from "@/lib/signalr";
 import { useAlertsStore } from "@/lib/store";
 import { useRequirePermission } from "@/lib/use-permission";
@@ -70,11 +72,7 @@ export default function AlertsPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [typeFilter, setTypeFilter] = useState("all");
-  const [acknowledgedFilter, setAcknowledgedFilter] = useState("all");
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [cursorStack, setCursorStack] = useState<(string | null)[]>([]);
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
-  const pageSize = 20;
 
   // SignalR real-time updates — refresh alerts list when new alerts arrive
   const onAlertCreated = useCallback(() => {
@@ -86,24 +84,25 @@ export default function AlertsPage() {
     onAlertCreated,
   });
 
-  const resetPagination = () => { setCursor(null); setCursorStack([]); };
-
-  // Fetch alerts
-  const { data: alertsData, isLoading } = useQuery({
-    queryKey: ["alerts", typeFilter, acknowledgedFilter, cursor],
-    queryFn: async () => {
-      const params: Record<string, string | number> = {
-        maxResultCount: pageSize,
-      };
-      // typeFilter is severity-based (critical/warning/info) — client-side filtering only
-      if (acknowledgedFilter !== "all") {
-        params.status = Number(acknowledgedFilter);
-      }
-      if (cursor) params.cursor = cursor;
-
+  const {
+    items: alerts,
+    totalCount,
+    isLoading,
+    statusFilter: acknowledgedFilter,
+    setStatusFilterAndReset: setAcknowledgedFilterAndReset,
+    setStatusFilter: setAcknowledgedFilter,
+    pageSize,
+    goNextPage,
+    goPrevPage,
+    hasNextPage,
+    hasPrevPage,
+  } = useTableQuery<Alert>({
+    queryKey: "alerts",
+    fetchFn: async (params) => {
       const res = await api.get("/alerts", { params });
       return res.data;
     },
+    extraQueryKeys: [typeFilter],
   });
 
   // Acknowledge alert
@@ -115,9 +114,6 @@ export default function AlertsPage() {
       queryClient.invalidateQueries({ queryKey: ["alerts"] });
     },
   });
-
-  const alerts: Alert[] = alertsData?.items || [];
-  const totalCount = alertsData?.totalCount || 0;
 
   // Compute stats from fetched data
   const stats: AlertStats = {
@@ -151,10 +147,6 @@ export default function AlertsPage() {
       case "info": return "default";
       default: return "secondary";
     }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString("vi-VN");
   };
 
   const getTimeAgo = (dateString: string) => {
@@ -226,7 +218,7 @@ export default function AlertsPage() {
           iconColor="bg-primary/10 text-primary"
           className={acknowledgedFilter === "unacknowledged" ? "ring-2 ring-primary" : ""}
           onClick={() =>
-            setAcknowledgedFilter(
+            setAcknowledgedFilterAndReset(
               acknowledgedFilter === "unacknowledged" ? "all" : "unacknowledged"
             )
           }
@@ -250,7 +242,7 @@ export default function AlertsPage() {
             </select>
             <select
               value={acknowledgedFilter}
-              onChange={(e) => setAcknowledgedFilter(e.target.value)}
+              onChange={(e) => setAcknowledgedFilterAndReset(e.target.value)}
               className="rounded-lg border bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50 focus:border-primary"
               aria-label={t("alerts.filterByStatus")}
             >
@@ -326,7 +318,7 @@ export default function AlertsPage() {
                         </div>
                         {alert.status >= 1 && alert.acknowledgedBy && (
                           <p className="text-xs text-muted-foreground">
-                            {t("alerts.acknowledgedBy")} {alert.acknowledgedBy}{alert.acknowledgedAt ? ` ${t("alerts.at")} ${formatDate(alert.acknowledgedAt)}` : ""}
+                            {t("alerts.acknowledgedBy")} {alert.acknowledgedBy}{alert.acknowledgedAt ? ` ${t("alerts.at")} ${formatDateTime(alert.acknowledgedAt)}` : ""}
                           </p>
                         )}
                       </div>
@@ -366,39 +358,28 @@ export default function AlertsPage() {
       </div>
 
       {/* Pagination */}
-      {(totalCount > pageSize || cursorStack.length > 0) && (
+      {(totalCount > pageSize || hasPrevPage) && (
         <div className="flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
             {totalCount} {t("alerts.totalAlerts")}
           </div>
           <div className="flex gap-2">
-            {cursorStack.length > 0 && (
+            {hasPrevPage && (
               <Button
                 variant="outline"
                 size="sm"
                 aria-label={t("common.previous")}
-                onClick={() => {
-                  const prev = [...cursorStack];
-                  const prevCursor = prev.pop()!;
-                  setCursorStack(prev);
-                  setCursor(prevCursor);
-                }}
+                onClick={goPrevPage}
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
             )}
-            {alerts.length === pageSize && (
+            {hasNextPage && (
               <Button
                 variant="outline"
                 size="sm"
                 aria-label={t("common.next")}
-                onClick={() => {
-                  const lastId = alerts[alerts.length - 1]?.id;
-                  if (lastId) {
-                    setCursorStack([...cursorStack, cursor]);
-                    setCursor(lastId);
-                  }
-                }}
+                onClick={goNextPage}
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
@@ -455,13 +436,13 @@ export default function AlertsPage() {
               )}
               <div>
                 <p className="text-sm text-muted-foreground">{t("alerts.createdLabel")}</p>
-                <p>{formatDate(selectedAlert.createdAt)}</p>
+                <p>{formatDateTime(selectedAlert.createdAt)}</p>
               </div>
               {selectedAlert.status >= 1 && selectedAlert.acknowledgedBy && (
                 <div>
                   <p className="text-sm text-muted-foreground">{t("alerts.acknowledgedLabel")}</p>
                   <p>
-                    {selectedAlert.acknowledgedBy}{selectedAlert.acknowledgedAt ? ` ${t("alerts.at")} ${formatDate(selectedAlert.acknowledgedAt)}` : ""}
+                    {selectedAlert.acknowledgedBy}{selectedAlert.acknowledgedAt ? ` ${t("alerts.at")} ${formatDateTime(selectedAlert.acknowledgedAt)}` : ""}
                   </p>
                 </div>
               )}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,9 +15,11 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
+import { formatDate } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
 import { useRequirePermission } from "@/lib/use-permission";
 import { AccessDenied } from "@/components/ui/access-denied";
+import { useTableQuery } from "@/hooks/use-table-query";
 import { AlertCircle, MessageSquare, Send } from "lucide-react";
 
 interface Feedback {
@@ -44,7 +46,21 @@ export default function FeedbackPage() {
   const hasAccess = useRequirePermission("KLC.Feedback");
   const queryClient = useQueryClient();
   const { t } = useTranslation();
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  const {
+    filteredItems: feedbackList,
+    isLoading,
+    statusFilter,
+    setStatusFilterAndReset,
+  } = useTableQuery<Feedback>({
+    queryKey: "feedback",
+    fetchFn: async (params) => {
+      const res = await api.get("/admin/feedback", { params: { pageSize: params.maxResultCount, ...(params.status !== undefined ? { status: params.status } : {}) } });
+      const items = res.data.data || [];
+      return { items, totalCount: items.length };
+    },
+    searchFields: ["subject", "userName"],
+  });
 
   const FeedbackTypeLabels: Record<number, string> = {
     0: t("feedback.typeBug"),
@@ -70,17 +86,6 @@ export default function FeedbackPage() {
   const [responseText, setResponseText] = useState("");
   const [responseStatus, setResponseStatus] = useState<number>(2);
   const [formError, setFormError] = useState("");
-
-  // Fetch feedback list
-  const { data: feedbackList, isLoading } = useQuery<Feedback[]>({
-    queryKey: ["feedback", statusFilter],
-    queryFn: async () => {
-      const params: Record<string, unknown> = { pageSize: 20 };
-      if (statusFilter !== "all") params.status = statusFilter;
-      const res = await api.get("/admin/feedback", { params });
-      return res.data.data || [];
-    },
-  });
 
   // Fetch single feedback detail
   const { data: selectedFeedback } = useQuery<Feedback>({
@@ -187,35 +192,35 @@ export default function FeedbackPage() {
           <Button
             variant={statusFilter === "all" ? "default" : "outline"}
             size="sm"
-            onClick={() => setStatusFilter("all")}
+            onClick={() => setStatusFilterAndReset("all")}
           >
             {t("common.all")}
           </Button>
           <Button
             variant={statusFilter === "0" ? "default" : "outline"}
             size="sm"
-            onClick={() => setStatusFilter("0")}
+            onClick={() => setStatusFilterAndReset("0")}
           >
             {t("feedback.statusOpen")}
           </Button>
           <Button
             variant={statusFilter === "1" ? "default" : "outline"}
             size="sm"
-            onClick={() => setStatusFilter("1")}
+            onClick={() => setStatusFilterAndReset("1")}
           >
             {t("feedback.statusInReview")}
           </Button>
           <Button
             variant={statusFilter === "2" ? "default" : "outline"}
             size="sm"
-            onClick={() => setStatusFilter("2")}
+            onClick={() => setStatusFilterAndReset("2")}
           >
             {t("feedback.statusResolved")}
           </Button>
           <Button
             variant={statusFilter === "3" ? "default" : "outline"}
             size="sm"
-            onClick={() => setStatusFilter("3")}
+            onClick={() => setStatusFilterAndReset("3")}
           >
             {t("feedback.statusClosed")}
           </Button>
@@ -275,9 +280,7 @@ export default function FeedbackPage() {
                           {getStatusBadge(feedback.status)}
                         </td>
                         <td className="px-4 py-3 text-sm">
-                          {new Date(feedback.createdAt).toLocaleDateString(
-                            "vi-VN"
-                          )}
+                          {formatDate(feedback.createdAt)}
                         </td>
                         <td className="px-4 py-3">
                           <Button
@@ -339,9 +342,7 @@ export default function FeedbackPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">{t("feedback.tableCreatedAt")}</p>
                   <p className="font-medium">
-                    {new Date(selectedFeedback.createdAt).toLocaleDateString(
-                      "vi-VN"
-                    )}
+                    {formatDate(selectedFeedback.createdAt)}
                   </p>
                 </div>
               </div>

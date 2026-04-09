@@ -2,6 +2,8 @@ import type { NavigatorScreenParams } from '@react-navigation/native';
 
 export type RootStackParamList = {
   Login: undefined;
+  Register: undefined;
+  OtpVerification: { phoneNumber: string };
   Main: NavigatorScreenParams<MainTabParamList>;
   StationDetail: { stationId: string };
   Session: undefined;

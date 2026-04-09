@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { Colors } from '../constants/colors';
 import { Card, Badge } from '../components/common';
 import { sessionsApi } from '../api/sessions';
+import { formatCurrency, formatDate, formatTime, formatDuration } from '../utils/formatting';
 import type { ChargingSession, SessionStatus } from '../types';
 
 export function HistoryScreen() {
@@ -29,10 +30,11 @@ export function HistoryScreen() {
 
     try {
       const result = await sessionsApi.getHistory(reset ? undefined : cursor);
+      const incoming = result.items ?? [];
       if (reset) {
-        setSessions(result.items);
+        setSessions(incoming);
       } else {
-        setSessions((prev) => [...prev, ...result.items]);
+        setSessions((prev) => [...prev, ...incoming]);
       }
       setCursor(result.nextCursor);
       setHasMore(result.hasMore);
@@ -75,47 +77,13 @@ export function HistoryScreen() {
     }
   };
 
-  const formatDateStr = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
-  };
-
-  const formatTime = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('vi-VN', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const formatDuration = (minutes: number): string => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    if (hours > 0) {
-      return `${hours}h ${mins}m`;
-    }
-    return `${mins}m`;
-  };
-
   const renderSession = ({ item: session }: { item: ChargingSession }) => (
-    <Card style={styles.sessionCard} accessibilityLabel={`${session.stationName}, ${formatDateStr(session.startTime)}, ${session.status}, ${session.energyKwh.toFixed(2)} kilowatt hours, ${formatDuration(session.durationMinutes)}`}>
+    <Card style={styles.sessionCard} accessibilityLabel={`${session.stationName ?? ''}, ${session.startTime ? formatDate(session.startTime) : ''}, ${session.status}, ${(session.energyKwh ?? 0).toFixed(2)} kilowatt hours, ${formatDuration(session.durationMinutes ?? 0)}`}>
       <View style={styles.sessionHeader}>
         <View>
           <Text style={styles.stationName}>{session.stationName}</Text>
           <Text style={styles.dateTime}>
-            {formatDateStr(session.startTime)} • {formatTime(session.startTime)}
+            {session.startTime ? `${formatDate(session.startTime)} • ${formatTime(session.startTime)}` : ''}
           </Text>
         </View>
         <Badge label={session.status} variant={getStatusVariant(session.status)} />
@@ -123,16 +91,16 @@ export function HistoryScreen() {
 
       <View style={styles.statsRow}>
         <View style={styles.statItem}>
-          <Text style={styles.statValue}>{session.energyKwh.toFixed(2)}</Text>
+          <Text style={styles.statValue}>{(session.energyKwh ?? 0).toFixed(2)}</Text>
           <Text style={styles.statLabel}>kWh</Text>
         </View>
         <View style={styles.statItem}>
-          <Text style={styles.statValue}>{formatDuration(session.durationMinutes)}</Text>
+          <Text style={styles.statValue}>{formatDuration(session.durationMinutes ?? 0)}</Text>
           <Text style={styles.statLabel}>{t('history.duration')}</Text>
         </View>
         <View style={styles.statItem}>
           <Text style={styles.statValue}>
-            {formatCurrency(session.actualCost ?? session.estimatedCost)}
+            {formatCurrency(session.actualCost ?? session.estimatedCost ?? 0)}
           </Text>
           <Text style={styles.statLabel}>{t('history.cost')}</Text>
         </View>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Plus,
   Search,
@@ -10,6 +10,7 @@ import {
   List,
   Wifi,
 } from "lucide-react";
+import { useTableQuery } from "@/hooks/use-table-query";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
@@ -24,8 +25,6 @@ import { AccessDenied } from "@/components/ui/access-denied";
 import { StationBoardView, StationListView } from "@/components/stations";
 import type { StationListItem } from "@/components/stations";
 
-const pageSize = 20;
-
 export default function StationsPage() {
   const hasAccess = useRequirePermission("KLC.Stations");
   const canCreate = useHasPermission("KLC.Stations.Create");
@@ -33,12 +32,9 @@ export default function StationsPage() {
   const queryClient = useQueryClient();
 
   const { stationsViewMode, setStationsViewMode } = usePreferencesStore();
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [serverSearch, setServerSearch] = useState("");
   const [sortBy, setSortBy] = useState("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [cursorStack, setCursorStack] = useState<(string | null)[]>([]);
 
   // SignalR real-time updates
   const onStationStatusChanged = useCallback(() => {
@@ -54,23 +50,29 @@ export default function StationsPage() {
     onConnectorStatusChanged,
   });
 
-  const { data: stationsData, isLoading } = useQuery({
-    queryKey: ["stations", search, statusFilter, sortBy, sortOrder, cursor],
-    queryFn: async () => {
-      const params: Record<string, unknown> = {
-        maxResultCount: pageSize,
-        sortBy,
-        sortOrder,
-      };
-      if (search) params.search = search;
-      if (statusFilter !== "all") params.status = Number(statusFilter);
-      if (cursor) params.cursor = cursor;
+  const {
+    data: stationsData,
+    items: stations,
+    isLoading,
+    statusFilter,
+    setStatusFilterAndReset,
+    pageSize,
+    goNextPage,
+    goPrevPage,
+    hasNextPage,
+    hasPrevPage,
+    resetPage,
+  } = useTableQuery<StationListItem>({
+    queryKey: "stations",
+    fetchFn: async (params) => {
+      params.sortBy = sortBy;
+      params.sortOrder = sortOrder;
+      if (serverSearch) params.search = serverSearch;
       const { data } = await stationsApi.getAll(params as Parameters<typeof stationsApi.getAll>[0]);
       return data;
     },
+    extraQueryKeys: [serverSearch, sortBy, sortOrder],
   });
-
-  const stations: StationListItem[] = stationsData?.items || [];
 
   const enableMutation = useMutation({
     mutationFn: (id: string) => stationsApi.enable(id),
@@ -91,14 +93,7 @@ export default function StationsPage() {
       setSortBy(field);
       setSortOrder("asc");
     }
-    setCursor(null);
-    setCursorStack([]);
-  };
-
-  const handleStatusFilterChange = (value: string) => {
-    setStatusFilter(value);
-    setCursor(null);
-    setCursorStack([]);
+    resetPage();
   };
 
   if (!hasAccess) return <AccessDenied />;
@@ -123,18 +118,17 @@ export default function StationsPage() {
               type="search"
               placeholder={t("stations.searchPlaceholder")}
               aria-label={t("stations.searchPlaceholder")}
-              value={search}
+              value={serverSearch}
               onChange={(e) => {
-                setSearch(e.target.value);
-                setCursor(null);
-                setCursorStack([]);
+                setServerSearch(e.target.value);
+                resetPage();
               }}
               className="h-10 w-full rounded-md border bg-background pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
             />
           </div>
           <select
             value={statusFilter}
-            onChange={(e) => handleStatusFilterChange(e.target.value)}
+            onChange={(e) => setStatusFilterAndReset(e.target.value)}
             className="h-10 rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
             aria-label={t("common.status")}
           >
@@ -142,7 +136,6 @@ export default function StationsPage() {
             <option value="0">{t("stations.offline")}</option>
             <option value="1">{t("stations.online")}</option>
             <option value="2">{t("stations.disabled")}</option>
-            <option value="3">{t("stations.decommissioned")}</option>
           </select>
           <div className="flex items-center rounded-md border">
             <Button
@@ -190,7 +183,7 @@ export default function StationsPage() {
           <EmptyState
             icon={MapPin}
             title={t("stations.noStationsFound")}
-            description={search || statusFilter !== "all" ? t("stations.tryDifferentSearch") : t("stations.getStarted")}
+            description={serverSearch || statusFilter !== "all" ? t("stations.tryDifferentSearch") : t("stations.getStarted")}
           />
         ) : (
           <>
@@ -214,37 +207,26 @@ export default function StationsPage() {
             )}
 
             {/* Pagination */}
-            {((stationsData?.totalCount ?? 0) > pageSize || cursorStack.length > 0) && (
+            {((stationsData?.totalCount ?? 0) > pageSize || hasPrevPage) && (
               <div className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">
                   {stationsData?.totalCount ?? 0} {t("stations.totalStations")}
                 </p>
                 <div className="flex items-center gap-2">
-                  {cursorStack.length > 0 && (
+                  {hasPrevPage && (
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => {
-                        const prev = [...cursorStack];
-                        const prevCursor = prev.pop()!;
-                        setCursorStack(prev);
-                        setCursor(prevCursor);
-                      }}
+                      onClick={goPrevPage}
                     >
                       {t("common.previous")}
                     </Button>
                   )}
-                  {stations.length === pageSize && (
+                  {hasNextPage && (
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => {
-                        const lastId = stations[stations.length - 1]?.id;
-                        if (lastId) {
-                          setCursorStack([...cursorStack, cursor]);
-                          setCursor(lastId);
-                        }
-                      }}
+                      onClick={goNextPage}
                     >
                       {t("common.next")}
                     </Button>

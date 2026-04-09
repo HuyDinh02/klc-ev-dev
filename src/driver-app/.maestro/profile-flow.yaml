@@ -1,79 +1,70 @@
 appId: vn.klc.driver
 name: Profile & Account Flow
 ---
-# Verifies profile screen, vehicles, and account menu items
-# Prerequisite: User must be logged in
+# Verifies profile screen, menu items, and sub-screens
 - launchApp:
     appId: vn.klc.driver
+    clearState: true
 
-# Wait for app to load
-- extendedWaitUntil:
-    visible: ".*"
+# Login first
+- assertVisible:
+    text: "Đăng nhập"
     timeout: 10000
-
-# Navigate to Profile tab
 - tapOn:
-    id: "tab-profile"
-    optional: true
+    id: "login-phone-input"
+- inputText: "0901234001"
 - tapOn:
-    text: "Profile"
-    optional: true
+    id: "login-password-input"
+- inputText: "Admin@123"
+- tapOn:
+    id: "login-submit-button"
 
-# Verify profile elements
+# Wait for home, navigate to profile
 - assertVisible:
-    text: "Profile"
+    text: "Trạm sạc"
+    timeout: 15000
+- tapOn: "Tài khoản"
+
+# Verify profile screen
+- assertVisible:
+    text: "Tài khoản"
     timeout: 5000
 
-# Verify account menu items exist
+# Verify user name is displayed
 - assertVisible:
-    text: "Payment Methods"
-    optional: true
-- assertVisible:
-    text: "Notifications"
-    optional: true
-- assertVisible:
-    text: "Settings"
-    optional: true
-- assertVisible:
-    text: "Help & Support"
-    optional: true
-
-# Navigate to Payment Methods
-- tapOn:
-    text: "Payment Methods"
-    optional: true
-- assertVisible:
-    text: "Payment Methods"
+    text: "Nguyễn Văn An"
     timeout: 5000
-    optional: true
+
+# Verify menu items
+- assertVisible: "Phương thức thanh toán"
+- assertVisible: "Thông báo"
+- assertVisible: "Cài đặt"
+- assertVisible: "Trợ giúp & Hỗ trợ"
+
+# Navigate to Settings
+- tapOn: "Cài đặt"
+- assertVisible:
+    text: "Cài đặt"
+    timeout: 5000
 - back
 
 # Navigate to Help & Support
-- tapOn:
-    text: "Help & Support"
-    optional: true
+- tapOn: "Trợ giúp & Hỗ trợ"
 - assertVisible:
-    text: "Help & Support"
+    text: "Trợ giúp & Hỗ trợ"
     timeout: 5000
-    optional: true
-- assertVisible:
-    text: "Frequently Asked Questions"
-    optional: true
-- assertVisible:
-    text: "Contact Us"
-    optional: true
 - back
 
-# Test logout flow (but cancel)
+# Verify logout button exists (scroll down if needed)
 - scrollUntilVisible:
     element:
-      text: "Logout"
+      text: "Đăng xuất"
     direction: DOWN
     timeout: 5000
-- tapOn:
-    text: "Logout"
-    optional: true
-# Cancel the logout confirmation
-- tapOn:
-    text: "Cancel"
-    optional: true
+
+# Tap logout but cancel
+- tapOn: "Đăng xuất"
+- assertVisible:
+    text: "Đăng xuất"
+    timeout: 3000
+- tapOn: "Hủy"

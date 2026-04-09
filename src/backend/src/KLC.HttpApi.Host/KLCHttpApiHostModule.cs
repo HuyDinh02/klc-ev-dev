@@ -13,10 +13,12 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using KLC.Configuration;
 using KLC.EntityFrameworkCore;
 using KLC.Hubs;
 using KLC.MultiTenancy;
 using KLC.Ocpp;
+using KLC.Ocpp.Handlers;
 using KLC.Ocpp.Vendors;
 using KLC.Operators;
 using KLC.Services;
@@ -129,6 +131,12 @@ public class KLCHttpApiHostModule : AbpModule
         {
             options.CheckLibs = false;
         });
+
+        // Typed configuration (Options Pattern)
+        context.Services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.Section));
+        context.Services.Configure<VnPaySettings>(configuration.GetSection(VnPaySettings.Section));
+        context.Services.Configure<MoMoSettings>(configuration.GetSection(MoMoSettings.Section));
+        context.Services.Configure<WalletSettings>(configuration.GetSection(WalletSettings.Section));
 
         ConfigureAuthentication(context);
         ConfigureBundles();
@@ -270,27 +278,52 @@ public class KLCHttpApiHostModule : AbpModule
         // Register OCPP services
         context.Services.AddSingleton<OcppConnectionManager>();
         context.Services.AddSingleton<OcppMessageParserFactory>();
+
+        // Auto-discover all IOcppActionHandler implementations (Strategy Pattern)
+        var handlerTypes = typeof(IOcppActionHandler).Assembly.GetTypes()
+            .Where(t => !t.IsAbstract && !t.IsInterface && typeof(IOcppActionHandler).IsAssignableFrom(t));
+        foreach (var type in handlerTypes)
+            context.Services.AddScoped(typeof(IOcppActionHandler), type);
+
         context.Services.AddScoped<OcppMessageHandler>();
         context.Services.AddHostedService<HeartbeatMonitorService>();
+        context.Services.AddHostedService<OrphanedSessionCleanupService>();
         context.Services.AddHostedService<FleetResetBackgroundService>();
         context.Services.AddHostedService<WalletBalanceMonitorService>();
         context.Services.AddHostedService<PaymentReconciliationService>();
         context.Services.AddSingleton<PowerBalancingService>();
         context.Services.AddHostedService<PowerBalancingService>(sp => sp.GetRequiredService<PowerBalancingService>());
+        context.Services.AddSingleton<OcppRedisCommandBridge>();
+        context.Services.AddHostedService<OcppRedisCommandBridge>(sp => sp.GetRequiredService<OcppRedisCommandBridge>());
         context.Services.AddScoped<IOcppRemoteCommandService, OcppRemoteCommandService>();
         context.Services.AddScoped<OcppPostBootConfigService>();
 
-        // Vendor profiles
-        context.Services.AddSingleton<IVendorProfile, GenericProfile>();
-        context.Services.AddSingleton<IVendorProfile, ChargecoreGlobalProfile>();
-        context.Services.AddSingleton<IVendorProfile, JuhangProfile>();
+        // Auto-discover all IVendorProfile implementations (add new vendor = add 1 class file)
+        var vendorProfileTypes = typeof(IVendorProfile).Assembly
+            .GetTypes()
+            .Where(t => !t.IsAbstract && !t.IsInterface && typeof(IVendorProfile).IsAssignableFrom(t));
+        foreach (var profileType in vendorProfileTypes)
+            context.Services.AddSingleton(typeof(IVendorProfile), profileType);
         context.Services.AddSingleton<VendorProfileFactory>();
     }
 
     private void ConfigureSignalR(ServiceConfigurationContext context)
     {
-        // Add SignalR for real-time monitoring
-        context.Services.AddSignalR();
+        // Add SignalR for real-time monitoring with Redis backplane
+        // Redis backplane allows SignalR messages to be shared across multiple
+        // Cloud Run instances (Admin API + OCPP Gateway both publish/subscribe)
+        var redisConnection = context.Services.GetConfiguration()["ConnectionStrings:Redis"];
+        if (!string.IsNullOrEmpty(redisConnection))
+        {
+            context.Services.AddSignalR().AddStackExchangeRedis(redisConnection, options =>
+            {
+                options.Configuration.ChannelPrefix = StackExchange.Redis.RedisChannel.Literal("klc-signalr");
+            });
+        }
+        else
+        {
+            context.Services.AddSignalR();
+        }
         context.Services.AddScoped<IMonitoringNotifier, MonitoringNotifier>();
     }
 
@@ -606,9 +639,29 @@ public class KLCHttpApiHostModule : AbpModule
         var vnpaySecret = config["Payment:VnPay:HashSecret"] ?? "";
         if (string.IsNullOrWhiteSpace(vnpaySecret))
         {
-            logger.LogWarning(
-                "PRODUCTION CONFIG WARNING: Payment:VnPay:HashSecret is not configured. " +
-                "VnPay payments will not work until this is set.");
+            logger.LogCritical(
+                "PRODUCTION CONFIG ERROR: Payment:VnPay:HashSecret is not configured. " +
+                "VnPay IPN validation will fail until this is set via Secret Manager.");
+            hasErrors = true;
+        }
+
+        var vnpayTmnCode = config["Payment:VnPay:TmnCode"] ?? "";
+        if (string.IsNullOrWhiteSpace(vnpayTmnCode))
+        {
+            logger.LogCritical(
+                "PRODUCTION CONFIG ERROR: Payment:VnPay:TmnCode is not configured. " +
+                "VnPay IPN validation will fail until this is set via Secret Manager.");
+            hasErrors = true;
+        }
+
+        // SEC-4: AllowUnregisteredIdTags must be false in production to prevent anonymous charging
+        var allowUnregistered = config.GetValue<bool>("Ocpp:AllowUnregisteredIdTags", true);
+        if (allowUnregistered)
+        {
+            logger.LogCritical(
+                "PRODUCTION CONFIG ERROR: Ocpp:AllowUnregisteredIdTags is true (or not set — default is true). " +
+                "Set Ocpp:AllowUnregisteredIdTags=false to require registered RFID tags in production.");
+            hasErrors = true;
         }
 
         // Optional: Sentry DSN
@@ -630,5 +683,12 @@ public class KLCHttpApiHostModule : AbpModule
         {
             logger.LogInformation("Production configuration validation passed.");
         }
+    }
+
+    public override void OnApplicationShutdown(ApplicationShutdownContext context)
+    {
+        // Close all OCPP WebSocket connections on shutdown so chargers reconnect to new instance
+        var connectionManager = context.ServiceProvider.GetRequiredService<OcppConnectionManager>();
+        connectionManager.CloseAllConnectionsAsync().GetAwaiter().GetResult();
     }
 }

@@ -41,10 +41,51 @@ export function mapAuthUserToProfile(user: LoginResponse['user']): UserProfile |
   };
 }
 
+export interface RegisterRequest {
+  phoneNumber: string;
+  fullName: string;
+  password: string;
+}
+
+export interface RegisterResponse {
+  success: boolean;
+  userId?: string;
+  message?: string;
+  error?: { code: string; message: string };
+}
+
+export interface VerifyOtpRequest {
+  phoneNumber: string;
+  otp: string;
+}
+
+export interface VerifyOtpResponse {
+  success: boolean;
+  error?: { code: string; message: string };
+}
+
+export interface ResendOtpRequest {
+  phoneNumber: string;
+}
+
 export const authApi = {
   login: async (request: LoginRequest): Promise<LoginResponse> => {
     const { data } = await api.post<LoginResponse>('/auth/login', request);
     return data;
+  },
+
+  register: async (request: RegisterRequest): Promise<RegisterResponse> => {
+    const { data } = await api.post<RegisterResponse>('/auth/register', request);
+    return data;
+  },
+
+  verifyOtp: async (request: VerifyOtpRequest): Promise<VerifyOtpResponse> => {
+    const { data } = await api.post<VerifyOtpResponse>('/auth/verify-phone', request);
+    return data;
+  },
+
+  resendOtp: async (request: ResendOtpRequest): Promise<void> => {
+    await api.post('/auth/resend-otp', request);
   },
 
   refreshToken: async (request: RefreshTokenRequest): Promise<LoginResponse> => {

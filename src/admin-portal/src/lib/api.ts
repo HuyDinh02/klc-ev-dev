@@ -5,11 +5,27 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
     ? (() => { throw new Error("NEXT_PUBLIC_API_URL must be set in production"); })()
     : "https://localhost:44305");
 
+// OCPP Gateway URL — separate service for WebSocket connections + remote commands
+const OCPP_BASE_URL = process.env.NEXT_PUBLIC_OCPP_URL || API_BASE_URL;
+
 export const api = axios.create({
   baseURL: `${API_BASE_URL}/api/v1`,
   headers: {
     "Content-Type": "application/json",
   },
+});
+
+// OCPP API — routes to OCPP Gateway (separate service with WebSocket connections)
+export const ocppApi = axios.create({
+  baseURL: `${OCPP_BASE_URL}/api/v1`,
+  headers: { "Content-Type": "application/json" },
+});
+
+// Share auth token from localStorage (same as main API interceptor)
+ocppApi.interceptors.request.use((config) => {
+  const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
 });
 
 // Auth API - token exchange via server-side API route (keeps client_secret off the browser)
@@ -75,7 +91,9 @@ export const stationsApi = {
   update: (id: string, data: UpdateStationDto) => api.put(`/stations/${id}`, data),
   enable: (id: string) => api.post(`/stations/${id}/enable`),
   disable: (id: string) => api.post(`/stations/${id}/disable`),
+  /** @deprecated Use disable() + delete() instead. Kept for backward compatibility — backend delegates to Disable(). */
   decommission: (id: string) => api.post(`/stations/${id}/decommission`),
+  delete: (id: string) => api.delete(`/stations/${id}`),
   // Photos
   uploadPhoto: (file: File) => {
     const formData = new FormData();
@@ -275,6 +293,7 @@ export interface CreateMaintenanceTaskDto {
 export const settingsApi = {
   get: () => api.get<SystemSettings>("/settings"),
   update: (data: SystemSettings) => api.put("/settings", data),
+  applyToChargers: () => api.post<{ successCount: number; failureCount: number }>("/settings/apply-to-chargers"),
 };
 
 export const powerSharingApi = {

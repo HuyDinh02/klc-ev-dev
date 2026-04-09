@@ -37,7 +37,7 @@ public class VoucherBffService : IVoucherBffService
 
     public async Task<List<VoucherDto>> GetAvailableVouchersAsync(Guid userId)
     {
-        var cacheKey = $"user:{userId}:available-vouchers";
+        var cacheKey = CacheKeys.UserAvailableVouchers(userId);
 
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
@@ -208,9 +208,9 @@ public class VoucherBffService : IVoucherBffService
             await _dbContext.SaveChangesAsync();
 
             // Invalidate caches
-            await _cache.RemoveAsync($"user:{userId}:wallet-balance");
-            await _cache.RemoveAsync($"user:{userId}:available-vouchers");
-            await _cache.RemoveAsync($"user:{userId}:wallet-summary");
+            await _cache.RemoveAsync(CacheKeys.UserWalletBalance(userId));
+            await _cache.RemoveAsync(CacheKeys.UserAvailableVouchers(userId));
+            await _cache.RemoveAsync(CacheKeys.UserWalletSummary(userId));
 
             _logger.LogInformation(
                 "Voucher applied: UserId={UserId}, Code={Code}, CreditAmount={CreditAmount}, NewBalance={NewBalance}",

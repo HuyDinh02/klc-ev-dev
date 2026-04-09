@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using FirebaseAdmin;
 using FirebaseAdmin.Messaging;
 using Google.Apis.Auth.OAuth2;
+using KLC.Enums;
 using KLC.Users;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -21,16 +22,19 @@ namespace KLC.Notifications;
 public class FirebasePushNotificationService : IPushNotificationService, ITransientDependency
 {
     private readonly IRepository<DeviceToken, Guid> _deviceTokenRepository;
+    private readonly IRepository<NotificationPreference, Guid> _notificationPreferenceRepository;
     private readonly ILogger<FirebasePushNotificationService> _logger;
     private readonly ISettingProvider _settingProvider;
 
     public FirebasePushNotificationService(
         IRepository<DeviceToken, Guid> deviceTokenRepository,
+        IRepository<NotificationPreference, Guid> notificationPreferenceRepository,
         ILogger<FirebasePushNotificationService> logger,
         IConfiguration configuration,
         ISettingProvider settingProvider)
     {
         _deviceTokenRepository = deviceTokenRepository;
+        _notificationPreferenceRepository = notificationPreferenceRepository;
         _logger = logger;
         _settingProvider = settingProvider;
 
@@ -65,8 +69,20 @@ public class FirebasePushNotificationService : IPushNotificationService, ITransi
         }
     }
 
-    public async Task SendToUserAsync(Guid userId, string title, string body, Dictionary<string, string>? data = null)
+    public async Task SendToUserAsync(Guid userId, string title, string body, Dictionary<string, string>? data = null, NotificationType? notificationType = null)
     {
+        // Check user's notification preferences if a type is specified
+        if (notificationType.HasValue && notificationType.Value != NotificationType.SystemAnnouncement)
+        {
+            if (!await IsNotificationEnabledForUserAsync(userId, notificationType.Value))
+            {
+                _logger.LogDebug(
+                    "Push skipped for user {UserId}: notification type {Type} is disabled by preference",
+                    userId, notificationType.Value);
+                return;
+            }
+        }
+
         var tokens = await GetActiveTokensForUserAsync(userId);
         if (tokens.Count == 0)
         {
@@ -171,6 +187,31 @@ public class FirebasePushNotificationService : IPushNotificationService, ITransi
         {
             _logger.LogError(ex, "[FCM] Failed to send push notification: Title={Title}", title);
         }
+    }
+
+    /// <summary>
+    /// Checks the user's notification preferences for the given notification type.
+    /// Returns true if the notification should be sent (preference enabled or no preference record found).
+    /// </summary>
+    private async Task<bool> IsNotificationEnabledForUserAsync(Guid userId, NotificationType notificationType)
+    {
+        var queryable = await _notificationPreferenceRepository.GetQueryableAsync();
+        var prefs = queryable.FirstOrDefault(p => p.UserId == userId);
+
+        // No preference record means all defaults are enabled
+        if (prefs == null)
+            return true;
+
+        return notificationType switch
+        {
+            NotificationType.ChargingStarted => prefs.ChargingComplete,
+            NotificationType.ChargingCompleted => prefs.ChargingComplete,
+            NotificationType.PaymentSuccess => prefs.PaymentAlerts,
+            NotificationType.PaymentFailed => prefs.PaymentAlerts,
+            NotificationType.WalletTopUp => prefs.PaymentAlerts,
+            NotificationType.Promotion => prefs.Promotions,
+            _ => true // EInvoiceReady, ChargingFailed, etc. — always send
+        };
     }
 
     private async Task<List<string>> GetActiveTokensForUserAsync(Guid userId)

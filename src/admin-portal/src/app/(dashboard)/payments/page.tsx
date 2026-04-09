@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTableQuery } from "@/hooks/use-table-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
@@ -41,6 +42,7 @@ interface Payment {
   gateway: number;
   referenceCode?: string;
   stationName?: string;
+  userName?: string;
   creationTime?: string;
 }
 
@@ -57,40 +59,38 @@ export default function PaymentsPage() {
   const hasAccess = useRequirePermission("KLC.Payments");
   const { t } = useTranslation();
   const router = useRouter();
-  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [cursorStack, setCursorStack] = useState<(string | null)[]>([]);
   const [refundTarget, setRefundTarget] = useState<Payment | null>(null);
   const [refundReason, setRefundReason] = useState("");
   const [activeTab, setActiveTab] = useState<"sessions" | "wallet">("sessions");
   const [walletSkip, setWalletSkip] = useState(0);
-  const pageSize = 20;
   const queryClient = useQueryClient();
 
-  const resetPagination = () => { setCursor(null); setCursorStack([]); };
-
   // Fetch payments
-  const { data: paymentsData, isLoading } = useQuery({
-    queryKey: ["payments", statusFilter, dateFrom, dateTo, searchQuery, cursor],
-    queryFn: async () => {
-      const params: Record<string, string | number> = {
-        maxResultCount: pageSize,
-      };
-      if (statusFilter !== "all") params.status = Number(statusFilter);
+  const {
+    data: paymentsData,
+    items: payments,
+    totalCount,
+    isLoading,
+    statusFilter,
+    setStatusFilterAndReset,
+    pageSize,
+    goNextPage,
+    goPrevPage,
+    hasNextPage,
+    hasPrevPage,
+  } = useTableQuery<Payment>({
+    queryKey: "payments",
+    fetchFn: async (params) => {
       if (dateFrom) params.fromDate = dateFrom;
       if (dateTo) params.toDate = dateTo;
-      if (cursor) params.cursor = cursor;
-
       const res = await api.get("/payments/history", { params });
       return res.data;
     },
+    extraQueryKeys: [dateFrom, dateTo, searchQuery],
   });
-
-  const payments: Payment[] = paymentsData?.items || [];
-  const totalCount = paymentsData?.totalCount || 0;
 
   // Wallet transactions query
   const { data: walletData, isLoading: walletLoading } = useQuery({
@@ -167,10 +167,11 @@ export default function PaymentsPage() {
           variant="outline"
           disabled={payments.length === 0}
           onClick={() => {
-            const headers = [t("payments.transaction"), t("payments.station"), t("payments.session"), t("payments.amount"), t("payments.method"), t("common.status"), t("payments.date")];
+            const headers = [t("payments.transaction"), t("payments.station"), t("common.user"), t("payments.session"), t("payments.amount"), t("payments.method"), t("common.status"), t("payments.date")];
             const rows = payments.map((p) => [
               p.referenceCode || p.id.slice(0, 8),
               p.stationName || "—",
+              p.userName || "—",
               p.sessionId?.slice(0, 8) || "—",
               formatCurrency(p.amount),
               PAYMENT_GATEWAY_LABELS[p.gateway] ?? "—",
@@ -259,7 +260,7 @@ export default function PaymentsPage() {
             </div>
             <select
               value={statusFilter}
-              onChange={(e) => { setStatusFilter(e.target.value); resetPagination(); }}
+              onChange={(e) => setStatusFilterAndReset(e.target.value)}
               className="rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
               aria-label={t("payments.filterByStatus")}
             >
@@ -314,6 +315,7 @@ export default function PaymentsPage() {
                       {t("payments.transaction")}
                     </th>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-medium">{t("payments.station")}</th>
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium">{t("common.user")}</th>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-medium">
                       {t("payments.session")}
                     </th>
@@ -346,6 +348,7 @@ export default function PaymentsPage() {
                           <span>{payment.stationName || "—"}</span>
                         </div>
                       </td>
+                      <td className="px-4 py-3 text-sm">{payment.userName || "—"}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <Zap className="h-4 w-4 text-yellow-500" aria-hidden="true" />
@@ -394,39 +397,28 @@ export default function PaymentsPage() {
             </div>
 
             {/* Pagination */}
-            {(totalCount > pageSize || cursorStack.length > 0) && (
+            {(totalCount > pageSize || hasPrevPage) && (
               <div className="flex items-center justify-between border-t px-4 py-3">
                 <div className="text-sm text-muted-foreground">
                   {totalCount} {t("payments.totalPayments")}
                 </div>
                 <div className="flex gap-2">
-                  {cursorStack.length > 0 && (
+                  {hasPrevPage && (
                     <Button
                       variant="outline"
                       size="sm"
                       aria-label={t("common.previous")}
-                      onClick={() => {
-                        const prev = [...cursorStack];
-                        const prevCursor = prev.pop()!;
-                        setCursorStack(prev);
-                        setCursor(prevCursor);
-                      }}
+                      onClick={goPrevPage}
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
                   )}
-                  {payments.length === pageSize && (
+                  {hasNextPage && (
                     <Button
                       variant="outline"
                       size="sm"
                       aria-label={t("common.next")}
-                      onClick={() => {
-                        const lastId = payments[payments.length - 1]?.id;
-                        if (lastId) {
-                          setCursorStack([...cursorStack, cursor]);
-                          setCursor(lastId);
-                        }
-                      }}
+                      onClick={goNextPage}
                     >
                       <ChevronRight className="h-4 w-4" />
                     </Button>

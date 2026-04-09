@@ -6,9 +6,12 @@ using KLC.Enums;
 using KLC.Hubs;
 using KLC.Auditing;
 using KLC.Ocpp;
+using KLC.Ocpp.Handlers;
 using KLC.Ocpp.Messages;
 using KLC.Ocpp.Vendors;
 using KLC.Sessions;
+using KLC.TestDoubles;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -28,6 +31,7 @@ public class OcppMessageHandlerTests
 {
     private readonly IOcppService _ocppService;
     private readonly IMonitoringNotifier _notifier;
+    private readonly FakeOcppRemoteCommandService _remoteCommandService;
     private readonly OcppMessageHandler _handler;
     private readonly OcppV16MessageParser _parser = new();
 
@@ -35,8 +39,8 @@ public class OcppMessageHandlerTests
     {
         _ocppService = Substitute.For<IOcppService>();
         _notifier = Substitute.For<IMonitoringNotifier>();
+        _remoteCommandService = new FakeOcppRemoteCommandService();
 
-        var connectionManager = new OcppConnectionManager(NullLogger<OcppConnectionManager>.Instance);
         var rawEventRepo = Substitute.For<IRepository<OcppRawEvent, Guid>>();
         var guidGenerator = Substitute.For<IGuidGenerator>();
         guidGenerator.Create().Returns(_ => Guid.NewGuid());
@@ -51,18 +55,40 @@ public class OcppMessageHandlerTests
         var auditLogger = Substitute.For<IAuditEventLogger>();
         var settingProvider = Substitute.For<ISettingProvider>();
 
+        var scopeFactory = Substitute.For<IServiceScopeFactory>();
+
+        // Create individual action handlers
+        var handlers = new IOcppActionHandler[]
+        {
+            new BootNotificationHandler(
+                NullLogger<BootNotificationHandler>.Instance, _ocppService, _notifier,
+                vendorFactory, auditLogger, settingProvider),
+            new HeartbeatHandler(
+                NullLogger<HeartbeatHandler>.Instance, _ocppService, vendorFactory),
+            new StatusNotificationHandler(
+                NullLogger<StatusNotificationHandler>.Instance, _ocppService, _notifier),
+            new StartTransactionHandler(
+                NullLogger<StartTransactionHandler>.Instance, _ocppService, _notifier,
+                auditLogger, scopeFactory),
+            new StopTransactionHandler(
+                NullLogger<StopTransactionHandler>.Instance, _ocppService, _notifier,
+                vendorFactory, auditLogger, scopeFactory),
+            new MeterValuesHandler(
+                NullLogger<MeterValuesHandler>.Instance, _ocppService, _notifier,
+                vendorFactory, _remoteCommandService),
+            new AuthorizeHandler(
+                NullLogger<AuthorizeHandler>.Instance, _ocppService),
+            new DataTransferHandler(
+                NullLogger<DataTransferHandler>.Instance),
+        };
+
         _handler = new OcppMessageHandler(
             NullLogger<OcppMessageHandler>.Instance,
-            connectionManager,
-            _ocppService,
-            _notifier,
-            vendorFactory,
+            parserFactory,
             rawEventRepo,
             guidGenerator,
-            parserFactory,
-            auditLogger,
-            settingProvider,
-            powerBalancingService: null);
+            _ocppService,
+            handlers);
     }
 
     private static OcppConnection CreateConnection(string chargePointId = "TEST-001")
@@ -233,7 +259,7 @@ public class OcppMessageHandlerTests
         var sessionId = Guid.NewGuid();
         var stationId = Guid.NewGuid();
         _ocppService.HandleStopTransactionAsync(Arg.Is(12345), Arg.Is(11000), Arg.Any<string?>())
-            .Returns(new StopTransactionResult(sessionId, stationId, 1, 10m, 35000m));
+            .Returns(new StopTransactionResult(sessionId, Guid.NewGuid(), stationId, 1, 10m, 35000m));
 
         var message = """[2,"stop1","StopTransaction",{"transactionId":12345,"meterStop":11000,"reason":"EVDisconnected","timestamp":"2026-03-08T11:00:00Z"}]""";
         var connection = CreateConnection();
@@ -310,6 +336,61 @@ public class OcppMessageHandlerTests
         // Should return empty CallResult without errors
         var parsed = JsonSerializer.Deserialize<JsonElement[]>(response!);
         parsed![0].GetInt32().ShouldBe(OcppMessageType.CallResult);
+    }
+
+    [Fact]
+    public async Task MeterValues_SoC100_Should_Send_RemoteStopTransaction()
+    {
+        // Arrange — charger reports SoC = 100% (battery full)
+        var sessionId = Guid.NewGuid();
+        var stationId = Guid.NewGuid();
+        _ocppService.HandleMeterValuesAsync(
+                "TEST-001", 1, 12345,
+                Arg.Any<decimal>(), Arg.Any<string>(),
+                Arg.Any<decimal?>(), Arg.Any<decimal?>(), Arg.Any<decimal?>(), Arg.Any<decimal?>())
+            .Returns(new MeterValuesResult(sessionId, stationId, 1, 39.5m, 158000m, 0m, 100m));
+
+        var message = """[2,"mv-full","MeterValues",{"connectorId":1,"transactionId":12345,"meterValue":[{"timestamp":"2026-04-06T12:00:00Z","sampledValue":[{"value":"40000","measurand":"Energy.Active.Import.Register","unit":"Wh"},{"value":"0","measurand":"Power.Active.Import","unit":"W"},{"value":"100","measurand":"SoC"}]}]}]""";
+        var connection = CreateConnection();
+
+        // Act
+        var response = await _handler.HandleMessageAsync(connection, message);
+
+        // Assert — CallResult returned immediately (RemoteStop is fire-and-forget)
+        response.ShouldNotBeNull();
+        var parsed = JsonSerializer.Deserialize<JsonElement[]>(response!);
+        parsed![0].GetInt32().ShouldBe(OcppMessageType.CallResult);
+
+        // Wait for the background Task.Run (200ms delay + execution time)
+        await Task.Delay(500);
+
+        // Assert — RemoteStopTransaction sent for transaction 12345 on station TEST-001
+        _remoteCommandService.RemoteStopCalls.Count.ShouldBe(1);
+        _remoteCommandService.RemoteStopCalls[0].StationCode.ShouldBe("TEST-001");
+        _remoteCommandService.RemoteStopCalls[0].TransactionId.ShouldBe(12345);
+    }
+
+    [Fact]
+    public async Task MeterValues_SocBelow100_Should_Not_Send_RemoteStopTransaction()
+    {
+        // Arrange — SoC = 95%, not yet full
+        var sessionId = Guid.NewGuid();
+        var stationId = Guid.NewGuid();
+        _ocppService.HandleMeterValuesAsync(
+                "TEST-001", 1, 12345,
+                Arg.Any<decimal>(), Arg.Any<string>(),
+                Arg.Any<decimal?>(), Arg.Any<decimal?>(), Arg.Any<decimal?>(), Arg.Any<decimal?>())
+            .Returns(new MeterValuesResult(sessionId, stationId, 1, 38m, 152000m, 5m, 95m));
+
+        var message = """[2,"mv-partial","MeterValues",{"connectorId":1,"transactionId":12345,"meterValue":[{"timestamp":"2026-04-06T11:00:00Z","sampledValue":[{"value":"38000","measurand":"Energy.Active.Import.Register","unit":"Wh"},{"value":"5000","measurand":"Power.Active.Import","unit":"W"},{"value":"95","measurand":"SoC"}]}]}]""";
+        var connection = CreateConnection();
+
+        // Act
+        await _handler.HandleMessageAsync(connection, message);
+        await Task.Delay(500); // ensure no background task fires
+
+        // Assert — no RemoteStopTransaction for partial charge
+        _remoteCommandService.RemoteStopCalls.Count.ShouldBe(0);
     }
 
     #endregion

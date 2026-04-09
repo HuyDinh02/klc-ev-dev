@@ -12,6 +12,16 @@ public class OcppV16MessageParser : IOcppMessageParser
 {
     public OcppProtocolVersion Version => OcppProtocolVersion.Ocpp16J;
 
+    /// <summary>
+    /// JSON options for OCPP responses: omit null optional fields.
+    /// Some chargers (e.g., ChargeCore B0207) report "data mismatch" when
+    /// optional fields like expiryDate/parentIdTag are present as null.
+    /// </summary>
+    private static readonly JsonSerializerOptions ResponseOptions = new()
+    {
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+    };
+
     public ParsedOcppMessage? Parse(string rawMessage)
     {
         var jsonArray = JsonSerializer.Deserialize<JsonElement[]>(rawMessage);
@@ -50,18 +60,18 @@ public class OcppV16MessageParser : IOcppMessageParser
     public string SerializeCallResult(string uniqueId, object payload)
     {
         var response = new object[] { OcppMessageType.CallResult, uniqueId, payload };
-        return JsonSerializer.Serialize(response);
+        return JsonSerializer.Serialize(response, ResponseOptions);
     }
 
     public string SerializeCallError(string uniqueId, string errorCode, string errorDescription)
     {
         var response = new object[] { OcppMessageType.CallError, uniqueId, errorCode, errorDescription, new { } };
-        return JsonSerializer.Serialize(response);
+        return JsonSerializer.Serialize(response, ResponseOptions);
     }
 
     public string SerializeCall(string uniqueId, string action, object payload)
     {
         var message = new object[] { OcppMessageType.Call, uniqueId, action, payload };
-        return JsonSerializer.Serialize(message);
+        return JsonSerializer.Serialize(message, ResponseOptions);
     }
 }

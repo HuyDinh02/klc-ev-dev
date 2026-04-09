@@ -34,7 +34,7 @@ public class VehicleBffService : IVehicleBffService
 
     public async Task<List<VehicleDto>> GetVehiclesAsync(Guid userId)
     {
-        var cacheKey = $"user:{userId}:vehicles";
+        var cacheKey = CacheKeys.UserVehicles(userId);
 
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
@@ -85,7 +85,7 @@ public class VehicleBffService : IVehicleBffService
 
     public async Task<VehicleDto?> GetDefaultVehicleAsync(Guid userId)
     {
-        var cacheKey = $"user:{userId}:default-vehicle";
+        var cacheKey = CacheKeys.UserDefaultVehicle(userId);
 
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
@@ -228,8 +228,8 @@ public class VehicleBffService : IVehicleBffService
 
     private async Task InvalidateVehicleCache(Guid userId)
     {
-        await _cache.RemoveAsync($"user:{userId}:vehicles");
-        await _cache.RemoveAsync($"user:{userId}:default-vehicle");
+        await _cache.RemoveAsync(CacheKeys.UserVehicles(userId));
+        await _cache.RemoveAsync(CacheKeys.UserDefaultVehicle(userId));
     }
 }
 

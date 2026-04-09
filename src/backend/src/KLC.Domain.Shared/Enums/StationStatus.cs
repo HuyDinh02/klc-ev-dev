@@ -2,7 +2,13 @@ namespace KLC.Enums;
 
 /// <summary>
 /// Represents the operational status of a charging station.
-/// Simplified to 4 states — connector-level detail comes from ConnectorStatus.
+///
+/// Lifecycle:
+///   Created → Offline → Online (automatic via OCPP)
+///   Admin Disable → Disabled (no charging, can re-enable)
+///   Admin Delete → IsDeleted=true (soft delete, data preserved)
+///
+/// Only 3 active states. Deletion uses ABP ISoftDelete, not a status.
 /// </summary>
 public enum StationStatus
 {
@@ -25,8 +31,8 @@ public enum StationStatus
     Disabled = 2,
 
     /// <summary>
-    /// Station has been decommissioned and retired from service.
-    /// Terminal state — cannot be re-enabled.
+    /// [Deprecated] Use Disabled + soft-delete instead.
+    /// Kept for backward compatibility with existing DB records.
     /// </summary>
     Decommissioned = 3
 }
