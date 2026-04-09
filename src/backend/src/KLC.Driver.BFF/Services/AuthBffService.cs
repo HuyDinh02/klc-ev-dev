@@ -385,8 +385,10 @@ public class AuthBffService : IAuthBffService
             throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.Auth.InvalidCredentials);
         }
 
-        var token = await _userManager.GeneratePasswordResetTokenAsync(identityUser);
-        var result = await _userManager.ResetPasswordAsync(identityUser, token, request.NewPassword);
+        // BFF doesn't have full ASP.NET Identity token providers registered,
+        // so use RemovePassword + AddPassword instead of GeneratePasswordResetToken/ResetPassword.
+        await _userManager.RemovePasswordAsync(identityUser);
+        var result = await _userManager.AddPasswordAsync(identityUser, request.NewPassword);
 
         if (!result.Succeeded)
         {
@@ -436,8 +438,11 @@ public class AuthBffService : IAuthBffService
         if (identityUser == null)
             throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.Auth.InvalidCredentials);
 
-        var token = await _userManager.GeneratePasswordResetTokenAsync(identityUser);
-        var result = await _userManager.ResetPasswordAsync(identityUser, token, request.NewPassword);
+        // BFF doesn't have full ASP.NET Identity token providers registered,
+        // so we can't use GeneratePasswordResetTokenAsync/ResetPasswordAsync.
+        // Instead, remove + add password directly (Firebase token already proves identity).
+        await _userManager.RemovePasswordAsync(identityUser);
+        var result = await _userManager.AddPasswordAsync(identityUser, request.NewPassword);
 
         if (!result.Succeeded)
         {
