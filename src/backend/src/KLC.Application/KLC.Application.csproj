@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <PackageReference Include="FirebaseAdmin" Version="3.3.0" />
+    <PackageReference Include="AWSSDK.S3" Version="3.7.405.7" />
     <PackageReference Include="Google.Cloud.Storage.V1" Version="4.11.0" />
     <PackageReference Include="Volo.Abp.Account.Application" Version="10.1.0" />
     <PackageReference Include="Volo.Abp.Identity.Application" Version="10.1.0" />

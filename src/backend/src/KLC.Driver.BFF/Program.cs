@@ -127,7 +127,21 @@ builder.Services.AddScoped<IFeedbackBffService, FeedbackBffService>();
 // Default: "Log" — OTP logged to Cloud Logging (dev/testing mode)
 builder.Services.AddTransient<KLC.Notifications.ISmsService, KLC.Notifications.SmsService>();
 builder.Services.AddTransient<KLC.Notifications.IPushNotificationService, KLC.Notifications.FirebasePushNotificationService>();
-builder.Services.AddTransient<KLC.Files.IFileUploadService, KLC.Files.GcsFileUploadService>();
+// File storage provider — configurable per environment (GCS, S3, or local)
+builder.Services.Configure<KLC.Configuration.FileStorageSettings>(builder.Configuration.GetSection("FileStorage"));
+var fileProvider = builder.Configuration["FileStorage:Provider"]?.ToLowerInvariant() ?? "gcs";
+switch (fileProvider)
+{
+    case "s3":
+        builder.Services.AddTransient<KLC.Files.IFileUploadService, KLC.Files.S3FileUploadService>();
+        break;
+    case "local":
+        builder.Services.AddTransient<KLC.Files.IFileUploadService, KLC.Files.LocalFileUploadService>();
+        break;
+    default:
+        builder.Services.AddTransient<KLC.Files.IFileUploadService, KLC.Files.GcsFileUploadService>();
+        break;
+}
 builder.Services.AddTransient<KLC.Auditing.IAuditEventLogger, KLC.Auditing.AuditEventLogger>();
 
 // Add SignalR for real-time updates

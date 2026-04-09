@@ -305,6 +305,22 @@ public class KLCHttpApiHostModule : AbpModule
         foreach (var profileType in vendorProfileTypes)
             context.Services.AddSingleton(typeof(IVendorProfile), profileType);
         context.Services.AddSingleton<VendorProfileFactory>();
+
+        // File storage provider — configurable per environment (GCS, S3, or local)
+        var fileStorageProvider = context.Services.GetConfiguration()["FileStorage:Provider"]?.ToLowerInvariant() ?? "gcs";
+        context.Services.Configure<KLC.Configuration.FileStorageSettings>(context.Services.GetConfiguration().GetSection("FileStorage"));
+        switch (fileStorageProvider)
+        {
+            case "s3":
+                context.Services.AddTransient<KLC.Files.IFileUploadService, KLC.Files.S3FileUploadService>();
+                break;
+            case "local":
+                context.Services.AddTransient<KLC.Files.IFileUploadService, KLC.Files.LocalFileUploadService>();
+                break;
+            default: // "gcs"
+                context.Services.AddTransient<KLC.Files.IFileUploadService, KLC.Files.GcsFileUploadService>();
+                break;
+        }
     }
 
     private void ConfigureSignalR(ServiceConfigurationContext context)
