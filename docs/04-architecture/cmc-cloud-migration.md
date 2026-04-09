@@ -418,41 +418,35 @@ No data migration needed — Redis is used as cache + pub/sub. Data rebuilds aut
 
 ### 4.1 GCS → CMC S3
 
+**ALREADY IMPLEMENTED** — Cloud-agnostic file storage provider system.
+
+Three providers available (config-driven, no code change):
+- `GcsFileUploadService` — Google Cloud Storage (default)
+- `S3FileUploadService` — S3-compatible (CMC Cloud, AWS, MinIO)
+- `LocalFileUploadService` — Local filesystem (development)
+
+**To switch to CMC S3, change config only:**
+```json
+{
+  "FileStorage": {
+    "Provider": "s3",
+    "S3Endpoint": "https://s3.cmccloud.vn",
+    "S3Bucket": "klc-ev-charging-uploads",
+    "S3AccessKey": "<CMC_S3_ACCESS_KEY>",
+    "S3SecretKey": "<CMC_S3_SECRET_KEY>",
+    "S3Region": "ap-southeast-1"
+  }
+}
+```
+
 **Data migration:**
 ```bash
 # Sync files from GCS to CMC S3
 gsutil ls gs://klc-ev-charging-uploads/
-# For each prefix: avatars/, stations/, promotions/
 gsutil -m cp -r gs://klc-ev-charging-uploads/* s3://klc-ev-charging-uploads/
 ```
 
-**Code change required:**
-
-Current: `GcsFileUploadService` uses Google Cloud Storage SDK
-Target: S3-compatible client (CMC S3 uses standard S3 API)
-
-**File:** `src/backend/src/KLC.Application/Files/GcsFileUploadService.cs`
-
-Replace with S3 implementation using `AWSSDK.S3`:
-```csharp
-// Change from:
-using Google.Cloud.Storage.V1;
-// To:
-using Amazon.S3;
-using Amazon.S3.Transfer;
-```
-
-**New config:**
-```json
-{
-  "S3": {
-    "ServiceUrl": "https://s3.cmccloud.vn",
-    "BucketName": "klc-ev-charging-uploads",
-    "AccessKey": "<CMC_S3_ACCESS_KEY>",
-    "SecretKey": "<CMC_S3_SECRET_KEY>",
-    "Region": "ap-southeast-1"
-  }
-}
+**No code changes required.** The provider is selected at startup based on `FileStorage:Provider` config.
 ```
 
 ---
