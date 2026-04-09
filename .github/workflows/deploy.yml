@@ -78,6 +78,29 @@ jobs:
         run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
 
       # -----------------------------------------------------------------------
+      # Summary: what will be built and deployed
+      # -----------------------------------------------------------------------
+      - name: Deploy summary
+        run: |
+          echo "### Deploy Summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Changed | Action |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|---------|--------|" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.changes.outputs.backend }}" = "true" ]; then
+            echo "| Backend API | ✅ | Build + Deploy |" >> $GITHUB_STEP_SUMMARY
+            echo "| OCPP Gateway | ✅ | Deploy (same image) |" >> $GITHUB_STEP_SUMMARY
+            echo "| Driver BFF | ✅ | Build + Deploy |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Backend API | — | Skipped |" >> $GITHUB_STEP_SUMMARY
+            echo "| OCPP Gateway | — | Skipped |" >> $GITHUB_STEP_SUMMARY
+            echo "| Driver BFF | — | Skipped |" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "${{ needs.changes.outputs.admin-portal }}" = "true" ]; then
+            echo "| Admin Portal | ✅ | Build + Deploy |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Admin Portal | — | Skipped |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      # -----------------------------------------------------------------------
       # Build Docker images (only changed components)
       # -----------------------------------------------------------------------
 
