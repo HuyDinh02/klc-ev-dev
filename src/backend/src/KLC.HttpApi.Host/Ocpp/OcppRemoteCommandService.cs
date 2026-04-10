@@ -333,6 +333,15 @@ public class OcppRemoteCommandService : IOcppRemoteCommandService
         return await SendCommandAsync(stationCode, "CancelReservation", new { reservationId });
     }
 
+    public async Task<RemoteCommandResult> SendDataTransferAsync(string stationCode, string vendorId, string? messageId, string? data)
+    {
+        var payload = new Dictionary<string, object> { ["vendorId"] = vendorId };
+        if (messageId != null) payload["messageId"] = messageId;
+        if (data != null) payload["data"] = data;
+
+        return await SendCommandAsync(stationCode, "DataTransfer", payload);
+    }
+
     private async Task<RemoteCommandResult> SendCommandAsync(string stationCode, string action, object payload)
     {
         var connection = _connectionManager.GetConnection(stationCode);

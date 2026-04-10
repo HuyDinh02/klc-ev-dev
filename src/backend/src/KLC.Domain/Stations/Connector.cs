@@ -47,6 +47,12 @@ public class Connector : FullAuditedEntity<Guid>
     public MeteringClass MeteringClass { get; private set; }
 
     /// <summary>
+    /// QR code data text for this connector (e.g., "251401000004-01").
+    /// Sent to the charger via OCPP DataTransfer.
+    /// </summary>
+    public string? QrCodeData { get; private set; }
+
+    /// <summary>
     /// Navigation property to parent station.
     /// </summary>
     public ChargingStation? Station { get; private set; }
@@ -102,5 +108,10 @@ public class Connector : FullAuditedEntity<Guid>
     public void SetMeteringClass(MeteringClass meteringClass)
     {
         MeteringClass = meteringClass;
+    }
+
+    public void SetQrCodeData(string? data)
+    {
+        QrCodeData = data;
     }
 }

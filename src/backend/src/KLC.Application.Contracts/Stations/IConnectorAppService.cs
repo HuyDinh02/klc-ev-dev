@@ -44,4 +44,9 @@ public interface IConnectorAppService : IApplicationService
     /// Deletes a connector.
     /// </summary>
     Task DeleteAsync(Guid id);
+
+    /// <summary>
+    /// Sets QR code data on a connector.
+    /// </summary>
+    Task<ConnectorDto> SetQrCodeAsync(Guid stationId, int connectorNumber, SetConnectorQrCodeDto input);
 }

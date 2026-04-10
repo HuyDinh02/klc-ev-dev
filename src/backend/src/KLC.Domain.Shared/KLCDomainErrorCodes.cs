@@ -17,6 +17,7 @@ public static class KLCDomainErrorCodes
     public static class Connector
     {
         public const string StationNotFound = "KLC:Connector:StationNotFound";
+        public const string NotFound = "KLC:Connector:NotFound";
         public const string DuplicateNumber = "KLC:Connector:DuplicateNumber";
         public const string MaxPowerInvalid = "KLC:Connector:MaxPowerInvalid";
     }

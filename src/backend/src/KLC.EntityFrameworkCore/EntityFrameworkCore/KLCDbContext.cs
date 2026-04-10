@@ -220,6 +220,7 @@ public static class KLCDbContextModelCreatingExtensions
             b.ConfigureByConvention();
 
             b.Property(x => x.MaxPowerKw).HasPrecision(10, 2);
+            b.Property(x => x.QrCodeData).HasMaxLength(500);
 
             b.HasIndex(x => new { x.StationId, x.ConnectorNumber }).IsUnique();
             b.HasIndex(x => x.Status);

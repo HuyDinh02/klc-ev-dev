@@ -124,6 +124,11 @@ public interface IOcppRemoteCommandService
     /// Send CancelReservation to cancel an existing reservation on a Charge Point.
     /// </summary>
     Task<RemoteCommandResult> SendCancelReservationAsync(string stationCode, int reservationId);
+
+    /// <summary>
+    /// Send DataTransfer to a Charge Point with vendor-specific data.
+    /// </summary>
+    Task<RemoteCommandResult> SendDataTransferAsync(string stationCode, string vendorId, string? messageId, string? data);
 }
 
 /// <summary>

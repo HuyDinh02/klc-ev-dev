@@ -36,6 +36,9 @@ import {
   Umbrella,
   ShieldCheck,
   X,
+  QrCode,
+  Send,
+  Save,
 } from "lucide-react";
 
 const ConnectorTypeLabels: Record<number | string, string> = {
@@ -69,6 +72,7 @@ export default function StationDetailPage() {
   const [showAddConnector, setShowAddConnector] = useState(false);
   const [newConnector, setNewConnector] = useState({ connectorNumber: 1, connectorType: 0, maxPowerKw: 22 });
   const [showAddAmenity, setShowAddAmenity] = useState(false);
+  const [qrEditConnector, setQrEditConnector] = useState<{ connectorNumber: number; qrCodeData: string } | null>(null);
 
   const { data: station, isLoading } = useQuery({
     queryKey: ["station", id],
@@ -157,6 +161,15 @@ export default function StationDetailPage() {
   const deleteConnectorMutation = useMutation({
     mutationFn: (connId: string) => connectorsApi.delete(connId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["station", id] }),
+  });
+
+  const setQrCodeMutation = useMutation({
+    mutationFn: ({ connectorNumber, qrCodeData, sendToCharger }: { connectorNumber: number; qrCodeData: string | null; sendToCharger: boolean }) =>
+      connectorsApi.setQrCode(id, connectorNumber, { qrCodeData, sendToCharger }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["station", id] });
+      setQrEditConnector(null);
+    },
   });
 
   if (!hasAccess) return <AccessDenied />;
@@ -338,11 +351,12 @@ export default function StationDetailPage() {
                       <th className="px-4 py-3 text-left text-sm font-medium">{t("stations.maxPowerShort")}</th>
                       <th className="px-4 py-3 text-left text-sm font-medium">{t("common.status")}</th>
                       <th className="px-4 py-3 text-left text-sm font-medium">{t("stations.connectorEnabled")}</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">QR Code</th>
                       <th className="px-4 py-3 text-left text-sm font-medium">{t("common.actions")}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {connectors.map((conn: { id: string; connectorNumber: number; connectorType: number | string; maxPowerKw: number; status: number | string; isEnabled: boolean }) => (
+                    {connectors.map((conn: { id: string; connectorNumber: number; connectorType: number | string; maxPowerKw: number; status: number | string; isEnabled: boolean; qrCodeData?: string | null }) => (
                       <tr key={conn.id} className="border-b hover:bg-muted/50">
                         <td className="px-4 py-3 font-medium">#{conn.connectorNumber}</td>
                         <td className="px-4 py-3">{ConnectorTypeLabels[conn.connectorType] || conn.connectorType}</td>
@@ -350,7 +364,22 @@ export default function StationDetailPage() {
                         <td className="px-4 py-3"><StatusBadge type="connector" value={typeof conn.status === "number" ? conn.status : 0} /></td>
                         <td className="px-4 py-3"><Badge variant={conn.isEnabled ? "success" : "secondary"}>{conn.isEnabled ? t("stations.yes") : t("stations.no")}</Badge></td>
                         <td className="px-4 py-3">
+                          {conn.qrCodeData ? (
+                            <span className="font-mono text-xs bg-muted px-2 py-1 rounded">{conn.qrCodeData}</span>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">--</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
                           <div className="flex gap-1">
+                            {canUpdate && (
+                              <Button variant="ghost" size="sm" title="Edit QR Code" onClick={() => setQrEditConnector({
+                                connectorNumber: conn.connectorNumber,
+                                qrCodeData: conn.qrCodeData || `${station.stationCode}-${String(conn.connectorNumber).padStart(2, "0")}`,
+                              })}>
+                                <QrCode className="h-4 w-4" />
+                              </Button>
+                            )}
                             {canToggleConnector && (conn.isEnabled ? (
                               <Button variant="ghost" size="sm" onClick={() => disableConnectorMutation.mutate(conn.id)}>
                                 <PowerOff className="h-4 w-4" />
@@ -371,6 +400,67 @@ export default function StationDetailPage() {
                     ))}
                   </tbody>
                 </table>
+
+                {/* QR Code Edit Dialog */}
+                {qrEditConnector && (
+                  <div className="mt-4 rounded-lg border p-4 bg-muted/30">
+                    <h4 className="font-medium mb-3 flex items-center gap-2">
+                      <QrCode className="h-4 w-4" />
+                      Set QR Code - Connector #{qrEditConnector.connectorNumber}
+                    </h4>
+                    <div className="flex gap-3 items-end">
+                      <div className="flex-1">
+                        <label className="text-sm font-medium">QR Code Data</label>
+                        <input
+                          type="text"
+                          value={qrEditConnector.qrCodeData}
+                          onChange={(e) => setQrEditConnector({ ...qrEditConnector, qrCodeData: e.target.value })}
+                          className="mt-1 w-full rounded-md border px-3 py-2 font-mono text-sm"
+                          placeholder="e.g., 251401000004-01"
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setQrEditConnector({
+                          ...qrEditConnector,
+                          qrCodeData: `${station.stationCode}-${String(qrEditConnector.connectorNumber).padStart(2, "0")}`,
+                        })}
+                      >
+                        Generate Default
+                      </Button>
+                    </div>
+                    <div className="mt-3 flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setQrCodeMutation.mutate({
+                          connectorNumber: qrEditConnector.connectorNumber,
+                          qrCodeData: qrEditConnector.qrCodeData || null,
+                          sendToCharger: false,
+                        })}
+                        disabled={setQrCodeMutation.isPending}
+                      >
+                        <Save className="mr-2 h-4 w-4" /> Save
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => setQrCodeMutation.mutate({
+                          connectorNumber: qrEditConnector.connectorNumber,
+                          qrCodeData: qrEditConnector.qrCodeData || null,
+                          sendToCharger: true,
+                        })}
+                        disabled={setQrCodeMutation.isPending}
+                      >
+                        <Send className="mr-2 h-4 w-4" /> Save & Send to Charger
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setQrEditConnector(null)}>{t("common.cancel")}</Button>
+                    </div>
+                    {setQrCodeMutation.isError && (
+                      <p className="mt-2 text-sm text-red-500">Failed to set QR code. Please try again.</p>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <p className="text-sm text-muted-foreground text-center py-4">{t("stations.noConnectors")}</p>
