@@ -12,7 +12,7 @@ import { useTranslation } from "@/lib/i18n";
 import { useRequirePermission } from "@/lib/use-permission";
 import { AccessDenied } from "@/components/ui/access-denied";
 import { ArrowLeft } from "lucide-react";
-import { StationPhotoUpload } from "@/components/stations";
+import { StationPhotoUpload, LocationPicker } from "@/components/stations";
 import type { PhotoItem } from "@/components/stations";
 
 export default function EditStationPage() {
@@ -219,6 +219,12 @@ export default function EditStationPage() {
                   />
                 </div>
               </div>
+
+              <LocationPicker
+                latitude={formData.latitude}
+                longitude={formData.longitude}
+                onLocationChange={(lat, lng) => setFormData({ ...formData, latitude: lat, longitude: lng })}
+              />
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
