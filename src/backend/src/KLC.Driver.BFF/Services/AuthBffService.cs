@@ -390,14 +390,21 @@ public class AuthBffService : IAuthBffService
             throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.Auth.InvalidCredentials);
         }
 
-        var token = await _userManager.GeneratePasswordResetTokenAsync(identityUser);
-        var result = await _userManager.ResetPasswordAsync(identityUser, token, request.NewPassword);
-
-        if (!result.Succeeded)
+        // BFF can't use GeneratePasswordResetTokenAsync (ABP token provider not registered).
+        // Hash directly + clear EF tracker so next FindByIdAsync gets fresh data.
+        var validators = _userManager.PasswordValidators;
+        foreach (var validator in validators)
         {
-            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-            throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.PasswordResetFailed, errors);
+            var vr = await validator.ValidateAsync(_userManager, identityUser, request.NewPassword);
+            if (!vr.Succeeded)
+                throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.PasswordResetFailed,
+                    string.Join(", ", vr.Errors.Select(e => e.Description)));
         }
+
+        var newHash = _userManager.PasswordHasher.HashPassword(identityUser, request.NewPassword);
+        await _dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"UPDATE \"AbpUsers\" SET \"PasswordHash\" = {newHash} WHERE \"Id\" = {identityUser.Id}");
+        _dbContext.ChangeTracker.Clear(); // Invalidate cached entities
 
         await _redis.KeyDeleteAsync($"otp:reset:{request.PhoneNumber}");
     }
@@ -442,15 +449,24 @@ public class AuthBffService : IAuthBffService
         if (identityUser == null)
             throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.Auth.InvalidCredentials);
 
-        var token = await _userManager.GeneratePasswordResetTokenAsync(identityUser);
-        var result = await _userManager.ResetPasswordAsync(identityUser, token, request.NewPassword);
-
-        if (!result.Succeeded)
+        // BFF can't use GeneratePasswordResetTokenAsync (ABP token provider not registered).
+        // Hash directly + clear EF tracker so next FindByIdAsync gets fresh data.
+        var validators = _userManager.PasswordValidators;
+        foreach (var validator in validators)
         {
-            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-            _logger.LogWarning("Password reset failed for {Phone}: {Errors}", localPhone, errors);
-            throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.PasswordResetFailed, errors);
+            var vr = await validator.ValidateAsync(_userManager, identityUser, request.NewPassword);
+            if (!vr.Succeeded)
+            {
+                var errors = string.Join(", ", vr.Errors.Select(e => e.Description));
+                _logger.LogWarning("Password reset failed for {Phone}: {Errors}", localPhone, errors);
+                throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.PasswordResetFailed, errors);
+            }
         }
+
+        var newHash = _userManager.PasswordHasher.HashPassword(identityUser, request.NewPassword);
+        await _dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"UPDATE \"AbpUsers\" SET \"PasswordHash\" = {newHash} WHERE \"Id\" = {identityUser.Id}");
+        _dbContext.ChangeTracker.Clear();
 
         _logger.LogInformation("Password reset successful via Firebase for {Phone}", localPhone);
     }

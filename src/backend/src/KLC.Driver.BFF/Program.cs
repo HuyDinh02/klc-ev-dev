@@ -100,17 +100,6 @@ if (FirebaseAdmin.FirebaseApp.DefaultInstance == null)
     }
 }
 
-// Register default token provider for ASP.NET Identity (required for password reset)
-// NOTE: Don't use AddIdentityCore — it overrides ABP's IdentityUserManager registration.
-// Instead, configure the token provider directly on ABP's existing Identity setup.
-builder.Services.AddDataProtection();
-builder.Services.Configure<Microsoft.AspNetCore.Identity.IdentityOptions>(options =>
-{
-    options.Tokens.PasswordResetTokenProvider = Microsoft.AspNetCore.Identity.TokenOptions.DefaultProvider;
-});
-builder.Services.AddTransient<Microsoft.AspNetCore.Identity.IUserTwoFactorTokenProvider<Volo.Abp.Identity.IdentityUser>,
-    Microsoft.AspNetCore.Identity.DataProtectorTokenProvider<Volo.Abp.Identity.IdentityUser>>();
-
 // Typed configuration (Options Pattern)
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection(JwtSettings.Section));
 builder.Services.Configure<VnPaySettings>(builder.Configuration.GetSection(VnPaySettings.Section));
