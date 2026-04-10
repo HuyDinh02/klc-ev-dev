@@ -1,4 +1,5 @@
 using KLC.EntityFrameworkCore;
+using KLC.Marketing;
 using Microsoft.EntityFrameworkCore;
 
 namespace KLC.Driver.Services;
@@ -102,5 +103,103 @@ public class PromotionBffService : IPromotionBffService
                 IsActive = promotion.IsCurrentlyActive()
             };
         }, TimeSpan.FromMinutes(10));
+    }
+
+    public async Task<ClaimVoucherResultDto> ClaimVoucherFromPromotionAsync(Guid userId, Guid promotionId)
+    {
+        // 1. Find the promotion (must be active)
+        var promotion = await _dbContext.Promotions
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == promotionId && !p.IsDeleted);
+
+        if (promotion == null || !promotion.IsCurrentlyActive())
+        {
+            return new ClaimVoucherResultDto
+            {
+                Success = false,
+                Error = "Promotion not found or not active"
+            };
+        }
+
+        // 2. Get voucher IDs already claimed by this user for this promotion
+        var claimedVoucherIds = await _dbContext.UserVouchers
+            .AsNoTracking()
+            .Where(uv => uv.UserId == userId)
+            .Select(uv => uv.VoucherId)
+            .ToListAsync();
+
+        // 3. Find an available voucher linked to this promotion (not claimed by user, has stock)
+        var now = DateTime.UtcNow;
+        var voucher = await _dbContext.Vouchers
+            .FirstOrDefaultAsync(v =>
+                v.PromotionId == promotionId
+                && v.IsActive
+                && !v.IsDeleted
+                && v.ExpiryDate > now
+                && v.UsedQuantity < v.TotalQuantity
+                && !claimedVoucherIds.Contains(v.Id));
+
+        if (voucher == null)
+        {
+            return new ClaimVoucherResultDto
+            {
+                Success = false,
+                Error = "No available vouchers for this promotion"
+            };
+        }
+
+        // 4. Create a UserVoucher record (claimed but not used yet)
+        var userVoucher = new UserVoucher(Guid.NewGuid(), userId, voucher.Id);
+        await _dbContext.UserVouchers.AddAsync(userVoucher);
+        await _dbContext.SaveChangesAsync();
+
+        // Invalidate user voucher cache
+        await _cache.RemoveAsync(CacheKeys.UserAvailableVouchers(userId));
+
+        _logger.LogInformation(
+            "User {UserId} claimed voucher {VoucherCode} from promotion {PromotionId}",
+            userId, voucher.Code, promotionId);
+
+        return new ClaimVoucherResultDto
+        {
+            Success = true,
+            VoucherCode = voucher.Code,
+            VoucherId = voucher.Id
+        };
+    }
+
+    public async Task<List<PromotionVoucherDto>> GetPromotionVouchersAsync(Guid promotionId)
+    {
+        var cacheKey = $"promotion:{promotionId}:vouchers";
+
+        return await _cache.GetOrSetAsync(cacheKey, async () =>
+        {
+            var now = DateTime.UtcNow;
+
+            var vouchers = await _dbContext.Vouchers
+                .AsNoTracking()
+                .Where(v =>
+                    v.PromotionId == promotionId
+                    && v.IsActive
+                    && !v.IsDeleted
+                    && v.ExpiryDate > now
+                    && v.UsedQuantity < v.TotalQuantity)
+                .OrderBy(v => v.ExpiryDate)
+                .Select(v => new PromotionVoucherDto
+                {
+                    Id = v.Id,
+                    Code = v.Code,
+                    Type = v.Type,
+                    Value = v.Value,
+                    MinOrderAmount = v.MinOrderAmount,
+                    MaxDiscountAmount = v.MaxDiscountAmount,
+                    ExpiryDate = v.ExpiryDate,
+                    Description = v.Description,
+                    RemainingQuantity = v.TotalQuantity - v.UsedQuantity
+                })
+                .ToListAsync();
+
+            return vouchers;
+        }, TimeSpan.FromMinutes(5)) ?? new List<PromotionVoucherDto>();
     }
 }

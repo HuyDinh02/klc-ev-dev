@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using KLC.Marketing;
 using KLC.MobileUsers;
@@ -65,6 +66,22 @@ public class VoucherAdminController : KLCController
     public async Task<ActionResult<VoucherUsageResultDto>> GetVoucherUsageAsync(Guid id)
     {
         var result = await _voucherAppService.GetUsageAsync(id);
+        return Ok(result);
+    }
+
+    [HttpPost("bulk")]
+    [Authorize(KLCPermissions.Vouchers.Create)]
+    public async Task<ActionResult<BulkCreateVoucherResultDto>> BulkCreateVouchersAsync(
+        [FromBody] BulkCreateVoucherDto input)
+    {
+        var result = await _voucherAppService.BulkCreateAsync(input);
+        return Ok(result);
+    }
+
+    [HttpGet("export")]
+    public async Task<ActionResult<List<ExportVoucherDto>>> ExportVouchersAsync()
+    {
+        var result = await _voucherAppService.ExportAsync();
         return Ok(result);
     }
 }

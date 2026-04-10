@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using KLC.Driver.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -50,5 +51,42 @@ public static class PromotionEndpoints
         .WithSummary("Get promotion details")
         .Produces<object>(200)
         .Produces(404);
+
+        // POST /api/v1/promotions/{id}/claim
+        group.MapPost("/{id:guid}/claim", async (
+            Guid id,
+            ClaimsPrincipal user,
+            IPromotionBffService promotionService) =>
+        {
+            var userId = GetUserId(user);
+            var result = await promotionService.ClaimVoucherFromPromotionAsync(userId, id);
+
+            return result.Success
+                ? Results.Ok(new { data = result })
+                : Results.BadRequest(new { error = new { code = "CLAIM_FAILED", message = result.Error } });
+        })
+        .WithName("ClaimVoucherFromPromotion")
+        .WithSummary("Claim a voucher from a promotion")
+        .Produces<object>(200)
+        .Produces(400);
+
+        // GET /api/v1/promotions/{id}/vouchers
+        group.MapGet("/{id:guid}/vouchers", async (
+            Guid id,
+            IPromotionBffService promotionService) =>
+        {
+            var vouchers = await promotionService.GetPromotionVouchersAsync(id);
+            return Results.Ok(new { data = vouchers });
+        })
+        .WithName("GetPromotionVouchers")
+        .WithSummary("List available vouchers for a promotion")
+        .Produces<object>(200);
+    }
+
+    private static Guid GetUserId(ClaimsPrincipal user)
+    {
+        var sub = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                  ?? user.FindFirst("sub")?.Value;
+        return Guid.TryParse(sub, out var id) ? id : Guid.Empty;
     }
 }

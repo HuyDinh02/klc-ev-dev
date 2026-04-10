@@ -144,6 +144,14 @@ public static class KLCDomainErrorCodes
         public const string AlreadyUsed = "KLC:Voucher:AlreadyUsed";
         public const string Expired = "KLC:Voucher:Expired";
         public const string DuplicateCode = "KLC:Voucher:DuplicateCode";
+        public const string AlreadyClaimed = "KLC:Voucher:AlreadyClaimed";
+        public const string NoVouchersAvailable = "KLC:Voucher:NoVouchersAvailable";
+    }
+
+    public static class Promotion
+    {
+        public const string NotFound = "KLC:Promotion:NotFound";
+        public const string NotActive = "KLC:Promotion:NotActive";
     }
 
     public static class Feedback

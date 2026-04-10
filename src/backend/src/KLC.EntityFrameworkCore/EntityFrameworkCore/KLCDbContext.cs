@@ -605,6 +605,7 @@ public static class KLCDbContextModelCreatingExtensions
             b.HasIndex(x => x.Code).IsUnique();
             b.HasIndex(x => x.IsActive);
             b.HasIndex(x => x.ExpiryDate);
+            b.HasIndex(x => x.PromotionId);
         });
 
         // UserVoucher
