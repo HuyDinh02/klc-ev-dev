@@ -40,8 +40,8 @@ public class KLCSettingDefinitionProvider : SettingDefinitionProvider
         context.Add(new SettingDefinition(KLCSettings.Security.PasswordMinLength, "8"));
 
         // Wallet
-        context.Add(new SettingDefinition(KLCSettings.Wallet.MinBalanceToStart, "10000"));
-        context.Add(new SettingDefinition(KLCSettings.Wallet.AutoStopThreshold, "10000"));
+        context.Add(new SettingDefinition(KLCSettings.Wallet.MinBalanceToStart, "50000"));
+        context.Add(new SettingDefinition(KLCSettings.Wallet.AutoStopThreshold, "20000"));
         context.Add(new SettingDefinition(KLCSettings.Wallet.MonitorIntervalSeconds, "30"));
     }
 }

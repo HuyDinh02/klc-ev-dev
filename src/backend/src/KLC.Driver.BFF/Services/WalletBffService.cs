@@ -105,10 +105,10 @@ public class WalletBffService : IWalletBffService
             return new TopUpResultDto { Success = false, Error = "Amount must be positive" };
         }
 
-        // Minimum top-up: 10,000 VND
-        if (request.Amount < 10_000)
+        // Minimum top-up: 50,000 VND
+        if (request.Amount < 50_000)
         {
-            return new TopUpResultDto { Success = false, Error = "Minimum top-up amount is 10,000 VND" };
+            return new TopUpResultDto { Success = false, Error = "Số tiền nạp tối thiểu là 50.000đ" };
         }
 
         // Maximum top-up: 10,000,000 VND per transaction

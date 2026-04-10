@@ -35,7 +35,7 @@ public class WalletBalanceMonitorService : BackgroundService
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
-        _lowBalanceThreshold = configuration.GetValue("Wallet:LowBalanceThreshold", 10_000m);
+        _lowBalanceThreshold = configuration.GetValue("Wallet:LowBalanceThreshold", 20_000m);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
