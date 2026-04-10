@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { MapPin } from "lucide-react";
+
+// Import Leaflet CSS at module level so it's available before map init
+import "leaflet/dist/leaflet.css";
 
 interface LocationPickerProps {
   latitude: number;
@@ -19,6 +22,8 @@ export function LocationPicker({ latitude, longitude, onLocationChange }: Locati
   const mapInstanceRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
   const [mounted, setMounted] = useState(false);
+  const onLocationChangeRef = useRef(onLocationChange);
+  onLocationChangeRef.current = onLocationChange;
 
   const defaultLat = latitude || 10.7769;
   const defaultLng = longitude || 106.7009;
@@ -28,7 +33,7 @@ export function LocationPicker({ latitude, longitude, onLocationChange }: Locati
   }, []);
 
   useEffect(() => {
-    if (!mounted || !mapRef.current) return;
+    if (!mounted || !mapRef.current || mapInstanceRef.current) return;
 
     // Dynamic import to avoid SSR issues
     const L = require("leaflet");
@@ -41,41 +46,46 @@ export function LocationPicker({ latitude, longitude, onLocationChange }: Locati
       shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
     });
 
-    // Create map if not already created
-    if (!mapInstanceRef.current) {
-      const map = L.map(mapRef.current).setView([defaultLat, defaultLng], 15);
+    const map = L.map(mapRef.current).setView([defaultLat, defaultLng], 15);
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-        maxZoom: 19,
-      }).addTo(map);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 19,
+    }).addTo(map);
 
-      // Add draggable marker
-      const marker = L.marker([defaultLat, defaultLng], { draggable: true }).addTo(map);
+    // Add draggable marker
+    const marker = L.marker([defaultLat, defaultLng], { draggable: true }).addTo(map);
 
-      marker.on("dragend", () => {
-        const pos = marker.getLatLng();
-        onLocationChange(Math.round(pos.lat * 1000000) / 1000000, Math.round(pos.lng * 1000000) / 1000000);
-      });
+    marker.on("dragend", () => {
+      const pos = marker.getLatLng();
+      onLocationChangeRef.current(
+        Math.round(pos.lat * 1000000) / 1000000,
+        Math.round(pos.lng * 1000000) / 1000000
+      );
+    });
 
-      // Click on map to move marker
-      map.on("click", (e: any) => {
-        const { lat, lng } = e.latlng;
-        marker.setLatLng([lat, lng]);
-        onLocationChange(Math.round(lat * 1000000) / 1000000, Math.round(lng * 1000000) / 1000000);
-      });
+    // Click on map to move marker
+    map.on("click", (e: any) => {
+      const { lat, lng } = e.latlng;
+      marker.setLatLng([lat, lng]);
+      onLocationChangeRef.current(
+        Math.round(lat * 1000000) / 1000000,
+        Math.round(lng * 1000000) / 1000000
+      );
+    });
 
-      mapInstanceRef.current = map;
-      markerRef.current = marker;
-    }
+    mapInstanceRef.current = map;
+    markerRef.current = marker;
+
+    // Force tile recalculation after CSS + layout are ready
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 200);
 
     return () => {
-      // Cleanup on unmount
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-        markerRef.current = null;
-      }
+      map.remove();
+      mapInstanceRef.current = null;
+      markerRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted]);
@@ -90,7 +100,7 @@ export function LocationPicker({ latitude, longitude, onLocationChange }: Locati
 
   if (!mounted) {
     return (
-      <div className="h-[300px] rounded-lg border bg-muted flex items-center justify-center">
+      <div className="h-[350px] rounded-lg border bg-muted flex items-center justify-center">
         <MapPin className="h-6 w-6 text-muted-foreground animate-pulse" />
       </div>
     );
@@ -98,14 +108,14 @@ export function LocationPicker({ latitude, longitude, onLocationChange }: Locati
 
   return (
     <div className="space-y-2">
-      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <MapPin className="h-4 w-4" />
         <span>Click on the map or drag the marker to set location</span>
       </div>
       <div
         ref={mapRef}
-        className="h-[300px] rounded-lg border overflow-hidden z-0"
+        className="h-[350px] rounded-lg border overflow-hidden"
+        style={{ zIndex: 0 }}
       />
     </div>
   );
