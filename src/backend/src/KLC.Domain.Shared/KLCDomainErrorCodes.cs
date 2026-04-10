@@ -121,6 +121,9 @@ public static class KLCDomainErrorCodes
         public const string TopUpFailed = "KLC:Wallet:TopUpFailed";
         public const string InvalidAmount = "KLC:Wallet:InvalidAmount";
         public const string MonthlyTopUpLimitExceeded = "KLC:Wallet:MonthlyTopUpLimitExceeded";
+        public const string MinTopUpAmount = "KLC:Wallet:MinTopUpAmount";
+        public const string MaxTopUpAmount = "KLC:Wallet:MaxTopUpAmount";
+        public const string InsufficientBalanceToCharge = "KLC:Wallet:InsufficientBalanceToCharge";
     }
 
     public static class Auth

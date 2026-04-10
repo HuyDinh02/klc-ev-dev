@@ -1,11 +1,13 @@
 using System.Collections.Generic;
 using System.Linq;
+using KLC.Configuration;
 using KLC.EntityFrameworkCore;
 using KLC.Enums;
 using KLC.Notifications;
 using KLC.Payments;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 
 namespace KLC.Driver.Services;
@@ -38,6 +40,7 @@ public class WalletBffService : IWalletBffService
     private readonly IPushNotificationService _pushNotificationService;
     private readonly IDriverHubNotifier _driverNotifier;
     private readonly IConfiguration _configuration;
+    private readonly WalletSettings _walletSettings;
     private readonly IDatabase _redis;
 
     public WalletBffService(
@@ -50,6 +53,7 @@ public class WalletBffService : IWalletBffService
         IPushNotificationService pushNotificationService,
         IDriverHubNotifier driverNotifier,
         IConfiguration configuration,
+        IOptions<WalletSettings> walletSettings,
         IConnectionMultiplexer redis)
     {
         _dbContext = dbContext;
@@ -61,6 +65,7 @@ public class WalletBffService : IWalletBffService
         _pushNotificationService = pushNotificationService;
         _driverNotifier = driverNotifier;
         _configuration = configuration;
+        _walletSettings = walletSettings.Value;
         _redis = redis.GetDatabase();
     }
 
@@ -105,16 +110,14 @@ public class WalletBffService : IWalletBffService
             return new TopUpResultDto { Success = false, Error = "Amount must be positive" };
         }
 
-        // Minimum top-up: 50,000 VND
-        if (request.Amount < 50_000)
+        if (request.Amount < _walletSettings.MinTopUpAmount)
         {
-            return new TopUpResultDto { Success = false, Error = "Số tiền nạp tối thiểu là 50.000đ" };
+            return new TopUpResultDto { Success = false, Error = KLCDomainErrorCodes.Wallet.MinTopUpAmount };
         }
 
-        // Maximum top-up: 10,000,000 VND per transaction
-        if (request.Amount > 10_000_000)
+        if (request.Amount > _walletSettings.MaxTopUpAmount)
         {
-            return new TopUpResultDto { Success = false, Error = "Maximum top-up amount is 10,000,000 VND" };
+            return new TopUpResultDto { Success = false, Error = KLCDomainErrorCodes.Wallet.MaxTopUpAmount };
         }
 
         // SBV Circular 41/2025: Monthly top-up limit of 100,000,000 VND

@@ -119,9 +119,8 @@ public class SessionBffService : ISessionBffService
             return new SessionResponseDto { Success = false, Error = "You already have an active session" };
         }
 
-        // Validate wallet balance before starting session
-        var minBalance = decimal.Parse(
-            _configuration.GetValue<string>("Wallet:MinBalanceToStart") ?? "10000");
+        // Validate wallet balance before starting session (configurable via Wallet:MinBalanceToStart)
+        var minBalance = _configuration.GetValue<decimal>("Wallet:MinBalanceToStart", 50_000m);
         var user = await _dbContext.AppUsers
             .AsNoTracking()
             .Where(u => u.IdentityUserId == userId)
@@ -136,7 +135,7 @@ public class SessionBffService : ISessionBffService
             return new SessionResponseDto
             {
                 Success = false,
-                Error = $"Số dư ví không đủ. Tối thiểu {minBalance:N0}đ để bắt đầu sạc"
+                Error = KLCDomainErrorCodes.Wallet.InsufficientBalanceToCharge
             };
         }
 

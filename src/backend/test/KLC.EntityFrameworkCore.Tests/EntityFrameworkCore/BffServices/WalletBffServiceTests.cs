@@ -45,7 +45,7 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
         var redis = Substitute.For<IConnectionMultiplexer>();
         redis.GetDatabase(Arg.Any<int>(), Arg.Any<object>()).Returns(redisDb);
         _service = new WalletBffService(
-            _dbContext, _cache, logger, walletDomainService, paymentGateways, callbackValidator, Substitute.For<IPushNotificationService>(), _driverNotifier, configuration, redis);
+            _dbContext, _cache, logger, walletDomainService, paymentGateways, callbackValidator, Substitute.For<IPushNotificationService>(), _driverNotifier, configuration, Microsoft.Extensions.Options.Options.Create(new KLC.Configuration.WalletSettings()), redis);
     }
 
     [Fact]
@@ -71,12 +71,12 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
         {
             var result = await _service.TopUpAsync(Guid.NewGuid(), new TopUpRequest
             {
-                Amount = 5_000, // Below 10,000 VND minimum
+                Amount = 10_000, // Below 50,000 VND minimum
                 Gateway = PaymentGateway.MoMo
             });
 
             result.Success.ShouldBeFalse();
-            result.Error.ShouldContain("10,000");
+            result.Error.ShouldContain("MinTopUpAmount");
         });
     }
 
@@ -92,7 +92,7 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
             });
 
             result.Success.ShouldBeFalse();
-            result.Error.ShouldContain("10,000,000");
+            result.Error.ShouldContain("MaxTopUpAmount");
         });
     }
 

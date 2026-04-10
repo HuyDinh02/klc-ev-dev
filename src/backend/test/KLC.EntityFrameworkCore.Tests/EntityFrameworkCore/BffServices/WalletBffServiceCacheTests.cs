@@ -48,7 +48,7 @@ public class WalletBffServiceCacheTests : KLCEntityFrameworkCoreTestBase
         var redis = Substitute.For<IConnectionMultiplexer>();
         redis.GetDatabase(Arg.Any<int>(), Arg.Any<object>()).Returns(redisDb);
         _service = new WalletBffService(
-            _dbContext, _cache, logger, walletDomainService, paymentGateways, callbackValidator, Substitute.For<IPushNotificationService>(), _driverNotifier, configuration, redis);
+            _dbContext, _cache, logger, walletDomainService, paymentGateways, callbackValidator, Substitute.For<IPushNotificationService>(), _driverNotifier, configuration, Microsoft.Extensions.Options.Options.Create(new KLC.Configuration.WalletSettings()), redis);
     }
 
     [Fact]
