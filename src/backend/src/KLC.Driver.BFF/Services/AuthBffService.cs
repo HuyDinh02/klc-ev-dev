@@ -390,22 +390,14 @@ public class AuthBffService : IAuthBffService
             throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.Auth.InvalidCredentials);
         }
 
-        // Direct hash — same approach as Firebase reset (no token provider in BFF)
-        var passwordValidator = _userManager.PasswordValidators.FirstOrDefault();
-        if (passwordValidator != null)
-        {
-            var validateResult = await passwordValidator.ValidateAsync(_userManager, identityUser, request.NewPassword);
-            if (!validateResult.Succeeded)
-            {
-                var errors = string.Join(", ", validateResult.Errors.Select(e => e.Description));
-                throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.PasswordResetFailed, errors);
-            }
-        }
+        var token = await _userManager.GeneratePasswordResetTokenAsync(identityUser);
+        var result = await _userManager.ResetPasswordAsync(identityUser, token, request.NewPassword);
 
-        // Set password hash directly via EF Core (ABP's PasswordHash setter is protected)
-        var newHash = _userManager.PasswordHasher.HashPassword(identityUser, request.NewPassword);
-        await _dbContext.Database.ExecuteSqlInterpolatedAsync(
-            $"UPDATE \"AbpUsers\" SET \"PasswordHash\" = {newHash} WHERE \"Id\" = {identityUser.Id}");
+        if (!result.Succeeded)
+        {
+            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+            throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.PasswordResetFailed, errors);
+        }
 
         await _redis.KeyDeleteAsync($"otp:reset:{request.PhoneNumber}");
     }
@@ -450,25 +442,15 @@ public class AuthBffService : IAuthBffService
         if (identityUser == null)
             throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.Auth.InvalidCredentials);
 
-        // Directly hash and set the new password.
-        // Can't use GeneratePasswordResetToken (no token provider in BFF).
-        // Can't use RemovePassword+AddPassword (breaks SecurityStamp → login fails).
-        // Direct hash is safe here because Firebase ID token already proves identity.
-        var passwordValidator = _userManager.PasswordValidators.FirstOrDefault();
-        if (passwordValidator != null)
-        {
-            var validateResult = await passwordValidator.ValidateAsync(_userManager, identityUser, request.NewPassword);
-            if (!validateResult.Succeeded)
-            {
-                var errors = string.Join(", ", validateResult.Errors.Select(e => e.Description));
-                throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.PasswordResetFailed, errors);
-            }
-        }
+        var token = await _userManager.GeneratePasswordResetTokenAsync(identityUser);
+        var result = await _userManager.ResetPasswordAsync(identityUser, token, request.NewPassword);
 
-        // Set password hash directly via EF Core (ABP's PasswordHash setter is protected)
-        var newHash = _userManager.PasswordHasher.HashPassword(identityUser, request.NewPassword);
-        await _dbContext.Database.ExecuteSqlInterpolatedAsync(
-            $"UPDATE \"AbpUsers\" SET \"PasswordHash\" = {newHash} WHERE \"Id\" = {identityUser.Id}");
+        if (!result.Succeeded)
+        {
+            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+            _logger.LogWarning("Password reset failed for {Phone}: {Errors}", localPhone, errors);
+            throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.PasswordResetFailed, errors);
+        }
 
         _logger.LogInformation("Password reset successful via Firebase for {Phone}", localPhone);
     }

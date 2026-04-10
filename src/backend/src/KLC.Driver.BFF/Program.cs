@@ -100,6 +100,16 @@ if (FirebaseAdmin.FirebaseApp.DefaultInstance == null)
     }
 }
 
+// Register default token provider for ASP.NET Identity (required for password reset)
+builder.Services.Configure<Microsoft.AspNetCore.Identity.IdentityOptions>(options =>
+{
+    options.Tokens.PasswordResetTokenProvider = Microsoft.AspNetCore.Identity.TokenOptions.DefaultProvider;
+});
+builder.Services.AddDataProtection();
+builder.Services.AddIdentityCore<Volo.Abp.Identity.IdentityUser>()
+    .AddTokenProvider<Microsoft.AspNetCore.Identity.DataProtectorTokenProvider<Volo.Abp.Identity.IdentityUser>>(
+        Microsoft.AspNetCore.Identity.TokenOptions.DefaultProvider);
+
 // Typed configuration (Options Pattern)
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection(JwtSettings.Section));
 builder.Services.Configure<VnPaySettings>(builder.Configuration.GetSection(VnPaySettings.Section));
