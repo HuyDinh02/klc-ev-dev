@@ -51,6 +51,7 @@ export function SettingsScreen() {
   ) => {
     if (!preferences) return;
 
+    const previousPreferences = { ...preferences };
     const updated = { ...preferences, [key]: value };
     setPreferences(updated);
     setSaving(true);
@@ -60,7 +61,7 @@ export function SettingsScreen() {
       setPreferences(result);
     } catch (error) {
       console.error('Failed to update notification preferences:', error);
-      setPreferences(preferences);
+      setPreferences(previousPreferences);
     } finally {
       setSaving(false);
     }

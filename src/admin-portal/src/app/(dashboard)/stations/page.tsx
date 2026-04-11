@@ -169,7 +169,7 @@ export default function StationsPage() {
       </div>
 
       <div className="flex-1 space-y-6 p-6" aria-live="polite">
-        {isLoading ? (
+        {isLoading && (
           stationsViewMode === "board" ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" role="status" aria-label="Loading stations">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -179,13 +179,15 @@ export default function StationsPage() {
           ) : (
             <SkeletonTable rows={8} cols={7} />
           )
-        ) : stations.length === 0 ? (
+        )}
+        {!isLoading && stations.length === 0 && (
           <EmptyState
             icon={MapPin}
             title={t("stations.noStationsFound")}
             description={serverSearch || statusFilter !== "all" ? t("stations.tryDifferentSearch") : t("stations.getStarted")}
           />
-        ) : (
+        )}
+        {!isLoading && stations.length > 0 && (
           <>
             {stationsViewMode === "board" ? (
               <StationBoardView

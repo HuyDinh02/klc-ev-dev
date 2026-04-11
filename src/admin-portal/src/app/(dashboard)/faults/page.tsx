@@ -140,19 +140,21 @@ export default function FaultsPage() {
         </div>
 
         {/* Faults List */}
-        {isLoading ? (
+        {isLoading && (
           <div className="space-y-4">
             {Array.from({ length: 5 }).map((_, i) => (
               <SkeletonCard key={i} />
             ))}
           </div>
-        ) : filteredFaults.length === 0 ? (
+        )}
+        {!isLoading && filteredFaults.length === 0 && (
           <EmptyState
             icon={CheckCircle}
             title={t("faults.noFaultsFound")}
             description={t("faults.noFaultsDescription")}
           />
-        ) : (
+        )}
+        {!isLoading && filteredFaults.length > 0 && (
           <div className="space-y-4">
             {filteredFaults.map((fault) => {
               const severityConfig = getStatusConfig("faultSeverity", fault.priority ?? 4);

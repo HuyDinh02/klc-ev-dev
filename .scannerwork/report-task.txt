@@ -1,0 +1,6 @@
+projectKey=klc-ev-charging
+serverUrl=http://localhost:9000
+serverVersion=26.4.0.121862
+dashboardUrl=http://localhost:9000/dashboard?id=klc-ev-charging
+ceTaskId=02c9222f-51f9-4bec-a992-270b689aef1c
+ceTaskUrl=http://localhost:9000/api/ce/task?id=02c9222f-51f9-4bec-a992-270b689aef1c

@@ -241,9 +241,8 @@ export default function EInvoicesPage() {
       </Card>
 
       {/* Invoices Table */}
-      {isLoading ? (
-        <SkeletonTable rows={8} cols={8} />
-      ) : invoices.length === 0 ? (
+      {isLoading && <SkeletonTable rows={8} cols={8} />}
+      {!isLoading && invoices.length === 0 && (
         <Card>
           <CardContent className="p-0">
             <EmptyState
@@ -253,7 +252,8 @@ export default function EInvoicesPage() {
             />
           </CardContent>
         </Card>
-      ) : (
+      )}
+      {!isLoading && invoices.length > 0 && (
         <Card>
           <CardContent className="p-0">
             <div className="overflow-x-auto">

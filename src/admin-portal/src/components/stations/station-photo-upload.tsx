@@ -168,7 +168,10 @@ export function StationPhotoUpload({ stationId, photos, onChange, max = 10 }: St
       {/* Upload zone */}
       {photos.length < max && (
         <div
+          role="button"
+          tabIndex={0}
           onClick={() => !isUploading && fileInputRef.current?.click()}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); !isUploading && fileInputRef.current?.click(); } }}
           className="flex h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-muted-foreground/25 bg-muted/50 hover:border-muted-foreground/50 hover:bg-muted transition-colors"
         >
           {isUploading ? (
