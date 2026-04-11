@@ -355,6 +355,105 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
         });
     }
 
+    [Fact]
+    public async Task TopUp_Should_Succeed_At_Exact_MinTopUpAmount()
+    {
+        var identityUserId = Guid.NewGuid();
+
+        await WithUnitOfWorkAsync(async () =>
+        {
+            var user = new AppUser(Guid.NewGuid(), identityUserId, "Min TopUp User", "0903333333");
+            await _dbContext.AppUsers.AddAsync(user);
+            await _dbContext.SaveChangesAsync();
+        });
+
+        await WithUnitOfWorkAsync(async () =>
+        {
+            var result = await _service.TopUpAsync(identityUserId, new TopUpRequest
+            {
+                Amount = 50_000, // Exactly at minimum threshold (WalletSettings.MinTopUpAmount default)
+                Gateway = PaymentGateway.ZaloPay
+            });
+
+            result.Success.ShouldBeTrue();
+            result.TransactionId.ShouldNotBeNull();
+            result.Status.ShouldBe(TransactionStatus.Pending);
+        });
+    }
+
+    [Fact]
+    public async Task TopUp_Should_Fail_At_Just_Below_MinTopUpAmount()
+    {
+        await WithUnitOfWorkAsync(async () =>
+        {
+            var result = await _service.TopUpAsync(Guid.NewGuid(), new TopUpRequest
+            {
+                Amount = 49_999, // One VND below minimum threshold
+                Gateway = PaymentGateway.MoMo
+            });
+
+            result.Success.ShouldBeFalse();
+            result.Error.ShouldContain("MinTopUpAmount");
+        });
+    }
+
+    [Fact]
+    public async Task TopUp_Should_Succeed_At_Exact_MaxTopUpAmount()
+    {
+        var identityUserId = Guid.NewGuid();
+
+        await WithUnitOfWorkAsync(async () =>
+        {
+            var user = new AppUser(Guid.NewGuid(), identityUserId, "Max TopUp User", "0904444444");
+            await _dbContext.AppUsers.AddAsync(user);
+            await _dbContext.SaveChangesAsync();
+        });
+
+        await WithUnitOfWorkAsync(async () =>
+        {
+            var result = await _service.TopUpAsync(identityUserId, new TopUpRequest
+            {
+                Amount = 10_000_000, // Exactly at maximum threshold (WalletSettings.MaxTopUpAmount default)
+                Gateway = PaymentGateway.ZaloPay
+            });
+
+            result.Success.ShouldBeTrue();
+            result.TransactionId.ShouldNotBeNull();
+        });
+    }
+
+    [Fact]
+    public async Task TopUp_Should_Fail_At_Just_Above_MaxTopUpAmount()
+    {
+        await WithUnitOfWorkAsync(async () =>
+        {
+            var result = await _service.TopUpAsync(Guid.NewGuid(), new TopUpRequest
+            {
+                Amount = 10_000_001, // One VND above maximum threshold
+                Gateway = PaymentGateway.ZaloPay
+            });
+
+            result.Success.ShouldBeFalse();
+            result.Error.ShouldContain("MaxTopUpAmount");
+        });
+    }
+
+    [Fact]
+    public async Task TopUp_Should_Fail_With_Negative_Amount()
+    {
+        await WithUnitOfWorkAsync(async () =>
+        {
+            var result = await _service.TopUpAsync(Guid.NewGuid(), new TopUpRequest
+            {
+                Amount = -50_000,
+                Gateway = PaymentGateway.ZaloPay
+            });
+
+            result.Success.ShouldBeFalse();
+            result.Error.ShouldContain("positive");
+        });
+    }
+
     // Note: GetTransactionSummaryAsync uses Math.Abs() which SQLite cannot translate.
     // This path is tested in production against PostgreSQL which supports ABS().
 
