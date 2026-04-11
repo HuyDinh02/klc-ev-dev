@@ -410,8 +410,9 @@ export default function StationDetailPage() {
                     </h4>
                     <div className="flex gap-3 items-end">
                       <div className="flex-1">
-                        <label className="text-sm font-medium">QR Code Data</label>
+                        <label htmlFor="qr-code-data-input" className="text-sm font-medium">QR Code Data</label>
                         <input
+                          id="qr-code-data-input"
                           type="text"
                           value={qrEditConnector.qrCodeData}
                           onChange={(e) => setQrEditConnector({ ...qrEditConnector, qrCodeData: e.target.value })}

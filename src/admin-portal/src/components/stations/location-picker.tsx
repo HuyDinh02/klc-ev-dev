@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MapPin } from "lucide-react";
 
 // Import Leaflet CSS at module level so it's available before map init
 import "leaflet/dist/leaflet.css";
 
 interface LocationPickerProps {
-  latitude: number;
-  longitude: number;
-  onLocationChange: (lat: number, lng: number) => void;
+  readonly latitude: number;
+  readonly longitude: number;
+  readonly onLocationChange: (lat: number, lng: number) => void;
 }
 
 /**

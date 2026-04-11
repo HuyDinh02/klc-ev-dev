@@ -406,17 +406,15 @@ export default function OcppManagementPage() {
               {!connectionsLoading && connections.length > 0 && (
                 <div className="space-y-2">
                   {connections.map((conn) => (
-                    <div
+                    <button
                       key={conn.chargePointId}
-                      role="button"
-                      tabIndex={0}
-                      className={`flex items-center justify-between rounded-lg border p-3 cursor-pointer transition-colors ${
+                      type="button"
+                      className={`flex w-full items-center justify-between rounded-lg border bg-transparent p-3 text-left cursor-pointer transition-colors ${
                         selectedCp === conn.chargePointId
                           ? "border-primary bg-primary/5"
                           : "hover:bg-muted/50"
                       }`}
                       onClick={() => setSelectedCp(conn.chargePointId)}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedCp(conn.chargePointId); } }}
                     >
                       <div className="flex items-center gap-3">
                         <Wifi className="h-4 w-4 text-green-500" />
@@ -448,7 +446,7 @@ export default function OcppManagementPage() {
                           {conn.isRegistered ? t("ocpp.registered") : t("ocpp.pending")}
                         </Badge>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               )}
