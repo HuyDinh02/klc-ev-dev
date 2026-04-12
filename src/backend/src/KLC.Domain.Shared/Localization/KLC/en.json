@@ -79,6 +79,9 @@
     "KLC:Wallet:TransactionAlreadyCompleted": "Transaction has already been completed.",
     "KLC:Wallet:TopUpFailed": "Wallet top-up failed.",
     "KLC:Wallet:InvalidAmount": "Invalid amount.",
+    "KLC:Wallet:MinTopUpAmount": "Minimum top-up amount is {0} VND.",
+    "KLC:Wallet:MaxTopUpAmount": "Maximum top-up amount is {0} VND.",
+    "KLC:Wallet:InsufficientBalanceToCharge": "Insufficient balance. Minimum {0} VND required to start charging.",
 
     "KLC:Auth:InvalidOtp": "Invalid OTP code.",
     "KLC:Auth:OtpExpired": "OTP code has expired.",

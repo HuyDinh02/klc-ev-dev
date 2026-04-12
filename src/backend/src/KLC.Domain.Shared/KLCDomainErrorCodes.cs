@@ -17,6 +17,7 @@ public static class KLCDomainErrorCodes
     public static class Connector
     {
         public const string StationNotFound = "KLC:Connector:StationNotFound";
+        public const string NotFound = "KLC:Connector:NotFound";
         public const string DuplicateNumber = "KLC:Connector:DuplicateNumber";
         public const string MaxPowerInvalid = "KLC:Connector:MaxPowerInvalid";
     }
@@ -121,6 +122,9 @@ public static class KLCDomainErrorCodes
         public const string TopUpFailed = "KLC:Wallet:TopUpFailed";
         public const string InvalidAmount = "KLC:Wallet:InvalidAmount";
         public const string MonthlyTopUpLimitExceeded = "KLC:Wallet:MonthlyTopUpLimitExceeded";
+        public const string MinTopUpAmount = "KLC:Wallet:MinTopUpAmount";
+        public const string MaxTopUpAmount = "KLC:Wallet:MaxTopUpAmount";
+        public const string InsufficientBalanceToCharge = "KLC:Wallet:InsufficientBalanceToCharge";
     }
 
     public static class Auth
@@ -141,6 +145,14 @@ public static class KLCDomainErrorCodes
         public const string AlreadyUsed = "KLC:Voucher:AlreadyUsed";
         public const string Expired = "KLC:Voucher:Expired";
         public const string DuplicateCode = "KLC:Voucher:DuplicateCode";
+        public const string AlreadyClaimed = "KLC:Voucher:AlreadyClaimed";
+        public const string NoVouchersAvailable = "KLC:Voucher:NoVouchersAvailable";
+    }
+
+    public static class Promotion
+    {
+        public const string NotFound = "KLC:Promotion:NotFound";
+        public const string NotActive = "KLC:Promotion:NotActive";
     }
 
     public static class Feedback

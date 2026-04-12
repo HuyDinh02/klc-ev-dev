@@ -89,4 +89,7 @@ public class FakeOcppRemoteCommandService : IOcppRemoteCommandService
 
     public Task<RemoteCommandResult> SendCancelReservationAsync(string stationCode, int reservationId) =>
         Task.FromResult(new RemoteCommandResult(true));
+
+    public Task<RemoteCommandResult> SendDataTransferAsync(string stationCode, string vendorId, string? messageId, string? data) =>
+        Task.FromResult(new RemoteCommandResult(true));
 }

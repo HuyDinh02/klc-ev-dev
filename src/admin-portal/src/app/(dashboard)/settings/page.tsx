@@ -28,8 +28,6 @@ import { AccessDenied } from "@/components/ui/access-denied";
 export default function SettingsPage() {
   const hasAccess = useRequirePermission("KLC.Settings");
   const canUpdate = useHasPermission("KLC.Settings.Update");
-
-  if (!hasAccess) return <AccessDenied />;
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("general");
   const [localSettings, setLocalSettings] = useState<SystemSettings | null>(null);
@@ -81,6 +79,8 @@ export default function SettingsPage() {
   };
 
   const isDirty = localSettings !== null;
+
+  if (!hasAccess) return <AccessDenied />;
 
   const tabs = [
     { id: "general", label: t("settings.general"), icon: Settings },

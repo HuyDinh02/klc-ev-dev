@@ -445,7 +445,7 @@ function GroupCard({
                     <StatCard icon={Zap} label={t("groups.available")} value={stats.availableConnectors} iconColor="bg-green-100 text-green-700" />
                     <StatCard icon={Zap} label={t("groups.occupied")} value={stats.occupiedConnectors} iconColor="bg-blue-100 text-blue-700" />
                     <StatCard icon={AlertTriangle} label={t("groups.faulted")} value={stats.faultedConnectors} iconColor={stats.faultedConnectors > 0 ? "bg-red-100 text-red-700" : "bg-muted text-muted-foreground"} />
-                    <StatCard icon={WifiOff} label={t("groups.offline")} value={stats.offlineStations} iconColor={stats.offlineStations > 0 ? "bg-muted text-muted-foreground" : "bg-muted text-muted-foreground"} />
+                    <StatCard icon={WifiOff} label={t("groups.offline")} value={stats.offlineStations} iconColor="bg-muted text-muted-foreground" />
                     <StatCard icon={BarChart3} label={t("groups.capacity")} value={`${stats.totalCapacityKw.toFixed(0)} kW`} iconColor="bg-muted text-muted-foreground" />
                   </div>
                 )}

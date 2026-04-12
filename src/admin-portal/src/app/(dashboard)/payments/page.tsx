@@ -70,7 +70,6 @@ export default function PaymentsPage() {
 
   // Fetch payments
   const {
-    data: paymentsData,
     items: payments,
     totalCount,
     isLoading,
@@ -292,9 +291,8 @@ export default function PaymentsPage() {
       </Card>
 
       {/* Payments Table */}
-      {isLoading ? (
-        <SkeletonTable rows={8} cols={8} />
-      ) : payments.length === 0 ? (
+      {isLoading && <SkeletonTable rows={8} cols={8} />}
+      {!isLoading && payments.length === 0 && (
         <Card>
           <CardContent className="p-0">
             <EmptyState
@@ -304,7 +302,8 @@ export default function PaymentsPage() {
             />
           </CardContent>
         </Card>
-      ) : (
+      )}
+      {!isLoading && payments.length > 0 && (
         <Card>
           <CardContent className="p-0">
             <div className="overflow-x-auto">

@@ -79,6 +79,9 @@
     "KLC:Wallet:TransactionAlreadyCompleted": "Giao dịch đã hoàn thành.",
     "KLC:Wallet:TopUpFailed": "Nạp ví thất bại.",
     "KLC:Wallet:InvalidAmount": "Số tiền không hợp lệ.",
+    "KLC:Wallet:MinTopUpAmount": "Số tiền nạp tối thiểu là {0}đ.",
+    "KLC:Wallet:MaxTopUpAmount": "Số tiền nạp tối đa là {0}đ.",
+    "KLC:Wallet:InsufficientBalanceToCharge": "Số dư ví không đủ. Tối thiểu {0}đ để bắt đầu sạc.",
 
     "KLC:Auth:InvalidOtp": "Mã OTP không hợp lệ.",
     "KLC:Auth:OtpExpired": "Mã OTP đã hết hạn.",

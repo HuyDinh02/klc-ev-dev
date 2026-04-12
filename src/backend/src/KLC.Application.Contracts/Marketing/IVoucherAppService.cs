@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using KLC.MobileUsers;
 using Volo.Abp.Application.Services;
@@ -13,4 +14,6 @@ public interface IVoucherAppService : IApplicationService
     Task UpdateAsync(Guid id, UpdateVoucherDto input);
     Task DeleteAsync(Guid id);
     Task<VoucherUsageResultDto> GetUsageAsync(Guid id);
+    Task<BulkCreateVoucherResultDto> BulkCreateAsync(BulkCreateVoucherDto input);
+    Task<List<ExportVoucherDto>> ExportAsync();
 }

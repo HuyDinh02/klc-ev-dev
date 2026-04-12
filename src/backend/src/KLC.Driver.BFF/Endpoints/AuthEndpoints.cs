@@ -42,6 +42,21 @@ public static class AuthEndpoints
         .Produces<VerifyOtpResultDto>(200)
         .Produces(400);
 
+        // POST /api/v1/auth/firebase-verify-phone — Verify phone using Firebase Phone Auth token
+        group.MapPost("/firebase-verify-phone", async (
+            [FromBody] FirebaseVerifyPhoneRequest request,
+            IAuthBffService authService) =>
+        {
+            var result = await authService.VerifyPhoneWithFirebaseAsync(request);
+            return result.Success
+                ? Results.Ok(result)
+                : Results.BadRequest(new { error = new { code = "VERIFY_FAILED", message = result.Error } });
+        })
+        .WithName("FirebaseVerifyPhone")
+        .WithSummary("Verify phone number using Firebase Phone Auth ID token")
+        .Produces<VerifyOtpResultDto>(200)
+        .Produces(400);
+
         // POST /api/v1/auth/resend-otp
         group.MapPost("/resend-otp", async (
             [FromBody] ResendOtpRequest request,

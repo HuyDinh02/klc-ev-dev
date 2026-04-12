@@ -285,19 +285,21 @@ export default function MonitoringPage() {
             <CardTitle>{t("monitoring.stationOverview")}</CardTitle>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
+            {isLoading && (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <SkeletonCard key={i} />
                 ))}
               </div>
-            ) : (!stations || stations.length === 0) ? (
+            )}
+            {!isLoading && (!stations || stations.length === 0) && (
               <EmptyState
                 icon={Activity}
                 title={t("monitoring.noStationsFound")}
                 description={t("monitoring.addStationsDescription")}
               />
-            ) : (
+            )}
+            {!isLoading && stations && stations.length > 0 && (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {stations.slice(0, 12).map((station) => {
                   const faultedConnectors =

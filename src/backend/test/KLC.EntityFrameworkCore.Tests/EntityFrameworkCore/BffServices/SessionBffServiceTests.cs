@@ -259,6 +259,196 @@ public class SessionBffServiceTests : KLCEntityFrameworkCoreTestBase
     }
 
     [Fact]
+    public async Task StartSession_Should_Succeed_When_Connector_Preparing()
+    {
+        var userId = Guid.NewGuid();
+        var stationId = Guid.NewGuid();
+        var connectorId = Guid.NewGuid();
+
+        await WithUnitOfWorkAsync(async () =>
+        {
+            var station = new ChargingStation(stationId, "KC-PREP-001", "Preparing Station", "100 Prep St", 21.0, 105.8);
+            var connector = station.AddConnector(connectorId, 1, ConnectorType.CCS2, 50);
+            connector.UpdateStatus(ConnectorStatus.Preparing); // Cable plugged in, waiting for auth
+            await _dbContext.ChargingStations.AddAsync(station);
+
+            var appUser = new AppUser(Guid.NewGuid(), userId, "Prep Test User", "0900000010");
+            appUser.AddToWallet(100_000m);
+            await _dbContext.AppUsers.AddAsync(appUser);
+
+            await _dbContext.SaveChangesAsync();
+        });
+
+        await WithUnitOfWorkAsync(async () =>
+        {
+            var result = await _service.StartSessionAsync(userId, new StartSessionRequest
+            {
+                StationId = stationId,
+                ConnectorNumber = 1
+            });
+
+            result.Success.ShouldBeTrue();
+            result.SessionId.ShouldNotBeNull();
+            result.Status.ShouldBe(SessionStatus.Pending);
+        });
+    }
+
+    [Fact]
+    public async Task StartSession_Should_Fail_When_Wallet_Balance_Insufficient()
+    {
+        var userId = Guid.NewGuid();
+        var stationId = Guid.NewGuid();
+        var connectorId = Guid.NewGuid();
+
+        await WithUnitOfWorkAsync(async () =>
+        {
+            var station = new ChargingStation(stationId, "KC-BAL-001", "Balance Test Station", "200 Balance St", 21.0, 105.8);
+            var connector = station.AddConnector(connectorId, 1, ConnectorType.CCS2, 50);
+            connector.UpdateStatus(ConnectorStatus.Available);
+            await _dbContext.ChargingStations.AddAsync(station);
+
+            // Create user with insufficient wallet balance (below 10,000 VND configured minimum)
+            var appUser = new AppUser(Guid.NewGuid(), userId, "Low Balance User", "0900000011");
+            appUser.AddToWallet(5_000m); // Only 5,000 VND
+            await _dbContext.AppUsers.AddAsync(appUser);
+
+            await _dbContext.SaveChangesAsync();
+        });
+
+        await WithUnitOfWorkAsync(async () =>
+        {
+            var result = await _service.StartSessionAsync(userId, new StartSessionRequest
+            {
+                StationId = stationId,
+                ConnectorNumber = 1
+            });
+
+            result.Success.ShouldBeFalse();
+            result.Error.ShouldBe(KLCDomainErrorCodes.Wallet.InsufficientBalanceToCharge);
+        });
+    }
+
+    [Fact]
+    public async Task StartSession_Should_Fail_When_Wallet_Balance_Zero()
+    {
+        var userId = Guid.NewGuid();
+        var stationId = Guid.NewGuid();
+        var connectorId = Guid.NewGuid();
+
+        await WithUnitOfWorkAsync(async () =>
+        {
+            var station = new ChargingStation(stationId, "KC-BAL-002", "Zero Balance Station", "201 Balance St", 21.0, 105.8);
+            var connector = station.AddConnector(connectorId, 1, ConnectorType.CCS2, 50);
+            connector.UpdateStatus(ConnectorStatus.Available);
+            await _dbContext.ChargingStations.AddAsync(station);
+
+            // Create user with zero wallet balance (no AddToWallet call)
+            var appUser = new AppUser(Guid.NewGuid(), userId, "Zero Balance User", "0900000012");
+            await _dbContext.AppUsers.AddAsync(appUser);
+
+            await _dbContext.SaveChangesAsync();
+        });
+
+        await WithUnitOfWorkAsync(async () =>
+        {
+            var result = await _service.StartSessionAsync(userId, new StartSessionRequest
+            {
+                StationId = stationId,
+                ConnectorNumber = 1
+            });
+
+            result.Success.ShouldBeFalse();
+            result.Error.ShouldBe(KLCDomainErrorCodes.Wallet.InsufficientBalanceToCharge);
+        });
+    }
+
+    [Fact]
+    public async Task StartSession_Should_Fail_When_No_AppUser_Found()
+    {
+        var userId = Guid.NewGuid();
+        var stationId = Guid.NewGuid();
+        var connectorId = Guid.NewGuid();
+
+        await WithUnitOfWorkAsync(async () =>
+        {
+            var station = new ChargingStation(stationId, "KC-NOUSER-001", "No User Station", "300 No St", 21.0, 105.8);
+            var connector = station.AddConnector(connectorId, 1, ConnectorType.CCS2, 50);
+            connector.UpdateStatus(ConnectorStatus.Available);
+            await _dbContext.ChargingStations.AddAsync(station);
+            await _dbContext.SaveChangesAsync();
+        });
+
+        await WithUnitOfWorkAsync(async () =>
+        {
+            // userId has no corresponding AppUser record
+            var result = await _service.StartSessionAsync(userId, new StartSessionRequest
+            {
+                StationId = stationId,
+                ConnectorNumber = 1
+            });
+
+            result.Success.ShouldBeFalse();
+            result.Error.ShouldBe(KLCDomainErrorCodes.Wallet.InsufficientBalanceToCharge);
+        });
+    }
+
+    [Fact]
+    public async Task StartSession_Should_Fail_When_Connector_Disabled()
+    {
+        var stationId = Guid.NewGuid();
+        var connectorId = Guid.NewGuid();
+
+        await WithUnitOfWorkAsync(async () =>
+        {
+            var station = new ChargingStation(stationId, "KC-DIS-001", "Disabled Connector Station", "400 Dis St", 21.0, 105.8);
+            var connector = station.AddConnector(connectorId, 1, ConnectorType.CCS2, 50);
+            connector.Disable(); // Disabled connector — IsEnabled=false, Status=Unavailable
+            await _dbContext.ChargingStations.AddAsync(station);
+            await _dbContext.SaveChangesAsync();
+        });
+
+        await WithUnitOfWorkAsync(async () =>
+        {
+            var result = await _service.StartSessionAsync(Guid.NewGuid(), new StartSessionRequest
+            {
+                StationId = stationId,
+                ConnectorNumber = 1
+            });
+
+            result.Success.ShouldBeFalse();
+            result.Error.ShouldContain("not available");
+        });
+    }
+
+    [Fact]
+    public async Task StartSession_Should_Fail_When_Connector_Faulted()
+    {
+        var stationId = Guid.NewGuid();
+        var connectorId = Guid.NewGuid();
+
+        await WithUnitOfWorkAsync(async () =>
+        {
+            var station = new ChargingStation(stationId, "KC-FAULT-001", "Faulted Station", "500 Fault St", 21.0, 105.8);
+            var connector = station.AddConnector(connectorId, 1, ConnectorType.CCS2, 50);
+            connector.UpdateStatus(ConnectorStatus.Faulted);
+            await _dbContext.ChargingStations.AddAsync(station);
+            await _dbContext.SaveChangesAsync();
+        });
+
+        await WithUnitOfWorkAsync(async () =>
+        {
+            var result = await _service.StartSessionAsync(Guid.NewGuid(), new StartSessionRequest
+            {
+                StationId = stationId,
+                ConnectorNumber = 1
+            });
+
+            result.Success.ShouldBeFalse();
+            result.Error.ShouldContain("not available");
+        });
+    }
+
+    [Fact]
     public async Task GetActiveSession_Should_Return_Null_When_No_Active_Session()
     {
         await WithUnitOfWorkAsync(async () =>

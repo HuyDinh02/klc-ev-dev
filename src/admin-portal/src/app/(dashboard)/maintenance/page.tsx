@@ -89,7 +89,6 @@ export default function MaintenancePage() {
     totalCount,
     isLoading,
     statusFilter,
-    setStatusFilter,
     setStatusFilterAndReset,
     pageSize,
     goNextPage,

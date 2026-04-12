@@ -60,6 +60,11 @@ public class Voucher : FullAuditedAggregateRoot<Guid>
     /// </summary>
     public string? Description { get; private set; }
 
+    /// <summary>
+    /// Optional reference to a promotion this voucher belongs to.
+    /// </summary>
+    public Guid? PromotionId { get; private set; }
+
     protected Voucher()
     {
         // Required by EF Core
@@ -74,7 +79,8 @@ public class Voucher : FullAuditedAggregateRoot<Guid>
         int totalQuantity,
         decimal? minOrderAmount = null,
         decimal? maxDiscountAmount = null,
-        string? description = null)
+        string? description = null,
+        Guid? promotionId = null)
         : base(id)
     {
         Code = Check.NotNullOrWhiteSpace(code, nameof(code), maxLength: 50);
@@ -87,6 +93,7 @@ public class Voucher : FullAuditedAggregateRoot<Guid>
         MinOrderAmount = minOrderAmount;
         MaxDiscountAmount = maxDiscountAmount;
         Description = description;
+        PromotionId = promotionId;
     }
 
     public bool IsValid()
@@ -117,5 +124,10 @@ public class Voucher : FullAuditedAggregateRoot<Guid>
         if (expiryDate.HasValue) ExpiryDate = expiryDate.Value;
         if (totalQuantity.HasValue) TotalQuantity = totalQuantity.Value;
         if (isActive.HasValue) IsActive = isActive.Value;
+    }
+
+    public void SetPromotion(Guid? promotionId)
+    {
+        PromotionId = promotionId;
     }
 }

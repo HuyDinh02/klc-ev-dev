@@ -100,7 +100,6 @@ export default function AuditLogsPage() {
 
   // Fetch audit logs
   const {
-    data: logsData,
     items: logs,
     totalCount,
     isLoading,
@@ -260,9 +259,8 @@ export default function AuditLogsPage() {
       </Card>
 
       {/* Logs Table */}
-      {isLoading ? (
-        <SkeletonTable rows={10} cols={8} />
-      ) : logs.length === 0 ? (
+      {isLoading && <SkeletonTable rows={10} cols={8} />}
+      {!isLoading && logs.length === 0 && (
         <Card>
           <CardContent className="p-0">
             <EmptyState
@@ -272,7 +270,8 @@ export default function AuditLogsPage() {
             />
           </CardContent>
         </Card>
-      ) : (
+      )}
+      {!isLoading && logs.length > 0 && (
         <Card>
           <CardContent className="p-0">
             <div className="overflow-x-auto">

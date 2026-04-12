@@ -167,9 +167,10 @@ export function StationPhotoUpload({ stationId, photos, onChange, max = 10 }: St
 
       {/* Upload zone */}
       {photos.length < max && (
-        <div
+        <button
+          type="button"
           onClick={() => !isUploading && fileInputRef.current?.click()}
-          className="flex h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-muted-foreground/25 bg-muted/50 hover:border-muted-foreground/50 hover:bg-muted transition-colors"
+          className="flex h-32 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-muted-foreground/25 bg-muted/50 p-0 hover:border-muted-foreground/50 hover:bg-muted transition-colors"
         >
           {isUploading ? (
             <>
@@ -183,7 +184,7 @@ export function StationPhotoUpload({ stationId, photos, onChange, max = 10 }: St
               <span className="text-xs text-muted-foreground">{t("stations.photoFormats")}</span>
             </>
           )}
-        </div>
+        </button>
       )}
 
       <input

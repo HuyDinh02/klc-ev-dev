@@ -229,9 +229,8 @@ export default function FeedbackPage() {
 
       <div className="flex-1 space-y-6 p-6">
         {/* Feedback Table */}
-        {isLoading ? (
-          <SkeletonTable rows={8} cols={6} />
-        ) : feedbackList && feedbackList.length > 0 ? (
+        {isLoading && <SkeletonTable rows={8} cols={6} />}
+        {!isLoading && feedbackList && feedbackList.length > 0 && (
           <Card>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
@@ -301,7 +300,8 @@ export default function FeedbackPage() {
               </div>
             </CardContent>
           </Card>
-        ) : (
+        )}
+        {!isLoading && (!feedbackList || feedbackList.length === 0) && (
           <EmptyState
             icon={MessageSquare}
             title={t("feedback.noFeedback")}

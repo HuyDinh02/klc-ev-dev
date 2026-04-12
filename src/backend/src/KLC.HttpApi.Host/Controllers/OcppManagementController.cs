@@ -454,6 +454,23 @@ public class OcppManagementController : AbpControllerBase
     }
 
     /// <summary>
+    /// Send DataTransfer to a charger with vendor-specific data.
+    /// </summary>
+    [HttpPost("connections/{chargePointId}/data-transfer")]
+    public async Task<ActionResult<RemoteCommandResultDto>> DataTransfer(
+        string chargePointId,
+        [FromBody] DataTransferRequest request)
+    {
+        var result = await _remoteCommandService.SendDataTransferAsync(
+            chargePointId, request.VendorId, request.MessageId, request.Data);
+        return Ok(new RemoteCommandResultDto
+        {
+            Success = result.Accepted,
+            Message = result.Accepted ? "DataTransfer accepted" : result.ErrorMessage ?? "DataTransfer rejected"
+        });
+    }
+
+    /// <summary>
     /// Get OCPP raw event log for a charger.
     /// </summary>
     [HttpGet("events")]
@@ -679,6 +696,13 @@ public class SyncLocalListResultDto
     public string Message { get; set; } = string.Empty;
     public int ListVersion { get; set; }
     public int TagCount { get; set; }
+}
+
+public class DataTransferRequest
+{
+    public string VendorId { get; set; } = string.Empty;
+    public string? MessageId { get; set; }
+    public string? Data { get; set; }
 }
 
 #endregion

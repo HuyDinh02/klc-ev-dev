@@ -126,6 +126,8 @@ export const connectorsApi = {
   enable: (id: string) => api.post(`/connectors/${id}/enable`),
   disable: (id: string) => api.post(`/connectors/${id}/disable`),
   delete: (id: string) => api.delete(`/connectors/${id}`),
+  setQrCode: (stationId: string, connectorNumber: number, data: { qrCodeData: string | null; sendToCharger: boolean }) =>
+    api.put(`/stations/${stationId}/connectors/${connectorNumber}/qr-code`, data),
 };
 
 export const sessionsApi = {

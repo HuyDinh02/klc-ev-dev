@@ -380,7 +380,6 @@ export default function MobileUsersPage() {
                         <td className="px-4 py-3">
                           <div
                             className="flex items-center gap-2"
-                            onClick={(e) => e.stopPropagation()}
                           >
                             {user.isActive ? (
                               <Button

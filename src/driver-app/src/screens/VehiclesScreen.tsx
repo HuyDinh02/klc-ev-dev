@@ -361,7 +361,7 @@ export function VehiclesScreen() {
                   autoCapitalize="words"
                   accessibilityLabel="Make"
                 />
-                {formErrors.make && (
+                {!!formErrors.make && (
                   <Text style={styles.formError}>{formErrors.make}</Text>
                 )}
               </View>
@@ -377,7 +377,7 @@ export function VehiclesScreen() {
                   autoCapitalize="words"
                   accessibilityLabel="Model"
                 />
-                {formErrors.model && (
+                {!!formErrors.model && (
                   <Text style={styles.formError}>{formErrors.model}</Text>
                 )}
               </View>
@@ -397,7 +397,7 @@ export function VehiclesScreen() {
                   maxLength={4}
                   accessibilityLabel="Year"
                 />
-                {formErrors.year && (
+                {!!formErrors.year && (
                   <Text style={styles.formError}>{formErrors.year}</Text>
                 )}
               </View>
@@ -416,7 +416,7 @@ export function VehiclesScreen() {
                   autoCapitalize="characters"
                   accessibilityLabel="License plate"
                 />
-                {formErrors.licensePlate && (
+                {!!formErrors.licensePlate && (
                   <Text style={styles.formError}>{formErrors.licensePlate}</Text>
                 )}
               </View>
@@ -438,7 +438,7 @@ export function VehiclesScreen() {
                   keyboardType="decimal-pad"
                   accessibilityLabel="Battery capacity in kilowatt hours"
                 />
-                {formErrors.batteryCapacityKwh && (
+                {!!formErrors.batteryCapacityKwh && (
                   <Text style={styles.formError}>{formErrors.batteryCapacityKwh}</Text>
                 )}
               </View>
@@ -471,7 +471,7 @@ export function VehiclesScreen() {
                     </TouchableOpacity>
                   ))}
                 </View>
-                {formErrors.connectorType && (
+                {!!formErrors.connectorType && (
                   <Text style={styles.formError}>{formErrors.connectorType}</Text>
                 )}
               </View>

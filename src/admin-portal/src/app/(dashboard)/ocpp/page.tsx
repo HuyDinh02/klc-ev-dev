@@ -155,6 +155,19 @@ const actionBadgeStyle = (action: string): { variant: BadgeProps["variant"]; cla
   }
 };
 
+const connectorStatusVariant = (status: string): BadgeProps["variant"] => {
+  switch (status) {
+    case "Available": return "success";
+    case "Charging": return "info";
+    case "Faulted": return "destructive";
+    case "Preparing":
+    case "SuspendedEV":
+    case "SuspendedEVSE": return "warning";
+    case "Finishing": return "secondary";
+    default: return "outline";
+  }
+};
+
 export default function OcppManagementPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -382,20 +395,21 @@ export default function OcppManagementPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {connectionsLoading ? (
-                <SkeletonTable rows={3} cols={3} />
-              ) : connections.length === 0 ? (
+              {connectionsLoading && <SkeletonTable rows={3} cols={3} />}
+              {!connectionsLoading && connections.length === 0 && (
                 <EmptyState
                   icon={Plug}
                   title={t("ocpp.noChargersConnected")}
                   description={t("ocpp.noChargersDescription")}
                 />
-              ) : (
+              )}
+              {!connectionsLoading && connections.length > 0 && (
                 <div className="space-y-2">
                   {connections.map((conn) => (
-                    <div
+                    <button
                       key={conn.chargePointId}
-                      className={`flex items-center justify-between rounded-lg border p-3 cursor-pointer transition-colors ${
+                      type="button"
+                      className={`flex w-full items-center justify-between rounded-lg border bg-transparent p-3 text-left cursor-pointer transition-colors ${
                         selectedCp === conn.chargePointId
                           ? "border-primary bg-primary/5"
                           : "hover:bg-muted/50"
@@ -414,14 +428,7 @@ export default function OcppManagementPage() {
                               {conn.connectorStatuses.map((cs) => (
                                 <Badge
                                   key={cs.connectorId}
-                                  variant={
-                                    cs.status === "Available" ? "success"
-                                    : cs.status === "Charging" ? "info"
-                                    : cs.status === "Faulted" ? "destructive"
-                                    : cs.status === "Preparing" || cs.status === "SuspendedEV" || cs.status === "SuspendedEVSE" ? "warning"
-                                    : cs.status === "Finishing" ? "secondary"
-                                    : "outline"
-                                  }
+                                  variant={connectorStatusVariant(cs.status)}
                                   className="text-[10px] px-1.5 py-0"
                                 >
                                   #{cs.connectorId} {cs.status}
@@ -439,7 +446,7 @@ export default function OcppManagementPage() {
                           {conn.isRegistered ? t("ocpp.registered") : t("ocpp.pending")}
                         </Badge>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               )}
@@ -488,15 +495,15 @@ export default function OcppManagementPage() {
               </div>
             </CardHeader>
             <CardContent>
-              {eventsLoading ? (
-                <SkeletonTable rows={5} cols={5} />
-              ) : filteredEvents.length === 0 ? (
+              {eventsLoading && <SkeletonTable rows={5} cols={5} />}
+              {!eventsLoading && filteredEvents.length === 0 && (
                 <EmptyState
                   icon={FileText}
                   title={t("ocpp.noEventsRecorded")}
                   description={t("ocpp.noEventsDescription")}
                 />
-              ) : (
+              )}
+              {!eventsLoading && filteredEvents.length > 0 && (
                 <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
                   <table className="w-full text-sm">
                     <thead className="sticky top-0 bg-background">

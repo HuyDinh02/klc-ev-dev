@@ -249,6 +249,96 @@ public class OcppMessageHandlerTests
         parsed![2].GetProperty("idTagInfo").GetProperty("status").GetString().ShouldBe("Invalid");
     }
 
+    [Fact]
+    public async Task StartTransaction_Should_Dedup_When_Active_Session_Exists()
+    {
+        // Simulate an active session already linked to this connector with an existing transactionId
+        var existingSessionId = Guid.NewGuid();
+        var existingTransactionId = 77777;
+        var existingSession = new Sessions.ChargingSession(existingSessionId, Guid.NewGuid(), Guid.NewGuid(), 1);
+        existingSession.MarkStarting();
+        existingSession.RecordStart(existingTransactionId, 0);
+
+        _ocppService.GetActiveSessionForConnectorAsync("TEST-001", 1)
+            .Returns(existingSession);
+
+        // HandleStartTransactionAsync should NOT be called because dedup short-circuits
+        var message = """[2,"st-dedup","StartTransaction",{"connectorId":1,"idTag":"user-dup","meterStart":2000,"timestamp":"2026-04-08T10:00:00Z"}]""";
+        var connection = CreateConnection();
+
+        var response = await _handler.HandleMessageAsync(connection, message);
+
+        response.ShouldNotBeNull();
+        var parsed = JsonSerializer.Deserialize<JsonElement[]>(response!);
+        parsed![0].GetInt32().ShouldBe(OcppMessageType.CallResult);
+
+        // Should return the existing transaction ID, not a new one
+        var payload = parsed[2];
+        payload.GetProperty("transactionId").GetInt32().ShouldBe(existingTransactionId);
+        payload.GetProperty("idTagInfo").GetProperty("status").GetString().ShouldBe("Accepted");
+
+        // HandleStartTransactionAsync should not have been called (dedup skips it)
+        await _ocppService.DidNotReceive().HandleStartTransactionAsync(
+            Arg.Any<string>(), Arg.Any<int>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<int>());
+    }
+
+    [Fact]
+    public async Task StartTransaction_Should_Create_New_Session_When_No_Active_Session()
+    {
+        // No existing active session on this connector
+        _ocppService.GetActiveSessionForConnectorAsync("TEST-001", 2)
+            .Returns((Sessions.ChargingSession?)null);
+
+        var newSessionId = Guid.NewGuid();
+        _ocppService.HandleStartTransactionAsync(
+                Arg.Is("TEST-001"), Arg.Is(2), Arg.Is("user-new"), Arg.Is(500), Arg.Any<int>())
+            .Returns(newSessionId);
+
+        var message = """[2,"st-new","StartTransaction",{"connectorId":2,"idTag":"user-new","meterStart":500,"timestamp":"2026-04-08T10:00:00Z"}]""";
+        var connection = CreateConnection();
+
+        var response = await _handler.HandleMessageAsync(connection, message);
+
+        response.ShouldNotBeNull();
+        var parsed = JsonSerializer.Deserialize<JsonElement[]>(response!);
+        parsed![0].GetInt32().ShouldBe(OcppMessageType.CallResult);
+        parsed[2].GetProperty("idTagInfo").GetProperty("status").GetString().ShouldBe("Accepted");
+
+        // HandleStartTransactionAsync should have been called once (new session path)
+        await _ocppService.Received(1).HandleStartTransactionAsync(
+            Arg.Is("TEST-001"), Arg.Is(2), Arg.Is("user-new"), Arg.Is(500), Arg.Any<int>());
+    }
+
+    [Fact]
+    public async Task StartTransaction_Should_Not_Dedup_When_Active_Session_Has_No_TransactionId()
+    {
+        // Active session exists but has no OcppTransactionId yet (e.g., session just created by BFF, still Pending)
+        var existingSession = new Sessions.ChargingSession(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 1);
+        // Pending session — OcppTransactionId is null
+
+        _ocppService.GetActiveSessionForConnectorAsync("TEST-001", 1)
+            .Returns(existingSession);
+
+        var sessionId = Guid.NewGuid();
+        _ocppService.HandleStartTransactionAsync(
+                Arg.Is("TEST-001"), Arg.Is(1), Arg.Is("user-link"), Arg.Is(0), Arg.Any<int>())
+            .Returns(sessionId);
+
+        var message = """[2,"st-link","StartTransaction",{"connectorId":1,"idTag":"user-link","meterStart":0,"timestamp":"2026-04-08T10:00:00Z"}]""";
+        var connection = CreateConnection();
+
+        var response = await _handler.HandleMessageAsync(connection, message);
+
+        response.ShouldNotBeNull();
+        var parsed = JsonSerializer.Deserialize<JsonElement[]>(response!);
+        parsed![0].GetInt32().ShouldBe(OcppMessageType.CallResult);
+        parsed[2].GetProperty("idTagInfo").GetProperty("status").GetString().ShouldBe("Accepted");
+
+        // Should still call HandleStartTransactionAsync (no dedup because no transactionId)
+        await _ocppService.Received(1).HandleStartTransactionAsync(
+            Arg.Is("TEST-001"), Arg.Is(1), Arg.Is("user-link"), Arg.Is(0), Arg.Any<int>());
+    }
+
     #endregion
 
     #region StopTransaction

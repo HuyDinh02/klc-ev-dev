@@ -11,6 +11,7 @@ concurrency:
 permissions:
   contents: read
   pull-requests: read
+  statuses: write
 
 jobs:
   changes:
@@ -66,8 +67,13 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
-      - name: Test
-        run: dotnet test src/backend -c Release --logger "trx;LogFileName=test-results.trx" --results-directory ./test-results
+      - name: Test with coverage
+        run: |
+          dotnet test src/backend -c Release \
+            --logger "trx;LogFileName=test-results.trx" \
+            --results-directory ./test-results \
+            --collect:"XPlat Code Coverage" \
+            -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
         env:
           ConnectionStrings__Default: "Host=localhost;Port=5433;Database=KLC;Username=postgres;Password=postgres"
 
@@ -78,6 +84,13 @@ jobs:
           name: backend-test-results
           path: ./test-results
           retention-days: 7
+
+      # Copy coverage reports to expected path
+      - name: Collect coverage reports
+        if: always()
+        run: |
+          mkdir -p src/backend/test/coverage
+          find . -name "coverage.opencover.xml" -exec cp {} src/backend/test/coverage/ \; 2>/dev/null || true
 
   admin-portal-check:
     name: Admin Portal Check
@@ -102,6 +115,37 @@ jobs:
           npm ci
           npx tsc --noEmit
           npx vitest run
+
+  sonarcloud:
+    name: SonarCloud Scan
+    runs-on: [self-hosted, linux, x64, gce]
+    needs: [backend-test, admin-portal-check]
+    if: always()
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for accurate blame/coverage
+
+      - name: Download backend test results
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-test-results
+          path: test-results
+        continue-on-error: true
+
+      - name: Setup Java (required by SonarScanner)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@v3
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   driver-app-test:
     name: Driver App Tests

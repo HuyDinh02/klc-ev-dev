@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 using KLC.MobileUsers;
 using KLC.Permissions;
@@ -60,6 +62,7 @@ public class VoucherAppService : KLCAppService, IVoucherAppService
             Description = v.Description,
             MinOrderAmount = v.MinOrderAmount,
             MaxDiscountAmount = v.MaxDiscountAmount,
+            PromotionId = v.PromotionId,
             CreatedAt = v.CreationTime
         }).ToList();
 
@@ -93,6 +96,7 @@ public class VoucherAppService : KLCAppService, IVoucherAppService
             Description = voucher.Description,
             MinOrderAmount = voucher.MinOrderAmount,
             MaxDiscountAmount = voucher.MaxDiscountAmount,
+            PromotionId = voucher.PromotionId,
             CreatedAt = voucher.CreationTime
         };
     }
@@ -113,7 +117,8 @@ public class VoucherAppService : KLCAppService, IVoucherAppService
             input.TotalQuantity,
             input.MinOrderAmount,
             input.MaxDiscountAmount,
-            input.Description);
+            input.Description,
+            input.PromotionId);
 
         await _voucherRepository.InsertAsync(voucher);
 
@@ -166,5 +171,93 @@ public class VoucherAppService : KLCAppService, IVoucherAppService
                 ClaimedAt = uv.CreationTime
             }).ToList()
         };
+    }
+
+    [Authorize(KLCPermissions.Vouchers.Create)]
+    public async Task<BulkCreateVoucherResultDto> BulkCreateAsync(BulkCreateVoucherDto input)
+    {
+        var vouchers = new List<Voucher>();
+        var results = new List<CreateVoucherResultDto>();
+
+        for (var i = 0; i < input.Count; i++)
+        {
+            var code = GenerateUniqueCode();
+
+            // Ensure uniqueness
+            while (await _voucherRepository.AnyAsync(v => v.Code == code && !v.IsDeleted))
+            {
+                code = GenerateUniqueCode();
+            }
+
+            var voucher = new Voucher(
+                GuidGenerator.Create(),
+                code,
+                input.Type,
+                input.Value,
+                input.ExpiryDate,
+                input.Quantity,
+                input.MinOrderAmount,
+                input.MaxDiscountAmount,
+                input.Description,
+                input.PromotionId);
+
+            vouchers.Add(voucher);
+            results.Add(new CreateVoucherResultDto { Id = voucher.Id, Code = voucher.Code });
+        }
+
+        await _voucherRepository.InsertManyAsync(vouchers);
+
+        return new BulkCreateVoucherResultDto
+        {
+            TotalCreated = vouchers.Count,
+            Vouchers = results
+        };
+    }
+
+    public async Task<List<ExportVoucherDto>> ExportAsync()
+    {
+        var query = await _voucherRepository.GetQueryableAsync();
+        var vouchers = await AsyncExecuter.ToListAsync(
+            query.Where(v => !v.IsDeleted)
+                .OrderByDescending(v => v.CreationTime));
+
+        return vouchers.Select(v => new ExportVoucherDto
+        {
+            Id = v.Id,
+            Code = v.Code,
+            Type = v.Type.ToString(),
+            Value = v.Value,
+            ExpiryDate = v.ExpiryDate,
+            TotalQuantity = v.TotalQuantity,
+            UsedQuantity = v.UsedQuantity,
+            IsActive = v.IsActive,
+            Description = v.Description,
+            MinOrderAmount = v.MinOrderAmount,
+            MaxDiscountAmount = v.MaxDiscountAmount,
+            PromotionId = v.PromotionId,
+            CreatedAt = v.CreationTime
+        }).ToList();
+    }
+
+    /// <summary>
+    /// Generates a unique voucher code in format "KLC-XXXX-XXXX".
+    /// Uses cryptographic random for uniqueness.
+    /// </summary>
+    private static string GenerateUniqueCode()
+    {
+        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // exclude ambiguous chars
+        Span<byte> randomBytes = stackalloc byte[8];
+        RandomNumberGenerator.Fill(randomBytes);
+
+        var part1 = new char[4];
+        var part2 = new char[4];
+
+        for (var i = 0; i < 4; i++)
+        {
+            part1[i] = chars[randomBytes[i] % chars.Length];
+            part2[i] = chars[randomBytes[i + 4] % chars.Length];
+        }
+
+        return $"KLC-{new string(part1)}-{new string(part2)}";
     }
 }

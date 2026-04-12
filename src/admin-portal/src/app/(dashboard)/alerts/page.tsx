@@ -90,7 +90,6 @@ export default function AlertsPage() {
     isLoading,
     statusFilter: acknowledgedFilter,
     setStatusFilterAndReset: setAcknowledgedFilterAndReset,
-    setStatusFilter: setAcknowledgedFilter,
     pageSize,
     goNextPage,
     goPrevPage,
@@ -257,13 +256,14 @@ export default function AlertsPage() {
 
       {/* Alerts List */}
       <div className="space-y-3">
-        {isLoading ? (
+        {isLoading && (
           <div className="grid gap-4 md:grid-cols-2">
             {Array.from({ length: 4 }).map((_, i) => (
               <SkeletonCard key={i} />
             ))}
           </div>
-        ) : alerts.length > 0 ? (
+        )}
+        {!isLoading && alerts.length > 0 &&
           alerts
             .filter((alert) => {
               if (typeFilter === "all") return true;
@@ -348,7 +348,8 @@ export default function AlertsPage() {
               </Card>
               );
             })
-        ) : (
+        }
+        {!isLoading && alerts.length === 0 && (
           <EmptyState
             icon={Bell}
             title={t("alerts.noAlertsFound")}

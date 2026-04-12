@@ -80,3 +80,4 @@ backups/
 .claude/
 bin\\Debug/
 bin\Debug/
+.scannerwork/

@@ -3,6 +3,7 @@ using System;
 using KLC.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NetTopologySuite.Geometries;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -13,9 +14,11 @@ using Volo.Abp.EntityFrameworkCore;
 namespace KLC.Migrations
 {
     [DbContext(typeof(KLCDbContext))]
-    partial class KLCDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260410101046_AddVoucherPromotionLink")]
+    partial class AddVoucherPromotionLink
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2025,10 +2028,6 @@ namespace KLC.Migrations
 
                     b.Property<int>("MeteringClass")
                         .HasColumnType("integer");
-
-                    b.Property<string>("QrCodeData")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
 
                     b.Property<Guid>("StationId")
                         .HasColumnType("uuid");

@@ -89,4 +89,17 @@ public class ConnectorController : KLCController
         await _connectorAppService.DeleteAsync(id);
         return NoContent();
     }
+
+    /// <summary>
+    /// Sets QR code data on a connector and optionally sends it to the charger via OCPP DataTransfer.
+    /// </summary>
+    [HttpPut("stations/{stationId:guid}/connectors/{connectorNumber:int}/qr-code")]
+    public async Task<ActionResult<ConnectorDto>> SetQrCodeAsync(
+        Guid stationId,
+        int connectorNumber,
+        [FromBody] SetConnectorQrCodeDto input)
+    {
+        var result = await _connectorAppService.SetQrCodeAsync(stationId, connectorNumber, input);
+        return Ok(result);
+    }
 }
