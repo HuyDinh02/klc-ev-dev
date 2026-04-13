@@ -342,6 +342,8 @@ stringData:
   Payment__VnPay__HashSecret: "<VALUE>"
   Payment__VnPay__BaseUrl: "<VALUE>"
   Payment__VnPay__QueryApiUrl: "<VALUE>"
+  # VnPay IPN IP whitelist (Case 13 compliance)
+  Payment__VnPay__IpnWhitelist: "113.52.45.78,116.97.245.130,42.118.107.252,113.20.97.250,203.171.19.146,103.220.87.4,103.220.86.4,103.220.86.10,103.220.87.10,103.220.86.139,103.220.87.139"
   # OpenIddict certs (base64 encoded)
   OPENIDDICT_SIGNING_CERT: "<BASE64>"
   OPENIDDICT_SIGNING_PASSWORD: "<VALUE>"
