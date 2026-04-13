@@ -239,6 +239,7 @@ if (enableApiDocs)
 }
 
 app.UseMiddleware<GlobalExceptionMiddleware>();
+app.UseMiddleware<UnitOfWorkMiddleware>();
 app.UseSentryTracing();
 app.UseCors("MobileApp");
 app.UseRateLimiter();
