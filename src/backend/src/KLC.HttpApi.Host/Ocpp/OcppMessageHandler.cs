@@ -163,7 +163,11 @@ public class OcppMessageHandler
                 vendorProfile,
                 latencyMs);
 
-            await _rawEventRepository.InsertAsync(rawEvent, autoSave: true);
+            // autoSave: false — let the UoW batch this with the main commit.
+            // autoSave: true would flush ALL tracked entities (e.g., ChargingStation
+            // from HeartbeatHandler), causing AbpDbConcurrencyException if another
+            // message modified the same station concurrently.
+            await _rawEventRepository.InsertAsync(rawEvent, autoSave: false);
         }
         catch (Exception ex)
         {
