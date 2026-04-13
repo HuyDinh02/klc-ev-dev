@@ -35,6 +35,14 @@ public static class ConfigEndpoints
                     MinBalanceToStart = wallet.MinBalanceToStart,
                     AutoStopThreshold = wallet.LowBalanceThreshold,
                 },
+                Map = new MapConfig
+                {
+                    DefaultRadiusKm = configuration.GetValue("Map:DefaultRadiusKm", 30),
+                    MaxRadiusKm = configuration.GetValue("Map:MaxRadiusKm", 100),
+                    DefaultLatitude = configuration.GetValue("Map:DefaultLatitude", 10.7769),
+                    DefaultLongitude = configuration.GetValue("Map:DefaultLongitude", 106.7009),
+                    DefaultZoom = configuration.GetValue("Map:DefaultZoom", 13),
+                },
                 App = new AppInfo
                 {
                     MinVersion = configuration["App:MinVersion"] ?? "1.0.0",
@@ -62,6 +70,7 @@ public record AppConfigResponse
 {
     public WalletConfig Wallet { get; init; } = new();
     public ChargingConfig Charging { get; init; } = new();
+    public MapConfig Map { get; init; } = new();
     public AppInfo App { get; init; } = new();
     public ContactInfo Contact { get; init; } = new();
 }
@@ -100,6 +109,20 @@ public record AppInfo
     public bool MaintenanceMode { get; init; }
     /// <summary>Maintenance message to display</summary>
     public string? MaintenanceMessage { get; init; }
+}
+
+public record MapConfig
+{
+    /// <summary>Default search radius for nearby stations (km)</summary>
+    public int DefaultRadiusKm { get; init; } = 30;
+    /// <summary>Maximum allowed search radius (km)</summary>
+    public int MaxRadiusKm { get; init; } = 100;
+    /// <summary>Default map center latitude (Ho Chi Minh City)</summary>
+    public double DefaultLatitude { get; init; } = 10.7769;
+    /// <summary>Default map center longitude</summary>
+    public double DefaultLongitude { get; init; } = 106.7009;
+    /// <summary>Default map zoom level</summary>
+    public int DefaultZoom { get; init; } = 13;
 }
 
 public record ContactInfo
