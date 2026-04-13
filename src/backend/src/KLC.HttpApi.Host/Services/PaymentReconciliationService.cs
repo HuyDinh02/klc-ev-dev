@@ -17,7 +17,7 @@ namespace KLC.Services;
 /// <summary>
 /// Background service that reconciles pending VnPay transactions by querying
 /// VnPay's querydr API. Runs every 15 minutes. Also expires transactions
-/// older than 24 hours that were never completed.
+/// older than 1 hour that were never completed.
 /// </summary>
 public class PaymentReconciliationService : BackgroundService
 {
@@ -25,7 +25,7 @@ public class PaymentReconciliationService : BackgroundService
     private readonly ILogger<PaymentReconciliationService> _logger;
     private readonly TimeSpan _checkInterval = TimeSpan.FromMinutes(15);
     private readonly TimeSpan _pendingThreshold = TimeSpan.FromMinutes(30);
-    private readonly TimeSpan _expiryThreshold = TimeSpan.FromHours(24);
+    private readonly TimeSpan _expiryThreshold = TimeSpan.FromHours(1);
 
     public PaymentReconciliationService(
         IServiceProvider serviceProvider,
@@ -77,7 +77,7 @@ public class PaymentReconciliationService : BackgroundService
         var pendingCutoff = now - _pendingThreshold;
         var expiryCutoff = now - _expiryThreshold;
 
-        // Step 1: Expire very old pending transactions (> 24h)
+        // Step 1: Expire stale pending transactions (> 1h)
         using (var uow = uowManager.Begin(requiresNew: true))
         {
             var expired = await (await walletTxnRepo.GetQueryableAsync())
@@ -90,7 +90,7 @@ public class PaymentReconciliationService : BackgroundService
                 txn.MarkFailed();
                 await walletTxnRepo.UpdateAsync(txn);
                 _logger.LogInformation(
-                    "Expired pending transaction: {RefCode} (age > 24h)",
+                    "Expired pending transaction: {RefCode} (age > 1h)",
                     txn.ReferenceCode);
             }
 
@@ -101,7 +101,7 @@ public class PaymentReconciliationService : BackgroundService
             }
         }
 
-        // Step 2: Query VnPay for pending transactions between 30 min and 24h old
+        // Step 2: Query VnPay for pending transactions between 30 min and 1h old
         if (vnpayGateway == null)
         {
             _logger.LogDebug("VnPay gateway not available, skipping reconciliation query");
