@@ -65,7 +65,8 @@ public static class WalletEndpoints
 
             logger.LogInformation("[VnPay IPN] Received: TxnRef={TxnRef}, CallerIP={CallerIP}", txnRef, callerIp);
 
-            // Whitelist VnPay IPN source IPs (Case 13) — fail-closed: reject if not configured
+            // Whitelist VnPay IPN source IPs (Case 13) — supports individual IPs and CIDR notation
+            // VnPay uses multiple IPs across 103.220.84.0/22 subnet; CIDR avoids breaking on new IPs
             var whitelistStr = configuration["Payment:VnPay:IpnWhitelist"] ?? "";
             if (string.IsNullOrEmpty(whitelistStr))
             {
@@ -73,8 +74,46 @@ public static class WalletEndpoints
                 return Results.Json(new KLC.Payments.VnPayIpnResponse { RspCode = "99", Message = "IPN whitelist not configured" });
             }
 
-            var whitelist = whitelistStr.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            if (!whitelist.Contains(callerIp))
+            if (!System.Net.IPAddress.TryParse(callerIp, out var callerAddr))
+            {
+                logger.LogWarning("[VnPay IPN] REJECTED: Invalid IP {CallerIP}, TxnRef={TxnRef}", callerIp, txnRef);
+                return Results.Json(new KLC.Payments.VnPayIpnResponse { RspCode = "99", Message = "Unauthorized IP" });
+            }
+
+            var entries = whitelistStr.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var ipAllowed = false;
+            foreach (var entry in entries)
+            {
+                if (entry.Contains('/'))
+                {
+                    // CIDR notation: e.g. 103.220.84.0/22
+                    var parts = entry.Split('/');
+                    if (System.Net.IPAddress.TryParse(parts[0], out var network) && int.TryParse(parts[1], out var prefixLen))
+                    {
+                        var networkBytes = network.GetAddressBytes();
+                        var addrBytes = callerAddr.GetAddressBytes();
+                        if (networkBytes.Length == addrBytes.Length)
+                        {
+                            var match = true;
+                            var bits = prefixLen;
+                            for (int i = 0; i < networkBytes.Length && bits > 0; i++)
+                            {
+                                var mask = (byte)(bits >= 8 ? 0xFF : (0xFF << (8 - bits)));
+                                if ((networkBytes[i] & mask) != (addrBytes[i] & mask)) { match = false; break; }
+                                bits -= 8;
+                            }
+                            if (match) { ipAllowed = true; break; }
+                        }
+                    }
+                }
+                else if (entry == callerIp)
+                {
+                    ipAllowed = true;
+                    break;
+                }
+            }
+
+            if (!ipAllowed)
             {
                 logger.LogWarning("[VnPay IPN] REJECTED: IP {CallerIP} not in whitelist, TxnRef={TxnRef}", callerIp, txnRef);
                 return Results.Json(new KLC.Payments.VnPayIpnResponse { RspCode = "99", Message = "Unauthorized IP" });

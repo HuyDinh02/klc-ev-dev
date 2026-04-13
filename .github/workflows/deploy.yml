@@ -254,7 +254,7 @@ jobs:
             --add-cloudsql-instances=${{ secrets.GCP_PROJECT_ID }}:${{ env.GCP_REGION }}:klc-postgres
             --vpc-connector=klc-connector
             --vpc-egress=private-ranges-only
-            --set-env-vars=^||^ASPNETCORE_ENVIRONMENT=Production||EnableApiDocs=true||Ocpp__GatewayUrl=https://ocpp.ev.odcall.com||Payment__VnPay__IpnWhitelist=113.52.45.78,116.97.245.130,42.118.107.252,113.20.97.250,203.171.19.146,103.220.87.4,103.220.86.4,103.220.84.4,103.220.86.10,103.220.87.10,103.220.84.10,103.220.86.139,103.220.87.139,103.220.84.139
+            --set-env-vars=^||^ASPNETCORE_ENVIRONMENT=Production||EnableApiDocs=true||Ocpp__GatewayUrl=https://ocpp.ev.odcall.com||Payment__VnPay__IpnWhitelist=103.220.84.0/22,113.52.45.78,116.97.245.130,42.118.107.252,113.20.97.250,203.171.19.146
             --set-secrets=ConnectionStrings__Default=db-connection-string:latest,ConnectionStrings__Redis=redis-connection-string:latest,Jwt__SecretKey=jwt-secret-key:latest,Internal__ApiKey=internal-api-key:latest,Payment__MoMo__PartnerCode=momo-partner-code:latest,Payment__MoMo__AccessKey=momo-access-key:latest,Payment__MoMo__SecretKey=momo-secret-key:latest,Payment__VnPay__TmnCode=vnpay-tmn-code:latest,Payment__VnPay__HashSecret=vnpay-hash-secret:latest,Payment__VnPay__BaseUrl=vnpay-base-url:latest,Payment__VnPay__QueryApiUrl=vnpay-query-api-url:latest,Firebase__WebApiKey=firebase-web-api-key:latest
 
       - name: Deploy Admin Portal
