@@ -222,9 +222,11 @@ public class SessionBffService : ISessionBffService
 
     public async Task<PagedResult<SessionHistoryDto>> GetSessionHistoryAsync(Guid userId, Guid? cursor, int pageSize)
     {
+        // Include both Completed and Failed sessions in history
         var query = _dbContext.ChargingSessions
             .AsNoTracking()
-            .Where(s => s.UserId == userId && s.Status == SessionStatus.Completed)
+            .Where(s => s.UserId == userId
+                && (s.Status == SessionStatus.Completed || s.Status == SessionStatus.Failed))
             .OrderByDescending(s => s.EndTime);
 
         if (cursor.HasValue)

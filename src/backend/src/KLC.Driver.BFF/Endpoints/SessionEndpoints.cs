@@ -87,14 +87,16 @@ public static class SessionEndpoints
         // GET /api/v1/sessions/history
         group.MapGet("/history", async (
             [FromQuery] Guid? cursor,
-            [FromQuery] int pageSize = 20,
+            [FromQuery] int? pageSize,
+            [FromQuery] int? limit,
             ClaimsPrincipal user = null!,
             ISessionBffService sessionService = null!) =>
         {
             var userId = GetUserId(user);
-            if (pageSize <= 0 || pageSize > 50) pageSize = 20;
+            var size = pageSize ?? limit ?? 20;
+            if (size <= 0 || size > 50) size = 20;
 
-            var result = await sessionService.GetSessionHistoryAsync(userId, cursor, pageSize);
+            var result = await sessionService.GetSessionHistoryAsync(userId, cursor, size);
             return Results.Ok(new
             {
                 items = result.Data.Select(s => new
