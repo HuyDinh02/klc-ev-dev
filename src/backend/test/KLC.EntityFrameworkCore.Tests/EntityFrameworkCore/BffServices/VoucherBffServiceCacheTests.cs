@@ -13,8 +13,10 @@ using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
 using Volo.Abp.DependencyInjection;
+using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Guids;
 using Xunit;
+using VoucherValidationResultDto = KLC.Driver.Services.VoucherValidationResultDto;
 
 namespace KLC.BffServices;
 
@@ -37,10 +39,40 @@ public class VoucherBffServiceCacheTests : KLCEntityFrameworkCoreTestBase
         _driverNotifier = Substitute.For<IDriverHubNotifier>();
 
         var logger = Substitute.For<ILogger<VoucherBffService>>();
-        var walletDomainService = CreateWalletDomainService();
+        var voucherRedemptionAppService = Substitute.For<IVoucherRedemptionAppService>();
+
+        // Configure default mock responses for validate and apply
+        voucherRedemptionAppService.ValidateVoucherAsync(Arg.Any<string>())
+            .Returns(callInfo =>
+            {
+                var code = callInfo.ArgAt<string>(0);
+                return new KLC.Marketing.VoucherValidationResultDto
+                {
+                    IsValid = true,
+                    Voucher = new VoucherInfoDto
+                    {
+                        Id = Guid.NewGuid(),
+                        Code = code,
+                        Type = VoucherType.FixedAmount,
+                        Value = 50_000m,
+                        ExpiryDate = DateTime.UtcNow.AddDays(30),
+                        Description = "Test voucher",
+                        RemainingQuantity = 100
+                    }
+                };
+            });
+
+        voucherRedemptionAppService.ApplyVoucherAsync(Arg.Any<Guid>(), Arg.Any<string>())
+            .Returns(callInfo => new ApplyVoucherResultDto
+            {
+                Success = true,
+                NewBalance = 50_000m,
+                CreditAmount = 50_000m,
+                UserId = callInfo.ArgAt<Guid>(0)
+            });
 
         _service = new VoucherBffService(
-            _dbContext, _cache, logger, walletDomainService, _driverNotifier);
+            _dbContext, _cache, logger, voucherRedemptionAppService, _driverNotifier);
     }
 
     [Fact]
@@ -175,7 +207,7 @@ public class VoucherBffServiceCacheTests : KLCEntityFrameworkCoreTestBase
         // Verify cache was NOT called for validation
         await _cache.DidNotReceive().GetOrSetAsync(
             Arg.Any<string>(),
-            Arg.Any<Func<Task<VoucherValidationResultDto>>>(),
+            Arg.Any<Func<Task<KLC.Driver.Services.VoucherValidationResultDto>>>(),
             Arg.Any<TimeSpan?>());
     }
 
@@ -229,35 +261,4 @@ public class VoucherBffServiceCacheTests : KLCEntityFrameworkCoreTestBase
             userId, Arg.Any<WalletBalanceChangedMessage>());
     }
 
-    #region Helpers
-
-    private static WalletDomainService CreateWalletDomainService()
-    {
-        var service = new WalletDomainService();
-
-        var lazyServiceProvider = Substitute.For<IAbpLazyServiceProvider>();
-        lazyServiceProvider
-            .LazyGetRequiredService<IGuidGenerator>()
-            .Returns(SimpleGuidGenerator.Instance);
-        lazyServiceProvider
-            .LazyGetService<IGuidGenerator>()
-            .Returns(SimpleGuidGenerator.Instance);
-
-        var type = service.GetType();
-        while (type != null)
-        {
-            var prop = type.GetProperty("LazyServiceProvider",
-                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
-            if (prop != null)
-            {
-                prop.SetValue(service, lazyServiceProvider);
-                break;
-            }
-            type = type.BaseType;
-        }
-
-        return service;
-    }
-
-    #endregion
 }

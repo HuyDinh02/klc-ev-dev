@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using KLC.Auth;
 using KLC.Driver.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -39,7 +40,7 @@ public static class AuthEndpoints
         })
         .WithName("VerifyPhone")
         .WithSummary("Verify phone number with OTP")
-        .Produces<VerifyOtpResultDto>(200)
+        .Produces<VerifyResultDto>(200)
         .Produces(400);
 
         // POST /api/v1/auth/firebase-verify-phone — Verify phone using Firebase Phone Auth token
@@ -54,7 +55,7 @@ public static class AuthEndpoints
         })
         .WithName("FirebaseVerifyPhone")
         .WithSummary("Verify phone number using Firebase Phone Auth ID token")
-        .Produces<VerifyOtpResultDto>(200)
+        .Produces<VerifyResultDto>(200)
         .Produces(400);
 
         // POST /api/v1/auth/resend-otp

@@ -1,18 +1,12 @@
-using System.Net;
-using System.Net.Http;
 using System;
 using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
 using KLC.Driver.Services;
 using KLC.EntityFrameworkCore;
 using KLC.Enums;
-using KLC.Fleets;
 using KLC.Sessions;
 using KLC.Stations;
 using KLC.Users;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
@@ -25,74 +19,44 @@ public class SessionBffServiceTests : KLCEntityFrameworkCoreTestBase
 {
     private readonly KLCDbContext _dbContext;
     private readonly ICacheService _cache;
+    private readonly ISessionBffAppService _sessionAppService;
     private readonly SessionBffService _service;
 
     public SessionBffServiceTests()
     {
         _dbContext = GetRequiredService<KLCDbContext>();
         _cache = new PassthroughCacheService();
-        var fleetPolicyService = Substitute.For<IFleetChargingPolicyService>();
-        fleetPolicyService.ValidateChargingAsync(Arg.Any<Guid>(), Arg.Any<Guid>())
-            .Returns(new FleetChargingValidationResult(true));
+        _sessionAppService = Substitute.For<ISessionBffAppService>();
         var logger = Substitute.For<ILogger<SessionBffService>>();
-        var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?> { ["Wallet:MinBalanceToStart"] = "10000" })
-            .Build();
 
-        // Mock HttpClientFactory to return a successful RemoteStart response
-        var httpClientFactory = Substitute.For<IHttpClientFactory>();
-        var mockHandler = new MockHttpMessageHandler(
-            new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new StringContent("{\"success\":true,\"message\":\"RemoteStartTransaction accepted\"}")
-            });
-        httpClientFactory.CreateClient(Arg.Any<string>()).Returns(new HttpClient(mockHandler));
-
-        _service = new SessionBffService(_dbContext, _cache, fleetPolicyService, configuration, httpClientFactory, logger);
-    }
-
-    private class MockHttpMessageHandler : HttpMessageHandler
-    {
-        private readonly HttpResponseMessage _response;
-        public MockHttpMessageHandler(HttpResponseMessage response) => _response = response;
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-            => Task.FromResult(_response);
+        _service = new SessionBffService(_dbContext, _cache, _sessionAppService, logger);
     }
 
     [Fact]
-    public async Task StartSession_Should_Succeed_When_Connector_Available()
+    public async Task StartSession_Should_Succeed_When_AppService_Returns_Success()
     {
         var userId = Guid.NewGuid();
         var stationId = Guid.NewGuid();
-        var connectorId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
 
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var station = new ChargingStation(stationId, "KC-TEST-001", "Test Station", "123 Test St", 21.0, 105.8);
-            var connector = station.AddConnector(connectorId, 1, ConnectorType.CCS2, 50);
-            connector.UpdateStatus(ConnectorStatus.Available);
-            await _dbContext.ChargingStations.AddAsync(station);
-
-            // Seed AppUser with wallet balance for wallet check
-            var appUser = new AppUser(Guid.NewGuid(), userId, "Test User", "0900000002");
-            appUser.AddToWallet(100_000m);
-            await _dbContext.AppUsers.AddAsync(appUser);
-
-            await _dbContext.SaveChangesAsync();
-        });
-
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var result = await _service.StartSessionAsync(userId, new StartSessionRequest
+        _sessionAppService.StartSessionAsync(Arg.Any<StartSessionInput>())
+            .Returns(new StartSessionResultDto
             {
-                StationId = stationId,
-                ConnectorNumber = 1
+                Success = true,
+                SessionId = sessionId,
+                Status = SessionStatus.Pending,
+                StationId = stationId
             });
 
-            result.Success.ShouldBeTrue();
-            result.SessionId.ShouldNotBeNull();
-            result.Status.ShouldBe(SessionStatus.Pending);
+        var result = await _service.StartSessionAsync(userId, new StartSessionRequest
+        {
+            StationId = stationId,
+            ConnectorNumber = 1
         });
+
+        result.Success.ShouldBeTrue();
+        result.SessionId.ShouldNotBeNull();
+        result.Status.ShouldBe(SessionStatus.Pending);
     }
 
     [Fact]
@@ -100,77 +64,61 @@ public class SessionBffServiceTests : KLCEntityFrameworkCoreTestBase
     {
         var userId = Guid.NewGuid();
 
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var result = await _service.StartSessionAsync(userId, new StartSessionRequest
+        _sessionAppService.StartSessionAsync(Arg.Any<StartSessionInput>())
+            .Returns(new StartSessionResultDto
             {
-                StationId = Guid.NewGuid(),
-                ConnectorNumber = 1
+                Success = false,
+                Error = "Connector not found"
             });
 
-            result.Success.ShouldBeFalse();
-            result.Error.ShouldContain("Connector not found");
+        var result = await _service.StartSessionAsync(userId, new StartSessionRequest
+        {
+            StationId = Guid.NewGuid(),
+            ConnectorNumber = 1
         });
+
+        result.Success.ShouldBeFalse();
+        result.Error.ShouldContain("Connector not found");
     }
 
     [Fact]
     public async Task StartSession_Should_Fail_When_Connector_Not_Available()
     {
-        var stationId = Guid.NewGuid();
-        var connectorId = Guid.NewGuid();
-
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var station = new ChargingStation(stationId, "KC-TEST-002", "Test Station 2", "456 Test St", 21.0, 105.8);
-            var connector = station.AddConnector(connectorId, 1, ConnectorType.CCS2, 50);
-            connector.UpdateStatus(ConnectorStatus.Charging); // Not available
-            await _dbContext.ChargingStations.AddAsync(station);
-            await _dbContext.SaveChangesAsync();
-        });
-
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var result = await _service.StartSessionAsync(Guid.NewGuid(), new StartSessionRequest
+        _sessionAppService.StartSessionAsync(Arg.Any<StartSessionInput>())
+            .Returns(new StartSessionResultDto
             {
-                StationId = stationId,
-                ConnectorNumber = 1
+                Success = false,
+                Error = "Connector is not available"
             });
 
-            result.Success.ShouldBeFalse();
-            result.Error.ShouldContain("not available");
+        var result = await _service.StartSessionAsync(Guid.NewGuid(), new StartSessionRequest
+        {
+            StationId = Guid.NewGuid(),
+            ConnectorNumber = 1
         });
+
+        result.Success.ShouldBeFalse();
+        result.Error.ShouldContain("not available");
     }
 
     [Fact]
     public async Task StartSession_Should_Fail_When_User_Has_Active_Session()
     {
-        var userId = Guid.NewGuid();
-        var stationId = Guid.NewGuid();
-
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var station = new ChargingStation(stationId, "KC-TEST-003", "Test Station 3", "789 Test St", 21.0, 105.8);
-            var connector = station.AddConnector(Guid.NewGuid(), 1, ConnectorType.CCS2, 50);
-            connector.UpdateStatus(ConnectorStatus.Available);
-            await _dbContext.ChargingStations.AddAsync(station);
-
-            // Create an existing active session for the user
-            var existingSession = new ChargingSession(Guid.NewGuid(), userId, stationId, 1);
-            await _dbContext.ChargingSessions.AddAsync(existingSession);
-            await _dbContext.SaveChangesAsync();
-        });
-
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var result = await _service.StartSessionAsync(userId, new StartSessionRequest
+        _sessionAppService.StartSessionAsync(Arg.Any<StartSessionInput>())
+            .Returns(new StartSessionResultDto
             {
-                StationId = stationId,
-                ConnectorNumber = 1
+                Success = false,
+                Error = "You already have an active session"
             });
 
-            result.Success.ShouldBeFalse();
-            result.Error.ShouldContain("already have an active session");
+        var result = await _service.StartSessionAsync(Guid.NewGuid(), new StartSessionRequest
+        {
+            StationId = Guid.NewGuid(),
+            ConnectorNumber = 1
         });
+
+        result.Success.ShouldBeFalse();
+        result.Error.ShouldContain("already have an active session");
     }
 
     [Fact]
@@ -179,35 +127,39 @@ public class SessionBffServiceTests : KLCEntityFrameworkCoreTestBase
         var userId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
 
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var session = new ChargingSession(sessionId, userId, Guid.NewGuid(), 1);
-            session.MarkStarting();
-            session.RecordStart(1, 0);
-            await _dbContext.ChargingSessions.AddAsync(session);
-            await _dbContext.SaveChangesAsync();
-        });
+        _sessionAppService.StopSessionAsync(userId, sessionId)
+            .Returns(new StopSessionResultDto
+            {
+                Success = true,
+                SessionId = sessionId,
+                Status = SessionStatus.Stopping,
+                StationId = Guid.NewGuid()
+            });
 
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var result = await _service.StopSessionAsync(userId, sessionId);
+        var result = await _service.StopSessionAsync(userId, sessionId);
 
-            result.Success.ShouldBeTrue();
-            result.SessionId.ShouldBe(sessionId);
-            result.Status.ShouldBe(SessionStatus.Stopping);
-        });
+        result.Success.ShouldBeTrue();
+        result.SessionId.ShouldBe(sessionId);
+        result.Status.ShouldBe(SessionStatus.Stopping);
     }
 
     [Fact]
     public async Task StopSession_Should_Fail_When_Session_Not_Found()
     {
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var result = await _service.StopSessionAsync(Guid.NewGuid(), Guid.NewGuid());
+        var userId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
 
-            result.Success.ShouldBeFalse();
-            result.Error.ShouldContain("Session not found");
-        });
+        _sessionAppService.StopSessionAsync(userId, sessionId)
+            .Returns(new StopSessionResultDto
+            {
+                Success = false,
+                Error = "Session not found"
+            });
+
+        var result = await _service.StopSessionAsync(userId, sessionId);
+
+        result.Success.ShouldBeFalse();
+        result.Error.ShouldContain("Session not found");
     }
 
     [Fact]
@@ -216,46 +168,36 @@ public class SessionBffServiceTests : KLCEntityFrameworkCoreTestBase
         var userId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
 
-        await WithUnitOfWorkAsync(async () =>
-        {
-            // Session is Pending, not InProgress
-            var session = new ChargingSession(sessionId, userId, Guid.NewGuid(), 1);
-            await _dbContext.ChargingSessions.AddAsync(session);
-            await _dbContext.SaveChangesAsync();
-        });
+        _sessionAppService.StopSessionAsync(userId, sessionId)
+            .Returns(new StopSessionResultDto
+            {
+                Success = false,
+                Error = "Session is not in progress"
+            });
 
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var result = await _service.StopSessionAsync(userId, sessionId);
+        var result = await _service.StopSessionAsync(userId, sessionId);
 
-            result.Success.ShouldBeFalse();
-            result.Error.ShouldContain("not in progress");
-        });
+        result.Success.ShouldBeFalse();
+        result.Error.ShouldContain("not in progress");
     }
 
     [Fact]
     public async Task StopSession_Should_Fail_When_Session_Belongs_To_Another_User()
     {
+        var differentUserId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
-        var ownerId = Guid.NewGuid();
 
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var session = new ChargingSession(sessionId, ownerId, Guid.NewGuid(), 1);
-            session.MarkStarting();
-            session.RecordStart(1, 0);
-            await _dbContext.ChargingSessions.AddAsync(session);
-            await _dbContext.SaveChangesAsync();
-        });
+        _sessionAppService.StopSessionAsync(differentUserId, sessionId)
+            .Returns(new StopSessionResultDto
+            {
+                Success = false,
+                Error = "Session not found"
+            });
 
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var differentUserId = Guid.NewGuid();
-            var result = await _service.StopSessionAsync(differentUserId, sessionId);
+        var result = await _service.StopSessionAsync(differentUserId, sessionId);
 
-            result.Success.ShouldBeFalse();
-            result.Error.ShouldContain("Session not found");
-        });
+        result.Success.ShouldBeFalse();
+        result.Error.ShouldContain("Session not found");
     }
 
     [Fact]
@@ -263,189 +205,125 @@ public class SessionBffServiceTests : KLCEntityFrameworkCoreTestBase
     {
         var userId = Guid.NewGuid();
         var stationId = Guid.NewGuid();
-        var connectorId = Guid.NewGuid();
 
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var station = new ChargingStation(stationId, "KC-PREP-001", "Preparing Station", "100 Prep St", 21.0, 105.8);
-            var connector = station.AddConnector(connectorId, 1, ConnectorType.CCS2, 50);
-            connector.UpdateStatus(ConnectorStatus.Preparing); // Cable plugged in, waiting for auth
-            await _dbContext.ChargingStations.AddAsync(station);
-
-            var appUser = new AppUser(Guid.NewGuid(), userId, "Prep Test User", "0900000010");
-            appUser.AddToWallet(100_000m);
-            await _dbContext.AppUsers.AddAsync(appUser);
-
-            await _dbContext.SaveChangesAsync();
-        });
-
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var result = await _service.StartSessionAsync(userId, new StartSessionRequest
+        _sessionAppService.StartSessionAsync(Arg.Any<StartSessionInput>())
+            .Returns(new StartSessionResultDto
             {
-                StationId = stationId,
-                ConnectorNumber = 1
+                Success = true,
+                SessionId = Guid.NewGuid(),
+                Status = SessionStatus.Pending,
+                StationId = stationId
             });
 
-            result.Success.ShouldBeTrue();
-            result.SessionId.ShouldNotBeNull();
-            result.Status.ShouldBe(SessionStatus.Pending);
+        var result = await _service.StartSessionAsync(userId, new StartSessionRequest
+        {
+            StationId = stationId,
+            ConnectorNumber = 1
         });
+
+        result.Success.ShouldBeTrue();
+        result.SessionId.ShouldNotBeNull();
+        result.Status.ShouldBe(SessionStatus.Pending);
     }
 
     [Fact]
     public async Task StartSession_Should_Fail_When_Wallet_Balance_Insufficient()
     {
-        var userId = Guid.NewGuid();
-        var stationId = Guid.NewGuid();
-        var connectorId = Guid.NewGuid();
-
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var station = new ChargingStation(stationId, "KC-BAL-001", "Balance Test Station", "200 Balance St", 21.0, 105.8);
-            var connector = station.AddConnector(connectorId, 1, ConnectorType.CCS2, 50);
-            connector.UpdateStatus(ConnectorStatus.Available);
-            await _dbContext.ChargingStations.AddAsync(station);
-
-            // Create user with insufficient wallet balance (below 10,000 VND configured minimum)
-            var appUser = new AppUser(Guid.NewGuid(), userId, "Low Balance User", "0900000011");
-            appUser.AddToWallet(5_000m); // Only 5,000 VND
-            await _dbContext.AppUsers.AddAsync(appUser);
-
-            await _dbContext.SaveChangesAsync();
-        });
-
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var result = await _service.StartSessionAsync(userId, new StartSessionRequest
+        _sessionAppService.StartSessionAsync(Arg.Any<StartSessionInput>())
+            .Returns(new StartSessionResultDto
             {
-                StationId = stationId,
-                ConnectorNumber = 1
+                Success = false,
+                Error = KLCDomainErrorCodes.Wallet.InsufficientBalanceToCharge
             });
 
-            result.Success.ShouldBeFalse();
-            result.Error.ShouldBe(KLCDomainErrorCodes.Wallet.InsufficientBalanceToCharge);
+        var result = await _service.StartSessionAsync(Guid.NewGuid(), new StartSessionRequest
+        {
+            StationId = Guid.NewGuid(),
+            ConnectorNumber = 1
         });
+
+        result.Success.ShouldBeFalse();
+        result.Error.ShouldBe(KLCDomainErrorCodes.Wallet.InsufficientBalanceToCharge);
     }
 
     [Fact]
     public async Task StartSession_Should_Fail_When_Wallet_Balance_Zero()
     {
-        var userId = Guid.NewGuid();
-        var stationId = Guid.NewGuid();
-        var connectorId = Guid.NewGuid();
-
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var station = new ChargingStation(stationId, "KC-BAL-002", "Zero Balance Station", "201 Balance St", 21.0, 105.8);
-            var connector = station.AddConnector(connectorId, 1, ConnectorType.CCS2, 50);
-            connector.UpdateStatus(ConnectorStatus.Available);
-            await _dbContext.ChargingStations.AddAsync(station);
-
-            // Create user with zero wallet balance (no AddToWallet call)
-            var appUser = new AppUser(Guid.NewGuid(), userId, "Zero Balance User", "0900000012");
-            await _dbContext.AppUsers.AddAsync(appUser);
-
-            await _dbContext.SaveChangesAsync();
-        });
-
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var result = await _service.StartSessionAsync(userId, new StartSessionRequest
+        _sessionAppService.StartSessionAsync(Arg.Any<StartSessionInput>())
+            .Returns(new StartSessionResultDto
             {
-                StationId = stationId,
-                ConnectorNumber = 1
+                Success = false,
+                Error = KLCDomainErrorCodes.Wallet.InsufficientBalanceToCharge
             });
 
-            result.Success.ShouldBeFalse();
-            result.Error.ShouldBe(KLCDomainErrorCodes.Wallet.InsufficientBalanceToCharge);
+        var result = await _service.StartSessionAsync(Guid.NewGuid(), new StartSessionRequest
+        {
+            StationId = Guid.NewGuid(),
+            ConnectorNumber = 1
         });
+
+        result.Success.ShouldBeFalse();
+        result.Error.ShouldBe(KLCDomainErrorCodes.Wallet.InsufficientBalanceToCharge);
     }
 
     [Fact]
     public async Task StartSession_Should_Fail_When_No_AppUser_Found()
     {
-        var userId = Guid.NewGuid();
-        var stationId = Guid.NewGuid();
-        var connectorId = Guid.NewGuid();
-
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var station = new ChargingStation(stationId, "KC-NOUSER-001", "No User Station", "300 No St", 21.0, 105.8);
-            var connector = station.AddConnector(connectorId, 1, ConnectorType.CCS2, 50);
-            connector.UpdateStatus(ConnectorStatus.Available);
-            await _dbContext.ChargingStations.AddAsync(station);
-            await _dbContext.SaveChangesAsync();
-        });
-
-        await WithUnitOfWorkAsync(async () =>
-        {
-            // userId has no corresponding AppUser record
-            var result = await _service.StartSessionAsync(userId, new StartSessionRequest
+        _sessionAppService.StartSessionAsync(Arg.Any<StartSessionInput>())
+            .Returns(new StartSessionResultDto
             {
-                StationId = stationId,
-                ConnectorNumber = 1
+                Success = false,
+                Error = KLCDomainErrorCodes.Wallet.InsufficientBalanceToCharge
             });
 
-            result.Success.ShouldBeFalse();
-            result.Error.ShouldBe(KLCDomainErrorCodes.Wallet.InsufficientBalanceToCharge);
+        var result = await _service.StartSessionAsync(Guid.NewGuid(), new StartSessionRequest
+        {
+            StationId = Guid.NewGuid(),
+            ConnectorNumber = 1
         });
+
+        result.Success.ShouldBeFalse();
+        result.Error.ShouldBe(KLCDomainErrorCodes.Wallet.InsufficientBalanceToCharge);
     }
 
     [Fact]
     public async Task StartSession_Should_Fail_When_Connector_Disabled()
     {
-        var stationId = Guid.NewGuid();
-        var connectorId = Guid.NewGuid();
-
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var station = new ChargingStation(stationId, "KC-DIS-001", "Disabled Connector Station", "400 Dis St", 21.0, 105.8);
-            var connector = station.AddConnector(connectorId, 1, ConnectorType.CCS2, 50);
-            connector.Disable(); // Disabled connector — IsEnabled=false, Status=Unavailable
-            await _dbContext.ChargingStations.AddAsync(station);
-            await _dbContext.SaveChangesAsync();
-        });
-
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var result = await _service.StartSessionAsync(Guid.NewGuid(), new StartSessionRequest
+        _sessionAppService.StartSessionAsync(Arg.Any<StartSessionInput>())
+            .Returns(new StartSessionResultDto
             {
-                StationId = stationId,
-                ConnectorNumber = 1
+                Success = false,
+                Error = "Connector is not available"
             });
 
-            result.Success.ShouldBeFalse();
-            result.Error.ShouldContain("not available");
+        var result = await _service.StartSessionAsync(Guid.NewGuid(), new StartSessionRequest
+        {
+            StationId = Guid.NewGuid(),
+            ConnectorNumber = 1
         });
+
+        result.Success.ShouldBeFalse();
+        result.Error.ShouldContain("not available");
     }
 
     [Fact]
     public async Task StartSession_Should_Fail_When_Connector_Faulted()
     {
-        var stationId = Guid.NewGuid();
-        var connectorId = Guid.NewGuid();
-
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var station = new ChargingStation(stationId, "KC-FAULT-001", "Faulted Station", "500 Fault St", 21.0, 105.8);
-            var connector = station.AddConnector(connectorId, 1, ConnectorType.CCS2, 50);
-            connector.UpdateStatus(ConnectorStatus.Faulted);
-            await _dbContext.ChargingStations.AddAsync(station);
-            await _dbContext.SaveChangesAsync();
-        });
-
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var result = await _service.StartSessionAsync(Guid.NewGuid(), new StartSessionRequest
+        _sessionAppService.StartSessionAsync(Arg.Any<StartSessionInput>())
+            .Returns(new StartSessionResultDto
             {
-                StationId = stationId,
-                ConnectorNumber = 1
+                Success = false,
+                Error = "Connector is not available"
             });
 
-            result.Success.ShouldBeFalse();
-            result.Error.ShouldContain("not available");
+        var result = await _service.StartSessionAsync(Guid.NewGuid(), new StartSessionRequest
+        {
+            StationId = Guid.NewGuid(),
+            ConnectorNumber = 1
         });
+
+        result.Success.ShouldBeFalse();
+        result.Error.ShouldContain("not available");
     }
 
     [Fact]

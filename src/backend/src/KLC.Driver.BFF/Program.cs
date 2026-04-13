@@ -115,10 +115,14 @@ builder.Services.AddScoped<KLC.Payments.IPaymentCallbackValidator, KLC.Payments.
 builder.Services.AddScoped<IProfileBffService, ProfileBffService>();
 builder.Services.AddScoped<IVehicleBffService, VehicleBffService>();
 builder.Services.AddScoped<INotificationBffService, NotificationBffService>();
+builder.Services.AddScoped<KLC.Auth.IAuthAppService, KLC.Auth.AuthAppService>();
 builder.Services.AddScoped<IAuthBffService, AuthBffService>();
 builder.Services.AddScoped<KLC.Payments.IWalletAppService, KLC.Payments.WalletAppService>();
+builder.Services.AddScoped<KLC.Sessions.ISessionBffAppService, KLC.Sessions.SessionBffAppService>();
+builder.Services.AddScoped<KLC.Payments.IPaymentProcessingAppService, KLC.Payments.PaymentProcessingAppService>();
 builder.Services.AddScoped<IWalletBffService, WalletBffService>();
 builder.Services.AddScoped<IFavoriteBffService, FavoriteBffService>();
+builder.Services.AddScoped<KLC.Marketing.IVoucherRedemptionAppService, KLC.Marketing.VoucherRedemptionAppService>();
 builder.Services.AddScoped<IVoucherBffService, VoucherBffService>();
 builder.Services.AddScoped<IPromotionBffService, PromotionBffService>();
 builder.Services.AddScoped<IFeedbackBffService, FeedbackBffService>();

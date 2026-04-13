@@ -11,6 +11,7 @@
   <ItemGroup>
     <ProjectReference Include="..\KLC.Domain\KLC.Domain.csproj" />
     <ProjectReference Include="..\KLC.Application.Contracts\KLC.Application.Contracts.csproj" />
+    <ProjectReference Include="..\KLC.EntityFrameworkCore\KLC.EntityFrameworkCore.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -24,6 +25,8 @@
     <PackageReference Include="Volo.Abp.FeatureManagement.Application" Version="10.1.0" />
     <PackageReference Include="Volo.Abp.SettingManagement.Application" Version="10.1.0" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
+    <PackageReference Include="StackExchange.Redis" Version="2.8.16" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.14.0" />
   </ItemGroup>
 
 </Project>

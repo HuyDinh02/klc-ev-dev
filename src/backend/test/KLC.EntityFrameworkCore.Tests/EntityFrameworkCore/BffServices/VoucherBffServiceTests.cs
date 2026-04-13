@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
 using Volo.Abp.DependencyInjection;
+using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Guids;
 using Xunit;
 
@@ -33,10 +34,10 @@ public class VoucherBffServiceTests : KLCEntityFrameworkCoreTestBase
         _driverNotifier = Substitute.For<IDriverHubNotifier>();
 
         var logger = Substitute.For<ILogger<VoucherBffService>>();
-        var walletDomainService = CreateWalletDomainService();
+        var voucherRedemptionAppService = CreateVoucherRedemptionAppService();
 
         _service = new VoucherBffService(
-            _dbContext, _cache, logger, walletDomainService, _driverNotifier);
+            _dbContext, _cache, logger, voucherRedemptionAppService, _driverNotifier);
     }
 
     [Fact]
@@ -195,6 +196,25 @@ public class VoucherBffServiceTests : KLCEntityFrameworkCoreTestBase
 
     #region Helpers
 
+    private VoucherRedemptionAppService CreateVoucherRedemptionAppService()
+    {
+        var voucherRepository = GetRequiredService<IRepository<Voucher, Guid>>();
+        var userVoucherRepository = GetRequiredService<IRepository<UserVoucher, Guid>>();
+        var walletTransactionRepository = GetRequiredService<IRepository<WalletTransaction, Guid>>();
+        var appUserRepository = GetRequiredService<IRepository<AppUser, Guid>>();
+        var walletDomainService = CreateWalletDomainService();
+
+        var service = new VoucherRedemptionAppService(
+            voucherRepository,
+            userVoucherRepository,
+            walletTransactionRepository,
+            appUserRepository,
+            walletDomainService);
+
+        SetupAbpServiceProvider(service);
+        return service;
+    }
+
     private static WalletDomainService CreateWalletDomainService()
     {
         var service = new WalletDomainService();
@@ -221,6 +241,33 @@ public class VoucherBffServiceTests : KLCEntityFrameworkCoreTestBase
         }
 
         return service;
+    }
+
+    private static void SetupAbpServiceProvider(VoucherRedemptionAppService service)
+    {
+        var lazyServiceProvider = Substitute.For<IAbpLazyServiceProvider>();
+        lazyServiceProvider
+            .LazyGetRequiredService<IGuidGenerator>()
+            .Returns(SimpleGuidGenerator.Instance);
+        lazyServiceProvider
+            .LazyGetService<IGuidGenerator>()
+            .Returns(SimpleGuidGenerator.Instance);
+        lazyServiceProvider
+            .LazyGetService<Microsoft.Extensions.Logging.ILoggerFactory>()
+            .Returns(Substitute.For<Microsoft.Extensions.Logging.ILoggerFactory>());
+
+        var type = service.GetType();
+        while (type != null)
+        {
+            var prop = type.GetProperty("LazyServiceProvider",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+            if (prop != null)
+            {
+                prop.SetValue(service, lazyServiceProvider);
+                break;
+            }
+            type = type.BaseType;
+        }
     }
 
     private class PassthroughCacheService : ICacheService
