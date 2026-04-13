@@ -100,20 +100,36 @@ public static class WalletEndpoints
         .AllowAnonymous();
 
         // POST /api/v1/wallet/topup/callback
+        // Case 12: This endpoint does NOT credit the wallet for VnPay.
+        // VnPay payments are ONLY processed via IPN (server-to-server).
+        // This callback is for MoMo/ZaloPay only (which don't have IPN).
+        // For VnPay, mobile should poll /topup/{id}/status instead.
         group.MapPost("/topup/callback", async (
             HttpContext httpContext,
             [FromBody] TopUpCallbackRequest request,
             IWalletBffService walletService,
+            ILogger<WalletBffService> logger,
             IEnumerable<KLC.Payments.IPaymentGatewayService> paymentGateways) =>
         {
+            // Block VnPay from using this endpoint — VnPay uses IPN only (Case 12)
+            if (request.Gateway == PaymentGateway.VnPay || request.Gateway == null)
+            {
+                logger.LogWarning("[Callback] VnPay callback blocked — use IPN instead. Ref={Ref}",
+                    request.ReferenceCode);
+                return Results.Ok(new TopUpCallbackResultDto
+                {
+                    Success = false,
+                    Error = "VnPay payments are confirmed via IPN. Please check /topup/{id}/status."
+                });
+            }
+
             // Verify HMAC signature from the gateway before processing
             var signature = httpContext.Request.Headers["X-Payment-Signature"].FirstOrDefault()
                             ?? httpContext.Request.Query["signature"].FirstOrDefault();
 
             if (!string.IsNullOrEmpty(signature))
             {
-                var gateway = paymentGateways.FirstOrDefault(g =>
-                    g.Gateway == (request.Gateway ?? PaymentGateway.VnPay));
+                var gateway = paymentGateways.FirstOrDefault(g => g.Gateway == request.Gateway);
 
                 if (gateway != null)
                 {
@@ -141,10 +157,10 @@ public static class WalletEndpoints
                 : Results.BadRequest(new { error = new { code = "CALLBACK_FAILED", message = result.Error } });
         })
         .WithName("TopUpCallback")
-        .WithSummary("Payment gateway callback for top-up")
+        .WithSummary("Payment gateway callback for top-up (MoMo/ZaloPay only, NOT VnPay)")
         .Produces<TopUpCallbackResultDto>(200)
         .Produces(400)
-        .AllowAnonymous(); // Gateway callbacks are authenticated via signature
+        .AllowAnonymous();
 
         // GET /api/v1/wallet/topup/{id}/status
         group.MapGet("/topup/{id:guid}/status", async (
