@@ -163,6 +163,19 @@ public class WalletAppService : IWalletAppService
 
     public async Task<TopUpCallbackResultAppDto> ProcessTopUpCallbackAsync(ProcessTopUpCallbackInput input)
     {
+        // Validate required fields — never trust client blindly
+        if (string.IsNullOrWhiteSpace(input.ReferenceCode))
+        {
+            _logger.LogWarning("Top-up callback with empty ReferenceCode");
+            return new TopUpCallbackResultAppDto { Success = false, Error = "ReferenceCode is required" };
+        }
+
+        if (input.Gateway == null)
+        {
+            _logger.LogWarning("Top-up callback with null Gateway, Ref={Ref}", input.ReferenceCode);
+            return new TopUpCallbackResultAppDto { Success = false, Error = "Gateway is required" };
+        }
+
         var transaction = await _walletTransactionRepository.FirstOrDefaultAsync(
             t => t.ReferenceCode == input.ReferenceCode && t.Status == TransactionStatus.Pending);
 
@@ -172,8 +185,23 @@ public class WalletAppService : IWalletAppService
             return new TopUpCallbackResultAppDto { Success = false, Error = "Transaction not found" };
         }
 
+        // Verify gateway matches the original transaction — prevent cross-gateway replay
+        if (transaction.PaymentGateway != input.Gateway)
+        {
+            _logger.LogWarning(
+                "Top-up callback gateway mismatch: expected={Expected}, got={Got}, Ref={Ref}",
+                transaction.PaymentGateway, input.Gateway, input.ReferenceCode);
+            return new TopUpCallbackResultAppDto { Success = false, Error = "Gateway mismatch" };
+        }
+
         if (input.Status == TransactionStatus.Completed)
         {
+            if (string.IsNullOrWhiteSpace(input.GatewayTransactionId))
+            {
+                _logger.LogWarning("Top-up callback completed without GatewayTransactionId, Ref={Ref}", input.ReferenceCode);
+                return new TopUpCallbackResultAppDto { Success = false, Error = "GatewayTransactionId is required for completed payments" };
+            }
+
             var user = await _appUserRepository.FirstOrDefaultAsync(u => u.IdentityUserId == transaction.UserId);
             if (user == null)
             {
@@ -184,7 +212,7 @@ public class WalletAppService : IWalletAppService
             var (newBalance, _) = _walletDomainService.TopUp(
                 user,
                 transaction.Amount,
-                transaction.PaymentGateway ?? PaymentGateway.Wallet,
+                transaction.PaymentGateway!.Value,
                 input.GatewayTransactionId);
 
             // Mark original pending transaction as completed
@@ -296,7 +324,7 @@ public class WalletAppService : IWalletAppService
                     var (balance, _) = _walletDomainService.TopUp(
                         user,
                         transaction.Amount,
-                        transaction.PaymentGateway ?? PaymentGateway.VnPay,
+                        transaction.PaymentGateway ?? PaymentGateway.VnPay, // IPN is always VnPay
                         validation.GatewayTransactionId);
                     newBalance = balance;
 

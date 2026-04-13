@@ -174,7 +174,8 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
             {
                 ReferenceCode = referenceCode,
                 GatewayTransactionId = "GW_TX_001",
-                Status = TransactionStatus.Completed
+                Status = TransactionStatus.Completed,
+                Gateway = PaymentGateway.ZaloPay
             });
 
             result.Success.ShouldBeTrue();
@@ -195,7 +196,8 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
             var result = await _bffService.ProcessTopUpCallbackAsync(new TopUpCallbackRequest
             {
                 ReferenceCode = "NONEXISTENT",
-                Status = TransactionStatus.Completed
+                Status = TransactionStatus.Completed,
+                Gateway = PaymentGateway.ZaloPay
             });
 
             result.Success.ShouldBeFalse();
@@ -228,7 +230,8 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
             var result = await _bffService.ProcessTopUpCallbackAsync(new TopUpCallbackRequest
             {
                 ReferenceCode = referenceCode,
-                Status = TransactionStatus.Failed
+                Status = TransactionStatus.Failed,
+                Gateway = PaymentGateway.MoMo
             });
 
             result.Success.ShouldBeFalse();

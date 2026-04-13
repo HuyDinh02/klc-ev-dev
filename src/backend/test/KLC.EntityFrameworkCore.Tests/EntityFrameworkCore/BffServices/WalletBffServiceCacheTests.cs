@@ -177,7 +177,8 @@ public class WalletBffServiceCacheTests : KLCEntityFrameworkCoreTestBase
             {
                 ReferenceCode = referenceCode,
                 GatewayTransactionId = "GW_TX_CACHE_001",
-                Status = TransactionStatus.Completed
+                Status = TransactionStatus.Completed,
+                Gateway = PaymentGateway.ZaloPay
             });
 
             result.Success.ShouldBeTrue();

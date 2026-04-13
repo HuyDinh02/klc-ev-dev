@@ -65,16 +65,19 @@ public static class WalletEndpoints
 
             logger.LogInformation("[VnPay IPN] Received: TxnRef={TxnRef}, CallerIP={CallerIP}", txnRef, callerIp);
 
-            // Whitelist VnPay IPN source IPs (Case 13)
+            // Whitelist VnPay IPN source IPs (Case 13) — fail-closed: reject if not configured
             var whitelistStr = configuration["Payment:VnPay:IpnWhitelist"] ?? "";
-            if (!string.IsNullOrEmpty(whitelistStr))
+            if (string.IsNullOrEmpty(whitelistStr))
             {
-                var whitelist = whitelistStr.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                if (!whitelist.Contains(callerIp))
-                {
-                    logger.LogWarning("[VnPay IPN] REJECTED: IP {CallerIP} not in whitelist, TxnRef={TxnRef}", callerIp, txnRef);
-                    return Results.Json(new KLC.Payments.VnPayIpnResponse { RspCode = "99", Message = "Unauthorized IP" });
-                }
+                logger.LogError("[VnPay IPN] REJECTED: IPN whitelist not configured. TxnRef={TxnRef}, CallerIP={CallerIP}", txnRef, callerIp);
+                return Results.Json(new KLC.Payments.VnPayIpnResponse { RspCode = "99", Message = "IPN whitelist not configured" });
+            }
+
+            var whitelist = whitelistStr.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (!whitelist.Contains(callerIp))
+            {
+                logger.LogWarning("[VnPay IPN] REJECTED: IP {CallerIP} not in whitelist, TxnRef={TxnRef}", callerIp, txnRef);
+                return Results.Json(new KLC.Payments.VnPayIpnResponse { RspCode = "99", Message = "Unauthorized IP" });
             }
 
             var queryParams = httpContext.Request.Query
@@ -123,31 +126,53 @@ public static class WalletEndpoints
                 });
             }
 
-            // Verify HMAC signature from the gateway before processing
+            // Validate required fields
+            if (string.IsNullOrWhiteSpace(request.ReferenceCode))
+            {
+                return Results.BadRequest(new
+                {
+                    error = new { code = "INVALID_REQUEST", message = "ReferenceCode is required" }
+                });
+            }
+
+            // Verify HMAC signature from the gateway — MANDATORY for all callbacks
             var signature = httpContext.Request.Headers["X-Payment-Signature"].FirstOrDefault()
                             ?? httpContext.Request.Query["signature"].FirstOrDefault();
 
-            if (!string.IsNullOrEmpty(signature))
+            if (string.IsNullOrEmpty(signature))
             {
-                var gateway = paymentGateways.FirstOrDefault(g => g.Gateway == request.Gateway);
-
-                if (gateway != null)
+                logger.LogWarning("[Callback] Missing signature, Ref={Ref}, Gateway={Gateway}",
+                    request.ReferenceCode, request.Gateway);
+                return Results.BadRequest(new
                 {
-                    var parameters = new Dictionary<string, string>
-                    {
-                        { "referenceCode", request.ReferenceCode },
-                        { "gatewayTransactionId", request.GatewayTransactionId ?? string.Empty },
-                        { "status", ((int)request.Status).ToString() }
-                    };
+                    error = new { code = "MISSING_SIGNATURE", message = "Payment callback signature is required" }
+                });
+            }
 
-                    if (!gateway.VerifyCallbackSignature(parameters, signature))
-                    {
-                        return Results.BadRequest(new
-                        {
-                            error = new { code = "INVALID_SIGNATURE", message = "Payment callback signature verification failed" }
-                        });
-                    }
-                }
+            var gateway = paymentGateways.FirstOrDefault(g => g.Gateway == request.Gateway);
+            if (gateway == null)
+            {
+                return Results.BadRequest(new
+                {
+                    error = new { code = "UNKNOWN_GATEWAY", message = $"Gateway {request.Gateway} is not configured" }
+                });
+            }
+
+            var parameters = new Dictionary<string, string>
+            {
+                { "referenceCode", request.ReferenceCode },
+                { "gatewayTransactionId", request.GatewayTransactionId ?? string.Empty },
+                { "status", ((int)request.Status).ToString() }
+            };
+
+            if (!gateway.VerifyCallbackSignature(parameters, signature))
+            {
+                logger.LogWarning("[Callback] Invalid signature, Ref={Ref}, Gateway={Gateway}",
+                    request.ReferenceCode, request.Gateway);
+                return Results.BadRequest(new
+                {
+                    error = new { code = "INVALID_SIGNATURE", message = "Payment callback signature verification failed" }
+                });
             }
 
             var result = await walletService.ProcessTopUpCallbackAsync(request);
