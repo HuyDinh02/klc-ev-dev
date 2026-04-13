@@ -168,24 +168,22 @@ public class WalletBffService : IWalletBffService
                     Timestamp = DateTime.UtcNow
                 });
 
-            // Push notification: topup success
-            _ = Task.Run(async () =>
+            // Push notification: topup success — await instead of Task.Run to avoid
+            // concurrent DbContext access that crashes the UoW commit
+            try
             {
-                try
-                {
-                    await _pushNotificationService.SendToUserAsync(
-                        completion.UserId,
-                        "Nạp ví thành công 💰",
-                        $"Đã nạp {completion.Amount:N0}đ vào ví. Số dư: {completion.NewBalance:N0}đ",
-                        new Dictionary<string, string>
-                        {
-                            { "type", "wallet_topup" },
-                            { "amount", completion.Amount.ToString("F0") },
-                            { "newBalance", completion.NewBalance.ToString("F0") }
-                        });
-                }
-                catch (Exception ex) { _logger.LogWarning(ex, "Push notification failed for wallet topup"); }
-            });
+                await _pushNotificationService.SendToUserAsync(
+                    completion.UserId,
+                    "Nạp ví thành công 💰",
+                    $"Đã nạp {completion.Amount:N0}đ vào ví. Số dư: {completion.NewBalance:N0}đ",
+                    new Dictionary<string, string>
+                    {
+                        { "type", "wallet_topup" },
+                        { "amount", completion.Amount.ToString("F0") },
+                        { "newBalance", completion.NewBalance.ToString("F0") }
+                    });
+            }
+            catch (Exception ex) { _logger.LogWarning(ex, "Push notification failed for wallet topup"); }
         }
         else if (result.Failure != null)
         {
@@ -210,23 +208,20 @@ public class WalletBffService : IWalletBffService
             }
 
             // Push notification: topup failure
-            _ = Task.Run(async () =>
+            try
             {
-                try
-                {
-                    await _pushNotificationService.SendToUserAsync(
-                        failure.UserId,
-                        "Nạp ví thất bại ❌",
-                        $"Giao dịch nạp {failure.Amount:N0}đ qua VnPay không thành công. Vui lòng thử lại.",
-                        new Dictionary<string, string>
-                        {
-                            { "type", "wallet_topup_failed" },
-                            { "amount", failure.Amount.ToString("F0") },
-                            { "referenceCode", failure.ReferenceCode }
-                        });
-                }
-                catch (Exception ex) { _logger.LogWarning(ex, "Push notification failed for wallet topup failure"); }
-            });
+                await _pushNotificationService.SendToUserAsync(
+                    failure.UserId,
+                    "Nạp ví thất bại ❌",
+                    $"Giao dịch nạp {failure.Amount:N0}đ qua VnPay không thành công. Vui lòng thử lại.",
+                    new Dictionary<string, string>
+                    {
+                        { "type", "wallet_topup_failed" },
+                        { "amount", failure.Amount.ToString("F0") },
+                        { "referenceCode", failure.ReferenceCode }
+                    });
+            }
+            catch (Exception ex) { _logger.LogWarning(ex, "Push notification failed for wallet topup failure"); }
         }
 
         return result.IpnResponse;
