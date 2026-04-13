@@ -48,14 +48,48 @@ public static class WalletEndpoints
         .Produces(400);
 
         // GET /api/v1/wallet/topup/vnpay-ipn — VNPay IPN callback (GET with query params)
+        // Case 13: Whitelist VnPay IPN IPs + log calling IP
         group.MapGet("/topup/vnpay-ipn", async (
             HttpContext httpContext,
-            IWalletBffService walletService) =>
+            IWalletBffService walletService,
+            ILogger<WalletBffService> logger,
+            IConfiguration configuration) =>
         {
+            var callerIp = httpContext.Connection.RemoteIpAddress?.ToString()
+                ?? httpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+                ?? "unknown";
+            var txnRef = httpContext.Request.Query["vnp_TxnRef"].FirstOrDefault() ?? "?";
+
+            logger.LogInformation("[VnPay IPN] Received: TxnRef={TxnRef}, CallerIP={CallerIP}", txnRef, callerIp);
+
+            // Whitelist VnPay IPN source IPs (Case 13)
+            var whitelistStr = configuration["Payment:VnPay:IpnWhitelist"] ?? "";
+            if (!string.IsNullOrEmpty(whitelistStr))
+            {
+                var whitelist = whitelistStr.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                if (!whitelist.Contains(callerIp))
+                {
+                    logger.LogWarning("[VnPay IPN] REJECTED: IP {CallerIP} not in whitelist, TxnRef={TxnRef}", callerIp, txnRef);
+                    return Results.Json(new KLC.Payments.VnPayIpnResponse { RspCode = "99", Message = "Unauthorized IP" });
+                }
+            }
+
             var queryParams = httpContext.Request.Query
                 .ToDictionary(q => q.Key, q => q.Value.ToString());
-            var result = await walletService.ProcessVnPayIpnAsync(queryParams);
-            return Results.Json(result);
+
+            try
+            {
+                var result = await walletService.ProcessVnPayIpnAsync(queryParams);
+                logger.LogInformation("[VnPay IPN] Response: TxnRef={TxnRef}, RspCode={RspCode}, CallerIP={CallerIP}",
+                    txnRef, result.RspCode, callerIp);
+                return Results.Json(result);
+            }
+            catch (Exception ex)
+            {
+                // Case 11: System error → return 99
+                logger.LogError(ex, "[VnPay IPN] Unhandled error: TxnRef={TxnRef}, CallerIP={CallerIP}", txnRef, callerIp);
+                return Results.Json(new KLC.Payments.VnPayIpnResponse { RspCode = "99", Message = "Unknow error" });
+            }
         })
         .WithName("VnPayTopUpIpn")
         .WithSummary("VNPay IPN callback for wallet top-up")
