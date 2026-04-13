@@ -55,9 +55,12 @@ public static class WalletEndpoints
             ILogger<WalletBffService> logger,
             IConfiguration configuration) =>
         {
-            var callerIp = httpContext.Connection.RemoteIpAddress?.ToString()
-                ?? httpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
-                ?? "unknown";
+            // On Cloud Run, RemoteIpAddress is the internal proxy (169.254.x.x).
+            // X-Forwarded-For contains the real client IP (set by Google Front End).
+            var forwardedFor = httpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+            var callerIp = !string.IsNullOrEmpty(forwardedFor)
+                ? forwardedFor.Split(',')[0].Trim()  // First IP in chain is the original client
+                : httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
             var txnRef = httpContext.Request.Query["vnp_TxnRef"].FirstOrDefault() ?? "?";
 
             logger.LogInformation("[VnPay IPN] Received: TxnRef={TxnRef}, CallerIP={CallerIP}", txnRef, callerIp);
