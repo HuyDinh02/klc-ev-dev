@@ -204,44 +204,12 @@ export default function NotificationsPage() {
         </div>
       </div>
 
-      {/* Detail Dialog */}
+      {/* Detail Dialog with Recipients */}
       {selectedBroadcast && (
-        <Dialog open onClose={() => setSelectedBroadcast(null)}>
-          <DialogHeader>
-            <h2 className="text-lg font-semibold">{t("notifications.details")}</h2>
-          </DialogHeader>
-          <DialogContent>
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm text-muted-foreground">{t("notifications.broadcastType")}</p>
-                <p className="font-medium">{t(NotificationTypeKeys[selectedBroadcast.type] || "notifications.systemAnnouncement")}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">{t("notifications.broadcastTitle")}</p>
-                <p className="font-medium">{selectedBroadcast.title}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">{t("notifications.broadcastBody")}</p>
-                <p className="whitespace-pre-wrap">{selectedBroadcast.body}</p>
-              </div>
-              <div className="flex gap-6">
-                <div>
-                  <p className="text-sm text-muted-foreground">{t("notifications.recipients")}</p>
-                  <p className="font-medium">{selectedBroadcast.recipientCount}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">{t("notifications.sentAt")}</p>
-                  <p className="font-medium">{formatDateTime(selectedBroadcast.sentAt)}</p>
-                </div>
-              </div>
-            </div>
-          </DialogContent>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedBroadcast(null)}>
-              {t("common.close")}
-            </Button>
-          </DialogFooter>
-        </Dialog>
+        <BroadcastDetailDialog
+          broadcast={selectedBroadcast}
+          onClose={() => setSelectedBroadcast(null)}
+        />
       )}
 
       {/* Broadcast Dialog */}
@@ -327,5 +295,114 @@ export default function NotificationsPage() {
         </DialogFooter>
       </Dialog>
     </div>
+  );
+}
+
+// --- Broadcast Detail with Recipients ---
+
+interface Recipient {
+  userId: string;
+  fullName: string;
+  phoneNumber: string;
+  isRead: boolean;
+  readAt: string | null;
+}
+
+function BroadcastDetailDialog({ broadcast, onClose }: { broadcast: BroadcastHistory; onClose: () => void }) {
+  const { t } = useTranslation();
+
+  const { data: recipientData, isLoading } = useQuery({
+    queryKey: ["broadcast-recipients", broadcast.title, broadcast.sentAt],
+    queryFn: async () => {
+      const { data } = await broadcastApi.getRecipients(broadcast.title, broadcast.sentAt);
+      return data as {
+        totalRecipients: number;
+        readCount: number;
+        unreadCount: number;
+        recipients: Recipient[];
+      };
+    },
+  });
+
+  return (
+    <Dialog open onClose={onClose}>
+      <DialogHeader>
+        <h2 className="text-lg font-semibold">{broadcast.title}</h2>
+      </DialogHeader>
+      <DialogContent>
+        <div className="space-y-4">
+          <div>
+            <p className="text-sm text-muted-foreground">{t("notifications.broadcastType")}</p>
+            <p className="font-medium">{t(NotificationTypeKeys[broadcast.type] || "notifications.systemAnnouncement")}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">{t("notifications.broadcastBody")}</p>
+            <p className="whitespace-pre-wrap">{broadcast.body}</p>
+          </div>
+          <div className="flex gap-6">
+            <div>
+              <p className="text-sm text-muted-foreground">{t("notifications.sentAt")}</p>
+              <p className="font-medium">{formatDateTime(broadcast.sentAt)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">{t("notifications.recipients")}</p>
+              <p className="font-medium">{recipientData?.totalRecipients ?? broadcast.recipientCount}</p>
+            </div>
+            {recipientData && (
+              <>
+                <div>
+                  <p className="text-sm text-muted-foreground">Read</p>
+                  <p className="font-medium text-green-600">{recipientData.readCount}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Unread</p>
+                  <p className="font-medium text-amber-600">{recipientData.unreadCount}</p>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Recipients Table */}
+          <div>
+            <p className="text-sm font-medium mb-2">{t("notifications.recipients")}</p>
+            {isLoading ? (
+              <p className="text-sm text-muted-foreground">Loading...</p>
+            ) : (
+              <div className="max-h-[300px] overflow-y-auto rounded border">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 sticky top-0">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-medium">Name</th>
+                      <th className="px-3 py-2 text-left font-medium">Phone</th>
+                      <th className="px-3 py-2 text-left font-medium">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recipientData?.recipients.map((r) => (
+                      <tr key={r.userId} className="border-t">
+                        <td className="px-3 py-2">{r.fullName}</td>
+                        <td className="px-3 py-2 font-mono text-xs">{r.phoneNumber}</td>
+                        <td className="px-3 py-2">
+                          {r.isRead ? (
+                            <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs text-green-700">Read</span>
+                          ) : (
+                            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700">Unread</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose}>
+          {t("common.close")}
+        </Button>
+      </DialogFooter>
+    </Dialog>
   );
 }

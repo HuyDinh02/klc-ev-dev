@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using KLC.Enums;
 
@@ -42,4 +43,22 @@ public class GetBroadcastHistoryDto
 
     [Range(1, 50)]
     public int PageSize { get; set; } = 20;
+}
+
+public class BroadcastRecipientsDto
+{
+    public string Title { get; set; } = string.Empty;
+    public int TotalRecipients { get; set; }
+    public int ReadCount { get; set; }
+    public int UnreadCount { get; set; }
+    public List<BroadcastRecipientDto> Recipients { get; set; } = new();
+}
+
+public class BroadcastRecipientDto
+{
+    public Guid UserId { get; set; }
+    public string FullName { get; set; } = string.Empty;
+    public string PhoneNumber { get; set; } = string.Empty;
+    public bool IsRead { get; set; }
+    public DateTime? ReadAt { get; set; }
 }

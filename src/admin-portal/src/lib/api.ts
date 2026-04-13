@@ -198,6 +198,8 @@ export const broadcastApi = {
     api.post("/admin/notifications/broadcast", data),
   getHistory: (params?: { cursor?: string; pageSize?: number }) =>
     api.get("/admin/notifications/broadcasts", { params }),
+  getRecipients: (title: string, sentAt: string) =>
+    api.get("/admin/notifications/broadcasts/recipients", { params: { title, sentAt } }),
 };
 
 export const auditLogsApi = {
