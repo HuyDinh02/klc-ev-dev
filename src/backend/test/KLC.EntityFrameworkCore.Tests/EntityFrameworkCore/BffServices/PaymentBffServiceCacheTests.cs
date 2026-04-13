@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using System.Threading.Tasks;
-using KLC.Auditing;
 using KLC.Driver;
 using KLC.Driver.Services;
 using KLC.EntityFrameworkCore;
@@ -12,8 +10,6 @@ using KLC.Users;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
-using Volo.Abp.DependencyInjection;
-using Volo.Abp.Guids;
 using Xunit;
 using PaymentMethodDto = KLC.Driver.Services.PaymentMethodDto;
 
@@ -29,6 +25,7 @@ public class PaymentBffServiceCacheTests : KLCEntityFrameworkCoreTestBase
     private readonly KLCDbContext _dbContext;
     private readonly ICacheService _cache;
     private readonly IDriverHubNotifier _driverNotifier;
+    private readonly IPaymentProcessingAppService _paymentProcessingAppService;
     private readonly PaymentBffService _service;
 
     public PaymentBffServiceCacheTests()
@@ -36,14 +33,12 @@ public class PaymentBffServiceCacheTests : KLCEntityFrameworkCoreTestBase
         _dbContext = GetRequiredService<KLCDbContext>();
         _cache = Substitute.For<ICacheService>();
         _driverNotifier = Substitute.For<IDriverHubNotifier>();
+        _paymentProcessingAppService = Substitute.For<IPaymentProcessingAppService>();
 
         var logger = Substitute.For<ILogger<PaymentBffService>>();
-        var walletDomainService = CreateWalletDomainService();
-        var paymentGateways = CreateMockPaymentGateways();
-        var auditLogger = Substitute.For<IAuditEventLogger>();
 
         _service = new PaymentBffService(
-            _dbContext, _cache, logger, paymentGateways, walletDomainService, _driverNotifier, auditLogger);
+            _dbContext, _cache, logger, _paymentProcessingAppService, _driverNotifier);
     }
 
     [Fact]
@@ -245,50 +240,4 @@ public class PaymentBffServiceCacheTests : KLCEntityFrameworkCoreTestBase
             Arg.Any<TimeSpan?>());
     }
 
-    #region Helpers
-
-    private static WalletDomainService CreateWalletDomainService()
-    {
-        var service = new WalletDomainService();
-
-        var lazyServiceProvider = Substitute.For<IAbpLazyServiceProvider>();
-        lazyServiceProvider
-            .LazyGetRequiredService<IGuidGenerator>()
-            .Returns(SimpleGuidGenerator.Instance);
-        lazyServiceProvider
-            .LazyGetService<IGuidGenerator>()
-            .Returns(SimpleGuidGenerator.Instance);
-
-        var type = service.GetType();
-        while (type != null)
-        {
-            var prop = type.GetProperty("LazyServiceProvider",
-                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
-            if (prop != null)
-            {
-                prop.SetValue(service, lazyServiceProvider);
-                break;
-            }
-            type = type.BaseType;
-        }
-
-        return service;
-    }
-
-    private static IEnumerable<IPaymentGatewayService> CreateMockPaymentGateways()
-    {
-        var zaloPayGateway = Substitute.For<IPaymentGatewayService>();
-        zaloPayGateway.Gateway.Returns(PaymentGateway.ZaloPay);
-        zaloPayGateway.CreateTopUpAsync(Arg.Any<CreateTopUpRequest>())
-            .Returns(PaymentGatewayResult.Ok("https://zalopay.test/pay/123"));
-
-        var momoGateway = Substitute.For<IPaymentGatewayService>();
-        momoGateway.Gateway.Returns(PaymentGateway.MoMo);
-        momoGateway.CreateTopUpAsync(Arg.Any<CreateTopUpRequest>())
-            .Returns(PaymentGatewayResult.Ok("https://momo.test/pay/456"));
-
-        return new[] { zaloPayGateway, momoGateway };
-    }
-
-    #endregion
 }

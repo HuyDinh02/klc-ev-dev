@@ -8,6 +8,7 @@ using KLC.EntityFrameworkCore;
 using KLC.Enums;
 using KLC.Notifications;
 using KLC.Payments;
+using KLC.TestDoubles;
 using KLC.Users;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -15,6 +16,8 @@ using NSubstitute;
 using Shouldly;
 using StackExchange.Redis;
 using Volo.Abp.DependencyInjection;
+using Volo.Abp.DistributedLocking;
+using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Guids;
 using Xunit;
 
@@ -26,7 +29,8 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
     private readonly KLCDbContext _dbContext;
     private readonly ICacheService _cache;
     private readonly IDriverHubNotifier _driverNotifier;
-    private readonly WalletBffService _service;
+    private readonly WalletBffService _bffService;
+    private readonly WalletAppService _walletAppService;
 
     public WalletBffServiceTests()
     {
@@ -34,18 +38,22 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
         _cache = new PassthroughCacheService();
         _driverNotifier = Substitute.For<IDriverHubNotifier>();
 
-        var logger = Substitute.For<ILogger<WalletBffService>>();
         var walletDomainService = CreateWalletDomainService();
         var paymentGateways = CreateMockPaymentGateways();
-
         var callbackValidator = Substitute.For<IPaymentCallbackValidator>();
         var configuration = new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build();
-        var redisDb = Substitute.For<IDatabase>();
-        redisDb.StringSetAsync(Arg.Any<RedisKey>(), Arg.Any<RedisValue>(), Arg.Any<TimeSpan?>(), Arg.Any<When>(), Arg.Any<CommandFlags>()).Returns(true);
-        var redis = Substitute.For<IConnectionMultiplexer>();
-        redis.GetDatabase(Arg.Any<int>(), Arg.Any<object>()).Returns(redisDb);
-        _service = new WalletBffService(
-            _dbContext, _cache, logger, walletDomainService, paymentGateways, callbackValidator, Substitute.For<IPushNotificationService>(), _driverNotifier, configuration, Microsoft.Extensions.Options.Options.Create(new KLC.Configuration.WalletSettings()), redis);
+
+        // Create the WalletAppService (business logic)
+        _walletAppService = CreateWalletAppService(walletDomainService, paymentGateways, callbackValidator, configuration);
+
+        // Create the thin BFF service that delegates to WalletAppService
+        _bffService = new WalletBffService(
+            _dbContext,
+            _cache,
+            Substitute.For<ILogger<WalletBffService>>(),
+            _walletAppService,
+            Substitute.For<IPushNotificationService>(),
+            _driverNotifier);
     }
 
     [Fact]
@@ -53,7 +61,7 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
     {
         await WithUnitOfWorkAsync(async () =>
         {
-            var result = await _service.TopUpAsync(Guid.NewGuid(), new TopUpRequest
+            var result = await _bffService.TopUpAsync(Guid.NewGuid(), new TopUpRequest
             {
                 Amount = 0,
                 Gateway = PaymentGateway.ZaloPay
@@ -69,7 +77,7 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
     {
         await WithUnitOfWorkAsync(async () =>
         {
-            var result = await _service.TopUpAsync(Guid.NewGuid(), new TopUpRequest
+            var result = await _bffService.TopUpAsync(Guid.NewGuid(), new TopUpRequest
             {
                 Amount = 10_000, // Below 50,000 VND minimum
                 Gateway = PaymentGateway.MoMo
@@ -85,7 +93,7 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
     {
         await WithUnitOfWorkAsync(async () =>
         {
-            var result = await _service.TopUpAsync(Guid.NewGuid(), new TopUpRequest
+            var result = await _bffService.TopUpAsync(Guid.NewGuid(), new TopUpRequest
             {
                 Amount = 20_000_000, // Above 10,000,000 VND maximum
                 Gateway = PaymentGateway.ZaloPay
@@ -101,7 +109,7 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
     {
         await WithUnitOfWorkAsync(async () =>
         {
-            var result = await _service.TopUpAsync(Guid.NewGuid(), new TopUpRequest
+            var result = await _bffService.TopUpAsync(Guid.NewGuid(), new TopUpRequest
             {
                 Amount = 100_000,
                 Gateway = PaymentGateway.ZaloPay
@@ -126,7 +134,7 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
 
         await WithUnitOfWorkAsync(async () =>
         {
-            var result = await _service.TopUpAsync(identityUserId, new TopUpRequest
+            var result = await _bffService.TopUpAsync(identityUserId, new TopUpRequest
             {
                 Amount = 100_000,
                 Gateway = PaymentGateway.ZaloPay
@@ -162,7 +170,7 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
 
         await WithUnitOfWorkAsync(async () =>
         {
-            var result = await _service.ProcessTopUpCallbackAsync(new TopUpCallbackRequest
+            var result = await _bffService.ProcessTopUpCallbackAsync(new TopUpCallbackRequest
             {
                 ReferenceCode = referenceCode,
                 GatewayTransactionId = "GW_TX_001",
@@ -184,7 +192,7 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
     {
         await WithUnitOfWorkAsync(async () =>
         {
-            var result = await _service.ProcessTopUpCallbackAsync(new TopUpCallbackRequest
+            var result = await _bffService.ProcessTopUpCallbackAsync(new TopUpCallbackRequest
             {
                 ReferenceCode = "NONEXISTENT",
                 Status = TransactionStatus.Completed
@@ -217,7 +225,7 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
 
         await WithUnitOfWorkAsync(async () =>
         {
-            var result = await _service.ProcessTopUpCallbackAsync(new TopUpCallbackRequest
+            var result = await _bffService.ProcessTopUpCallbackAsync(new TopUpCallbackRequest
             {
                 ReferenceCode = referenceCode,
                 Status = TransactionStatus.Failed
@@ -233,7 +241,7 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
     {
         await WithUnitOfWorkAsync(async () =>
         {
-            var result = await _service.GetBalanceAsync(Guid.NewGuid());
+            var result = await _bffService.GetBalanceAsync(Guid.NewGuid());
 
             result.ShouldNotBeNull();
             result.Balance.ShouldBe(0);
@@ -256,7 +264,7 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
 
         await WithUnitOfWorkAsync(async () =>
         {
-            var result = await _service.GetBalanceAsync(identityUserId);
+            var result = await _bffService.GetBalanceAsync(identityUserId);
 
             result.Balance.ShouldBe(500_000m);
             result.Currency.ShouldBe("VND");
@@ -268,7 +276,7 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
     {
         await WithUnitOfWorkAsync(async () =>
         {
-            var result = await _service.GetTransactionsAsync(Guid.NewGuid(), null, 20, null);
+            var result = await _bffService.GetTransactionsAsync(Guid.NewGuid(), null, 20, null);
 
             result.Data.ShouldBeEmpty();
             result.HasMore.ShouldBeFalse();
@@ -280,7 +288,7 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
     {
         await WithUnitOfWorkAsync(async () =>
         {
-            var result = await _service.GetTopUpStatusAsync(Guid.NewGuid(), Guid.NewGuid());
+            var result = await _bffService.GetTopUpStatusAsync(Guid.NewGuid(), Guid.NewGuid());
             result.ShouldBeNull();
         });
     }
@@ -310,8 +318,8 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
 
         await WithUnitOfWorkAsync(async () =>
         {
-            // Attempt to top up 1,000,000 more → total 100,500,000 > 100,000,000 limit
-            var result = await _service.TopUpAsync(identityUserId, new TopUpRequest
+            // Attempt to top up 1,000,000 more -> total 100,500,000 > 100,000,000 limit
+            var result = await _bffService.TopUpAsync(identityUserId, new TopUpRequest
             {
                 Amount = 1_000_000,
                 Gateway = PaymentGateway.ZaloPay
@@ -344,7 +352,7 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
 
         await WithUnitOfWorkAsync(async () =>
         {
-            var result = await _service.TopUpAsync(identityUserId, new TopUpRequest
+            var result = await _bffService.TopUpAsync(identityUserId, new TopUpRequest
             {
                 Amount = 5_000_000,
                 Gateway = PaymentGateway.ZaloPay
@@ -369,7 +377,7 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
 
         await WithUnitOfWorkAsync(async () =>
         {
-            var result = await _service.TopUpAsync(identityUserId, new TopUpRequest
+            var result = await _bffService.TopUpAsync(identityUserId, new TopUpRequest
             {
                 Amount = 50_000, // Exactly at minimum threshold (WalletSettings.MinTopUpAmount default)
                 Gateway = PaymentGateway.ZaloPay
@@ -386,7 +394,7 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
     {
         await WithUnitOfWorkAsync(async () =>
         {
-            var result = await _service.TopUpAsync(Guid.NewGuid(), new TopUpRequest
+            var result = await _bffService.TopUpAsync(Guid.NewGuid(), new TopUpRequest
             {
                 Amount = 49_999, // One VND below minimum threshold
                 Gateway = PaymentGateway.MoMo
@@ -411,7 +419,7 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
 
         await WithUnitOfWorkAsync(async () =>
         {
-            var result = await _service.TopUpAsync(identityUserId, new TopUpRequest
+            var result = await _bffService.TopUpAsync(identityUserId, new TopUpRequest
             {
                 Amount = 10_000_000, // Exactly at maximum threshold (WalletSettings.MaxTopUpAmount default)
                 Gateway = PaymentGateway.ZaloPay
@@ -427,7 +435,7 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
     {
         await WithUnitOfWorkAsync(async () =>
         {
-            var result = await _service.TopUpAsync(Guid.NewGuid(), new TopUpRequest
+            var result = await _bffService.TopUpAsync(Guid.NewGuid(), new TopUpRequest
             {
                 Amount = 10_000_001, // One VND above maximum threshold
                 Gateway = PaymentGateway.ZaloPay
@@ -443,7 +451,7 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
     {
         await WithUnitOfWorkAsync(async () =>
         {
-            var result = await _service.TopUpAsync(Guid.NewGuid(), new TopUpRequest
+            var result = await _bffService.TopUpAsync(Guid.NewGuid(), new TopUpRequest
             {
                 Amount = -50_000,
                 Gateway = PaymentGateway.ZaloPay
@@ -458,6 +466,65 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
     // This path is tested in production against PostgreSQL which supports ABS().
 
     #region Helpers
+
+    private WalletAppService CreateWalletAppService(
+        WalletDomainService walletDomainService,
+        IEnumerable<IPaymentGatewayService> paymentGateways,
+        IPaymentCallbackValidator callbackValidator,
+        Microsoft.Extensions.Configuration.IConfiguration configuration)
+    {
+        var walletTransactionRepo = GetRequiredService<IRepository<WalletTransaction, Guid>>();
+        var appUserRepo = GetRequiredService<IRepository<AppUser, Guid>>();
+        var notificationRepo = GetRequiredService<IRepository<Notification, Guid>>();
+
+        var distributedLock = Substitute.For<IAbpDistributedLock>();
+        distributedLock.TryAcquireAsync(Arg.Any<string>(), Arg.Any<TimeSpan>(), Arg.Any<System.Threading.CancellationToken>())
+            .Returns(Substitute.For<IAbpDistributedLockHandle>());
+
+        var service = new WalletAppService(
+            walletTransactionRepo,
+            appUserRepo,
+            notificationRepo,
+            walletDomainService,
+            paymentGateways,
+            callbackValidator,
+            configuration,
+            Microsoft.Extensions.Options.Options.Create(new KLC.Configuration.WalletSettings()),
+            distributedLock,
+            Substitute.For<ILogger<WalletAppService>>());
+
+        // Inject ABP lazy service provider for GuidGenerator and AsyncExecuter
+        var lazyServiceProvider = Substitute.For<IAbpLazyServiceProvider>();
+        lazyServiceProvider
+            .LazyGetRequiredService<IGuidGenerator>()
+            .Returns(SimpleGuidGenerator.Instance);
+        lazyServiceProvider
+            .LazyGetService<IGuidGenerator>()
+            .Returns(SimpleGuidGenerator.Instance);
+
+        // Forward other service lookups to the real DI container
+        lazyServiceProvider
+            .LazyGetRequiredService<Volo.Abp.Linq.IAsyncQueryableExecuter>()
+            .Returns(GetRequiredService<Volo.Abp.Linq.IAsyncQueryableExecuter>());
+        lazyServiceProvider
+            .LazyGetService<Volo.Abp.Linq.IAsyncQueryableExecuter>()
+            .Returns(GetRequiredService<Volo.Abp.Linq.IAsyncQueryableExecuter>());
+
+        var type = service.GetType();
+        while (type != null)
+        {
+            var prop = type.GetProperty("LazyServiceProvider",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+            if (prop != null)
+            {
+                prop.SetValue(service, lazyServiceProvider);
+                break;
+            }
+            type = type.BaseType;
+        }
+
+        return service;
+    }
 
     private static WalletDomainService CreateWalletDomainService()
     {
@@ -508,15 +575,6 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
         var prop = entity.GetType().GetProperty("CreationTime",
             BindingFlags.Public | BindingFlags.Instance);
         prop?.SetValue(entity, time);
-    }
-
-    private class PassthroughCacheService : ICacheService
-    {
-        public Task<T?> GetAsync<T>(string key) => Task.FromResult<T?>(default);
-        public Task SetAsync<T>(string key, T value, TimeSpan? expiration = null) => Task.CompletedTask;
-        public Task RemoveAsync(string key) => Task.CompletedTask;
-        public async Task<T> GetOrSetAsync<T>(string key, Func<Task<T>> factory, TimeSpan? expiration = null)
-            => await factory();
     }
 
     #endregion

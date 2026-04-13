@@ -3,7 +3,6 @@ using KLC.Enums;
 using KLC.Files;
 using KLC.Users;
 using Microsoft.EntityFrameworkCore;
-using StackExchange.Redis;
 
 namespace KLC.Driver.Services;
 
@@ -22,22 +21,22 @@ public class ProfileBffService : IProfileBffService
 {
     private readonly KLCDbContext _dbContext;
     private readonly ICacheService _cache;
-    private readonly IDatabase _redis;
     private readonly ILogger<ProfileBffService> _logger;
     private readonly IFileUploadService _fileUploadService;
+    private readonly IProfileAppService _profileAppService;
 
     public ProfileBffService(
         KLCDbContext dbContext,
         ICacheService cache,
-        IConnectionMultiplexer redis,
         ILogger<ProfileBffService> logger,
-        IFileUploadService fileUploadService)
+        IFileUploadService fileUploadService,
+        IProfileAppService profileAppService)
     {
         _dbContext = dbContext;
         _cache = cache;
-        _redis = redis.GetDatabase();
         _logger = logger;
         _fileUploadService = fileUploadService;
+        _profileAppService = profileAppService;
     }
 
     public async Task<ProfileDto?> GetProfileAsync(Guid userId)
@@ -180,55 +179,18 @@ public class ProfileBffService : IProfileBffService
 
     public async Task RequestPhoneChangeAsync(Guid userId, string newPhoneNumber)
     {
-        // Check if phone already in use
-        var existing = await _dbContext.AppUsers
-            .AsNoTracking()
-            .AnyAsync(u => u.PhoneNumber == newPhoneNumber && u.IdentityUserId != userId && !u.IsDeleted);
-
-        if (existing)
-            throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.Profile.PhoneAlreadyUsed);
-
-        // Generate and store OTP for phone change
-        var otp = System.Security.Cryptography.RandomNumberGenerator.GetInt32(100000, 999999).ToString();
-        await _redis.StringSetAsync($"otp:phone-change:{userId}:{newPhoneNumber}", otp, TimeSpan.FromMinutes(5));
-        _logger.LogInformation("Phone change OTP for user {UserId}: {Otp}", userId, otp);
+        await _profileAppService.RequestPhoneChangeAsync(userId, newPhoneNumber);
     }
 
     public async Task VerifyPhoneChangeAsync(Guid userId, string newPhoneNumber, string otp)
     {
-        var storedOtp = await _redis.StringGetAsync($"otp:phone-change:{userId}:{newPhoneNumber}");
-        if (storedOtp.IsNullOrEmpty || storedOtp.ToString() != otp)
-            throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.Auth.InvalidOtp);
-
-        var user = await _dbContext.AppUsers
-            .FirstOrDefaultAsync(u => u.IdentityUserId == userId && !u.IsDeleted);
-
-        if (user == null)
-            throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.Auth.InvalidCredentials);
-
-        user.SetPhoneNumber(newPhoneNumber, isVerified: true);
-        await _dbContext.SaveChangesAsync();
-        await _redis.KeyDeleteAsync($"otp:phone-change:{userId}:{newPhoneNumber}");
+        await _profileAppService.ConfirmPhoneChangeAsync(userId, newPhoneNumber, otp);
         await _cache.RemoveAsync(CacheKeys.UserProfile(userId));
     }
 
     public async Task DeleteAccountAsync(Guid userId)
     {
-        // Check for active sessions
-        var hasActive = await _dbContext.ChargingSessions
-            .AnyAsync(s => s.UserId == userId && (s.Status == SessionStatus.InProgress || s.Status == SessionStatus.Starting));
-
-        if (hasActive)
-            throw new Volo.Abp.BusinessException(KLCDomainErrorCodes.Profile.HasActiveSession);
-
-        var user = await _dbContext.AppUsers
-            .FirstOrDefaultAsync(u => u.IdentityUserId == userId && !u.IsDeleted);
-
-        if (user == null) return;
-
-        user.Deactivate();
-        // ABP soft delete will handle IsDeleted flag
-        await _dbContext.SaveChangesAsync();
+        await _profileAppService.DeleteAccountAsync(userId);
         await _cache.RemoveAsync(CacheKeys.UserProfile(userId));
         await _cache.RemoveAsync(CacheKeys.UserStats(userId));
     }

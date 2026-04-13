@@ -1,17 +1,12 @@
-using System.Net;
-using System.Net.Http;
 using System;
 using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
 using KLC.Driver.Services;
 using KLC.EntityFrameworkCore;
 using KLC.Enums;
-using KLC.Fleets;
 using KLC.Sessions;
 using KLC.Stations;
 using KLC.Users;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
@@ -29,37 +24,40 @@ public class SessionBffServiceCacheTests : KLCEntityFrameworkCoreTestBase
 {
     private readonly KLCDbContext _dbContext;
     private readonly ICacheService _cache;
+    private readonly ISessionBffAppService _sessionAppService;
     private readonly SessionBffService _service;
 
     public SessionBffServiceCacheTests()
     {
         _dbContext = GetRequiredService<KLCDbContext>();
         _cache = Substitute.For<ICacheService>();
-        var fleetPolicyService = Substitute.For<IFleetChargingPolicyService>();
-        fleetPolicyService.ValidateChargingAsync(Arg.Any<Guid>(), Arg.Any<Guid>())
-            .Returns(new FleetChargingValidationResult(true));
+        _sessionAppService = Substitute.For<ISessionBffAppService>();
         var logger = Substitute.For<ILogger<SessionBffService>>();
-        var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?> { ["Wallet:MinBalanceToStart"] = "10000" })
-            .Build();
 
-        var httpClientFactory = Substitute.For<IHttpClientFactory>();
-        var mockHandler = new MockHttpHandler(
-            new HttpResponseMessage(HttpStatusCode.OK)
+        // Default: mock app service to succeed
+        _sessionAppService.StartSessionAsync(Arg.Any<StartSessionInput>())
+            .Returns(callInfo =>
             {
-                Content = new StringContent("{\"success\":true,\"message\":\"RemoteStartTransaction accepted\"}")
+                var input = callInfo.ArgAt<StartSessionInput>(0);
+                return new StartSessionResultDto
+                {
+                    Success = true,
+                    SessionId = Guid.NewGuid(),
+                    Status = SessionStatus.Pending,
+                    StationId = input.StationId
+                };
             });
-        httpClientFactory.CreateClient(Arg.Any<string>()).Returns(new HttpClient(mockHandler));
 
-        _service = new SessionBffService(_dbContext, _cache, fleetPolicyService, configuration, httpClientFactory, logger);
-    }
+        _sessionAppService.StopSessionAsync(Arg.Any<Guid>(), Arg.Any<Guid>())
+            .Returns(callInfo => new StopSessionResultDto
+            {
+                Success = true,
+                SessionId = callInfo.ArgAt<Guid>(1),
+                Status = SessionStatus.Stopping,
+                StationId = Guid.NewGuid()
+            });
 
-    private class MockHttpHandler : HttpMessageHandler
-    {
-        private readonly HttpResponseMessage _response;
-        public MockHttpHandler(HttpResponseMessage response) => _response = response;
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-            => Task.FromResult(_response);
+        _service = new SessionBffService(_dbContext, _cache, _sessionAppService, logger);
     }
 
     [Fact]
@@ -149,33 +147,25 @@ public class SessionBffServiceCacheTests : KLCEntityFrameworkCoreTestBase
         var userId = Guid.NewGuid();
         var stationId = Guid.NewGuid();
 
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var station = new ChargingStation(stationId, "INV-001", "Invalidate Station", "789 Inv St", 21.0, 105.8);
-            var connector = station.AddConnector(Guid.NewGuid(), 1, ConnectorType.CCS2, 50);
-            connector.UpdateStatus(ConnectorStatus.Available);
-            await _dbContext.ChargingStations.AddAsync(station);
-
-            // Seed AppUser with wallet balance for wallet check
-            var appUser = new AppUser(Guid.NewGuid(), userId, "Test User", "0900000001");
-            appUser.AddToWallet(100_000m);
-            await _dbContext.AppUsers.AddAsync(appUser);
-
-            await _dbContext.SaveChangesAsync();
-        });
-
-        // Act
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var result = await _service.StartSessionAsync(userId, new StartSessionRequest
+        // Mock app service to return success with stationId
+        _sessionAppService.StartSessionAsync(Arg.Any<StartSessionInput>())
+            .Returns(new StartSessionResultDto
             {
-                StationId = stationId,
-                ConnectorNumber = 1
+                Success = true,
+                SessionId = Guid.NewGuid(),
+                Status = SessionStatus.Pending,
+                StationId = stationId
             });
 
-            // Assert - session created
-            result.Success.ShouldBeTrue();
+        // Act
+        var result = await _service.StartSessionAsync(userId, new StartSessionRequest
+        {
+            StationId = stationId,
+            ConnectorNumber = 1
         });
+
+        // Assert - session created
+        result.Success.ShouldBeTrue();
 
         // Verify cache invalidation for station connectors and user active session
         await _cache.Received(1).RemoveAsync($"station:{stationId}:connectors");
@@ -188,25 +178,24 @@ public class SessionBffServiceCacheTests : KLCEntityFrameworkCoreTestBase
         // Arrange
         var userId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
+        var stationId = Guid.NewGuid();
 
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var session = new ChargingSession(sessionId, userId, Guid.NewGuid(), 1);
-            session.MarkStarting();
-            session.RecordStart(1, 0);
-            await _dbContext.ChargingSessions.AddAsync(session);
-            await _dbContext.SaveChangesAsync();
-        });
+        // Mock app service to return success
+        _sessionAppService.StopSessionAsync(userId, sessionId)
+            .Returns(new StopSessionResultDto
+            {
+                Success = true,
+                SessionId = sessionId,
+                Status = SessionStatus.Stopping,
+                StationId = stationId
+            });
 
         // Act
-        await WithUnitOfWorkAsync(async () =>
-        {
-            var result = await _service.StopSessionAsync(userId, sessionId);
+        var result = await _service.StopSessionAsync(userId, sessionId);
 
-            // Assert
-            result.Success.ShouldBeTrue();
-            result.Status.ShouldBe(SessionStatus.Stopping);
-        });
+        // Assert
+        result.Success.ShouldBeTrue();
+        result.Status.ShouldBe(SessionStatus.Stopping);
 
         // Verify cache invalidation for user active session and session detail
         await _cache.Received(1).RemoveAsync($"user:{userId}:active-session");

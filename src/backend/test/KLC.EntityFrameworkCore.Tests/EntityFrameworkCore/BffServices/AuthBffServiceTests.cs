@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using KLC.Auditing;
+using KLC.Auth;
 using KLC.Configuration;
 using KLC.Driver.Services;
 using KLC.EntityFrameworkCore;
@@ -54,17 +55,22 @@ public class AuthBffServiceTests : KLCEntityFrameworkCoreTestBase
             ExpiryMinutes = 60
         });
 
-        var logger = Substitute.For<ILogger<AuthBffService>>();
+        var logger = Substitute.For<ILogger<AuthAppService>>();
 
-        _service = new AuthBffService(
+        var authAppService = new AuthAppService(
             _dbContext,
             _userManager,
             redis,
             configuration,
             jwtSettings,
-            logger,
             _smsService,
-            _auditLogger);
+            _auditLogger,
+            logger);
+
+        // Set up ABP's LazyServiceProvider for AuthAppService (KLCAppService base class)
+        SetupAbpServiceProvider(authAppService);
+
+        _service = new AuthBffService(authAppService);
     }
 
     [Fact]
@@ -288,4 +294,31 @@ public class AuthBffServiceTests : KLCEntityFrameworkCoreTestBase
             ex.Code.ShouldBe(KLCDomainErrorCodes.Auth.InvalidOtp);
         });
     }
+
+    #region Helpers
+
+    private static void SetupAbpServiceProvider(AuthAppService service)
+    {
+        // AuthAppService inherits from KLCAppService -> ApplicationService
+        // which needs LazyServiceProvider for Logger etc.
+        var lazyServiceProvider = Substitute.For<Volo.Abp.DependencyInjection.IAbpLazyServiceProvider>();
+        lazyServiceProvider
+            .LazyGetService<Microsoft.Extensions.Logging.ILoggerFactory>()
+            .Returns(Substitute.For<Microsoft.Extensions.Logging.ILoggerFactory>());
+
+        var type = service.GetType();
+        while (type != null)
+        {
+            var prop = type.GetProperty("LazyServiceProvider",
+                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.DeclaredOnly);
+            if (prop != null)
+            {
+                prop.SetValue(service, lazyServiceProvider);
+                break;
+            }
+            type = type.BaseType;
+        }
+    }
+
+    #endregion
 }
