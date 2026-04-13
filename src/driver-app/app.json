@@ -55,6 +55,13 @@
           "icon": "./assets/notification-icon.png",
           "color": "#2D9B3A"
         }
+      ],
+      [
+        "@sentry/react-native/expo",
+        {
+          "organization": "emesoft-9n",
+          "project": "ev-kcl"
+        }
       ]
     ],
 
