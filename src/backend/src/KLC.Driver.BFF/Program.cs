@@ -252,6 +252,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "Healthy" }));
 app.MapHealthChecks("/health/ready");
 
 // Map API endpoints
+app.MapConfigEndpoints();
 app.MapAuthEndpoints();
 app.MapStationEndpoints();
 app.MapSessionEndpoints();
