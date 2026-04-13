@@ -52,7 +52,7 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
             _cache,
             Substitute.For<ILogger<WalletBffService>>(),
             _walletAppService,
-            Substitute.For<IPushNotificationService>(),
+            Substitute.For<IServiceScopeFactory>(),
             _driverNotifier);
     }
 

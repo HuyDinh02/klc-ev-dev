@@ -9,6 +9,7 @@ using KLC.Enums;
 using Microsoft.EntityFrameworkCore;
 using KLC.Notifications;
 using KLC.Payments;
+using Microsoft.Extensions.DependencyInjection;
 using KLC.TestDoubles;
 using KLC.Users;
 using Microsoft.Extensions.Logging;
@@ -53,7 +54,7 @@ public class VnPayIpnTests : KLCEntityFrameworkCoreTestBase
             new PassthroughCacheService(),
             Substitute.For<ILogger<WalletBffService>>(),
             _walletAppService,
-            Substitute.For<IPushNotificationService>(),
+            Substitute.For<IServiceScopeFactory>(),
             Substitute.For<IDriverHubNotifier>());
     }
 

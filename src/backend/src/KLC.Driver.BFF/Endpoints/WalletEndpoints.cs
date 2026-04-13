@@ -153,16 +153,27 @@ public static class WalletEndpoints
             ILogger<WalletBffService> logger,
             IEnumerable<KLC.Payments.IPaymentGatewayService> paymentGateways) =>
         {
-            // Block VnPay from using this endpoint — VnPay uses IPN only (Case 12)
+            // Case 12: VnPay wallet credits are ONLY processed via IPN (server-to-server).
+            // However, we MUST allow the mobile app to report cancellation/failure so
+            // the transaction doesn't stay stuck as PENDING forever — VnPay does NOT
+            // send an IPN when the user cancels at the payment gateway.
             if (request.Gateway == PaymentGateway.VnPay || request.Gateway == null)
             {
-                logger.LogWarning("[Callback] VnPay callback blocked — use IPN instead. Ref={Ref}",
-                    request.ReferenceCode);
-                return Results.Ok(new TopUpCallbackResultDto
+                if (request.Status != TransactionStatus.Failed)
                 {
-                    Success = false,
-                    Error = "VnPay payments are confirmed via IPN. Please check /topup/{id}/status."
-                });
+                    logger.LogWarning("[Callback] VnPay callback blocked — use IPN instead. Ref={Ref}",
+                        request.ReferenceCode);
+                    return Results.Ok(new TopUpCallbackResultDto
+                    {
+                        Success = false,
+                        Error = "VnPay payments are confirmed via IPN. Please check /topup/{id}/status."
+                    });
+                }
+
+                // Allow cancel/failure — mark transaction as FAILED (no wallet credit)
+                logger.LogInformation("[Callback] VnPay cancel/failure from mobile. Ref={Ref}", request.ReferenceCode);
+                var cancelResult = await walletService.ProcessTopUpCallbackAsync(request);
+                return Results.Ok(cancelResult);
             }
 
             // Validate required fields
