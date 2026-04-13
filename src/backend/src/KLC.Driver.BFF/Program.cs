@@ -116,6 +116,7 @@ builder.Services.AddScoped<IProfileBffService, ProfileBffService>();
 builder.Services.AddScoped<IVehicleBffService, VehicleBffService>();
 builder.Services.AddScoped<INotificationBffService, NotificationBffService>();
 builder.Services.AddScoped<IAuthBffService, AuthBffService>();
+builder.Services.AddScoped<KLC.Payments.IWalletAppService, KLC.Payments.WalletAppService>();
 builder.Services.AddScoped<IWalletBffService, WalletBffService>();
 builder.Services.AddScoped<IFavoriteBffService, FavoriteBffService>();
 builder.Services.AddScoped<IVoucherBffService, VoucherBffService>();

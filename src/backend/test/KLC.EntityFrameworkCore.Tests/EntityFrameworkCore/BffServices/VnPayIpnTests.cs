@@ -12,8 +12,9 @@ using KLC.Users;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
-using StackExchange.Redis;
 using Volo.Abp.DependencyInjection;
+using Volo.Abp.DistributedLocking;
+using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Guids;
 using Xunit;
 
@@ -29,60 +30,52 @@ public class VnPayIpnTests : KLCEntityFrameworkCoreTestBase
 {
     private readonly KLCDbContext _dbContext;
     private readonly IPaymentCallbackValidator _callbackValidator;
-    private readonly WalletBffService _service;
+    private readonly WalletBffService _bffService;
+    private readonly WalletAppService _walletAppService;
 
     public VnPayIpnTests()
     {
         _dbContext = GetRequiredService<KLCDbContext>();
         _callbackValidator = Substitute.For<IPaymentCallbackValidator>();
-        var redisDb = Substitute.For<IDatabase>();
-        redisDb.StringSetAsync(Arg.Any<RedisKey>(), Arg.Any<RedisValue>(), Arg.Any<TimeSpan?>(), Arg.Any<When>(), Arg.Any<CommandFlags>()).Returns(true);
 
-        var redis = Substitute.For<IConnectionMultiplexer>();
-        redis.GetDatabase(Arg.Any<int>(), Arg.Any<object>()).Returns(redisDb);
+        var walletDomainService = CreateWalletDomainService();
+        var configuration = new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build();
 
-        var walletDomainService = new WalletDomainService();
-        var lazyServiceProvider = Substitute.For<IAbpLazyServiceProvider>();
-        lazyServiceProvider.LazyGetRequiredService<IGuidGenerator>().Returns(SimpleGuidGenerator.Instance);
-        lazyServiceProvider.LazyGetService<IGuidGenerator>().Returns(SimpleGuidGenerator.Instance);
-        var type = walletDomainService.GetType();
-        while (type != null)
-        {
-            var prop = type.GetProperty("LazyServiceProvider",
-                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
-            if (prop != null) { prop.SetValue(walletDomainService, lazyServiceProvider); break; }
-            type = type.BaseType;
-        }
+        // Create the WalletAppService (business logic)
+        _walletAppService = CreateWalletAppService(
+            walletDomainService, new List<IPaymentGatewayService>(), _callbackValidator, configuration);
 
-        _service = new WalletBffService(
+        // Create the thin BFF service that delegates to WalletAppService
+        _bffService = new WalletBffService(
             _dbContext,
             new PassthroughCacheService(),
             Substitute.For<ILogger<WalletBffService>>(),
-            walletDomainService,
-            new List<IPaymentGatewayService>(),
-            _callbackValidator,
+            _walletAppService,
             Substitute.For<IPushNotificationService>(),
-            Substitute.For<IDriverHubNotifier>(),
-            new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build(),
-            Microsoft.Extensions.Options.Options.Create(new KLC.Configuration.WalletSettings()),
-            redis);
+            Substitute.For<IDriverHubNotifier>());
     }
 
     [Fact]
     public async Task IPN_Should_Return_OrderNotFound_When_TxnRef_Missing()
     {
-        var result = await _service.ProcessVnPayIpnAsync(new Dictionary<string, string>());
-        result.RspCode.ShouldBe("01");
+        await WithUnitOfWorkAsync(async () =>
+        {
+            var result = await _bffService.ProcessVnPayIpnAsync(new Dictionary<string, string>());
+            result.RspCode.ShouldBe("01");
+        });
     }
 
     [Fact]
     public async Task IPN_Should_Return_OrderNotFound_When_Transaction_Not_Exists()
     {
-        var result = await _service.ProcessVnPayIpnAsync(new Dictionary<string, string>
+        await WithUnitOfWorkAsync(async () =>
         {
-            { "vnp_TxnRef", "NONEXISTENT" }
+            var result = await _bffService.ProcessVnPayIpnAsync(new Dictionary<string, string>
+            {
+                { "vnp_TxnRef", "NONEXISTENT" }
+            });
+            result.RspCode.ShouldBe("01");
         });
-        result.RspCode.ShouldBe("01");
     }
 
     [Fact]
@@ -96,7 +89,7 @@ public class VnPayIpnTests : KLCEntityFrameworkCoreTestBase
 
         await WithUnitOfWorkAsync(async () =>
         {
-            var result = await _service.ProcessVnPayIpnAsync(new Dictionary<string, string>
+            var result = await _bffService.ProcessVnPayIpnAsync(new Dictionary<string, string>
             {
                 { "vnp_TxnRef", txnRef }
             });
@@ -115,7 +108,7 @@ public class VnPayIpnTests : KLCEntityFrameworkCoreTestBase
 
         await WithUnitOfWorkAsync(async () =>
         {
-            var result = await _service.ProcessVnPayIpnAsync(new Dictionary<string, string>
+            var result = await _bffService.ProcessVnPayIpnAsync(new Dictionary<string, string>
             {
                 { "vnp_TxnRef", txnRef }
             });
@@ -136,17 +129,17 @@ public class VnPayIpnTests : KLCEntityFrameworkCoreTestBase
 
         await WithUnitOfWorkAsync(async () =>
         {
-            var r1 = await _service.ProcessVnPayIpnAsync(new Dictionary<string, string> { { "vnp_TxnRef", txnRef } });
+            var r1 = await _bffService.ProcessVnPayIpnAsync(new Dictionary<string, string> { { "vnp_TxnRef", txnRef } });
             r1.RspCode.ShouldBe("97");
         });
 
-        // Test 2: Invalid amount (same TxnRef — was returning 02 before fix)
+        // Test 2: Invalid amount (same TxnRef -- was returning 02 before fix)
         _callbackValidator.ValidateVnPayIpnAsync(Arg.Any<Dictionary<string, string>>(), Arg.Any<decimal?>())
             .Returns(VnPayCallbackValidation.Invalid("Amount mismatch"));
 
         await WithUnitOfWorkAsync(async () =>
         {
-            var r2 = await _service.ProcessVnPayIpnAsync(new Dictionary<string, string> { { "vnp_TxnRef", txnRef } });
+            var r2 = await _bffService.ProcessVnPayIpnAsync(new Dictionary<string, string> { { "vnp_TxnRef", txnRef } });
             r2.RspCode.ShouldBe("04");
         });
     }
@@ -162,7 +155,7 @@ public class VnPayIpnTests : KLCEntityFrameworkCoreTestBase
 
         await WithUnitOfWorkAsync(async () =>
         {
-            var result = await _service.ProcessVnPayIpnAsync(new Dictionary<string, string> { { "vnp_TxnRef", txnRef } });
+            var result = await _bffService.ProcessVnPayIpnAsync(new Dictionary<string, string> { { "vnp_TxnRef", txnRef } });
             result.RspCode.ShouldBe("02");
         });
     }
@@ -193,4 +186,92 @@ public class VnPayIpnTests : KLCEntityFrameworkCoreTestBase
             await _dbContext.SaveChangesAsync();
         });
     }
+
+    #region Helpers
+
+    private WalletAppService CreateWalletAppService(
+        WalletDomainService walletDomainService,
+        IEnumerable<IPaymentGatewayService> paymentGateways,
+        IPaymentCallbackValidator callbackValidator,
+        Microsoft.Extensions.Configuration.IConfiguration configuration)
+    {
+        var walletTransactionRepo = GetRequiredService<IRepository<WalletTransaction, Guid>>();
+        var appUserRepo = GetRequiredService<IRepository<AppUser, Guid>>();
+        var notificationRepo = GetRequiredService<IRepository<Notification, Guid>>();
+
+        var distributedLock = Substitute.For<IAbpDistributedLock>();
+        distributedLock.TryAcquireAsync(Arg.Any<string>(), Arg.Any<TimeSpan>(), Arg.Any<System.Threading.CancellationToken>())
+            .Returns(Substitute.For<IAbpDistributedLockHandle>());
+
+        var service = new WalletAppService(
+            walletTransactionRepo,
+            appUserRepo,
+            notificationRepo,
+            walletDomainService,
+            paymentGateways,
+            callbackValidator,
+            configuration,
+            Microsoft.Extensions.Options.Options.Create(new KLC.Configuration.WalletSettings()),
+            distributedLock);
+
+        // Inject ABP lazy service provider
+        var lazyServiceProvider = Substitute.For<IAbpLazyServiceProvider>();
+        lazyServiceProvider
+            .LazyGetRequiredService<IGuidGenerator>()
+            .Returns(SimpleGuidGenerator.Instance);
+        lazyServiceProvider
+            .LazyGetService<IGuidGenerator>()
+            .Returns(SimpleGuidGenerator.Instance);
+        lazyServiceProvider
+            .LazyGetRequiredService<Volo.Abp.Linq.IAsyncQueryableExecuter>()
+            .Returns(GetRequiredService<Volo.Abp.Linq.IAsyncQueryableExecuter>());
+        lazyServiceProvider
+            .LazyGetService<Volo.Abp.Linq.IAsyncQueryableExecuter>()
+            .Returns(GetRequiredService<Volo.Abp.Linq.IAsyncQueryableExecuter>());
+
+        var type = service.GetType();
+        while (type != null)
+        {
+            var prop = type.GetProperty("LazyServiceProvider",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+            if (prop != null)
+            {
+                prop.SetValue(service, lazyServiceProvider);
+                break;
+            }
+            type = type.BaseType;
+        }
+
+        return service;
+    }
+
+    private static WalletDomainService CreateWalletDomainService()
+    {
+        var service = new WalletDomainService();
+
+        var lazyServiceProvider = Substitute.For<IAbpLazyServiceProvider>();
+        lazyServiceProvider
+            .LazyGetRequiredService<IGuidGenerator>()
+            .Returns(SimpleGuidGenerator.Instance);
+        lazyServiceProvider
+            .LazyGetService<IGuidGenerator>()
+            .Returns(SimpleGuidGenerator.Instance);
+
+        var type = service.GetType();
+        while (type != null)
+        {
+            var prop = type.GetProperty("LazyServiceProvider",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+            if (prop != null)
+            {
+                prop.SetValue(service, lazyServiceProvider);
+                break;
+            }
+            type = type.BaseType;
+        }
+
+        return service;
+    }
+
+    #endregion
 }

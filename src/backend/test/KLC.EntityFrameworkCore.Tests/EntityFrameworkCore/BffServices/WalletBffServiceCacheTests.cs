@@ -12,8 +12,9 @@ using KLC.Users;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
-using StackExchange.Redis;
 using Volo.Abp.DependencyInjection;
+using Volo.Abp.DistributedLocking;
+using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Guids;
 using Xunit;
 
@@ -29,7 +30,7 @@ public class WalletBffServiceCacheTests : KLCEntityFrameworkCoreTestBase
     private readonly KLCDbContext _dbContext;
     private readonly ICacheService _cache;
     private readonly IDriverHubNotifier _driverNotifier;
-    private readonly WalletBffService _service;
+    private readonly WalletBffService _bffService;
 
     public WalletBffServiceCacheTests()
     {
@@ -37,18 +38,22 @@ public class WalletBffServiceCacheTests : KLCEntityFrameworkCoreTestBase
         _cache = Substitute.For<ICacheService>();
         _driverNotifier = Substitute.For<IDriverHubNotifier>();
 
-        var logger = Substitute.For<ILogger<WalletBffService>>();
         var walletDomainService = CreateWalletDomainService();
         var paymentGateways = CreateMockPaymentGateways();
-
         var callbackValidator = Substitute.For<IPaymentCallbackValidator>();
         var configuration = new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build();
-        var redisDb = Substitute.For<IDatabase>();
-        redisDb.StringSetAsync(Arg.Any<RedisKey>(), Arg.Any<RedisValue>(), Arg.Any<TimeSpan?>(), Arg.Any<When>(), Arg.Any<CommandFlags>()).Returns(true);
-        var redis = Substitute.For<IConnectionMultiplexer>();
-        redis.GetDatabase(Arg.Any<int>(), Arg.Any<object>()).Returns(redisDb);
-        _service = new WalletBffService(
-            _dbContext, _cache, logger, walletDomainService, paymentGateways, callbackValidator, Substitute.For<IPushNotificationService>(), _driverNotifier, configuration, Microsoft.Extensions.Options.Options.Create(new KLC.Configuration.WalletSettings()), redis);
+
+        // Create the WalletAppService (business logic)
+        var walletAppService = CreateWalletAppService(walletDomainService, paymentGateways, callbackValidator, configuration);
+
+        // Create the thin BFF service that delegates to WalletAppService
+        _bffService = new WalletBffService(
+            _dbContext,
+            _cache,
+            Substitute.For<ILogger<WalletBffService>>(),
+            walletAppService,
+            Substitute.For<IPushNotificationService>(),
+            _driverNotifier);
     }
 
     [Fact]
@@ -70,7 +75,7 @@ public class WalletBffServiceCacheTests : KLCEntityFrameworkCoreTestBase
             .Returns(cachedBalance);
 
         // Act
-        var result = await _service.GetBalanceAsync(userId);
+        var result = await _bffService.GetBalanceAsync(userId);
 
         // Assert
         result.ShouldNotBeNull();
@@ -106,7 +111,7 @@ public class WalletBffServiceCacheTests : KLCEntityFrameworkCoreTestBase
         // Act
         await WithUnitOfWorkAsync(async () =>
         {
-            var result = await _service.GetBalanceAsync(identityUserId);
+            var result = await _bffService.GetBalanceAsync(identityUserId);
 
             // Assert
             result.ShouldNotBeNull();
@@ -131,7 +136,7 @@ public class WalletBffServiceCacheTests : KLCEntityFrameworkCoreTestBase
         // Act
         await WithUnitOfWorkAsync(async () =>
         {
-            var result = await _service.TopUpAsync(identityUserId, new TopUpRequest
+            var result = await _bffService.TopUpAsync(identityUserId, new TopUpRequest
             {
                 Amount = 100_000,
                 Gateway = PaymentGateway.ZaloPay
@@ -168,7 +173,7 @@ public class WalletBffServiceCacheTests : KLCEntityFrameworkCoreTestBase
         // Act
         await WithUnitOfWorkAsync(async () =>
         {
-            var result = await _service.ProcessTopUpCallbackAsync(new TopUpCallbackRequest
+            var result = await _bffService.ProcessTopUpCallbackAsync(new TopUpCallbackRequest
             {
                 ReferenceCode = referenceCode,
                 GatewayTransactionId = "GW_TX_CACHE_001",
@@ -211,7 +216,7 @@ public class WalletBffServiceCacheTests : KLCEntityFrameworkCoreTestBase
         // Act - first page
         await WithUnitOfWorkAsync(async () =>
         {
-            var result = await _service.GetTransactionsAsync(identityUserId, null, 3, null);
+            var result = await _bffService.GetTransactionsAsync(identityUserId, null, 3, null);
 
             // Assert
             result.ShouldNotBeNull();
@@ -239,7 +244,7 @@ public class WalletBffServiceCacheTests : KLCEntityFrameworkCoreTestBase
             .Returns(new WalletBalanceDto { Balance = 0, Currency = "VND" });
 
         // Act
-        await _service.GetBalanceAsync(userId);
+        await _bffService.GetBalanceAsync(userId);
 
         // Assert
         await _cache.Received(1).GetOrSetAsync(
@@ -249,6 +254,62 @@ public class WalletBffServiceCacheTests : KLCEntityFrameworkCoreTestBase
     }
 
     #region Helpers
+
+    private WalletAppService CreateWalletAppService(
+        WalletDomainService walletDomainService,
+        IEnumerable<IPaymentGatewayService> paymentGateways,
+        IPaymentCallbackValidator callbackValidator,
+        Microsoft.Extensions.Configuration.IConfiguration configuration)
+    {
+        var walletTransactionRepo = GetRequiredService<IRepository<WalletTransaction, Guid>>();
+        var appUserRepo = GetRequiredService<IRepository<AppUser, Guid>>();
+        var notificationRepo = GetRequiredService<IRepository<Notification, Guid>>();
+
+        var distributedLock = Substitute.For<IAbpDistributedLock>();
+        distributedLock.TryAcquireAsync(Arg.Any<string>(), Arg.Any<TimeSpan>(), Arg.Any<System.Threading.CancellationToken>())
+            .Returns(Substitute.For<IAbpDistributedLockHandle>());
+
+        var service = new WalletAppService(
+            walletTransactionRepo,
+            appUserRepo,
+            notificationRepo,
+            walletDomainService,
+            paymentGateways,
+            callbackValidator,
+            configuration,
+            Microsoft.Extensions.Options.Options.Create(new KLC.Configuration.WalletSettings()),
+            distributedLock);
+
+        // Inject ABP lazy service provider
+        var lazyServiceProvider = Substitute.For<IAbpLazyServiceProvider>();
+        lazyServiceProvider
+            .LazyGetRequiredService<IGuidGenerator>()
+            .Returns(SimpleGuidGenerator.Instance);
+        lazyServiceProvider
+            .LazyGetService<IGuidGenerator>()
+            .Returns(SimpleGuidGenerator.Instance);
+        lazyServiceProvider
+            .LazyGetRequiredService<Volo.Abp.Linq.IAsyncQueryableExecuter>()
+            .Returns(GetRequiredService<Volo.Abp.Linq.IAsyncQueryableExecuter>());
+        lazyServiceProvider
+            .LazyGetService<Volo.Abp.Linq.IAsyncQueryableExecuter>()
+            .Returns(GetRequiredService<Volo.Abp.Linq.IAsyncQueryableExecuter>());
+
+        var type = service.GetType();
+        while (type != null)
+        {
+            var prop = type.GetProperty("LazyServiceProvider",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+            if (prop != null)
+            {
+                prop.SetValue(service, lazyServiceProvider);
+                break;
+            }
+            type = type.BaseType;
+        }
+
+        return service;
+    }
 
     private static WalletDomainService CreateWalletDomainService()
     {
