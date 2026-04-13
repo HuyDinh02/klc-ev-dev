@@ -210,7 +210,8 @@ public class VoucherBffServiceTests : KLCEntityFrameworkCoreTestBase
             userVoucherRepository,
             walletTransactionRepository,
             appUserRepository,
-            walletDomainService);
+            walletDomainService,
+            Substitute.For<ILogger<VoucherRedemptionAppService>>());
 
         SetupAbpServiceProvider(service);
         return service;

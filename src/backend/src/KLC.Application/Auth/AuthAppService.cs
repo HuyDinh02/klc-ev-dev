@@ -27,7 +27,7 @@ namespace KLC.Auth;
 /// registration, phone verification, login, password management.
 /// Shared between Admin API and Driver BFF.
 /// </summary>
-public class AuthAppService : KLCAppService, IAuthAppService
+public class AuthAppService : IAuthAppService
 {
     private readonly KLCDbContext _dbContext;
     private readonly IdentityUserManager _userManager;
@@ -36,6 +36,7 @@ public class AuthAppService : KLCAppService, IAuthAppService
     private readonly JwtSettings _jwtSettings;
     private readonly ISmsService _smsService;
     private readonly IAuditEventLogger _auditLogger;
+    private readonly ILogger<AuthAppService> _logger;
 
     private const int OtpLength = 6;
     private static readonly TimeSpan OtpTtl = TimeSpan.FromMinutes(5);
@@ -48,7 +49,8 @@ public class AuthAppService : KLCAppService, IAuthAppService
         IConfiguration configuration,
         IOptions<JwtSettings> jwtSettings,
         ISmsService smsService,
-        IAuditEventLogger auditLogger)
+        IAuditEventLogger auditLogger,
+        ILogger<AuthAppService> logger)
     {
         _dbContext = dbContext;
         _userManager = userManager;
@@ -57,6 +59,7 @@ public class AuthAppService : KLCAppService, IAuthAppService
         _jwtSettings = jwtSettings.Value;
         _smsService = smsService;
         _auditLogger = auditLogger;
+        _logger = logger;
     }
 
     public async Task<RegisterResultDto> RegisterAsync(RegisterInput input)
@@ -81,7 +84,7 @@ public class AuthAppService : KLCAppService, IAuthAppService
         if (!identityResult.Succeeded)
         {
             var errors = string.Join(", ", identityResult.Errors.Select(e => e.Description));
-            Logger.LogWarning("Identity user creation failed: {Errors}", errors);
+            _logger.LogWarning("Identity user creation failed: {Errors}", errors);
             return new RegisterResultDto { Success = false, Error = errors };
         }
 
@@ -157,7 +160,7 @@ public class AuthAppService : KLCAppService, IAuthAppService
         }
         catch (FirebaseAdmin.Auth.FirebaseAuthException ex)
         {
-            Logger.LogWarning(ex, "Firebase token verification failed for phone verify");
+            _logger.LogWarning(ex, "Firebase token verification failed for phone verify");
             return new VerifyResultDto { Success = false, Error = KLCDomainErrorCodes.Auth.InvalidOtp };
         }
 
@@ -170,7 +173,7 @@ public class AuthAppService : KLCAppService, IAuthAppService
 
         var localPhone = phoneNumber.StartsWith("+84") ? "0" + phoneNumber[3..] : phoneNumber;
 
-        Logger.LogInformation("Firebase phone verify: phone={Phone}", localPhone);
+        _logger.LogInformation("Firebase phone verify: phone={Phone}", localPhone);
 
         // Mark phone as verified
         var appUser = await _dbContext.AppUsers
@@ -180,7 +183,7 @@ public class AuthAppService : KLCAppService, IAuthAppService
         {
             appUser.VerifyPhone();
             await _dbContext.SaveChangesAsync();
-            Logger.LogInformation("Phone verified via Firebase for {Phone}", localPhone);
+            _logger.LogInformation("Phone verified via Firebase for {Phone}", localPhone);
         }
 
         return new VerifyResultDto { Success = true };
@@ -255,14 +258,14 @@ public class AuthAppService : KLCAppService, IAuthAppService
             var auth = FirebaseAdmin.Auth.FirebaseAuth.DefaultInstance;
             if (auth == null)
             {
-                Logger.LogWarning("Firebase not initialized — cannot verify phone auth token");
+                _logger.LogWarning("Firebase not initialized — cannot verify phone auth token");
                 return new LoginResultDto { Success = false, Error = "Firebase Auth not configured" };
             }
             firebaseToken = await auth.VerifyIdTokenAsync(idToken);
         }
         catch (FirebaseAdmin.Auth.FirebaseAuthException ex)
         {
-            Logger.LogWarning(ex, "Firebase token verification failed");
+            _logger.LogWarning(ex, "Firebase token verification failed");
             return new LoginResultDto { Success = false, Error = "Invalid or expired Firebase token" };
         }
 
@@ -274,7 +277,7 @@ public class AuthAppService : KLCAppService, IAuthAppService
 
         if (string.IsNullOrEmpty(phoneNumber))
         {
-            Logger.LogWarning("Firebase token has no phone_number claim: uid={Uid}", firebaseUid);
+            _logger.LogWarning("Firebase token has no phone_number claim: uid={Uid}", firebaseUid);
             return new LoginResultDto { Success = false, Error = "Phone number not found in Firebase token" };
         }
 
@@ -283,7 +286,7 @@ public class AuthAppService : KLCAppService, IAuthAppService
             ? "0" + phoneNumber[3..]
             : phoneNumber;
 
-        Logger.LogInformation("Firebase phone auth: uid={Uid}, phone={Phone}", firebaseUid, localPhone);
+        _logger.LogInformation("Firebase phone auth: uid={Uid}, phone={Phone}", firebaseUid, localPhone);
 
         // Step 3: Find or create AppUser
         var appUser = await _dbContext.AppUsers
@@ -306,7 +309,7 @@ public class AuthAppService : KLCAppService, IAuthAppService
             _dbContext.AppUsers.Add(appUser);
             await _dbContext.SaveChangesAsync();
 
-            Logger.LogInformation("Auto-registered Firebase user: phone={Phone}, appUserId={Id}", localPhone, appUser.Id);
+            _logger.LogInformation("Auto-registered Firebase user: phone={Phone}, appUserId={Id}", localPhone, appUser.Id);
             _auditLogger.LogAuthEvent("FirebasePhoneRegister", userId: appUser.IdentityUserId.ToString(), details: $"Phone={localPhone}");
         }
 
@@ -458,7 +461,7 @@ public class AuthAppService : KLCAppService, IAuthAppService
         }
         catch (FirebaseAdmin.Auth.FirebaseAuthException ex)
         {
-            Logger.LogWarning(ex, "Firebase token verification failed for password reset");
+            _logger.LogWarning(ex, "Firebase token verification failed for password reset");
             throw new BusinessException(KLCDomainErrorCodes.Auth.InvalidOtp, "Invalid or expired Firebase token");
         }
 
@@ -471,7 +474,7 @@ public class AuthAppService : KLCAppService, IAuthAppService
 
         var localPhone = phoneNumber.StartsWith("+84") ? "0" + phoneNumber[3..] : phoneNumber;
 
-        Logger.LogInformation("Firebase password reset: phone={Phone}", localPhone);
+        _logger.LogInformation("Firebase password reset: phone={Phone}", localPhone);
 
         // Override phone from request if token is valid (token is the source of truth)
         var appUser = await _dbContext.AppUsers
@@ -493,7 +496,7 @@ public class AuthAppService : KLCAppService, IAuthAppService
             if (!vr.Succeeded)
             {
                 var errors = string.Join(", ", vr.Errors.Select(e => e.Description));
-                Logger.LogWarning("Password reset failed for {Phone}: {Errors}", localPhone, errors);
+                _logger.LogWarning("Password reset failed for {Phone}: {Errors}", localPhone, errors);
                 throw new BusinessException(KLCDomainErrorCodes.PasswordResetFailed, errors);
             }
         }
@@ -503,7 +506,7 @@ public class AuthAppService : KLCAppService, IAuthAppService
             $"UPDATE \"AbpUsers\" SET \"PasswordHash\" = {newHash} WHERE \"Id\" = {identityUser.Id}");
         _dbContext.ChangeTracker.Clear();
 
-        Logger.LogInformation("Password reset successful via Firebase for {Phone}", localPhone);
+        _logger.LogInformation("Password reset successful via Firebase for {Phone}", localPhone);
     }
 
     public async Task ChangePasswordAsync(Guid userId, string currentPassword, string newPassword)
@@ -533,7 +536,7 @@ public class AuthAppService : KLCAppService, IAuthAppService
     {
         // Social login requires provider-specific token validation (Google Sign-In, Apple Sign-In, Facebook Login)
         // Will be implemented with Firebase Auth or direct provider SDKs in a future iteration
-        Logger.LogInformation("Social login attempt: provider={Provider}", provider);
+        _logger.LogInformation("Social login attempt: provider={Provider}", provider);
 
         return new LoginResultDto
         {

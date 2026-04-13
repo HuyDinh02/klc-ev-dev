@@ -9,6 +9,7 @@ using KLC.Sessions;
 using KLC.Users;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.Domain.Repositories;
+using Volo.Abp.Uow;
 
 namespace KLC.Payments;
 
@@ -16,7 +17,7 @@ namespace KLC.Payments;
 /// Application service for session payment processing business logic.
 /// Shared between Admin API and Driver BFF.
 /// </summary>
-public class PaymentProcessingAppService : KLCAppService, IPaymentProcessingAppService
+public class PaymentProcessingAppService : IPaymentProcessingAppService
 {
     private readonly IRepository<ChargingSession, Guid> _sessionRepository;
     private readonly IRepository<PaymentTransaction, Guid> _paymentRepository;
@@ -27,6 +28,8 @@ public class PaymentProcessingAppService : KLCAppService, IPaymentProcessingAppS
     private readonly WalletDomainService _walletDomainService;
     private readonly IEnumerable<IPaymentGatewayService> _paymentGateways;
     private readonly IAuditEventLogger _auditLogger;
+    private readonly ILogger<PaymentProcessingAppService> _logger;
+    private readonly IUnitOfWorkManager _unitOfWorkManager;
 
     public PaymentProcessingAppService(
         IRepository<ChargingSession, Guid> sessionRepository,
@@ -37,7 +40,9 @@ public class PaymentProcessingAppService : KLCAppService, IPaymentProcessingAppS
         IRepository<AppUser, Guid> appUserRepository,
         WalletDomainService walletDomainService,
         IEnumerable<IPaymentGatewayService> paymentGateways,
-        IAuditEventLogger auditLogger)
+        IAuditEventLogger auditLogger,
+        ILogger<PaymentProcessingAppService> logger,
+        IUnitOfWorkManager unitOfWorkManager)
     {
         _sessionRepository = sessionRepository;
         _paymentRepository = paymentRepository;
@@ -48,6 +53,8 @@ public class PaymentProcessingAppService : KLCAppService, IPaymentProcessingAppS
         _walletDomainService = walletDomainService;
         _paymentGateways = paymentGateways;
         _auditLogger = auditLogger;
+        _logger = logger;
+        _unitOfWorkManager = unitOfWorkManager;
     }
 
     public async Task<SessionPaymentResultDto> ProcessSessionPaymentAsync(ProcessSessionPaymentInput input)
@@ -143,7 +150,7 @@ public class PaymentProcessingAppService : KLCAppService, IPaymentProcessingAppS
             // Deduct immediately for the session (net effect: discount applied)
             user.DeductFromWallet(voucherDiscount);
 
-            var userVoucher = new UserVoucher(GuidGenerator.Create(), input.UserId, voucher.Id);
+            var userVoucher = new UserVoucher(Guid.NewGuid(), input.UserId, voucher.Id);
             userVoucher.MarkUsed();
             voucher.IncrementUsage();
 
@@ -158,7 +165,7 @@ public class PaymentProcessingAppService : KLCAppService, IPaymentProcessingAppS
         {
             var paymentGateway = voucher != null ? PaymentGateway.Voucher : input.Gateway;
             var payment = new PaymentTransaction(
-                GuidGenerator.Create(),
+                Guid.NewGuid(),
                 input.SessionId,
                 input.UserId,
                 paymentGateway,
@@ -169,9 +176,9 @@ public class PaymentProcessingAppService : KLCAppService, IPaymentProcessingAppS
             payment.MarkCompleted(reference);
 
             await _paymentRepository.InsertAsync(payment);
-            await CurrentUnitOfWork!.SaveChangesAsync();
+            await _unitOfWorkManager.Current!.SaveChangesAsync();
 
-            Logger.LogInformation(
+            _logger.LogInformation(
                 "Payment completed (no gateway needed): SessionId={SessionId}, VoucherCode={VoucherCode}, Amount={Amount}",
                 input.SessionId, voucher?.Code, sessionCost);
 
@@ -188,7 +195,7 @@ public class PaymentProcessingAppService : KLCAppService, IPaymentProcessingAppS
 
         // Process remaining amount via gateway
         var gatewayPayment = new PaymentTransaction(
-            GuidGenerator.Create(),
+            Guid.NewGuid(),
             input.SessionId,
             input.UserId,
             input.Gateway,
@@ -203,7 +210,7 @@ public class PaymentProcessingAppService : KLCAppService, IPaymentProcessingAppS
         {
             gatewayPayment.MarkFailed($"Gateway {input.Gateway} not supported");
             await _paymentRepository.InsertAsync(gatewayPayment);
-            await CurrentUnitOfWork!.SaveChangesAsync();
+            await _unitOfWorkManager.Current!.SaveChangesAsync();
             _auditLogger.LogPaymentEvent("PaymentFailed", gatewayPayment.Id, finalAmount, input.Gateway.ToString(), input.UserId.ToString());
             return new SessionPaymentResultDto { Success = false, PaymentId = gatewayPayment.Id, Error = $"Gateway {input.Gateway} not supported" };
         }
@@ -232,7 +239,7 @@ public class PaymentProcessingAppService : KLCAppService, IPaymentProcessingAppS
             }
 
             await _paymentRepository.InsertAsync(gatewayPayment);
-            await CurrentUnitOfWork!.SaveChangesAsync();
+            await _unitOfWorkManager.Current!.SaveChangesAsync();
 
             return new SessionPaymentResultDto
             {
@@ -246,10 +253,10 @@ public class PaymentProcessingAppService : KLCAppService, IPaymentProcessingAppS
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Payment gateway error for session {SessionId}, gateway {Gateway}", input.SessionId, input.Gateway);
+            _logger.LogError(ex, "Payment gateway error for session {SessionId}, gateway {Gateway}", input.SessionId, input.Gateway);
             gatewayPayment.MarkFailed("Payment processing error");
             await _paymentRepository.InsertAsync(gatewayPayment);
-            await CurrentUnitOfWork!.SaveChangesAsync();
+            await _unitOfWorkManager.Current!.SaveChangesAsync();
             return new SessionPaymentResultDto { Success = false, PaymentId = gatewayPayment.Id, Error = "Payment processing failed" };
         }
     }

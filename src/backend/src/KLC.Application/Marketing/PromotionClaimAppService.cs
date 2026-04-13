@@ -12,7 +12,7 @@ namespace KLC.Marketing;
 /// validates promotion, selects an available voucher, creates UserVoucher record.
 /// Shared between Admin API and Driver BFF.
 /// </summary>
-public class PromotionClaimAppService : KLCAppService, IPromotionClaimAppService
+public class PromotionClaimAppService : IPromotionClaimAppService
 {
     private readonly KLCDbContext _dbContext;
     private readonly ILogger<PromotionClaimAppService> _logger;

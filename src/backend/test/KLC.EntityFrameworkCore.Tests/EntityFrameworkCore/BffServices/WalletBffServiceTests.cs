@@ -490,7 +490,8 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
             callbackValidator,
             configuration,
             Microsoft.Extensions.Options.Options.Create(new KLC.Configuration.WalletSettings()),
-            distributedLock);
+            distributedLock,
+            Substitute.For<ILogger<WalletAppService>>());
 
         // Inject ABP lazy service provider for GuidGenerator and AsyncExecuter
         var lazyServiceProvider = Substitute.For<IAbpLazyServiceProvider>();

@@ -13,26 +13,29 @@ namespace KLC.Marketing;
 /// Application service encapsulating voucher redemption business logic:
 /// validation and wallet crediting. Shared between Admin API and Driver BFF.
 /// </summary>
-public class VoucherRedemptionAppService : KLCAppService, IVoucherRedemptionAppService
+public class VoucherRedemptionAppService : IVoucherRedemptionAppService
 {
     private readonly IRepository<Voucher, Guid> _voucherRepository;
     private readonly IRepository<UserVoucher, Guid> _userVoucherRepository;
     private readonly IRepository<WalletTransaction, Guid> _walletTransactionRepository;
     private readonly IRepository<AppUser, Guid> _appUserRepository;
     private readonly WalletDomainService _walletDomainService;
+    private readonly ILogger<VoucherRedemptionAppService> _logger;
 
     public VoucherRedemptionAppService(
         IRepository<Voucher, Guid> voucherRepository,
         IRepository<UserVoucher, Guid> userVoucherRepository,
         IRepository<WalletTransaction, Guid> walletTransactionRepository,
         IRepository<AppUser, Guid> appUserRepository,
-        WalletDomainService walletDomainService)
+        WalletDomainService walletDomainService,
+        ILogger<VoucherRedemptionAppService> logger)
     {
         _voucherRepository = voucherRepository;
         _userVoucherRepository = userVoucherRepository;
         _walletTransactionRepository = walletTransactionRepository;
         _appUserRepository = appUserRepository;
         _walletDomainService = walletDomainService;
+        _logger = logger;
     }
 
     public async Task<VoucherValidationResultDto> ValidateVoucherAsync(string code)
@@ -135,7 +138,7 @@ public class VoucherRedemptionAppService : KLCAppService, IVoucherRedemptionAppS
                 user, creditAmount, $"Voucher {code}");
 
             // 6. Create UserVoucher record
-            var userVoucher = new UserVoucher(GuidGenerator.Create(), userId, voucher.Id);
+            var userVoucher = new UserVoucher(Guid.NewGuid(), userId, voucher.Id);
             userVoucher.MarkUsed();
 
             // 7. Increment voucher usage
@@ -147,7 +150,7 @@ public class VoucherRedemptionAppService : KLCAppService, IVoucherRedemptionAppS
             await _voucherRepository.UpdateAsync(voucher);
             await _appUserRepository.UpdateAsync(user);
 
-            Logger.LogInformation(
+            _logger.LogInformation(
                 "Voucher applied: UserId={UserId}, Code={Code}, CreditAmount={CreditAmount}, NewBalance={NewBalance}",
                 userId, code, creditAmount, newBalance);
 
@@ -161,7 +164,7 @@ public class VoucherRedemptionAppService : KLCAppService, IVoucherRedemptionAppS
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Failed to apply voucher {Code} for user {UserId}", code, userId);
+            _logger.LogError(ex, "Failed to apply voucher {Code} for user {UserId}", code, userId);
             return new ApplyVoucherResultDto { Success = false, UserId = userId, Error = "Failed to apply voucher" };
         }
     }

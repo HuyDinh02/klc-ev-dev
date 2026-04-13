@@ -15,7 +15,7 @@ namespace KLC.Users;
 /// phone change (OTP flow) and account deletion.
 /// Shared between Admin API and Driver BFF.
 /// </summary>
-public class ProfileAppService : KLCAppService, IProfileAppService
+public class ProfileAppService : IProfileAppService
 {
     private readonly KLCDbContext _dbContext;
     private readonly IDatabase _redis;

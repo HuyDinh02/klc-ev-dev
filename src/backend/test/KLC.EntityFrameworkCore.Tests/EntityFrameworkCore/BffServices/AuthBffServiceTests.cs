@@ -64,7 +64,8 @@ public class AuthBffServiceTests : KLCEntityFrameworkCoreTestBase
             configuration,
             jwtSettings,
             _smsService,
-            _auditLogger);
+            _auditLogger,
+            logger);
 
         // Set up ABP's LazyServiceProvider for AuthAppService (KLCAppService base class)
         SetupAbpServiceProvider(authAppService);

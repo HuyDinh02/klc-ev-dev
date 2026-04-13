@@ -20,7 +20,7 @@ namespace KLC.Payments;
 /// Application service encapsulating wallet business logic: top-up initiation,
 /// payment callback processing, and wallet crediting. Shared between Admin API and Driver BFF.
 /// </summary>
-public class WalletAppService : KLCAppService, IWalletAppService
+public class WalletAppService : IWalletAppService
 {
     /// <summary>
     /// SBV Circular 41/2025: Monthly e-wallet top-up cap.
@@ -36,6 +36,7 @@ public class WalletAppService : KLCAppService, IWalletAppService
     private readonly IConfiguration _configuration;
     private readonly WalletSettings _walletSettings;
     private readonly IAbpDistributedLock _distributedLock;
+    private readonly ILogger<WalletAppService> _logger;
 
     public WalletAppService(
         IRepository<WalletTransaction, Guid> walletTransactionRepository,
@@ -46,7 +47,8 @@ public class WalletAppService : KLCAppService, IWalletAppService
         IPaymentCallbackValidator callbackValidator,
         IConfiguration configuration,
         IOptions<WalletSettings> walletSettings,
-        IAbpDistributedLock distributedLock)
+        IAbpDistributedLock distributedLock,
+        ILogger<WalletAppService> logger)
     {
         _walletTransactionRepository = walletTransactionRepository;
         _appUserRepository = appUserRepository;
@@ -57,6 +59,7 @@ public class WalletAppService : KLCAppService, IWalletAppService
         _configuration = configuration;
         _walletSettings = walletSettings.Value;
         _distributedLock = distributedLock;
+        _logger = logger;
     }
 
     public async Task<TopUpInitiationResultDto> InitiateTopUpAsync(InitiateTopUpInput input)
@@ -79,12 +82,13 @@ public class WalletAppService : KLCAppService, IWalletAppService
         // SBV Circular 41/2025: Monthly top-up limit of 100,000,000 VND
         var monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
         var queryable = await _walletTransactionRepository.GetQueryableAsync();
-        var monthlyTotal = await AsyncExecuter.SumAsync(
-            queryable.Where(t => t.UserId == input.UserId
+        var monthlyTotal = queryable
+            .Where(t => t.UserId == input.UserId
                 && t.Type == WalletTransactionType.TopUp
                 && t.Status == TransactionStatus.Completed
                 && t.CreationTime >= monthStart)
-                .Select(t => (decimal?)t.Amount)) ?? 0;
+            .Select(t => (decimal?)t.Amount)
+            .Sum() ?? 0;
 
         var remaining = MonthlyTopUpLimit - monthlyTotal;
         if (monthlyTotal + input.Amount > MonthlyTopUpLimit)
@@ -106,7 +110,7 @@ public class WalletAppService : KLCAppService, IWalletAppService
         {
             // Create a pending transaction first (gateway will confirm later)
             var transaction = new WalletTransaction(
-                GuidGenerator.Create(),
+                Guid.NewGuid(),
                 input.UserId,
                 WalletTransactionType.TopUp,
                 input.Amount,
@@ -137,7 +141,7 @@ public class WalletAppService : KLCAppService, IWalletAppService
                 return new TopUpInitiationResultDto { Success = false, Error = gatewayResult.ErrorMessage };
             }
 
-            Logger.LogInformation(
+            _logger.LogInformation(
                 "Top-up initiated: UserId={UserId}, Amount={Amount}, Gateway={Gateway}, TransactionId={TransactionId}",
                 input.UserId, input.Amount, input.Gateway, transaction.Id);
 
@@ -152,7 +156,7 @@ public class WalletAppService : KLCAppService, IWalletAppService
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Failed to initiate top-up for user {UserId}", input.UserId);
+            _logger.LogError(ex, "Failed to initiate top-up for user {UserId}", input.UserId);
             return new TopUpInitiationResultDto { Success = false, Error = "Failed to initiate top-up" };
         }
     }
@@ -164,7 +168,7 @@ public class WalletAppService : KLCAppService, IWalletAppService
 
         if (transaction == null)
         {
-            Logger.LogWarning("Top-up callback for unknown reference: {ReferenceCode}", input.ReferenceCode);
+            _logger.LogWarning("Top-up callback for unknown reference: {ReferenceCode}", input.ReferenceCode);
             return new TopUpCallbackResultAppDto { Success = false, Error = "Transaction not found" };
         }
 
@@ -188,7 +192,7 @@ public class WalletAppService : KLCAppService, IWalletAppService
             await _walletTransactionRepository.UpdateAsync(transaction);
             await _appUserRepository.UpdateAsync(user);
 
-            Logger.LogInformation(
+            _logger.LogInformation(
                 "Top-up completed: UserId={UserId}, Amount={Amount}, NewBalance={NewBalance}",
                 transaction.UserId, transaction.Amount, newBalance);
 
@@ -206,7 +210,7 @@ public class WalletAppService : KLCAppService, IWalletAppService
             transaction.MarkFailed();
             await _walletTransactionRepository.UpdateAsync(transaction);
 
-            Logger.LogWarning(
+            _logger.LogWarning(
                 "Top-up failed: UserId={UserId}, ReferenceCode={ReferenceCode}",
                 transaction.UserId, input.ReferenceCode);
 
@@ -233,7 +237,7 @@ public class WalletAppService : KLCAppService, IWalletAppService
         var transaction = await _walletTransactionRepository.FirstOrDefaultAsync(t => t.ReferenceCode == txnRef);
         if (transaction == null)
         {
-            Logger.LogWarning("[VnPay IPN] Wallet transaction not found: TxnRef={TxnRef}", txnRef);
+            _logger.LogWarning("[VnPay IPN] Wallet transaction not found: TxnRef={TxnRef}", txnRef);
             return new VnPayIpnProcessingResult { IpnResponse = VnPayIpnResponse.OrderNotFound() };
         }
 
@@ -243,7 +247,7 @@ public class WalletAppService : KLCAppService, IWalletAppService
         var validation = await _callbackValidator.ValidateVnPayIpnAsync(queryParams, transaction.Amount);
         if (!validation.IsValid)
         {
-            Logger.LogWarning("[VnPay IPN] Validation failed: {Error}, TxnRef={TxnRef}",
+            _logger.LogWarning("[VnPay IPN] Validation failed: {Error}, TxnRef={TxnRef}",
                 validation.ErrorMessage, txnRef);
             var ipnResponse = validation.ErrorMessage?.Contains("Amount") == true
                 ? VnPayIpnResponse.InvalidAmount()
@@ -261,7 +265,7 @@ public class WalletAppService : KLCAppService, IWalletAppService
             $"ipn:wallet:{txnRef}", TimeSpan.FromSeconds(60));
         if (lockHandle == null)
         {
-            Logger.LogWarning(
+            _logger.LogWarning(
                 "[VnPay IPN] Concurrent IPN for TxnRef={TxnRef} — skipping duplicate", txnRef);
             return new VnPayIpnProcessingResult { IpnResponse = VnPayIpnResponse.AlreadyConfirmed() };
         }
@@ -272,7 +276,7 @@ public class WalletAppService : KLCAppService, IWalletAppService
             var user = await _appUserRepository.FirstOrDefaultAsync(u => u.IdentityUserId == transaction.UserId);
             if (user == null)
             {
-                Logger.LogWarning("[VnPay IPN] User not found for transaction {TxnRef}", txnRef);
+                _logger.LogWarning("[VnPay IPN] User not found for transaction {TxnRef}", txnRef);
                 return new VnPayIpnProcessingResult { IpnResponse = VnPayIpnResponse.UnknownError() };
             }
 
@@ -303,7 +307,7 @@ public class WalletAppService : KLCAppService, IWalletAppService
                 }
                 catch (AbpDbConcurrencyException) when (attempt < 2)
                 {
-                    Logger.LogWarning(
+                    _logger.LogWarning(
                         "[VnPay IPN] Concurrency conflict on wallet update for {UserId}, retrying (attempt {Attempt})",
                         transaction.UserId, attempt + 1);
                 }
@@ -311,14 +315,14 @@ public class WalletAppService : KLCAppService, IWalletAppService
 
             // Create in-app notification for successful top-up
             var successNotification = new Notification(
-                GuidGenerator.Create(),
+                Guid.NewGuid(),
                 transaction.UserId,
                 NotificationType.WalletTopUp,
                 "Nạp ví thành công",
                 $"Bạn đã nạp thành công {transaction.Amount:N0}đ vào ví. Số dư hiện tại: {newBalance:N0}đ.");
             await _notificationRepository.InsertAsync(successNotification);
 
-            Logger.LogInformation(
+            _logger.LogInformation(
                 "[VnPay IPN] Wallet top-up completed: UserId={UserId}, Amount={Amount}, NewBalance={NewBalance}",
                 transaction.UserId, transaction.Amount, newBalance);
 
@@ -342,14 +346,14 @@ public class WalletAppService : KLCAppService, IWalletAppService
 
             // Create in-app notification for payment failure
             var failNotification = new Notification(
-                GuidGenerator.Create(),
+                Guid.NewGuid(),
                 transaction.UserId,
                 NotificationType.PaymentFailed,
                 "Nạp ví thất bại",
                 $"Giao dịch nạp {transaction.Amount:N0}đ qua VnPay không thành công (mã: {validation.ResponseCode}). Vui lòng thử lại.");
             await _notificationRepository.InsertAsync(failNotification);
 
-            Logger.LogWarning(
+            _logger.LogWarning(
                 "[VnPay IPN] Wallet top-up failed: TxnRef={TxnRef}, ResponseCode={ResponseCode}",
                 txnRef, validation.ResponseCode);
 
