@@ -9,15 +9,18 @@ public class PromotionBffService : IPromotionBffService
     private readonly KLCDbContext _dbContext;
     private readonly ICacheService _cache;
     private readonly ILogger<PromotionBffService> _logger;
+    private readonly IPromotionClaimAppService _promotionClaimAppService;
 
     public PromotionBffService(
         KLCDbContext dbContext,
         ICacheService cache,
-        ILogger<PromotionBffService> logger)
+        ILogger<PromotionBffService> logger,
+        IPromotionClaimAppService promotionClaimAppService)
     {
         _dbContext = dbContext;
         _cache = cache;
         _logger = logger;
+        _promotionClaimAppService = promotionClaimAppService;
     }
 
     public async Task<PagedResult<PromotionListItemDto>> GetActivePromotionsAsync(Guid? cursor, int pageSize)
@@ -107,64 +110,20 @@ public class PromotionBffService : IPromotionBffService
 
     public async Task<ClaimVoucherResultDto> ClaimVoucherFromPromotionAsync(Guid userId, Guid promotionId)
     {
-        // 1. Find the promotion (must be active)
-        var promotion = await _dbContext.Promotions
-            .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.Id == promotionId && !p.IsDeleted);
+        var result = await _promotionClaimAppService.ClaimVoucherFromPromotionAsync(userId, promotionId);
 
-        if (promotion == null || !promotion.IsCurrentlyActive())
+        if (result.Success)
         {
-            return new ClaimVoucherResultDto
-            {
-                Success = false,
-                Error = "Promotion not found or not active"
-            };
+            // Invalidate user voucher cache
+            await _cache.RemoveAsync(CacheKeys.UserAvailableVouchers(userId));
         }
-
-        // 2. Get voucher IDs already claimed by this user for this promotion
-        var claimedVoucherIds = await _dbContext.UserVouchers
-            .AsNoTracking()
-            .Where(uv => uv.UserId == userId)
-            .Select(uv => uv.VoucherId)
-            .ToListAsync();
-
-        // 3. Find an available voucher linked to this promotion (not claimed by user, has stock)
-        var now = DateTime.UtcNow;
-        var voucher = await _dbContext.Vouchers
-            .FirstOrDefaultAsync(v =>
-                v.PromotionId == promotionId
-                && v.IsActive
-                && !v.IsDeleted
-                && v.ExpiryDate > now
-                && v.UsedQuantity < v.TotalQuantity
-                && !claimedVoucherIds.Contains(v.Id));
-
-        if (voucher == null)
-        {
-            return new ClaimVoucherResultDto
-            {
-                Success = false,
-                Error = "No available vouchers for this promotion"
-            };
-        }
-
-        // 4. Create a UserVoucher record (claimed but not used yet)
-        var userVoucher = new UserVoucher(Guid.NewGuid(), userId, voucher.Id);
-        await _dbContext.UserVouchers.AddAsync(userVoucher);
-        await _dbContext.SaveChangesAsync();
-
-        // Invalidate user voucher cache
-        await _cache.RemoveAsync(CacheKeys.UserAvailableVouchers(userId));
-
-        _logger.LogInformation(
-            "User {UserId} claimed voucher {VoucherCode} from promotion {PromotionId}",
-            userId, voucher.Code, promotionId);
 
         return new ClaimVoucherResultDto
         {
-            Success = true,
-            VoucherCode = voucher.Code,
-            VoucherId = voucher.Id
+            Success = result.Success,
+            VoucherCode = result.VoucherCode,
+            VoucherId = result.VoucherId,
+            Error = result.Error
         };
     }
 

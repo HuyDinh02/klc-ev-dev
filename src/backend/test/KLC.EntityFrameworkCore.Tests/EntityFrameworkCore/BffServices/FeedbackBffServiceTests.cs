@@ -4,6 +4,7 @@ using KLC.Driver.Services;
 using KLC.EntityFrameworkCore;
 using KLC.Enums;
 using KLC.Support;
+using KLC.TestDoubles;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
@@ -132,12 +133,4 @@ public class FeedbackBffServiceTests : KLCEntityFrameworkCoreTestBase
         });
     }
 
-    private class PassthroughCacheService : ICacheService
-    {
-        public Task<T?> GetAsync<T>(string key) => Task.FromResult<T?>(default);
-        public Task SetAsync<T>(string key, T value, TimeSpan? expiration = null) => Task.CompletedTask;
-        public Task RemoveAsync(string key) => Task.CompletedTask;
-        public async Task<T> GetOrSetAsync<T>(string key, Func<Task<T>> factory, TimeSpan? expiration = null)
-            => await factory();
-    }
 }

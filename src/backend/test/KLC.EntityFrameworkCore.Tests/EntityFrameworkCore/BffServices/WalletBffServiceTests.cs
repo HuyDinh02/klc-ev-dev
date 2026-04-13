@@ -8,6 +8,7 @@ using KLC.EntityFrameworkCore;
 using KLC.Enums;
 using KLC.Notifications;
 using KLC.Payments;
+using KLC.TestDoubles;
 using KLC.Users;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -573,15 +574,6 @@ public class WalletBffServiceTests : KLCEntityFrameworkCoreTestBase
         var prop = entity.GetType().GetProperty("CreationTime",
             BindingFlags.Public | BindingFlags.Instance);
         prop?.SetValue(entity, time);
-    }
-
-    private class PassthroughCacheService : ICacheService
-    {
-        public Task<T?> GetAsync<T>(string key) => Task.FromResult<T?>(default);
-        public Task SetAsync<T>(string key, T value, TimeSpan? expiration = null) => Task.CompletedTask;
-        public Task RemoveAsync(string key) => Task.CompletedTask;
-        public async Task<T> GetOrSetAsync<T>(string key, Func<Task<T>> factory, TimeSpan? expiration = null)
-            => await factory();
     }
 
     #endregion

@@ -125,6 +125,8 @@ builder.Services.AddScoped<IFavoriteBffService, FavoriteBffService>();
 builder.Services.AddScoped<KLC.Marketing.IVoucherRedemptionAppService, KLC.Marketing.VoucherRedemptionAppService>();
 builder.Services.AddScoped<IVoucherBffService, VoucherBffService>();
 builder.Services.AddScoped<IPromotionBffService, PromotionBffService>();
+builder.Services.AddScoped<KLC.Users.IProfileAppService, KLC.Users.ProfileAppService>();
+builder.Services.AddScoped<KLC.Marketing.IPromotionClaimAppService, KLC.Marketing.PromotionClaimAppService>();
 builder.Services.AddScoped<IFeedbackBffService, FeedbackBffService>();
 
 // Register services from Application layer (not auto-registered since BFF doesn't depend on KLCApplicationModule)
