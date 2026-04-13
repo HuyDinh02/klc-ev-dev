@@ -291,20 +291,6 @@ public class WalletBffService : IWalletBffService
         if (string.IsNullOrEmpty(txnRef))
             return VnPayIpnResponse.OrderNotFound();
 
-        // Idempotency lock: VnPay guarantees at-least-once IPN delivery and can retry
-        // within milliseconds. Without this lock, two concurrent requests can both pass
-        // the Status == Completed check and double-credit the wallet.
-        // The lock is per-txnRef so unrelated top-ups are never blocked.
-        var lockKey = $"ipn:wallet:{txnRef}";
-        var lockAcquired = await _redis.StringSetAsync(
-            lockKey, "1", TimeSpan.FromSeconds(60), When.NotExists);
-        if (!lockAcquired)
-        {
-            _logger.LogWarning(
-                "[VnPay IPN] Concurrent IPN for TxnRef={TxnRef} — skipping duplicate", txnRef);
-            return VnPayIpnResponse.AlreadyConfirmed();
-        }
-
         var transaction = await _dbContext.WalletTransactions
             .FirstOrDefaultAsync(t => t.ReferenceCode == txnRef);
 
@@ -314,10 +300,9 @@ public class WalletBffService : IWalletBffService
             return VnPayIpnResponse.OrderNotFound();
         }
 
-        if (transaction.Status == TransactionStatus.Completed)
-            return VnPayIpnResponse.AlreadyConfirmed();
-
-        // Step 2: Validate signature and amount via shared validator
+        // Step 2: Validate signature and amount BEFORE idempotency check
+        // VnPay sandbox tests invalid checksum + invalid amount sequentially on the
+        // same TxnRef. Validation must return correct error codes regardless of lock state.
         var validation = await _callbackValidator.ValidateVnPayIpnAsync(queryParams, transaction.Amount);
         if (!validation.IsValid)
         {
@@ -326,6 +311,22 @@ public class WalletBffService : IWalletBffService
             return validation.ErrorMessage?.Contains("Amount") == true
                 ? VnPayIpnResponse.InvalidAmount()
                 : VnPayIpnResponse.InvalidSignature();
+        }
+
+        // Step 3: Check if already completed
+        if (transaction.Status == TransactionStatus.Completed)
+            return VnPayIpnResponse.AlreadyConfirmed();
+
+        // Step 4: Idempotency lock — only needed for valid requests that will credit wallet.
+        // Prevents double-credit from VnPay's at-least-once delivery guarantee.
+        var lockKey = $"ipn:wallet:{txnRef}";
+        var lockAcquired = await _redis.StringSetAsync(
+            lockKey, "1", TimeSpan.FromSeconds(60), When.NotExists);
+        if (!lockAcquired)
+        {
+            _logger.LogWarning(
+                "[VnPay IPN] Concurrent IPN for TxnRef={TxnRef} — skipping duplicate", txnRef);
+            return VnPayIpnResponse.AlreadyConfirmed();
         }
 
         // Step 3: Process based on response code
