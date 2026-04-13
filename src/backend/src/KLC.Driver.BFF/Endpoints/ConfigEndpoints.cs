@@ -9,10 +9,15 @@ public static class ConfigEndpoints
     {
         // GET /api/v1/config — Remote config for mobile app
         // Public endpoint (no auth) so app can fetch on startup before login
+        // Cache: 5 min client-side, 1 min CDN — reduces requests from 500+ users
         app.MapGet("/api/v1/config", (
+            HttpContext httpContext,
             IOptions<WalletSettings> walletSettings,
             IConfiguration configuration) =>
         {
+            // HTTP cache: mobile caches 5 min, CDN/proxy caches 1 min
+            httpContext.Response.Headers.CacheControl = "public, max-age=300, s-maxage=60";
+
             var wallet = walletSettings.Value;
 
             return Results.Ok(new AppConfigResponse
