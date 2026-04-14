@@ -84,11 +84,12 @@ public static class SessionEndpoints
         .Produces<SessionDetailDto>(200)
         .Produces(404);
 
-        // GET /api/v1/sessions/history
+        // GET /api/v1/sessions/history?period=1d|7d|30d|all
         group.MapGet("/history", async (
             [FromQuery] Guid? cursor,
             [FromQuery] int? pageSize,
             [FromQuery] int? limit,
+            [FromQuery] string? period,
             ClaimsPrincipal user = null!,
             ISessionBffService sessionService = null!) =>
         {
@@ -96,7 +97,17 @@ public static class SessionEndpoints
             var size = pageSize ?? limit ?? 20;
             if (size <= 0 || size > 50) size = 20;
 
-            var result = await sessionService.GetSessionHistoryAsync(userId, cursor, size);
+            // Parse period filter
+            DateTime? fromDate = period switch
+            {
+                "1d" => DateTime.UtcNow.AddDays(-1),
+                "7d" => DateTime.UtcNow.AddDays(-7),
+                "30d" => DateTime.UtcNow.AddDays(-30),
+                "90d" => DateTime.UtcNow.AddDays(-90),
+                _ => null // "all" or no filter
+            };
+
+            var result = await sessionService.GetSessionHistoryAsync(userId, cursor, size, fromDate);
             return Results.Ok(new
             {
                 items = result.Data.Select(s => new
@@ -113,7 +124,9 @@ public static class SessionEndpoints
                     durationSeconds = s.StartTime.HasValue && s.EndTime.HasValue
                         ? (int)(s.EndTime.Value - s.StartTime.Value).TotalSeconds : 0,
                     actualCost = s.TotalCost,
-                    estimatedCost = s.TotalCost
+                    estimatedCost = s.TotalCost,
+                    ratePerKwh = s.RatePerKwh,
+                    formattedRate = $"{s.RatePerKwh:N0}đ/kWh"
                 }),
                 nextCursor = result.NextCursor,
                 hasMore = result.HasMore

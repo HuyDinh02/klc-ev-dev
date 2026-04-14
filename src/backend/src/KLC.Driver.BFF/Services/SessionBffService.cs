@@ -11,7 +11,7 @@ public interface ISessionBffService
     Task<SessionResponseDto> StopSessionAsync(Guid userId, Guid sessionId);
     Task<ActiveSessionDto?> GetActiveSessionAsync(Guid userId);
     Task<SessionDetailDto?> GetSessionDetailAsync(Guid userId, Guid sessionId);
-    Task<PagedResult<SessionHistoryDto>> GetSessionHistoryAsync(Guid userId, Guid? cursor, int pageSize);
+    Task<PagedResult<SessionHistoryDto>> GetSessionHistoryAsync(Guid userId, Guid? cursor, int pageSize, DateTime? fromDate = null);
 }
 
 public class SessionBffService : ISessionBffService
@@ -224,7 +224,7 @@ public class SessionBffService : ISessionBffService
         };
     }
 
-    public async Task<PagedResult<SessionHistoryDto>> GetSessionHistoryAsync(Guid userId, Guid? cursor, int pageSize)
+    public async Task<PagedResult<SessionHistoryDto>> GetSessionHistoryAsync(Guid userId, Guid? cursor, int pageSize, DateTime? fromDate = null)
     {
         // Include both Completed and Failed sessions in history
         var query = _dbContext.ChargingSessions
@@ -232,6 +232,13 @@ public class SessionBffService : ISessionBffService
             .Where(s => s.UserId == userId
                 && (s.Status == SessionStatus.Completed || s.Status == SessionStatus.Failed))
             .OrderByDescending(s => s.EndTime);
+
+        // Period filter
+        if (fromDate.HasValue)
+        {
+            query = (IOrderedQueryable<ChargingSession>)query
+                .Where(s => s.StartTime >= fromDate.Value);
+        }
 
         if (cursor.HasValue)
         {
@@ -264,7 +271,8 @@ public class SessionBffService : ISessionBffService
                     StartTime = x.Session.StartTime,
                     EndTime = x.Session.EndTime,
                     EnergyKwh = x.Session.TotalEnergyKwh,
-                    TotalCost = x.Session.TotalCost
+                    TotalCost = x.Session.TotalCost,
+                    RatePerKwh = x.Session.RatePerKwh
                 })
             .ToListAsync();
 
@@ -372,6 +380,7 @@ public record SessionHistoryDto
     public DateTime? EndTime { get; init; }
     public decimal EnergyKwh { get; init; }
     public decimal TotalCost { get; init; }
+    public decimal RatePerKwh { get; init; }
 
     public int DurationMinutes => StartTime.HasValue && EndTime.HasValue
         ? (int)(EndTime.Value - StartTime.Value).TotalMinutes
