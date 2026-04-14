@@ -545,7 +545,10 @@ public class KLCHttpApiHostModule : AbpModule
         app.UseMiddleware<OcppWebSocketMiddleware>();
 
         app.UseRouting();
-        app.UseSentryTracing();
+        if (!string.IsNullOrEmpty(context.ServiceProvider.GetRequiredService<IConfiguration>()["Sentry:Dsn"]))
+        {
+            app.UseSentryTracing();
+        }
         app.UseCors();
         app.UseRateLimiter();
 

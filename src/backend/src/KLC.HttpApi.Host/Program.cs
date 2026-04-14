@@ -30,15 +30,19 @@ public class Program
             Log.Information("Starting KLC.HttpApi.Host.");
             var builder = WebApplication.CreateBuilder(args);
 
-            // Sentry: full ASP.NET Core integration (HTTP context, breadcrumbs, auto exceptions)
-            builder.Services.AddSentry();
-            builder.Services.Configure<Sentry.SentryOptions>(o =>
+            // Sentry: only initialize when DSN is configured
+            var sentryDsn = builder.Configuration["Sentry:Dsn"];
+            if (!string.IsNullOrEmpty(sentryDsn))
             {
-                o.Dsn = builder.Configuration["Sentry:Dsn"] ?? "";
-                o.Environment = builder.Environment.EnvironmentName;
-                o.TracesSampleRate = builder.Environment.IsProduction() ? 0.1 : 1.0;
-                o.SendDefaultPii = false;
-            });
+                builder.Services.AddSentry();
+                builder.Services.Configure<Sentry.SentryOptions>(o =>
+                {
+                    o.Dsn = sentryDsn;
+                    o.Environment = builder.Environment.EnvironmentName;
+                    o.TracesSampleRate = builder.Environment.IsProduction() ? 0.1 : 1.0;
+                    o.SendDefaultPii = false;
+                });
+            }
 
             builder.Host
                 .AddAppSettingsSecretsJson()
