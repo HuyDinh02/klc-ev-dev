@@ -133,6 +133,15 @@ public class KLCHttpApiHostModule : AbpModule
             options.CheckLibs = false;
         });
 
+        // Sentry error tracking
+        context.Services.AddLogging(logging => logging.AddSentry(o =>
+        {
+            o.Dsn = configuration["Sentry:Dsn"] ?? "";
+            o.Environment = hostingEnvironment.EnvironmentName;
+            o.TracesSampleRate = hostingEnvironment.IsProduction() ? 0.1 : 1.0;
+            o.SendDefaultPii = false;
+        }));
+
         // Typed configuration (Options Pattern)
         context.Services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.Section));
         context.Services.Configure<VnPaySettings>(configuration.GetSection(VnPaySettings.Section));
@@ -545,6 +554,7 @@ public class KLCHttpApiHostModule : AbpModule
         app.UseMiddleware<OcppWebSocketMiddleware>();
 
         app.UseRouting();
+        app.UseSentryTracing();
         app.UseCors();
         app.UseRateLimiter();
 
