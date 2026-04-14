@@ -56,8 +56,16 @@ export function formatDuration(minutes?: number | null): string {
   const m = minutes ?? 0;
   const hours = Math.floor(m / 60);
   const mins = m % 60;
-  if (hours === 0) return `${mins}m`;
-  return `${hours}h ${mins}m`;
+  const secs = Math.round((m - Math.floor(m)) * 60);
+  return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+}
+
+export function formatDurationFromSeconds(seconds?: number | null): string {
+  const s = seconds ?? 0;
+  const hours = Math.floor(s / 3600);
+  const mins = Math.floor((s % 3600) / 60);
+  const secs = s % 60;
+  return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 }
 
 export { parseAsUtc };

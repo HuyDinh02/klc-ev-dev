@@ -122,16 +122,21 @@ public class SessionBffAppService : ISessionBffAppService
             return new StartSessionResultDto { Success = false, Error = "Connector is not available" };
         }
 
-        // Check for existing active session
+        // Check for existing active session — include Stopping to prevent race condition
+        // when user stops connector 1 and immediately starts connector 2 before StopTransaction completes
         var existingSession = await _sessionRepository.FirstOrDefaultAsync(
             s => s.UserId == input.UserId &&
                  (s.Status == SessionStatus.Pending ||
                   s.Status == SessionStatus.Starting ||
-                  s.Status == SessionStatus.InProgress));
+                  s.Status == SessionStatus.InProgress ||
+                  s.Status == SessionStatus.Stopping));
 
         if (existingSession != null)
         {
-            return new StartSessionResultDto { Success = false, Error = "You already have an active session" };
+            var msg = existingSession.Status == SessionStatus.Stopping
+                ? "Previous session is still stopping. Please wait a few seconds."
+                : "You already have an active session";
+            return new StartSessionResultDto { Success = false, Error = msg };
         }
 
         // Validate wallet balance before starting session

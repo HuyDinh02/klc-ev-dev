@@ -24,7 +24,7 @@ import {
   formatCurrency,
   formatDateTime,
   formatEnergy,
-  formatDuration,
+  formatDurationFromSeconds,
   parseAsUtc,
 } from "@/lib/utils";
 import { CHART_COLORS } from "@/lib/constants";
@@ -71,11 +71,11 @@ interface MeterValue {
   socPercent?: number;
 }
 
-function computeDuration(startTime?: string | null, endTime?: string | null): number {
+function computeDurationSeconds(startTime?: string | null, endTime?: string | null): number {
   if (!startTime) return 0;
   const start = new Date(startTime).getTime();
   const end = endTime ? new Date(endTime).getTime() : Date.now();
-  return Math.floor((end - start) / 60000);
+  return Math.floor((end - start) / 1000);
 }
 
 function formatChartTime(timestamp: string): string {
@@ -153,7 +153,7 @@ export default function SessionDetailPage() {
     );
   }
 
-  const duration = computeDuration(session.startTime, session.endTime);
+  const duration = computeDurationSeconds(session.startTime, session.endTime);
 
   return (
     <div className="flex flex-col">
@@ -221,7 +221,7 @@ export default function SessionDetailPage() {
                     <Clock className="h-4 w-4" />
                     {t("sessions.duration")}
                   </span>
-                  <span className="font-medium">{formatDuration(duration)}</span>
+                  <span className="font-medium">{formatDurationFromSeconds(duration)}</span>
                 </div>
                 {session.vehicleName && (
                   <div className="flex items-center justify-between">
