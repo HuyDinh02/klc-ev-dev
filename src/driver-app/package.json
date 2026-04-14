@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@microsoft/signalr": "^8.0.0",
+    "@sentry/react-native": "~5.33.0",
     "@react-navigation/bottom-tabs": "^6.5.20",
     "@react-navigation/native": "^6.1.18",
     "@react-navigation/native-stack": "^6.9.26",

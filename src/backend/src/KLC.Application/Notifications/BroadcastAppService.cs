@@ -85,4 +85,44 @@ public class BroadcastAppService : KLCAppService, IBroadcastAppService
 
         return broadcasts;
     }
+
+    public async Task<BroadcastRecipientsDto> GetBroadcastRecipientsAsync(string title, DateTime sentAt)
+    {
+        var query = await _notificationRepository.GetQueryableAsync();
+        var userQuery = await _userRepository.GetQueryableAsync();
+
+        // Find notifications matching this broadcast (same title, within 1 second of sentAt)
+        var notifications = await AsyncExecuter.ToListAsync(
+            query.Where(n => n.Title == title
+                && n.CreationTime >= sentAt.AddSeconds(-1)
+                && n.CreationTime <= sentAt.AddSeconds(1))
+            .OrderBy(n => n.CreationTime));
+
+        var userIds = notifications.Select(n => n.UserId).Distinct().ToList();
+        var users = await AsyncExecuter.ToListAsync(
+            userQuery.Where(u => userIds.Contains(u.IdentityUserId)));
+        var userMap = users.ToDictionary(u => u.IdentityUserId);
+
+        var recipients = notifications.Select(n =>
+        {
+            var user = userMap.GetValueOrDefault(n.UserId);
+            return new BroadcastRecipientDto
+            {
+                UserId = n.UserId,
+                FullName = user?.FullName ?? "—",
+                PhoneNumber = user?.PhoneNumber ?? "—",
+                IsRead = n.IsRead,
+                ReadAt = n.ReadAt,
+            };
+        }).ToList();
+
+        return new BroadcastRecipientsDto
+        {
+            Title = title,
+            TotalRecipients = recipients.Count,
+            ReadCount = recipients.Count(r => r.IsRead),
+            UnreadCount = recipients.Count(r => !r.IsRead),
+            Recipients = recipients
+        };
+    }
 }

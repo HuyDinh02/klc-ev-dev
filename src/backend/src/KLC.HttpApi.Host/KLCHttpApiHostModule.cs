@@ -14,6 +14,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using KLC.Configuration;
+using KLC.Payments;
 using KLC.EntityFrameworkCore;
 using KLC.Hubs;
 using KLC.MultiTenancy;
@@ -137,6 +138,11 @@ public class KLCHttpApiHostModule : AbpModule
         context.Services.Configure<VnPaySettings>(configuration.GetSection(VnPaySettings.Section));
         context.Services.Configure<MoMoSettings>(configuration.GetSection(MoMoSettings.Section));
         context.Services.Configure<WalletSettings>(configuration.GetSection(WalletSettings.Section));
+
+        // Explicit registration for IEnumerable<IPaymentGatewayService> injection
+        // ABP's ITransientDependency uses TryAdd which only registers the first implementation.
+        context.Services.AddTransient<IPaymentGatewayService, VnPayPaymentService>();
+        context.Services.AddTransient<IPaymentGatewayService, MoMoPaymentService>();
 
         ConfigureAuthentication(context);
         ConfigureBundles();
@@ -539,6 +545,7 @@ public class KLCHttpApiHostModule : AbpModule
         app.UseMiddleware<OcppWebSocketMiddleware>();
 
         app.UseRouting();
+        app.UseSentryTracing();
         app.UseCors();
         app.UseRateLimiter();
 

@@ -55,23 +55,68 @@ public static class WalletEndpoints
             ILogger<WalletBffService> logger,
             IConfiguration configuration) =>
         {
-            var callerIp = httpContext.Connection.RemoteIpAddress?.ToString()
-                ?? httpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
-                ?? "unknown";
+            // On Cloud Run, RemoteIpAddress is the internal proxy (169.254.x.x).
+            // X-Forwarded-For contains the real client IP (set by Google Front End).
+            var forwardedFor = httpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+            var callerIp = !string.IsNullOrEmpty(forwardedFor)
+                ? forwardedFor.Split(',')[0].Trim()  // First IP in chain is the original client
+                : httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
             var txnRef = httpContext.Request.Query["vnp_TxnRef"].FirstOrDefault() ?? "?";
 
             logger.LogInformation("[VnPay IPN] Received: TxnRef={TxnRef}, CallerIP={CallerIP}", txnRef, callerIp);
 
-            // Whitelist VnPay IPN source IPs (Case 13)
+            // Whitelist VnPay IPN source IPs (Case 13) — supports individual IPs and CIDR notation
+            // VnPay uses multiple IPs across 103.220.84.0/22 subnet; CIDR avoids breaking on new IPs
             var whitelistStr = configuration["Payment:VnPay:IpnWhitelist"] ?? "";
-            if (!string.IsNullOrEmpty(whitelistStr))
+            if (string.IsNullOrEmpty(whitelistStr))
             {
-                var whitelist = whitelistStr.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                if (!whitelist.Contains(callerIp))
+                logger.LogError("[VnPay IPN] REJECTED: IPN whitelist not configured. TxnRef={TxnRef}, CallerIP={CallerIP}", txnRef, callerIp);
+                return Results.Json(new KLC.Payments.VnPayIpnResponse { RspCode = "99", Message = "IPN whitelist not configured" });
+            }
+
+            if (!System.Net.IPAddress.TryParse(callerIp, out var callerAddr))
+            {
+                logger.LogWarning("[VnPay IPN] REJECTED: Invalid IP {CallerIP}, TxnRef={TxnRef}", callerIp, txnRef);
+                return Results.Json(new KLC.Payments.VnPayIpnResponse { RspCode = "99", Message = "Unauthorized IP" });
+            }
+
+            var entries = whitelistStr.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var ipAllowed = false;
+            foreach (var entry in entries)
+            {
+                if (entry.Contains('/'))
                 {
-                    logger.LogWarning("[VnPay IPN] REJECTED: IP {CallerIP} not in whitelist, TxnRef={TxnRef}", callerIp, txnRef);
-                    return Results.Json(new KLC.Payments.VnPayIpnResponse { RspCode = "99", Message = "Unauthorized IP" });
+                    // CIDR notation: e.g. 103.220.84.0/22
+                    var parts = entry.Split('/');
+                    if (System.Net.IPAddress.TryParse(parts[0], out var network) && int.TryParse(parts[1], out var prefixLen))
+                    {
+                        var networkBytes = network.GetAddressBytes();
+                        var addrBytes = callerAddr.GetAddressBytes();
+                        if (networkBytes.Length == addrBytes.Length)
+                        {
+                            var match = true;
+                            var bits = prefixLen;
+                            for (int i = 0; i < networkBytes.Length && bits > 0; i++)
+                            {
+                                var mask = (byte)(bits >= 8 ? 0xFF : (0xFF << (8 - bits)));
+                                if ((networkBytes[i] & mask) != (addrBytes[i] & mask)) { match = false; break; }
+                                bits -= 8;
+                            }
+                            if (match) { ipAllowed = true; break; }
+                        }
+                    }
                 }
+                else if (entry == callerIp)
+                {
+                    ipAllowed = true;
+                    break;
+                }
+            }
+
+            if (!ipAllowed)
+            {
+                logger.LogWarning("[VnPay IPN] REJECTED: IP {CallerIP} not in whitelist, TxnRef={TxnRef}", callerIp, txnRef);
+                return Results.Json(new KLC.Payments.VnPayIpnResponse { RspCode = "99", Message = "Unauthorized IP" });
             }
 
             var queryParams = httpContext.Request.Query
@@ -97,38 +142,87 @@ public static class WalletEndpoints
         .AllowAnonymous();
 
         // POST /api/v1/wallet/topup/callback
+        // Case 12: This endpoint does NOT credit the wallet for VnPay.
+        // VnPay payments are ONLY processed via IPN (server-to-server).
+        // This callback is for MoMo/ZaloPay only (which don't have IPN).
+        // For VnPay, mobile should poll /topup/{id}/status instead.
         group.MapPost("/topup/callback", async (
             HttpContext httpContext,
             [FromBody] TopUpCallbackRequest request,
             IWalletBffService walletService,
+            ILogger<WalletBffService> logger,
             IEnumerable<KLC.Payments.IPaymentGatewayService> paymentGateways) =>
         {
-            // Verify HMAC signature from the gateway before processing
+            // Case 12: VnPay wallet credits are ONLY processed via IPN (server-to-server).
+            // However, we MUST allow the mobile app to report cancellation/failure so
+            // the transaction doesn't stay stuck as PENDING forever — VnPay does NOT
+            // send an IPN when the user cancels at the payment gateway.
+            if (request.Gateway == PaymentGateway.VnPay || request.Gateway == null)
+            {
+                if (request.Status != TransactionStatus.Failed)
+                {
+                    logger.LogWarning("[Callback] VnPay callback blocked — use IPN instead. Ref={Ref}",
+                        request.ReferenceCode);
+                    return Results.Ok(new TopUpCallbackResultDto
+                    {
+                        Success = false,
+                        Error = "VnPay payments are confirmed via IPN. Please check /topup/{id}/status."
+                    });
+                }
+
+                // Allow cancel/failure — mark transaction as FAILED (no wallet credit)
+                logger.LogInformation("[Callback] VnPay cancel/failure from mobile. Ref={Ref}", request.ReferenceCode);
+                var cancelResult = await walletService.ProcessTopUpCallbackAsync(request);
+                return Results.Ok(cancelResult);
+            }
+
+            // Validate required fields
+            if (string.IsNullOrWhiteSpace(request.ReferenceCode))
+            {
+                return Results.BadRequest(new
+                {
+                    error = new { code = "INVALID_REQUEST", message = "ReferenceCode is required" }
+                });
+            }
+
+            // Verify HMAC signature from the gateway — MANDATORY for all callbacks
             var signature = httpContext.Request.Headers["X-Payment-Signature"].FirstOrDefault()
                             ?? httpContext.Request.Query["signature"].FirstOrDefault();
 
-            if (!string.IsNullOrEmpty(signature))
+            if (string.IsNullOrEmpty(signature))
             {
-                var gateway = paymentGateways.FirstOrDefault(g =>
-                    g.Gateway == (request.Gateway ?? PaymentGateway.VnPay));
-
-                if (gateway != null)
+                logger.LogWarning("[Callback] Missing signature, Ref={Ref}, Gateway={Gateway}",
+                    request.ReferenceCode, request.Gateway);
+                return Results.BadRequest(new
                 {
-                    var parameters = new Dictionary<string, string>
-                    {
-                        { "referenceCode", request.ReferenceCode },
-                        { "gatewayTransactionId", request.GatewayTransactionId ?? string.Empty },
-                        { "status", ((int)request.Status).ToString() }
-                    };
+                    error = new { code = "MISSING_SIGNATURE", message = "Payment callback signature is required" }
+                });
+            }
 
-                    if (!gateway.VerifyCallbackSignature(parameters, signature))
-                    {
-                        return Results.BadRequest(new
-                        {
-                            error = new { code = "INVALID_SIGNATURE", message = "Payment callback signature verification failed" }
-                        });
-                    }
-                }
+            var gateway = paymentGateways.FirstOrDefault(g => g.Gateway == request.Gateway);
+            if (gateway == null)
+            {
+                return Results.BadRequest(new
+                {
+                    error = new { code = "UNKNOWN_GATEWAY", message = $"Gateway {request.Gateway} is not configured" }
+                });
+            }
+
+            var parameters = new Dictionary<string, string>
+            {
+                { "referenceCode", request.ReferenceCode },
+                { "gatewayTransactionId", request.GatewayTransactionId ?? string.Empty },
+                { "status", ((int)request.Status).ToString() }
+            };
+
+            if (!gateway.VerifyCallbackSignature(parameters, signature))
+            {
+                logger.LogWarning("[Callback] Invalid signature, Ref={Ref}, Gateway={Gateway}",
+                    request.ReferenceCode, request.Gateway);
+                return Results.BadRequest(new
+                {
+                    error = new { code = "INVALID_SIGNATURE", message = "Payment callback signature verification failed" }
+                });
             }
 
             var result = await walletService.ProcessTopUpCallbackAsync(request);
@@ -138,10 +232,10 @@ public static class WalletEndpoints
                 : Results.BadRequest(new { error = new { code = "CALLBACK_FAILED", message = result.Error } });
         })
         .WithName("TopUpCallback")
-        .WithSummary("Payment gateway callback for top-up")
+        .WithSummary("Payment gateway callback for top-up (MoMo/ZaloPay only, NOT VnPay)")
         .Produces<TopUpCallbackResultDto>(200)
         .Produces(400)
-        .AllowAnonymous(); // Gateway callbacks are authenticated via signature
+        .AllowAnonymous();
 
         // GET /api/v1/wallet/topup/{id}/status
         group.MapGet("/topup/{id:guid}/status", async (

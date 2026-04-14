@@ -150,6 +150,53 @@ VNPay sends a **GET request** to the IPN URL with all `vnp_*` params as query st
 
 ---
 
+### 3.5 IPN Security & Compliance (VnPay Acceptance Cases)
+
+**Case 11 — System Error Handling:**
+All IPN processing is wrapped in `try/catch`. Unhandled exceptions return:
+```json
+{"RspCode":"99","Message":"Unknow error"}
+```
+Implementation: `WalletEndpoints.cs` — explicit try/catch around `ProcessVnPayIpnAsync()`.
+
+**Case 12 — Transaction Status Only Updated at IPN:**
+- IPN URL (`/api/v1/wallet/topup/vnpay-ipn`): Validates signature → credits wallet → updates transaction status. **This is the ONLY place where transaction status is updated.**
+- Return URL (`klc://wallet/topup/callback`): Mobile deep link for UI display only. **Does NOT update any transaction status.**
+
+**Case 13 — IP Whitelist + Logging:**
+
+IP whitelist configured via `Payment:VnPay:IpnWhitelist` (comma-separated):
+
+| Environment | IPs |
+|-------------|-----|
+| **TEST** | `113.160.92.202, 203.205.17.226, 202.93.156.34, 103.220.84.4` |
+| **PROD** | `113.52.45.78, 116.97.245.130, 42.118.107.252, 113.20.97.250, 203.171.19.146, 103.220.87.4, 103.220.86.4, 103.220.86.10, 103.220.87.10, 103.220.86.139, 103.220.87.139` |
+
+Logging on every IPN request:
+```
+[VnPay IPN] Received: TxnRef={TxnRef}, CallerIP={CallerIP}
+[VnPay IPN] Response: TxnRef={TxnRef}, RspCode={RspCode}, CallerIP={CallerIP}
+[VnPay IPN] REJECTED: IP {CallerIP} not in whitelist, TxnRef={TxnRef}
+```
+
+Logs retained on Cloud Run Logging for minimum 2 months. Empty whitelist = allow all (for dev/staging).
+
+### 3.6 IPN Validation Order
+
+Validation runs BEFORE idempotency lock to ensure correct error codes:
+```
+1. Parse vnp_TxnRef → not found → return 01
+2. Find transaction in DB → not found → return 01
+3. Validate signature (HMAC-SHA512) → invalid → return 97
+4. Validate amount (vnp_Amount/100 == stored amount) → mismatch → return 04
+5. Check already completed → yes → return 02
+6. Acquire idempotency lock (Redis) → duplicate → return 02
+7. Credit wallet + mark completed → return 00
+8. Any exception → return 99
+```
+
+---
+
 ## 4. Query Transaction API (querydr)
 
 Server-to-server API to check transaction status — useful for reconciliation.

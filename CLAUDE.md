@@ -17,7 +17,7 @@ EV Charging Station Management System (CSMS) — B2C platform for EV charging st
 - OCPP: OCPP.Core (1.6J/2.0/2.1) via WebSocket at `/ocpp/{chargePointId}`. Simulator: `ocpp-simulator/` (git submodule)
 - CQRS: MediatR (IQuery/ICommand pattern)
 - Localization: VI (default) + EN
-- Monitoring: Sentry (admin portal + Driver BFF), Serilog (backend structured logging)
+- Monitoring: Sentry (3 projects: frontend/backend/mobile), Serilog (backend structured logging)
 - Testing: xUnit + NSubstitute + Shouldly (backend), Vitest + Testing Library (admin portal), Jest (mobile), Playwright (e2e), Maestro (mobile automation)
 
 ## Architecture
@@ -108,6 +108,30 @@ src/admin-portal/src/
 Service account: `klc-backend@klc-ev-charging.iam.gserviceaccount.com`
 GCS bucket: `gs://klc-ev-charging-uploads` (asia-southeast1)
 Credential file: `firebase-service-account.json` (gitignored)
+
+### Sentry (org: emesoft-9n)
+
+| Project | Platform | Service |
+|---------|----------|---------|
+| `ev-kcl` | react-native | Mobile driver app |
+| `ev-kcl-frontend` | javascript-nextjs | Admin Portal |
+| `ev-kcl-backend` | dotnet-aspnetcore | Admin API + Driver BFF |
+
+Dashboard: https://emesoft-9n.sentry.io
+
+### Cloud SQL Debugging
+
+Use the read-only debug script (never reset the `postgres` password — it disrupts production):
+
+```bash
+# Interactive psql shell via Cloud SQL Auth Proxy
+./scripts/db-debug.sh
+
+# Single query
+./scripts/db-debug.sh -c 'SELECT COUNT(*) FROM "AppAppUsers";'
+```
+
+Requires: `brew install cloud-sql-proxy`. Uses `debug_readonly` user (SELECT only).
 
 ## Commands
 
@@ -236,6 +260,39 @@ StationStatus, ConnectorStatus, ConnectorType (incl. NACS), SessionStatus, Payme
 - Notifications: `/api/v1/notifications/*` — list, read, preferences, devices
 - Feedback: `/api/v1/feedback/*` — submit, list, FAQ
 - Vouchers/Promotions: `/api/v1/vouchers/*`, `/api/v1/promotions/*`
+- Config: `GET /api/v1/config` — public, no auth, cached 5min. Returns wallet limits, map defaults, app version, maintenance mode
+
+## App Version Management
+
+The `/api/v1/config` endpoint controls mobile app version enforcement and maintenance mode. Values are configured via Cloud Run env vars (no code deploy needed):
+
+| Env Var | Default | Purpose |
+|---------|---------|---------|
+| `App__MinVersion` | `1.0.0` | Force update if app version < this |
+| `App__LatestVersion` | `1.0.0` | Soft nudge if app version < this |
+| `App__ForceUpdate` | `false` | Emergency: force ALL users to update |
+| `App__MaintenanceMode` | `false` | Show maintenance screen to all users |
+| `App__MaintenanceMessage` | null | Custom maintenance message |
+
+**Version check flow (mobile):**
+1. App calls `GET /api/v1/config` on startup (before auth)
+2. If `maintenanceMode` → show blocking maintenance screen
+3. If `forceUpdate` OR app version < `minVersion` → show blocking force-update screen
+4. If app version < `latestVersion` → show dismissible "update available" banner
+
+**Operations commands:**
+```bash
+# Bump min version (deprecate old builds)
+gcloud run services update klc-driver-bff --update-env-vars="App__MinVersion=1.1.0" --region=asia-southeast1 --project=klc-ev-charging
+
+# Announce new version
+gcloud run services update klc-driver-bff --update-env-vars="App__LatestVersion=1.2.0" --region=asia-southeast1 --project=klc-ev-charging
+
+# Emergency maintenance
+gcloud run services update klc-driver-bff --update-env-vars="App__MaintenanceMode=true,App__MaintenanceMessage=Hệ thống đang bảo trì" --region=asia-southeast1 --project=klc-ev-charging
+```
+
+Changes propagate within 5 minutes (client HTTP cache TTL).
 
 ## OCPP Integration
 

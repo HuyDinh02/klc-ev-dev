@@ -87,6 +87,10 @@ public class WalletBalanceMonitorService : BackgroundService
 
         foreach (var session in activeSessions)
         {
+            // Skip walk-in/RFID sessions (no mobile user) — no wallet to monitor
+            if (session.UserId == Guid.Empty)
+                continue;
+
             try
             {
                 await CheckSessionBalanceAsync(

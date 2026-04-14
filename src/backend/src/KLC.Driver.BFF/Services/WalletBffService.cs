@@ -28,7 +28,7 @@ public class WalletBffService : IWalletBffService
     private readonly ICacheService _cache;
     private readonly ILogger<WalletBffService> _logger;
     private readonly IWalletAppService _walletAppService;
-    private readonly IPushNotificationService _pushNotificationService;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly IDriverHubNotifier _driverNotifier;
 
     public WalletBffService(
@@ -36,14 +36,14 @@ public class WalletBffService : IWalletBffService
         ICacheService cache,
         ILogger<WalletBffService> logger,
         IWalletAppService walletAppService,
-        IPushNotificationService pushNotificationService,
+        IServiceScopeFactory serviceScopeFactory,
         IDriverHubNotifier driverNotifier)
     {
         _dbContext = dbContext;
         _cache = cache;
         _logger = logger;
         _walletAppService = walletAppService;
-        _pushNotificationService = pushNotificationService;
+        _serviceScopeFactory = serviceScopeFactory;
         _driverNotifier = driverNotifier;
     }
 
@@ -168,12 +168,15 @@ public class WalletBffService : IWalletBffService
                     Timestamp = DateTime.UtcNow
                 });
 
-            // Push notification: topup success
+            // Push notification in a separate DI scope to avoid DbContext concurrency
+            // with the IPN handler's UoW (FirebasePush queries DeviceTokens on the same DbContext)
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    await _pushNotificationService.SendToUserAsync(
+                    using var scope = _serviceScopeFactory.CreateScope();
+                    var pushService = scope.ServiceProvider.GetRequiredService<IPushNotificationService>();
+                    await pushService.SendToUserAsync(
                         completion.UserId,
                         "Nạp ví thành công 💰",
                         $"Đã nạp {completion.Amount:N0}đ vào ví. Số dư: {completion.NewBalance:N0}đ",
@@ -209,12 +212,14 @@ public class WalletBffService : IWalletBffService
                 _logger.LogWarning(notifyEx, "Failed to send failure notification via SignalR");
             }
 
-            // Push notification: topup failure
+            // Push notification in a separate DI scope (same reason as success path above)
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    await _pushNotificationService.SendToUserAsync(
+                    using var scope = _serviceScopeFactory.CreateScope();
+                    var pushService = scope.ServiceProvider.GetRequiredService<IPushNotificationService>();
+                    await pushService.SendToUserAsync(
                         failure.UserId,
                         "Nạp ví thất bại ❌",
                         $"Giao dịch nạp {failure.Amount:N0}đ qua VnPay không thành công. Vui lòng thử lại.",

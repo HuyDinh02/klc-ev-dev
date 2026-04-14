@@ -8,6 +8,7 @@ using KLC.EntityFrameworkCore;
 using KLC.Enums;
 using KLC.Notifications;
 using KLC.Payments;
+using Microsoft.Extensions.DependencyInjection;
 using KLC.Users;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -52,7 +53,7 @@ public class WalletBffServiceCacheTests : KLCEntityFrameworkCoreTestBase
             _cache,
             Substitute.For<ILogger<WalletBffService>>(),
             walletAppService,
-            Substitute.For<IPushNotificationService>(),
+            Substitute.For<IServiceScopeFactory>(),
             _driverNotifier);
     }
 
@@ -177,7 +178,8 @@ public class WalletBffServiceCacheTests : KLCEntityFrameworkCoreTestBase
             {
                 ReferenceCode = referenceCode,
                 GatewayTransactionId = "GW_TX_CACHE_001",
-                Status = TransactionStatus.Completed
+                Status = TransactionStatus.Completed,
+                Gateway = PaymentGateway.ZaloPay
             });
 
             result.Success.ShouldBeTrue();

@@ -239,6 +239,7 @@ if (enableApiDocs)
 }
 
 app.UseMiddleware<GlobalExceptionMiddleware>();
+app.UseMiddleware<UnitOfWorkMiddleware>();
 app.UseSentryTracing();
 app.UseCors("MobileApp");
 app.UseRateLimiter();
@@ -252,6 +253,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "Healthy" }));
 app.MapHealthChecks("/health/ready");
 
 // Map API endpoints
+app.MapConfigEndpoints();
 app.MapAuthEndpoints();
 app.MapStationEndpoints();
 app.MapSessionEndpoints();

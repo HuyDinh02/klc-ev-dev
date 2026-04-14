@@ -139,13 +139,15 @@ public class FleetResetBackgroundService : BackgroundService
     {
         using var scope = _serviceProvider.CreateScope();
         var fleetRepo = scope.ServiceProvider.GetRequiredService<IRepository<Fleet, Guid>>();
+        var uowManager = scope.ServiceProvider.GetRequiredService<IUnitOfWorkManager>();
         var notifier = scope.ServiceProvider.GetService<IMonitoringNotifier>();
 
         if (notifier == null) return;
 
-        var query = await fleetRepo.GetQueryableAsync();
-        var fleets = await fleetRepo.AsyncExecuter.ToListAsync(
-            query.Where(f => f.IsActive && f.MaxMonthlyBudgetVnd > 0),
+        using var uow = uowManager.Begin(requiresNew: true);
+
+        var fleets = await fleetRepo.GetListAsync(
+            f => f.IsActive && f.MaxMonthlyBudgetVnd > 0,
             cancellationToken: ct);
 
         foreach (var fleet in fleets)
@@ -167,5 +169,7 @@ public class FleetResetBackgroundService : BackgroundService
                 _logger.LogInformation("Fleet budget alert: {FleetName} at {Utilization}%", fleet.Name, utilization);
             }
         }
+
+        await uow.CompleteAsync(ct);
     }
 }

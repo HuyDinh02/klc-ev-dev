@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using KLC.Notifications;
@@ -33,6 +34,14 @@ public class BroadcastController : KLCController
         [FromQuery] GetBroadcastHistoryDto input)
     {
         var result = await _broadcastAppService.GetBroadcastHistoryAsync(input);
+        return Ok(result);
+    }
+
+    [HttpGet("broadcasts/recipients")]
+    public async Task<ActionResult<BroadcastRecipientsDto>> GetBroadcastRecipientsAsync(
+        [FromQuery] string title, [FromQuery] DateTime sentAt)
+    {
+        var result = await _broadcastAppService.GetBroadcastRecipientsAsync(title, sentAt);
         return Ok(result);
     }
 }

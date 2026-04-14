@@ -106,10 +106,11 @@ public class AdminWalletTransactionController : AbpController
         // Auto-reconcile if VnPay confirms success and transaction is still pending
         if (result.IsValid && result.IsSuccess && txn.Status == TransactionStatus.Pending)
         {
-            var user = await userRepo.FirstOrDefaultAsync(u => u.Id == txn.UserId);
+            var user = await userRepo.FirstOrDefaultAsync(u => u.IdentityUserId == txn.UserId);
             if (user != null)
             {
-                user.AddToWallet(txn.Amount);
+                // Use domain service for proper audit trail (not direct AddToWallet)
+                walletDomainService.TopUp(user, txn.Amount, PaymentGateway.VnPay, result.GatewayTransactionId);
                 txn.MarkCompleted(result.GatewayTransactionId);
                 await userRepo.UpdateAsync(user);
                 await _walletTransactionRepository.UpdateAsync(txn);
