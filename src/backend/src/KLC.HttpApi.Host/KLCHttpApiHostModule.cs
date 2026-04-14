@@ -183,13 +183,15 @@ public class KLCHttpApiHostModule : AbpModule
         context.Services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = 429;
-            // Global: 100 requests per minute per IP
+            // Global: 600 requests per minute per IP
+            // On Cloud Run, RemoteIpAddress is the GFE proxy — use X-Forwarded-For for real client IP
             options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
                 RateLimitPartition.GetFixedWindowLimiter(
-                    httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    httpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()?.Split(',')[0].Trim()
+                        ?? httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                     _ => new FixedWindowRateLimiterOptions
                     {
-                        PermitLimit = 100,
+                        PermitLimit = 600,
                         Window = TimeSpan.FromMinutes(1)
                     }));
         });
@@ -545,7 +547,6 @@ public class KLCHttpApiHostModule : AbpModule
         app.UseMiddleware<OcppWebSocketMiddleware>();
 
         app.UseRouting();
-        app.UseSentryTracing();
         app.UseCors();
         app.UseRateLimiter();
 

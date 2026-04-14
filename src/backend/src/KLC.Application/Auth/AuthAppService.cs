@@ -229,8 +229,11 @@ public class AuthAppService : IAuthAppService
             return new LoginResultDto { Success = false, Error = KLCDomainErrorCodes.Auth.InvalidCredentials };
         }
 
-        appUser.RecordLogin();
-        await _dbContext.SaveChangesAsync();
+        // Atomic update — avoids AbpDbConcurrencyException when multiple
+        // concurrent logins hit the same user row (e.g., token refresh + login)
+        await _dbContext.Set<AppUser>()
+            .Where(u => u.Id == appUser.Id)
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.LastLoginAt, DateTime.UtcNow));
 
         // Generate tokens
         var accessToken = GenerateAccessToken(appUser);

@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Serilog;
 using Serilog.Events;
 
@@ -30,15 +31,22 @@ public class Program
             Log.Information("Starting KLC.HttpApi.Host.");
             var builder = WebApplication.CreateBuilder(args);
 
-            // Sentry: full ASP.NET Core integration (HTTP context, breadcrumbs, auto exceptions)
-            builder.Services.AddSentry();
-            builder.Services.Configure<Sentry.SentryOptions>(o =>
+            // Sentry: capture errors via ILogger integration
+            // Note: AddSentry() (full ASP.NET Core middleware) conflicts with ABP's
+            // initialization pipeline. Using AddLogging().AddSentry() is safe and captures
+            // all unhandled exceptions + ILogger.LogError calls with stack traces.
+            var sentryDsn = builder.Configuration["Sentry:Dsn"];
+            if (!string.IsNullOrEmpty(sentryDsn))
             {
-                o.Dsn = builder.Configuration["Sentry:Dsn"] ?? "";
-                o.Environment = builder.Environment.EnvironmentName;
-                o.TracesSampleRate = builder.Environment.IsProduction() ? 0.1 : 1.0;
-                o.SendDefaultPii = false;
-            });
+                builder.Services.AddLogging(logging => logging.AddSentry(o =>
+                {
+                    o.Dsn = sentryDsn;
+                    o.Environment = builder.Environment.EnvironmentName;
+                    o.TracesSampleRate = builder.Environment.IsProduction() ? 0.1 : 1.0;
+                    o.SendDefaultPii = false;
+                    o.MinimumEventLevel = LogLevel.Error;
+                }));
+            }
 
             builder.Host
                 .AddAppSettingsSecretsJson()

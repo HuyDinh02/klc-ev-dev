@@ -122,16 +122,21 @@ public class SessionBffAppService : ISessionBffAppService
             return new StartSessionResultDto { Success = false, Error = "Connector is not available" };
         }
 
-        // Check for existing active session
+        // Check for existing active session — include Stopping to prevent race condition
+        // when user stops connector 1 and immediately starts connector 2 before StopTransaction completes
         var existingSession = await _sessionRepository.FirstOrDefaultAsync(
             s => s.UserId == input.UserId &&
                  (s.Status == SessionStatus.Pending ||
                   s.Status == SessionStatus.Starting ||
-                  s.Status == SessionStatus.InProgress));
+                  s.Status == SessionStatus.InProgress ||
+                  s.Status == SessionStatus.Stopping));
 
         if (existingSession != null)
         {
-            return new StartSessionResultDto { Success = false, Error = "You already have an active session" };
+            var msg = existingSession.Status == SessionStatus.Stopping
+                ? "Previous session is still stopping. Please wait a few seconds."
+                : "You already have an active session";
+            return new StartSessionResultDto { Success = false, Error = msg };
         }
 
         // Validate wallet balance before starting session
@@ -170,10 +175,13 @@ public class SessionBffAppService : ISessionBffAppService
 
         try
         {
-            // Get tariff
+            // Get tariff — must be currently effective (EffectiveFrom <= now)
+            var now = DateTime.UtcNow;
             var tariff = station?.TariffPlanId.HasValue == true
-                ? await _tariffRepository.FirstOrDefaultAsync(t => t.Id == station.TariffPlanId)
-                : await _tariffRepository.FirstOrDefaultAsync(t => t.IsDefault && t.IsActive);
+                ? await _tariffRepository.FirstOrDefaultAsync(t => t.Id == station.TariffPlanId
+                    && t.IsActive && t.EffectiveFrom <= now && (!t.EffectiveTo.HasValue || t.EffectiveTo > now))
+                : await _tariffRepository.FirstOrDefaultAsync(t => t.IsDefault && t.IsActive
+                    && t.EffectiveFrom <= now && (!t.EffectiveTo.HasValue || t.EffectiveTo > now));
 
             // Create session
             var session = new ChargingSession(
@@ -290,13 +298,32 @@ public class SessionBffAppService : ISessionBffAppService
             return new StopSessionResultDto { Success = false, Error = "Session not found" };
         }
 
-        if (session.Status != SessionStatus.InProgress && session.Status != SessionStatus.Suspended)
+        var canStop = session.Status == SessionStatus.InProgress
+                   || session.Status == SessionStatus.Suspended
+                   || session.Status == SessionStatus.Pending
+                   || session.Status == SessionStatus.Starting;
+
+        if (!canStop)
         {
-            return new StopSessionResultDto { Success = false, Error = "Session is not in progress" };
+            return new StopSessionResultDto { Success = false, Error = "Session cannot be stopped in current state" };
         }
 
         try
         {
+            // Pending/Starting sessions that never reached the charger — fail immediately
+            if (session.Status == SessionStatus.Pending || session.Status == SessionStatus.Starting)
+            {
+                session.MarkFailed("Cancelled by user");
+                await _sessionRepository.UpdateAsync(session);
+                await _unitOfWorkManager.Current!.SaveChangesAsync();
+
+                _logger.LogInformation(
+                    "Session cancelled by user before charging started: SessionId={SessionId}, Status={Status}",
+                    session.Id, session.Status);
+
+                return new StopSessionResultDto { Success = true, SessionId = session.Id };
+            }
+
             session.MarkStopping();
             await _sessionRepository.UpdateAsync(session);
             await _unitOfWorkManager.Current!.SaveChangesAsync();

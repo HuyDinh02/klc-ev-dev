@@ -63,6 +63,22 @@ public static class StationEndpoints
         .Produces<StationDetailDto>(200)
         .Produces(404);
 
+        // GET /api/v1/stations/{code} — Fallback: lookup by station code when ID is not a GUID
+        // Mobile app sometimes uses station code (e.g., "cong-hoa-001") instead of UUID
+        group.MapGet("/{code}", async (
+            string code,
+            IStationBffService stationService) =>
+        {
+            var station = await stationService.GetStationByCodeAsync(code);
+            return station is null
+                ? Results.NotFound(new { error = new { code = "STATION_NOT_FOUND", message = "Station not found" } })
+                : Results.Ok(station);
+        })
+        .WithName("GetStationByCodeFallback")
+        .WithSummary("Get station details by code (fallback for non-GUID identifiers)")
+        .Produces<StationDetailDto>(200)
+        .Produces(404);
+
         // GET /api/v1/stations/by-code/{code} — Lookup by station code (charger serial number)
         // Used when QR codes contain the charger's serial number instead of our station UUID
         group.MapGet("/by-code/{code}", async (

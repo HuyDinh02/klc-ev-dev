@@ -13,7 +13,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { sessionsApi } from "@/lib/api";
-import { formatCurrency, formatDateTime, formatEnergy, formatDuration, downloadCsv, parseAsUtc } from "@/lib/utils";
+import { formatCurrency, formatDateTime, formatEnergy, formatDurationFromSeconds, downloadCsv, parseAsUtc } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
 import { useMonitoringHub } from "@/lib/signalr";
 import { useRequirePermission } from "@/lib/use-permission";
@@ -58,11 +58,11 @@ export default function SessionsPage() {
     searchFields: ["stationName", "userName"],
   });
 
-  const computeDuration = (startTime?: string | null, endTime?: string | null) => {
+  const computeDurationSeconds = (startTime?: string | null, endTime?: string | null) => {
     if (!startTime) return 0;
     const start = parseAsUtc(startTime).getTime();
     const end = endTime ? parseAsUtc(endTime).getTime() : Date.now();
-    return Math.floor((end - start) / 60000);
+    return Math.floor((end - start) / 1000);
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- API returns untyped axios data
@@ -103,7 +103,7 @@ export default function SessionsPage() {
                     s.userName || "—",
                     String(s.status),
                     formatDateTime(s.startTime),
-                    formatDuration(computeDuration(s.startTime, s.endTime)),
+                    formatDurationFromSeconds(computeDurationSeconds(s.startTime, s.endTime)),
                     formatEnergy(s.totalEnergyKwh || s.energyDeliveredKwh || 0),
                     formatCurrency(s.totalCost || s.cost || 0),
                   ]);
@@ -226,7 +226,7 @@ export default function SessionsPage() {
                             {formatDateTime(session.startTime)}
                           </td>
                           <td className="px-4 py-3">
-                            {formatDuration(computeDuration(session.startTime, session.endTime))}
+                            {formatDurationFromSeconds(computeDurationSeconds(session.startTime, session.endTime))}
                           </td>
                           <td className="px-4 py-3 text-right tabular-nums">
                             {formatEnergy(session.totalEnergyKwh || session.energyDeliveredKwh || 0)}
