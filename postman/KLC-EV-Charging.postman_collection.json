@@ -1,0 +1,775 @@
+{
+  "info": {
+    "name": "KLC EV Charging API",
+    "description": "Complete API collection for KLC EV Charging Station Management System.\n\n**Setup:**\n1. Import this collection + KLC Cloud environment\n2. Run '1. Login (Mobile)' or '1. Login (Admin)' first — tokens auto-saved\n3. All subsequent requests use saved tokens automatically\n\n**Test users:**\n- Mobile: 0983987986 / 123456x@X\n- Admin: admin / Admin@123",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{mobile_token}}", "type": "string" }]
+  },
+  "variable": [],
+  "item": [
+    {
+      "name": "Driver BFF (Mobile)",
+      "item": [
+        {
+          "name": "Auth",
+          "item": [
+            {
+              "name": "1. Login (Mobile)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    var json = pm.response.json();",
+                      "    pm.environment.set('mobile_token', json.accessToken);",
+                      "    pm.environment.set('mobile_refresh_token', json.refreshToken);",
+                      "    pm.environment.set('user_id', json.user.userId);",
+                      "    pm.test('Login successful', function() {",
+                      "        pm.expect(json.success).to.be.true;",
+                      "        pm.expect(json.accessToken).to.be.a('string');",
+                      "    });",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phoneNumber\": \"{{mobile_phone}}\",\n  \"password\": \"{{mobile_password}}\"\n}"
+                },
+                "url": { "raw": "{{bff_url}}/api/v1/auth/login", "host": ["{{bff_url}}"], "path": ["api", "v1", "auth", "login"] }
+              }
+            },
+            {
+              "name": "Refresh Token",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    var json = pm.response.json();",
+                      "    pm.environment.set('mobile_token', json.accessToken);",
+                      "    pm.environment.set('mobile_refresh_token', json.refreshToken);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refreshToken\": \"{{mobile_refresh_token}}\"\n}"
+                },
+                "url": { "raw": "{{bff_url}}/api/v1/auth/refresh-token", "host": ["{{bff_url}}"], "path": ["api", "v1", "auth", "refresh-token"] }
+              }
+            },
+            {
+              "name": "Logout",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refreshToken\": \"{{mobile_refresh_token}}\"\n}"
+                },
+                "url": { "raw": "{{bff_url}}/api/v1/auth/logout", "host": ["{{bff_url}}"], "path": ["api", "v1", "auth", "logout"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Config",
+          "item": [
+            {
+              "name": "Get App Config",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Config returns 200', function() {",
+                      "    pm.response.to.have.status(200);",
+                      "    var json = pm.response.json();",
+                      "    pm.expect(json.app.minVersion).to.be.a('string');",
+                      "    pm.expect(json.wallet.minTopUpAmount).to.be.a('number');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "GET",
+                "url": { "raw": "{{bff_url}}/api/v1/config", "host": ["{{bff_url}}"], "path": ["api", "v1", "config"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Profile",
+          "item": [
+            {
+              "name": "Get Profile",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Profile returns 200', function() {",
+                      "    pm.response.to.have.status(200);",
+                      "    var json = pm.response.json();",
+                      "    pm.expect(json.phoneNumber).to.eql(pm.environment.get('mobile_phone'));",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "url": { "raw": "{{bff_url}}/api/v1/profile", "host": ["{{bff_url}}"], "path": ["api", "v1", "profile"] }
+              }
+            },
+            {
+              "name": "Get Statistics",
+              "request": {
+                "method": "GET",
+                "url": { "raw": "{{bff_url}}/api/v1/profile/statistics", "host": ["{{bff_url}}"], "path": ["api", "v1", "profile", "statistics"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Stations",
+          "item": [
+            {
+              "name": "Nearby Stations",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Nearby returns stations', function() {",
+                      "    pm.response.to.have.status(200);",
+                      "    var json = pm.response.json();",
+                      "    if (json.items && json.items.length > 0) {",
+                      "        pm.environment.set('station_id', json.items[0].id);",
+                      "    }",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "GET",
+                "url": {
+                  "raw": "{{bff_url}}/api/v1/stations/nearby?lat=10.7769&lon=106.7009&radius=50&limit=10",
+                  "host": ["{{bff_url}}"],
+                  "path": ["api", "v1", "stations", "nearby"],
+                  "query": [
+                    { "key": "lat", "value": "10.7769" },
+                    { "key": "lon", "value": "106.7009" },
+                    { "key": "radius", "value": "50" },
+                    { "key": "limit", "value": "10" }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Search Stations",
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "GET",
+                "url": {
+                  "raw": "{{bff_url}}/api/v1/stations/search?q=demo&limit=10",
+                  "host": ["{{bff_url}}"],
+                  "path": ["api", "v1", "stations", "search"],
+                  "query": [
+                    { "key": "q", "value": "demo" },
+                    { "key": "limit", "value": "10" }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Station Detail",
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "GET",
+                "url": { "raw": "{{bff_url}}/api/v1/stations/{{station_id}}", "host": ["{{bff_url}}"], "path": ["api", "v1", "stations", "{{station_id}}"] }
+              }
+            },
+            {
+              "name": "Get Station Connectors",
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "GET",
+                "url": { "raw": "{{bff_url}}/api/v1/stations/{{station_id}}/connectors", "host": ["{{bff_url}}"], "path": ["api", "v1", "stations", "{{station_id}}", "connectors"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Wallet",
+          "item": [
+            {
+              "name": "Get Balance",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Balance returns 200', function() {",
+                      "    pm.response.to.have.status(200);",
+                      "    var json = pm.response.json();",
+                      "    pm.expect(json.balance).to.be.a('number');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "url": { "raw": "{{bff_url}}/api/v1/wallet/balance", "host": ["{{bff_url}}"], "path": ["api", "v1", "wallet", "balance"] }
+              }
+            },
+            {
+              "name": "Initiate Top-Up (VnPay 50k)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    var json = pm.response.json();",
+                      "    pm.environment.set('transaction_id', json.transactionId);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"amount\": 50000,\n  \"gateway\": \"VnPay\",\n  \"returnUrl\": \"klc://wallet/topup/result\"\n}"
+                },
+                "url": { "raw": "{{bff_url}}/api/v1/wallet/topup", "host": ["{{bff_url}}"], "path": ["api", "v1", "wallet", "topup"] }
+              }
+            },
+            {
+              "name": "Get Top-Up Status",
+              "request": {
+                "method": "GET",
+                "url": { "raw": "{{bff_url}}/api/v1/wallet/topup/{{transaction_id}}/status", "host": ["{{bff_url}}"], "path": ["api", "v1", "wallet", "topup", "{{transaction_id}}", "status"] }
+              }
+            },
+            {
+              "name": "Get Transactions",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{bff_url}}/api/v1/wallet/transactions?pageSize=20",
+                  "host": ["{{bff_url}}"],
+                  "path": ["api", "v1", "wallet", "transactions"],
+                  "query": [{ "key": "pageSize", "value": "20" }]
+                }
+              }
+            },
+            {
+              "name": "Get Transaction Summary",
+              "request": {
+                "method": "GET",
+                "url": { "raw": "{{bff_url}}/api/v1/wallet/transactions/summary", "host": ["{{bff_url}}"], "path": ["api", "v1", "wallet", "transactions", "summary"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sessions",
+          "item": [
+            {
+              "name": "Get Active Session",
+              "request": {
+                "method": "GET",
+                "url": { "raw": "{{bff_url}}/api/v1/sessions/active", "host": ["{{bff_url}}"], "path": ["api", "v1", "sessions", "active"] }
+              }
+            },
+            {
+              "name": "Get Session History",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('History returns 200', function() {",
+                      "    pm.response.to.have.status(200);",
+                      "    var json = pm.response.json();",
+                      "    pm.expect(json.items).to.be.an('array');",
+                      "    if (json.items.length > 0) {",
+                      "        pm.environment.set('session_id', json.items[0].id);",
+                      "    }",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{bff_url}}/api/v1/sessions/history?pageSize=20",
+                  "host": ["{{bff_url}}"],
+                  "path": ["api", "v1", "sessions", "history"],
+                  "query": [{ "key": "pageSize", "value": "20" }]
+                }
+              }
+            },
+            {
+              "name": "Get Session Detail",
+              "request": {
+                "method": "GET",
+                "url": { "raw": "{{bff_url}}/api/v1/sessions/{{session_id}}", "host": ["{{bff_url}}"], "path": ["api", "v1", "sessions", "{{session_id}}"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Vehicles",
+          "item": [
+            {
+              "name": "List Vehicles",
+              "request": {
+                "method": "GET",
+                "url": { "raw": "{{bff_url}}/api/v1/vehicles", "host": ["{{bff_url}}"], "path": ["api", "v1", "vehicles"] }
+              }
+            },
+            {
+              "name": "Get Default Vehicle",
+              "request": {
+                "method": "GET",
+                "url": { "raw": "{{bff_url}}/api/v1/vehicles/default", "host": ["{{bff_url}}"], "path": ["api", "v1", "vehicles", "default"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Favorites",
+          "item": [
+            {
+              "name": "List Favorites",
+              "request": {
+                "method": "GET",
+                "url": { "raw": "{{bff_url}}/api/v1/favorites", "host": ["{{bff_url}}"], "path": ["api", "v1", "favorites"] }
+              }
+            },
+            {
+              "name": "Add Favorite",
+              "request": {
+                "method": "POST",
+                "url": { "raw": "{{bff_url}}/api/v1/favorites/{{station_id}}", "host": ["{{bff_url}}"], "path": ["api", "v1", "favorites", "{{station_id}}"] }
+              }
+            },
+            {
+              "name": "Remove Favorite",
+              "request": {
+                "method": "DELETE",
+                "url": { "raw": "{{bff_url}}/api/v1/favorites/{{station_id}}", "host": ["{{bff_url}}"], "path": ["api", "v1", "favorites", "{{station_id}}"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Notifications",
+          "item": [
+            {
+              "name": "List Notifications",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{bff_url}}/api/v1/notifications?pageSize=20",
+                  "host": ["{{bff_url}}"],
+                  "path": ["api", "v1", "notifications"],
+                  "query": [{ "key": "pageSize", "value": "20" }]
+                }
+              }
+            },
+            {
+              "name": "Get Unread Count",
+              "request": {
+                "method": "GET",
+                "url": { "raw": "{{bff_url}}/api/v1/notifications/unread-count", "host": ["{{bff_url}}"], "path": ["api", "v1", "notifications", "unread-count"] }
+              }
+            },
+            {
+              "name": "Get Preferences",
+              "request": {
+                "method": "GET",
+                "url": { "raw": "{{bff_url}}/api/v1/notifications/preferences", "host": ["{{bff_url}}"], "path": ["api", "v1", "notifications", "preferences"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Vouchers & Promotions",
+          "item": [
+            {
+              "name": "List Vouchers",
+              "request": {
+                "method": "GET",
+                "url": { "raw": "{{bff_url}}/api/v1/vouchers", "host": ["{{bff_url}}"], "path": ["api", "v1", "vouchers"] }
+              }
+            },
+            {
+              "name": "List Promotions",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{bff_url}}/api/v1/promotions?pageSize=20",
+                  "host": ["{{bff_url}}"],
+                  "path": ["api", "v1", "promotions"],
+                  "query": [{ "key": "pageSize", "value": "20" }]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Feedback & Support",
+          "item": [
+            {
+              "name": "Get FAQ",
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "GET",
+                "url": { "raw": "{{bff_url}}/api/v1/support/faq", "host": ["{{bff_url}}"], "path": ["api", "v1", "support", "faq"] }
+              }
+            },
+            {
+              "name": "List My Feedback",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{bff_url}}/api/v1/feedback?pageSize=20",
+                  "host": ["{{bff_url}}"],
+                  "path": ["api", "v1", "feedback"],
+                  "query": [{ "key": "pageSize", "value": "20" }]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin API",
+      "item": [
+        {
+          "name": "Auth",
+          "item": [
+            {
+              "name": "1. Login (Admin)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    var json = pm.response.json();",
+                      "    pm.environment.set('admin_token', json.access_token);",
+                      "    pm.test('Admin login successful', function() {",
+                      "        pm.expect(json.access_token).to.be.a('string');",
+                      "    });",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+                "body": {
+                  "mode": "urlencoded",
+                  "urlencoded": [
+                    { "key": "grant_type", "value": "password" },
+                    { "key": "username", "value": "{{admin_username}}" },
+                    { "key": "password", "value": "{{admin_password}}" },
+                    { "key": "client_id", "value": "{{oidc_client_id}}" },
+                    { "key": "client_secret", "value": "{{oidc_client_secret}}" },
+                    { "key": "scope", "value": "KLC" }
+                  ]
+                },
+                "url": { "raw": "{{admin_api_url}}/connect/token", "host": ["{{admin_api_url}}"], "path": ["connect", "token"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Stations",
+          "item": [
+            {
+              "name": "List Stations",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Stations returns 200', function() {",
+                      "    pm.response.to.have.status(200);",
+                      "    var json = pm.response.json();",
+                      "    if (json.items && json.items.length > 0) {",
+                      "        pm.environment.set('station_id', json.items[0].id);",
+                      "    }",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}" }] },
+                "method": "GET",
+                "url": {
+                  "raw": "{{admin_api_url}}/api/v1/stations?maxResultCount=20",
+                  "host": ["{{admin_api_url}}"],
+                  "path": ["api", "v1", "stations"],
+                  "query": [{ "key": "maxResultCount", "value": "20" }]
+                }
+              }
+            },
+            {
+              "name": "Get Station Detail",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}" }] },
+                "method": "GET",
+                "url": { "raw": "{{admin_api_url}}/api/v1/stations/{{station_id}}", "host": ["{{admin_api_url}}"], "path": ["api", "v1", "stations", "{{station_id}}"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sessions",
+          "item": [
+            {
+              "name": "List All Sessions",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}" }] },
+                "method": "GET",
+                "url": {
+                  "raw": "{{admin_api_url}}/api/v1/admin/sessions?maxResultCount=20",
+                  "host": ["{{admin_api_url}}"],
+                  "path": ["api", "v1", "admin", "sessions"],
+                  "query": [{ "key": "maxResultCount", "value": "20" }]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Payments",
+          "item": [
+            {
+              "name": "List Wallet Transactions",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}" }] },
+                "method": "GET",
+                "url": {
+                  "raw": "{{admin_api_url}}/api/v1/admin/wallet-transactions?maxResultCount=20",
+                  "host": ["{{admin_api_url}}"],
+                  "path": ["api", "v1", "admin", "wallet-transactions"],
+                  "query": [{ "key": "maxResultCount", "value": "20" }]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Monitoring",
+          "item": [
+            {
+              "name": "Get Dashboard",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}" }] },
+                "method": "GET",
+                "url": { "raw": "{{admin_api_url}}/api/v1/monitoring/dashboard", "host": ["{{admin_api_url}}"], "path": ["api", "v1", "monitoring", "dashboard"] }
+              }
+            },
+            {
+              "name": "Get Analytics",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}" }] },
+                "method": "GET",
+                "url": { "raw": "{{admin_api_url}}/api/v1/monitoring/analytics", "host": ["{{admin_api_url}}"], "path": ["api", "v1", "monitoring", "analytics"] }
+              }
+            },
+            {
+              "name": "OCPP Connections",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}" }] },
+                "method": "GET",
+                "url": { "raw": "{{admin_api_url}}/api/v1/ocpp/connections", "host": ["{{admin_api_url}}"], "path": ["api", "v1", "ocpp", "connections"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mobile Users",
+          "item": [
+            {
+              "name": "List Mobile Users",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}" }] },
+                "method": "GET",
+                "url": {
+                  "raw": "{{admin_api_url}}/api/v1/admin/mobile-users?maxResultCount=20",
+                  "host": ["{{admin_api_url}}"],
+                  "path": ["api", "v1", "admin", "mobile-users"],
+                  "query": [{ "key": "maxResultCount", "value": "20" }]
+                }
+              }
+            },
+            {
+              "name": "User Statistics",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}" }] },
+                "method": "GET",
+                "url": { "raw": "{{admin_api_url}}/api/v1/admin/mobile-users/statistics", "host": ["{{admin_api_url}}"], "path": ["api", "v1", "admin", "mobile-users", "statistics"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "User Management",
+          "item": [
+            {
+              "name": "My Permissions",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}" }] },
+                "method": "GET",
+                "url": { "raw": "{{admin_api_url}}/api/v1/my-permissions", "host": ["{{admin_api_url}}"], "path": ["api", "v1", "my-permissions"] }
+              }
+            },
+            {
+              "name": "List Roles",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}" }] },
+                "method": "GET",
+                "url": { "raw": "{{admin_api_url}}/api/v1/roles/all", "host": ["{{admin_api_url}}"], "path": ["api", "v1", "roles", "all"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tariffs",
+          "item": [
+            {
+              "name": "List Tariffs",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}" }] },
+                "method": "GET",
+                "url": {
+                  "raw": "{{admin_api_url}}/api/v1/tariffs?maxResultCount=20",
+                  "host": ["{{admin_api_url}}"],
+                  "path": ["api", "v1", "tariffs"],
+                  "query": [{ "key": "maxResultCount", "value": "20" }]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Faults",
+          "item": [
+            {
+              "name": "List Faults",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}" }] },
+                "method": "GET",
+                "url": {
+                  "raw": "{{admin_api_url}}/api/v1/faults?maxResultCount=20",
+                  "host": ["{{admin_api_url}}"],
+                  "path": ["api", "v1", "faults"],
+                  "query": [{ "key": "maxResultCount", "value": "20" }]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Settings",
+          "item": [
+            {
+              "name": "Get Settings",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}" }] },
+                "method": "GET",
+                "url": { "raw": "{{admin_api_url}}/api/v1/settings", "host": ["{{admin_api_url}}"], "path": ["api", "v1", "settings"] }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Health Checks",
+      "item": [
+        {
+          "name": "BFF Health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('BFF is healthy', function() { pm.response.to.have.status(200); });"],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": { "raw": "{{bff_url}}/api/v1/config", "host": ["{{bff_url}}"], "path": ["api", "v1", "config"] }
+          }
+        },
+        {
+          "name": "Admin API Health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Admin API is healthy', function() { pm.response.to.have.status(200); });"],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": { "raw": "{{admin_api_url}}/.well-known/openid-configuration", "host": ["{{admin_api_url}}"], "path": [".well-known", "openid-configuration"] }
+          }
+        }
+      ]
+    }
+  ]
+}
