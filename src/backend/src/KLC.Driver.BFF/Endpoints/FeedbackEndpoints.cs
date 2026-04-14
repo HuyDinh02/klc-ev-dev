@@ -56,10 +56,9 @@ public static class FeedbackEndpoints
         .WithSummary("List user's feedback and support tickets")
         .Produces<object>(200);
 
-        // Support group
+        // Support group — public (FAQ/About don't require auth)
         var supportGroup = app.MapGroup("/api/v1/support")
-            .WithTags("Support")
-            .RequireAuthorization();
+            .WithTags("Support");
 
         // GET /api/v1/support/faq
         supportGroup.MapGet("/faq", async (

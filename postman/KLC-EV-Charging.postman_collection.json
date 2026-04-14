@@ -1,12 +1,18 @@
 {
   "info": {
     "name": "KLC EV Charging API",
-    "description": "Complete API collection for KLC EV Charging Station Management System.\n\n**Setup:**\n1. Import this collection + KLC Cloud environment\n2. Run '1. Login (Mobile)' or '1. Login (Admin)' first — tokens auto-saved\n3. All subsequent requests use saved tokens automatically\n\n**Test users:**\n- Mobile: 0983987986 / 123456x@X\n- Admin: admin / Admin@123",
+    "description": "Complete API collection for KLC EV Charging Station Management System.\n\n**Setup:**\n1. Import this collection + KLC Cloud environment\n2. Run '1. Login (Mobile)' or '1. Login (Admin)' first \u2014 tokens auto-saved\n3. All subsequent requests use saved tokens automatically\n\n**Test users:**\n- Mobile: 0983987986 / 123456x@X\n- Admin: admin / Admin@123",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
     "type": "bearer",
-    "bearer": [{ "key": "token", "value": "{{mobile_token}}", "type": "string" }]
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{mobile_token}}",
+        "type": "string"
+      }
+    ]
   },
   "variable": [],
   "item": [
@@ -39,14 +45,32 @@
                 }
               ],
               "request": {
-                "auth": { "type": "noauth" },
+                "auth": {
+                  "type": "noauth"
+                },
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"phoneNumber\": \"{{mobile_phone}}\",\n  \"password\": \"{{mobile_password}}\"\n}"
                 },
-                "url": { "raw": "{{bff_url}}/api/v1/auth/login", "host": ["{{bff_url}}"], "path": ["api", "v1", "auth", "login"] }
+                "url": {
+                  "raw": "{{bff_url}}/api/v1/auth/login",
+                  "host": [
+                    "{{bff_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "login"
+                  ]
+                }
               }
             },
             {
@@ -67,26 +91,32 @@
                 }
               ],
               "request": {
-                "auth": { "type": "noauth" },
+                "auth": {
+                  "type": "noauth"
+                },
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"refreshToken\": \"{{mobile_refresh_token}}\"\n}"
                 },
-                "url": { "raw": "{{bff_url}}/api/v1/auth/refresh-token", "host": ["{{bff_url}}"], "path": ["api", "v1", "auth", "refresh-token"] }
-              }
-            },
-            {
-              "name": "Logout",
-              "request": {
-                "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"refreshToken\": \"{{mobile_refresh_token}}\"\n}"
-                },
-                "url": { "raw": "{{bff_url}}/api/v1/auth/logout", "host": ["{{bff_url}}"], "path": ["api", "v1", "auth", "logout"] }
+                "url": {
+                  "raw": "{{bff_url}}/api/v1/auth/refresh-token",
+                  "host": [
+                    "{{bff_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "refresh-token"
+                  ]
+                }
               }
             }
           ]
@@ -113,9 +143,21 @@
                 }
               ],
               "request": {
-                "auth": { "type": "noauth" },
+                "auth": {
+                  "type": "noauth"
+                },
                 "method": "GET",
-                "url": { "raw": "{{bff_url}}/api/v1/config", "host": ["{{bff_url}}"], "path": ["api", "v1", "config"] }
+                "url": {
+                  "raw": "{{bff_url}}/api/v1/config",
+                  "host": [
+                    "{{bff_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "config"
+                  ]
+                }
               }
             }
           ]
@@ -142,15 +184,49 @@
               ],
               "request": {
                 "method": "GET",
-                "url": { "raw": "{{bff_url}}/api/v1/profile", "host": ["{{bff_url}}"], "path": ["api", "v1", "profile"] }
+                "url": {
+                  "raw": "{{bff_url}}/api/v1/profile",
+                  "host": [
+                    "{{bff_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "profile"
+                  ]
+                }
               }
             },
             {
               "name": "Get Statistics",
               "request": {
                 "method": "GET",
-                "url": { "raw": "{{bff_url}}/api/v1/profile/statistics", "host": ["{{bff_url}}"], "path": ["api", "v1", "profile", "statistics"] }
-              }
+                "url": {
+                  "raw": "{{bff_url}}/api/v1/profile/statistics",
+                  "host": [
+                    "{{bff_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "profile",
+                    "statistics"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             }
           ]
         },
@@ -164,11 +240,11 @@
                   "listen": "test",
                   "script": {
                     "exec": [
-                      "pm.test('Nearby returns stations', function() {",
+                      "pm.test(\"Nearby returns stations\", function() {",
                       "    pm.response.to.have.status(200);",
                       "    var json = pm.response.json();",
                       "    if (json.items && json.items.length > 0) {",
-                      "        pm.environment.set('station_id', json.items[0].id);",
+                      "        pm.environment.set(\"station_id\", json.items[0].id);",
                       "    }",
                       "});"
                     ],
@@ -177,17 +253,38 @@
                 }
               ],
               "request": {
-                "auth": { "type": "noauth" },
+                "auth": {
+                  "type": "noauth"
+                },
                 "method": "GET",
                 "url": {
                   "raw": "{{bff_url}}/api/v1/stations/nearby?lat=10.7769&lon=106.7009&radius=50&limit=10",
-                  "host": ["{{bff_url}}"],
-                  "path": ["api", "v1", "stations", "nearby"],
+                  "host": [
+                    "{{bff_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "stations",
+                    "nearby"
+                  ],
                   "query": [
-                    { "key": "lat", "value": "10.7769" },
-                    { "key": "lon", "value": "106.7009" },
-                    { "key": "radius", "value": "50" },
-                    { "key": "limit", "value": "10" }
+                    {
+                      "key": "lat",
+                      "value": "10.7769"
+                    },
+                    {
+                      "key": "lon",
+                      "value": "106.7009"
+                    },
+                    {
+                      "key": "radius",
+                      "value": "50"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    }
                   ]
                 }
               }
@@ -195,34 +292,115 @@
             {
               "name": "Search Stations",
               "request": {
-                "auth": { "type": "noauth" },
+                "auth": {
+                  "type": "noauth"
+                },
                 "method": "GET",
                 "url": {
                   "raw": "{{bff_url}}/api/v1/stations/search?q=demo&limit=10",
-                  "host": ["{{bff_url}}"],
-                  "path": ["api", "v1", "stations", "search"],
+                  "host": [
+                    "{{bff_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "stations",
+                    "search"
+                  ],
                   "query": [
-                    { "key": "q", "value": "demo" },
-                    { "key": "limit", "value": "10" }
+                    {
+                      "key": "q",
+                      "value": "demo"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    }
                   ]
                 }
-              }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             },
             {
               "name": "Get Station Detail",
               "request": {
-                "auth": { "type": "noauth" },
+                "auth": {
+                  "type": "noauth"
+                },
                 "method": "GET",
-                "url": { "raw": "{{bff_url}}/api/v1/stations/{{station_id}}", "host": ["{{bff_url}}"], "path": ["api", "v1", "stations", "{{station_id}}"] }
-              }
+                "url": {
+                  "raw": "{{bff_url}}/api/v1/stations/{{station_id}}",
+                  "host": [
+                    "{{bff_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "stations",
+                    "{{station_id}}"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             },
             {
               "name": "Get Station Connectors",
               "request": {
-                "auth": { "type": "noauth" },
+                "auth": {
+                  "type": "noauth"
+                },
                 "method": "GET",
-                "url": { "raw": "{{bff_url}}/api/v1/stations/{{station_id}}/connectors", "host": ["{{bff_url}}"], "path": ["api", "v1", "stations", "{{station_id}}", "connectors"] }
-              }
+                "url": {
+                  "raw": "{{bff_url}}/api/v1/stations/{{station_id}}/connectors",
+                  "host": [
+                    "{{bff_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "stations",
+                    "{{station_id}}",
+                    "connectors"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             }
           ]
         },
@@ -248,7 +426,18 @@
               ],
               "request": {
                 "method": "GET",
-                "url": { "raw": "{{bff_url}}/api/v1/wallet/balance", "host": ["{{bff_url}}"], "path": ["api", "v1", "wallet", "balance"] }
+                "url": {
+                  "raw": "{{bff_url}}/api/v1/wallet/balance",
+                  "host": [
+                    "{{bff_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "wallet",
+                    "balance"
+                  ]
+                }
               }
             },
             {
@@ -269,20 +458,62 @@
               ],
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"amount\": 50000,\n  \"gateway\": \"VnPay\",\n  \"returnUrl\": \"klc://wallet/topup/result\"\n}"
                 },
-                "url": { "raw": "{{bff_url}}/api/v1/wallet/topup", "host": ["{{bff_url}}"], "path": ["api", "v1", "wallet", "topup"] }
+                "url": {
+                  "raw": "{{bff_url}}/api/v1/wallet/topup",
+                  "host": [
+                    "{{bff_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "wallet",
+                    "topup"
+                  ]
+                }
               }
             },
             {
               "name": "Get Top-Up Status",
               "request": {
                 "method": "GET",
-                "url": { "raw": "{{bff_url}}/api/v1/wallet/topup/{{transaction_id}}/status", "host": ["{{bff_url}}"], "path": ["api", "v1", "wallet", "topup", "{{transaction_id}}", "status"] }
-              }
+                "url": {
+                  "raw": "{{bff_url}}/api/v1/wallet/topup/{{transaction_id}}/status",
+                  "host": [
+                    "{{bff_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "wallet",
+                    "topup",
+                    "{{transaction_id}}",
+                    "status"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             },
             {
               "name": "Get Transactions",
@@ -290,18 +521,68 @@
                 "method": "GET",
                 "url": {
                   "raw": "{{bff_url}}/api/v1/wallet/transactions?pageSize=20",
-                  "host": ["{{bff_url}}"],
-                  "path": ["api", "v1", "wallet", "transactions"],
-                  "query": [{ "key": "pageSize", "value": "20" }]
+                  "host": [
+                    "{{bff_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "wallet",
+                    "transactions"
+                  ],
+                  "query": [
+                    {
+                      "key": "pageSize",
+                      "value": "20"
+                    }
+                  ]
                 }
-              }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             },
             {
               "name": "Get Transaction Summary",
               "request": {
                 "method": "GET",
-                "url": { "raw": "{{bff_url}}/api/v1/wallet/transactions/summary", "host": ["{{bff_url}}"], "path": ["api", "v1", "wallet", "transactions", "summary"] }
-              }
+                "url": {
+                  "raw": "{{bff_url}}/api/v1/wallet/transactions/summary",
+                  "host": [
+                    "{{bff_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "wallet",
+                    "transactions",
+                    "summary"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             }
           ]
         },
@@ -312,8 +593,32 @@
               "name": "Get Active Session",
               "request": {
                 "method": "GET",
-                "url": { "raw": "{{bff_url}}/api/v1/sessions/active", "host": ["{{bff_url}}"], "path": ["api", "v1", "sessions", "active"] }
-              }
+                "url": {
+                  "raw": "{{bff_url}}/api/v1/sessions/active",
+                  "host": [
+                    "{{bff_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sessions",
+                    "active"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             },
             {
               "name": "Get Session History",
@@ -339,9 +644,21 @@
                 "method": "GET",
                 "url": {
                   "raw": "{{bff_url}}/api/v1/sessions/history?pageSize=20",
-                  "host": ["{{bff_url}}"],
-                  "path": ["api", "v1", "sessions", "history"],
-                  "query": [{ "key": "pageSize", "value": "20" }]
+                  "host": [
+                    "{{bff_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sessions",
+                    "history"
+                  ],
+                  "query": [
+                    {
+                      "key": "pageSize",
+                      "value": "20"
+                    }
+                  ]
                 }
               }
             },
@@ -349,8 +666,32 @@
               "name": "Get Session Detail",
               "request": {
                 "method": "GET",
-                "url": { "raw": "{{bff_url}}/api/v1/sessions/{{session_id}}", "host": ["{{bff_url}}"], "path": ["api", "v1", "sessions", "{{session_id}}"] }
-              }
+                "url": {
+                  "raw": "{{bff_url}}/api/v1/sessions/{{session_id}}",
+                  "host": [
+                    "{{bff_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sessions",
+                    "{{session_id}}"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             }
           ]
         },
@@ -361,15 +702,62 @@
               "name": "List Vehicles",
               "request": {
                 "method": "GET",
-                "url": { "raw": "{{bff_url}}/api/v1/vehicles", "host": ["{{bff_url}}"], "path": ["api", "v1", "vehicles"] }
-              }
+                "url": {
+                  "raw": "{{bff_url}}/api/v1/vehicles",
+                  "host": [
+                    "{{bff_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "vehicles"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             },
             {
               "name": "Get Default Vehicle",
               "request": {
                 "method": "GET",
-                "url": { "raw": "{{bff_url}}/api/v1/vehicles/default", "host": ["{{bff_url}}"], "path": ["api", "v1", "vehicles", "default"] }
-              }
+                "url": {
+                  "raw": "{{bff_url}}/api/v1/vehicles/default",
+                  "host": [
+                    "{{bff_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "vehicles",
+                    "default"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             }
           ]
         },
@@ -380,22 +768,93 @@
               "name": "List Favorites",
               "request": {
                 "method": "GET",
-                "url": { "raw": "{{bff_url}}/api/v1/favorites", "host": ["{{bff_url}}"], "path": ["api", "v1", "favorites"] }
-              }
+                "url": {
+                  "raw": "{{bff_url}}/api/v1/favorites",
+                  "host": [
+                    "{{bff_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "favorites"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             },
             {
               "name": "Add Favorite",
               "request": {
                 "method": "POST",
-                "url": { "raw": "{{bff_url}}/api/v1/favorites/{{station_id}}", "host": ["{{bff_url}}"], "path": ["api", "v1", "favorites", "{{station_id}}"] }
-              }
+                "url": {
+                  "raw": "{{bff_url}}/api/v1/favorites/{{station_id}}",
+                  "host": [
+                    "{{bff_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "favorites",
+                    "{{station_id}}"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             },
             {
               "name": "Remove Favorite",
               "request": {
                 "method": "DELETE",
-                "url": { "raw": "{{bff_url}}/api/v1/favorites/{{station_id}}", "host": ["{{bff_url}}"], "path": ["api", "v1", "favorites", "{{station_id}}"] }
-              }
+                "url": {
+                  "raw": "{{bff_url}}/api/v1/favorites/{{station_id}}",
+                  "host": [
+                    "{{bff_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "favorites",
+                    "{{station_id}}"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             }
           ]
         },
@@ -408,25 +867,97 @@
                 "method": "GET",
                 "url": {
                   "raw": "{{bff_url}}/api/v1/notifications?pageSize=20",
-                  "host": ["{{bff_url}}"],
-                  "path": ["api", "v1", "notifications"],
-                  "query": [{ "key": "pageSize", "value": "20" }]
+                  "host": [
+                    "{{bff_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "notifications"
+                  ],
+                  "query": [
+                    {
+                      "key": "pageSize",
+                      "value": "20"
+                    }
+                  ]
                 }
-              }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             },
             {
               "name": "Get Unread Count",
               "request": {
                 "method": "GET",
-                "url": { "raw": "{{bff_url}}/api/v1/notifications/unread-count", "host": ["{{bff_url}}"], "path": ["api", "v1", "notifications", "unread-count"] }
-              }
+                "url": {
+                  "raw": "{{bff_url}}/api/v1/notifications/unread-count",
+                  "host": [
+                    "{{bff_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "notifications",
+                    "unread-count"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             },
             {
               "name": "Get Preferences",
               "request": {
                 "method": "GET",
-                "url": { "raw": "{{bff_url}}/api/v1/notifications/preferences", "host": ["{{bff_url}}"], "path": ["api", "v1", "notifications", "preferences"] }
-              }
+                "url": {
+                  "raw": "{{bff_url}}/api/v1/notifications/preferences",
+                  "host": [
+                    "{{bff_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "notifications",
+                    "preferences"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             }
           ]
         },
@@ -437,8 +968,31 @@
               "name": "List Vouchers",
               "request": {
                 "method": "GET",
-                "url": { "raw": "{{bff_url}}/api/v1/vouchers", "host": ["{{bff_url}}"], "path": ["api", "v1", "vouchers"] }
-              }
+                "url": {
+                  "raw": "{{bff_url}}/api/v1/vouchers",
+                  "host": [
+                    "{{bff_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "vouchers"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             },
             {
               "name": "List Promotions",
@@ -446,11 +1000,35 @@
                 "method": "GET",
                 "url": {
                   "raw": "{{bff_url}}/api/v1/promotions?pageSize=20",
-                  "host": ["{{bff_url}}"],
-                  "path": ["api", "v1", "promotions"],
-                  "query": [{ "key": "pageSize", "value": "20" }]
+                  "host": [
+                    "{{bff_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "promotions"
+                  ],
+                  "query": [
+                    {
+                      "key": "pageSize",
+                      "value": "20"
+                    }
+                  ]
                 }
-              }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             }
           ]
         },
@@ -460,10 +1038,36 @@
             {
               "name": "Get FAQ",
               "request": {
-                "auth": { "type": "noauth" },
+                "auth": {
+                  "type": "noauth"
+                },
                 "method": "GET",
-                "url": { "raw": "{{bff_url}}/api/v1/support/faq", "host": ["{{bff_url}}"], "path": ["api", "v1", "support", "faq"] }
-              }
+                "url": {
+                  "raw": "{{bff_url}}/api/v1/support/faq",
+                  "host": [
+                    "{{bff_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "support",
+                    "faq"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             },
             {
               "name": "List My Feedback",
@@ -471,11 +1075,81 @@
                 "method": "GET",
                 "url": {
                   "raw": "{{bff_url}}/api/v1/feedback?pageSize=20",
-                  "host": ["{{bff_url}}"],
-                  "path": ["api", "v1", "feedback"],
-                  "query": [{ "key": "pageSize", "value": "20" }]
+                  "host": [
+                    "{{bff_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "feedback"
+                  ],
+                  "query": [
+                    {
+                      "key": "pageSize",
+                      "value": "20"
+                    }
+                  ]
                 }
-              }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Cleanup",
+          "item": [
+            {
+              "name": "Logout",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refreshToken\": \"{{mobile_refresh_token}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{bff_url}}/api/v1/auth/logout",
+                  "host": [
+                    "{{bff_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "logout"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             }
           ]
         }
@@ -507,21 +1181,55 @@
                 }
               ],
               "request": {
-                "auth": { "type": "noauth" },
+                "auth": {
+                  "type": "noauth"
+                },
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/x-www-form-urlencoded"
+                  }
+                ],
                 "body": {
                   "mode": "urlencoded",
                   "urlencoded": [
-                    { "key": "grant_type", "value": "password" },
-                    { "key": "username", "value": "{{admin_username}}" },
-                    { "key": "password", "value": "{{admin_password}}" },
-                    { "key": "client_id", "value": "{{oidc_client_id}}" },
-                    { "key": "client_secret", "value": "{{oidc_client_secret}}" },
-                    { "key": "scope", "value": "KLC" }
+                    {
+                      "key": "grant_type",
+                      "value": "password"
+                    },
+                    {
+                      "key": "username",
+                      "value": "{{admin_username}}"
+                    },
+                    {
+                      "key": "password",
+                      "value": "{{admin_password}}"
+                    },
+                    {
+                      "key": "client_id",
+                      "value": "{{oidc_client_id}}"
+                    },
+                    {
+                      "key": "client_secret",
+                      "value": "{{oidc_client_secret}}"
+                    },
+                    {
+                      "key": "scope",
+                      "value": "KLC"
+                    }
                   ]
                 },
-                "url": { "raw": "{{admin_api_url}}/connect/token", "host": ["{{admin_api_url}}"], "path": ["connect", "token"] }
+                "url": {
+                  "raw": "{{admin_api_url}}/connect/token",
+                  "host": [
+                    "{{admin_api_url}}"
+                  ],
+                  "path": [
+                    "connect",
+                    "token"
+                  ]
+                }
               }
             }
           ]
@@ -549,23 +1257,74 @@
                 }
               ],
               "request": {
-                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}" }] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{admin_token}}"
+                    }
+                  ]
+                },
                 "method": "GET",
                 "url": {
                   "raw": "{{admin_api_url}}/api/v1/stations?maxResultCount=20",
-                  "host": ["{{admin_api_url}}"],
-                  "path": ["api", "v1", "stations"],
-                  "query": [{ "key": "maxResultCount", "value": "20" }]
+                  "host": [
+                    "{{admin_api_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "stations"
+                  ],
+                  "query": [
+                    {
+                      "key": "maxResultCount",
+                      "value": "20"
+                    }
+                  ]
                 }
               }
             },
             {
               "name": "Get Station Detail",
               "request": {
-                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}" }] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{admin_token}}"
+                    }
+                  ]
+                },
                 "method": "GET",
-                "url": { "raw": "{{admin_api_url}}/api/v1/stations/{{station_id}}", "host": ["{{admin_api_url}}"], "path": ["api", "v1", "stations", "{{station_id}}"] }
-              }
+                "url": {
+                  "raw": "{{admin_api_url}}/api/v1/stations/{{station_id}}",
+                  "host": [
+                    "{{admin_api_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "stations",
+                    "{{station_id}}"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             }
           ]
         },
@@ -575,15 +1334,48 @@
             {
               "name": "List All Sessions",
               "request": {
-                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}" }] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{admin_token}}"
+                    }
+                  ]
+                },
                 "method": "GET",
                 "url": {
                   "raw": "{{admin_api_url}}/api/v1/admin/sessions?maxResultCount=20",
-                  "host": ["{{admin_api_url}}"],
-                  "path": ["api", "v1", "admin", "sessions"],
-                  "query": [{ "key": "maxResultCount", "value": "20" }]
+                  "host": [
+                    "{{admin_api_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "sessions"
+                  ],
+                  "query": [
+                    {
+                      "key": "maxResultCount",
+                      "value": "20"
+                    }
+                  ]
                 }
-              }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             }
           ]
         },
@@ -593,15 +1385,48 @@
             {
               "name": "List Wallet Transactions",
               "request": {
-                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}" }] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{admin_token}}"
+                    }
+                  ]
+                },
                 "method": "GET",
                 "url": {
                   "raw": "{{admin_api_url}}/api/v1/admin/wallet-transactions?maxResultCount=20",
-                  "host": ["{{admin_api_url}}"],
-                  "path": ["api", "v1", "admin", "wallet-transactions"],
-                  "query": [{ "key": "maxResultCount", "value": "20" }]
+                  "host": [
+                    "{{admin_api_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "wallet-transactions"
+                  ],
+                  "query": [
+                    {
+                      "key": "maxResultCount",
+                      "value": "20"
+                    }
+                  ]
                 }
-              }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             }
           ]
         },
@@ -611,26 +1436,122 @@
             {
               "name": "Get Dashboard",
               "request": {
-                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}" }] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{admin_token}}"
+                    }
+                  ]
+                },
                 "method": "GET",
-                "url": { "raw": "{{admin_api_url}}/api/v1/monitoring/dashboard", "host": ["{{admin_api_url}}"], "path": ["api", "v1", "monitoring", "dashboard"] }
-              }
+                "url": {
+                  "raw": "{{admin_api_url}}/api/v1/monitoring/dashboard",
+                  "host": [
+                    "{{admin_api_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "monitoring",
+                    "dashboard"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             },
             {
               "name": "Get Analytics",
               "request": {
-                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}" }] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{admin_token}}"
+                    }
+                  ]
+                },
                 "method": "GET",
-                "url": { "raw": "{{admin_api_url}}/api/v1/monitoring/analytics", "host": ["{{admin_api_url}}"], "path": ["api", "v1", "monitoring", "analytics"] }
-              }
+                "url": {
+                  "raw": "{{admin_api_url}}/api/v1/monitoring/analytics",
+                  "host": [
+                    "{{admin_api_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "monitoring",
+                    "analytics"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             },
             {
               "name": "OCPP Connections",
               "request": {
-                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}" }] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{admin_token}}"
+                    }
+                  ]
+                },
                 "method": "GET",
-                "url": { "raw": "{{admin_api_url}}/api/v1/ocpp/connections", "host": ["{{admin_api_url}}"], "path": ["api", "v1", "ocpp", "connections"] }
-              }
+                "url": {
+                  "raw": "{{admin_api_url}}/api/v1/ocpp/connections",
+                  "host": [
+                    "{{admin_api_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "ocpp",
+                    "connections"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             }
           ]
         },
@@ -640,23 +1561,89 @@
             {
               "name": "List Mobile Users",
               "request": {
-                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}" }] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{admin_token}}"
+                    }
+                  ]
+                },
                 "method": "GET",
                 "url": {
                   "raw": "{{admin_api_url}}/api/v1/admin/mobile-users?maxResultCount=20",
-                  "host": ["{{admin_api_url}}"],
-                  "path": ["api", "v1", "admin", "mobile-users"],
-                  "query": [{ "key": "maxResultCount", "value": "20" }]
+                  "host": [
+                    "{{admin_api_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "mobile-users"
+                  ],
+                  "query": [
+                    {
+                      "key": "maxResultCount",
+                      "value": "20"
+                    }
+                  ]
                 }
-              }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             },
             {
               "name": "User Statistics",
               "request": {
-                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}" }] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{admin_token}}"
+                    }
+                  ]
+                },
                 "method": "GET",
-                "url": { "raw": "{{admin_api_url}}/api/v1/admin/mobile-users/statistics", "host": ["{{admin_api_url}}"], "path": ["api", "v1", "admin", "mobile-users", "statistics"] }
-              }
+                "url": {
+                  "raw": "{{admin_api_url}}/api/v1/admin/mobile-users/statistics",
+                  "host": [
+                    "{{admin_api_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "mobile-users",
+                    "statistics"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             }
           ]
         },
@@ -666,18 +1653,81 @@
             {
               "name": "My Permissions",
               "request": {
-                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}" }] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{admin_token}}"
+                    }
+                  ]
+                },
                 "method": "GET",
-                "url": { "raw": "{{admin_api_url}}/api/v1/my-permissions", "host": ["{{admin_api_url}}"], "path": ["api", "v1", "my-permissions"] }
-              }
+                "url": {
+                  "raw": "{{admin_api_url}}/api/v1/my-permissions",
+                  "host": [
+                    "{{admin_api_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "my-permissions"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             },
             {
               "name": "List Roles",
               "request": {
-                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}" }] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{admin_token}}"
+                    }
+                  ]
+                },
                 "method": "GET",
-                "url": { "raw": "{{admin_api_url}}/api/v1/roles/all", "host": ["{{admin_api_url}}"], "path": ["api", "v1", "roles", "all"] }
-              }
+                "url": {
+                  "raw": "{{admin_api_url}}/api/v1/roles/all",
+                  "host": [
+                    "{{admin_api_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "roles",
+                    "all"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             }
           ]
         },
@@ -687,15 +1737,47 @@
             {
               "name": "List Tariffs",
               "request": {
-                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}" }] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{admin_token}}"
+                    }
+                  ]
+                },
                 "method": "GET",
                 "url": {
                   "raw": "{{admin_api_url}}/api/v1/tariffs?maxResultCount=20",
-                  "host": ["{{admin_api_url}}"],
-                  "path": ["api", "v1", "tariffs"],
-                  "query": [{ "key": "maxResultCount", "value": "20" }]
+                  "host": [
+                    "{{admin_api_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "tariffs"
+                  ],
+                  "query": [
+                    {
+                      "key": "maxResultCount",
+                      "value": "20"
+                    }
+                  ]
                 }
-              }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             }
           ]
         },
@@ -705,15 +1787,47 @@
             {
               "name": "List Faults",
               "request": {
-                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}" }] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{admin_token}}"
+                    }
+                  ]
+                },
                 "method": "GET",
                 "url": {
                   "raw": "{{admin_api_url}}/api/v1/faults?maxResultCount=20",
-                  "host": ["{{admin_api_url}}"],
-                  "path": ["api", "v1", "faults"],
-                  "query": [{ "key": "maxResultCount", "value": "20" }]
+                  "host": [
+                    "{{admin_api_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "faults"
+                  ],
+                  "query": [
+                    {
+                      "key": "maxResultCount",
+                      "value": "20"
+                    }
+                  ]
                 }
-              }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             }
           ]
         },
@@ -723,10 +1837,41 @@
             {
               "name": "Get Settings",
               "request": {
-                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}" }] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{admin_token}}"
+                    }
+                  ]
+                },
                 "method": "GET",
-                "url": { "raw": "{{admin_api_url}}/api/v1/settings", "host": ["{{admin_api_url}}"], "path": ["api", "v1", "settings"] }
-              }
+                "url": {
+                  "raw": "{{admin_api_url}}/api/v1/settings",
+                  "host": [
+                    "{{admin_api_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "settings"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time < 3s\", function() {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             }
           ]
         }
@@ -741,15 +1886,29 @@
             {
               "listen": "test",
               "script": {
-                "exec": ["pm.test('BFF is healthy', function() { pm.response.to.have.status(200); });"],
+                "exec": [
+                  "pm.test('BFF is healthy', function() { pm.response.to.have.status(200); });"
+                ],
                 "type": "text/javascript"
               }
             }
           ],
           "request": {
-            "auth": { "type": "noauth" },
+            "auth": {
+              "type": "noauth"
+            },
             "method": "GET",
-            "url": { "raw": "{{bff_url}}/api/v1/config", "host": ["{{bff_url}}"], "path": ["api", "v1", "config"] }
+            "url": {
+              "raw": "{{bff_url}}/api/v1/config",
+              "host": [
+                "{{bff_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "config"
+              ]
+            }
           }
         },
         {
@@ -758,15 +1917,28 @@
             {
               "listen": "test",
               "script": {
-                "exec": ["pm.test('Admin API is healthy', function() { pm.response.to.have.status(200); });"],
+                "exec": [
+                  "pm.test('Admin API is healthy', function() { pm.response.to.have.status(200); });"
+                ],
                 "type": "text/javascript"
               }
             }
           ],
           "request": {
-            "auth": { "type": "noauth" },
+            "auth": {
+              "type": "noauth"
+            },
             "method": "GET",
-            "url": { "raw": "{{admin_api_url}}/.well-known/openid-configuration", "host": ["{{admin_api_url}}"], "path": [".well-known", "openid-configuration"] }
+            "url": {
+              "raw": "{{admin_api_url}}/.well-known/openid-configuration",
+              "host": [
+                "{{admin_api_url}}"
+              ],
+              "path": [
+                ".well-known",
+                "openid-configuration"
+              ]
+            }
           }
         }
       ]

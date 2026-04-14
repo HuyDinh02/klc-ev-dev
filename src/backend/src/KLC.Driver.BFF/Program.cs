@@ -183,25 +183,28 @@ builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-    // Auth endpoints: 10 requests per minute per IP
+    // Auth endpoints: 30 requests per minute per IP (login, register, OTP)
+    // Use X-Forwarded-For on Cloud Run (RemoteIpAddress is the GFE proxy)
     options.AddPolicy("auth", httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
-            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            httpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()?.Split(',')[0].Trim()
+                ?? httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 10,
+                PermitLimit = 30,
                 Window = TimeSpan.FromMinutes(1)
             }));
 
-    // General API: 60 requests per minute per user/IP
+    // General API: 300 requests per minute per user/IP
     options.AddPolicy("api", httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
             httpContext.User.FindFirst("sub")?.Value
+                ?? httpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()?.Split(',')[0].Trim()
                 ?? httpContext.Connection.RemoteIpAddress?.ToString()
                 ?? "unknown",
             _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 60,
+                PermitLimit = 300,
                 Window = TimeSpan.FromMinutes(1)
             }));
 });
