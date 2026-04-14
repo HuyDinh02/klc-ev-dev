@@ -106,10 +106,12 @@ public static class SessionEndpoints
                     stationName = s.StationName,
                     connectorType = s.ConnectorType,
                     status = MapStatus(s.Status),
-                    startTime = s.StartTime,
-                    endTime = s.EndTime,
+                    startTime = s.StartTime?.AddHours(7),
+                    endTime = s.EndTime?.AddHours(7),
                     energyKwh = s.EnergyKwh,
                     durationMinutes = s.DurationMinutes,
+                    durationSeconds = s.StartTime.HasValue && s.EndTime.HasValue
+                        ? (int)(s.EndTime.Value - s.StartTime.Value).TotalSeconds : 0,
                     actualCost = s.TotalCost,
                     estimatedCost = s.TotalCost
                 }),

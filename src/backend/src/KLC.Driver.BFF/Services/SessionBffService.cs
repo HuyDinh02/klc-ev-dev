@@ -175,10 +175,12 @@ public class SessionBffService : ISessionBffService
                     }
                 }
 
-                // Calculate duration
+                // Calculate duration and convert to UTC+7
                 if (session.StartTime.HasValue)
                 {
                     session.DurationMinutes = (int)(DateTime.UtcNow - session.StartTime.Value).TotalMinutes;
+                    session.DurationSeconds = (int)(DateTime.UtcNow - session.StartTime.Value).TotalSeconds;
+                    session.StartTime = session.StartTime.Value.AddHours(7);
                 }
             }
 
@@ -209,8 +211,10 @@ public class SessionBffService : ISessionBffService
             StationAddress = station?.Address ?? "",
             ConnectorNumber = session.ConnectorNumber,
             Status = session.Status,
-            StartTime = session.StartTime,
-            EndTime = session.EndTime,
+            StartTime = session.StartTime?.AddHours(7),
+            EndTime = session.EndTime?.AddHours(7),
+            DurationSeconds = session.StartTime.HasValue && session.EndTime.HasValue
+                ? (int)(session.EndTime.Value - session.StartTime.Value).TotalSeconds : null,
             EnergyKwh = session.TotalEnergyKwh,
             TotalCost = session.TotalCost,
             RatePerKwh = session.RatePerKwh,
@@ -316,7 +320,7 @@ public record ActiveSessionDto
     public string StationAddress { get; set; } = string.Empty;
     public int ConnectorNumber { get; init; }
     public SessionStatus Status { get; init; }
-    public DateTime? StartTime { get; init; }
+    public DateTime? StartTime { get; set; }
     public decimal EnergyKwh { get; init; }
     public decimal CurrentCost { get; init; }
     public decimal RatePerKwh { get; init; }
@@ -334,6 +338,7 @@ public record ActiveSessionDto
     // Calculated fields
     public int? EstimatedMinutesToFull { get; set; }
     public int? DurationMinutes { get; set; }
+    public int? DurationSeconds { get; set; }
 }
 
 public record SessionDetailDto
@@ -346,6 +351,7 @@ public record SessionDetailDto
     public SessionStatus Status { get; init; }
     public DateTime? StartTime { get; init; }
     public DateTime? EndTime { get; init; }
+    public int? DurationSeconds { get; init; }
     public decimal EnergyKwh { get; init; }
     public decimal TotalCost { get; init; }
     public decimal RatePerKwh { get; init; }
