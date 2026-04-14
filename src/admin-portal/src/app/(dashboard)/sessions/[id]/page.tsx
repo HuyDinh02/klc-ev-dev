@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -153,7 +154,18 @@ export default function SessionDetailPage() {
     );
   }
 
-  const duration = computeDurationSeconds(session.startTime, session.endTime);
+  // Live duration timer for InProgress sessions
+  const isActive = session.status === 2 || session.status === 3; // InProgress or Suspended
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (!isActive) return;
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, [isActive]);
+
+  const duration = isActive
+    ? (session.startTime ? Math.floor((now - new Date(session.startTime).getTime()) / 1000) : 0)
+    : computeDurationSeconds(session.startTime, session.endTime);
 
   return (
     <div className="flex flex-col">
