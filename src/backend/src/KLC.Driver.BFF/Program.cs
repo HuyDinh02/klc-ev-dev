@@ -183,7 +183,7 @@ builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-    // Auth endpoints: 30 requests per minute per IP (login, register, OTP)
+    // Auth endpoints: 10 requests per minute per IP (brute force protection)
     // Use X-Forwarded-For on Cloud Run (RemoteIpAddress is the GFE proxy)
     options.AddPolicy("auth", httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
@@ -191,7 +191,7 @@ builder.Services.AddRateLimiter(options =>
                 ?? httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 30,
+                PermitLimit = 10,
                 Window = TimeSpan.FromMinutes(1)
             }));
 
@@ -240,6 +240,17 @@ if (enableApiDocs)
         options.DefaultHttpClient = new(ScalarTarget.JavaScript, ScalarClient.Fetch);
     });
 }
+
+// Security headers
+app.Use(async (context, next) =>
+{
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers["X-Frame-Options"] = "DENY";
+    context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    context.Response.Headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
+    context.Response.Headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
+    await next();
+});
 
 app.UseMiddleware<GlobalExceptionMiddleware>();
 app.UseMiddleware<UnitOfWorkMiddleware>();

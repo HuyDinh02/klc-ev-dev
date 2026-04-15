@@ -546,6 +546,9 @@ public class KLCHttpApiHostModule : AbpModule
         // OCPP WebSocket middleware (before routing)
         app.UseMiddleware<OcppWebSocketMiddleware>();
 
+        // HSTS header (Cloud Run handles HTTPS but HSTS prevents downgrade attacks)
+        app.UseHsts();
+
         app.UseRouting();
         app.UseCors();
         app.UseRateLimiter();
