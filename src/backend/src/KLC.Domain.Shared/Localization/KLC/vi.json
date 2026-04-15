@@ -5,24 +5,19 @@
     "Menu:Home": "Trang chủ",
     "Welcome": "Chào mừng bạn",
     "LongWelcomeMessage": "Chào mừng bạn đến ứng dụng. Đây là một dự án khởi nghiệp dựa trên khung ABP. Để biết thêm thông tin, hãy truy cập abp.io.",
-
     "KLC:Station:DuplicateCode": "Mã trạm sạc '{stationCode}' đã tồn tại.",
     "KLC:Station:NotFound": "Không tìm thấy trạm sạc.",
     "KLC:Station:InvalidLatitude": "Vĩ độ phải nằm trong khoảng -90 đến 90.",
     "KLC:Station:InvalidLongitude": "Kinh độ phải nằm trong khoảng -180 đến 180.",
     "KLC:Station:CannotEnableDecommissioned": "Không thể bật lại trạm sạc đã ngừng hoạt động vĩnh viễn.",
-
     "KLC:Connector:StationNotFound": "Không tìm thấy trạm sạc.",
     "KLC:Connector:DuplicateNumber": "Đầu sạc #{connectorNumber} đã tồn tại trên trạm này.",
     "KLC:Connector:MaxPowerInvalid": "Công suất tối đa phải lớn hơn 0.",
-
     "KLC:Fault:InvalidStatusTransition": "Không thể chuyển trạng thái lỗi từ '{currentStatus}' sang '{newStatus}'.",
     "KLC:Fault:InvalidPriority": "Mức ưu tiên phải nằm trong khoảng 1 đến 4.",
-
     "KLC:Tariff:InvalidBaseRate": "Giá cơ bản không được âm.",
     "KLC:Tariff:InvalidTaxRate": "Thuế suất phải nằm trong khoảng 0 đến 100.",
     "KLC:Tariff:InvalidEffectivePeriod": "Ngày kết thúc hiệu lực phải sau ngày bắt đầu.",
-
     "KLC:Payment:SessionNotOwned": "Bạn không có quyền truy cập phiên sạc này.",
     "KLC:Payment:SessionNotCompleted": "Phiên sạc chưa hoàn thành.",
     "KLC:Payment:NotFound": "Không tìm thấy giao dịch thanh toán.",
@@ -31,10 +26,8 @@
     "KLC:Payment:MethodNotOwned": "Bạn không có quyền truy cập phương thức thanh toán này.",
     "KLC:Payment:InvalidRefund": "Chỉ có thể hoàn tiền cho giao dịch đã hoàn thành.",
     "KLC:Payment:CannotCancel": "Không thể hủy giao dịch đã hoàn thành.",
-
     "KLC:Vehicle:NotOwned": "Bạn không có quyền truy cập xe này.",
     "KLC:Vehicle:HasActiveSession": "Không thể xóa xe đang có phiên sạc hoạt động.",
-
     "KLC:Session:ConnectorNotFound": "Không tìm thấy đầu sạc.",
     "KLC:Session:ConnectorNotAvailable": "Đầu sạc #{connectorNumber} không khả dụng (trạng thái: {status}).",
     "KLC:Session:AlreadyActive": "Bạn đã có một phiên sạc đang hoạt động.",
@@ -44,37 +37,29 @@
     "KLC:Session:InvalidStateTransition": "Không thể chuyển phiên sạc từ trạng thái '{currentStatus}' sang '{expectedStatus}'.",
     "KLC:Session:StartCommandFailed": "Không thể gửi lệnh bắt đầu sạc đến trạm sạc.",
     "KLC:Session:StopCommandFailed": "Không thể gửi lệnh dừng sạc đến trạm sạc.",
-
     "KLC:Profile:EmailAlreadyUsed": "Địa chỉ email này đã được sử dụng.",
     "KLC:Profile:PhoneAlreadyUsed": "Số điện thoại này đã được sử dụng.",
     "KLC:Profile:PasswordChangeFailed": "Đổi mật khẩu thất bại: {errors}.",
     "KLC:Profile:HasActiveSession": "Không thể vô hiệu hóa tài khoản khi đang có phiên sạc hoạt động.",
-
     "KLC:StationGroup:StationAlreadyAssigned": "Trạm sạc '{stationName}' đã được gán cho nhóm khác.",
     "KLC:StationGroup:StationNotInGroup": "Trạm sạc không thuộc nhóm này.",
-
     "KLC:UserNameAlreadyExists": "Tên đăng nhập '{UserName}' đã tồn tại.",
     "KLC:EmailAlreadyExists": "Email '{Email}' đã tồn tại.",
     "KLC:UserCreationFailed": "Tạo người dùng thất bại: {Errors}.",
     "KLC:CannotDeleteCurrentUser": "Bạn không thể xóa tài khoản của chính mình.",
     "KLC:CannotLockCurrentUser": "Bạn không thể khóa tài khoản của chính mình.",
     "KLC:PasswordResetFailed": "Đặt lại mật khẩu thất bại: {Errors}.",
-
     "KLC:RoleNameAlreadyExists": "Tên vai trò '{Name}' đã tồn tại.",
     "KLC:CannotUpdateStaticRole": "Không thể cập nhật vai trò tĩnh.",
     "KLC:CannotDeleteStaticRole": "Không thể xóa vai trò tĩnh.",
     "KLC:CannotDeleteRoleWithUsers": "Không thể xóa vai trò đang có {UserCount} người dùng.",
-
     "KLC:InvoiceNotFound": "Không tìm thấy hóa đơn.",
     "KLC:EInvoiceAlreadyExists": "Hóa đơn điện tử đã tồn tại cho hóa đơn này.",
     "KLC:EInvoiceCannotRetry": "Không thể thử lại sau {RetryCount} lần thất bại.",
     "KLC:EInvoiceAlreadyCancelled": "Hóa đơn điện tử này đã bị hủy.",
-
     "KLC:Notification:NotOwned": "Bạn không có quyền truy cập thông báo này.",
-
     "KLC:Alert:InvalidAcknowledge": "Chỉ có thể xác nhận cảnh báo mới.",
     "KLC:Alert:InvalidPriority": "Mức ưu tiên phải nằm trong khoảng 1 đến 4.",
-
     "KLC:Wallet:InsufficientBalance": "Số dư ví không đủ.",
     "KLC:Wallet:TransactionAlreadyCompleted": "Giao dịch đã hoàn thành.",
     "KLC:Wallet:TopUpFailed": "Nạp ví thất bại.",
@@ -82,7 +67,6 @@
     "KLC:Wallet:MinTopUpAmount": "Số tiền nạp tối thiểu là {0}đ.",
     "KLC:Wallet:MaxTopUpAmount": "Số tiền nạp tối đa là {0}đ.",
     "KLC:Wallet:InsufficientBalanceToCharge": "Số dư ví không đủ. Tối thiểu {0}đ để bắt đầu sạc.",
-
     "KLC:Auth:InvalidOtp": "Mã OTP không hợp lệ.",
     "KLC:Auth:OtpExpired": "Mã OTP đã hết hạn.",
     "KLC:Auth:PhoneAlreadyRegistered": "Số điện thoại này đã được đăng ký.",
@@ -90,122 +74,94 @@
     "KLC:Auth:AccountSuspended": "Tài khoản của bạn đã bị tạm ngưng.",
     "KLC:Auth:InvalidRefreshToken": "Token làm mới không hợp lệ hoặc đã hết hạn.",
     "KLC:Auth:SocialLoginFailed": "Đăng nhập mạng xã hội thất bại.",
-
     "KLC:Voucher:NotFound": "Không tìm thấy voucher.",
     "KLC:Voucher:NotValid": "Voucher không hợp lệ.",
     "KLC:Voucher:AlreadyUsed": "Voucher đã được sử dụng.",
     "KLC:Voucher:Expired": "Voucher đã hết hạn.",
     "KLC:Voucher:DuplicateCode": "Mã voucher đã tồn tại.",
-
     "KLC:Feedback:NotFound": "Không tìm thấy phản hồi.",
     "KLC:Feedback:NotOwned": "Bạn không có quyền truy cập phản hồi này.",
     "KLC:Feedback:AlreadyResolved": "Phản hồi đã được xử lý.",
-
     "KLC:Favorite:AlreadyFavorited": "Trạm sạc đã có trong danh sách yêu thích.",
     "KLC:Favorite:NotFavorited": "Trạm sạc không có trong danh sách yêu thích.",
-
     "KLC:Station:HasActiveSessions": "Không thể ngừng hoạt động trạm sạc đang có phiên sạc.",
-
     "KLC:Wallet:MonthlyTopUpLimitExceeded": "Vượt quá hạn mức nạp ví hàng tháng theo quy định SBV.",
-
     "KLC:Maintenance:NotFound": "Không tìm thấy tác vụ bảo trì.",
     "KLC:Maintenance:InvalidStateTransition": "Chuyển trạng thái tác vụ bảo trì không hợp lệ.",
-
     "KLC:EntityNotFound": "Không tìm thấy tài nguyên yêu cầu.",
-
-    "Permission:Stations": "Quản lý trạm sạc",
+    "Permission:Stations": "Trạm sạc",
     "Permission:Stations.Create": "Tạo trạm sạc",
     "Permission:Stations.Update": "Cập nhật trạm sạc",
     "Permission:Stations.Delete": "Xóa trạm sạc",
     "Permission:Stations.Decommission": "Vô hiệu hóa trạm sạc",
-
-    "Permission:Connectors": "Quản lý đầu sạc",
+    "Permission:Connectors": "Đầu sạc",
     "Permission:Connectors.Create": "Tạo đầu sạc",
     "Permission:Connectors.Update": "Cập nhật đầu sạc",
     "Permission:Connectors.Delete": "Xóa đầu sạc",
     "Permission:Connectors.Enable": "Bật đầu sạc",
     "Permission:Connectors.Disable": "Tắt đầu sạc",
-
-    "Permission:Tariffs": "Quản lý biểu giá",
+    "Permission:Tariffs": "Biểu phí",
     "Permission:Tariffs.Create": "Tạo biểu giá",
     "Permission:Tariffs.Update": "Cập nhật biểu giá",
     "Permission:Tariffs.Activate": "Kích hoạt biểu giá",
     "Permission:Tariffs.Deactivate": "Tắt biểu giá",
-
-    "Permission:Sessions": "Quản lý phiên sạc",
+    "Permission:Sessions": "Phiên sạc",
     "Permission:Sessions.ViewAll": "Xem tất cả phiên sạc",
-
-    "Permission:Faults": "Quản lý sự cố",
-    "Permission:Faults.Update": "Cập nhật sự cố",
-
-    "Permission:Alerts": "Quản lý cảnh báo",
+    "Permission:Faults": "Lỗi & Cảnh báo",
+    "Permission:Faults.Update": "Cập nhật trạng thái sự cố",
+    "Permission:Alerts": "Cảnh báo",
     "Permission:Alerts.Acknowledge": "Xác nhận cảnh báo",
-
-    "Permission:Monitoring": "Giám sát thời gian thực",
+    "Permission:Monitoring": "Giám sát",
     "Permission:Monitoring.Dashboard": "Xem bảng điều khiển giám sát",
     "Permission:Monitoring.StatusHistory": "Xem lịch sử trạng thái",
     "Permission:Monitoring.EnergySummary": "Xem tổng kết năng lượng",
-
-    "Permission:StationGroups": "Quản lý nhóm trạm sạc",
+    "Permission:StationGroups": "Nhóm trạm sạc",
     "Permission:StationGroups.Create": "Tạo nhóm trạm sạc",
     "Permission:StationGroups.Update": "Cập nhật nhóm trạm sạc",
     "Permission:StationGroups.Delete": "Xóa nhóm trạm sạc",
     "Permission:StationGroups.Assign": "Gán trạm vào nhóm",
-
-    "Permission:Payments": "Quản lý thanh toán",
+    "Permission:Payments": "Thanh toán",
     "Permission:Payments.ViewAll": "Xem tất cả thanh toán",
     "Permission:Payments.Refund": "Xử lý hoàn tiền",
-
-    "Permission:AuditLogs": "Quản lý nhật ký",
+    "Permission:AuditLogs": "Nhật ký",
     "Permission:AuditLogs.Export": "Xuất nhật ký",
-
-    "Permission:EInvoices": "Quản lý hóa đơn điện tử",
+    "Permission:EInvoices": "Hóa đơn điện tử",
     "Permission:EInvoices.Generate": "Tạo hóa đơn điện tử",
     "Permission:EInvoices.Retry": "Thử lại hóa đơn điện tử",
     "Permission:EInvoices.Cancel": "Hủy hóa đơn điện tử",
-
-    "Permission:UserManagement": "Quản lý người dùng",
+    "Permission:UserManagement": "Người dùng",
     "Permission:UserManagement.Create": "Tạo người dùng",
     "Permission:UserManagement.Update": "Cập nhật người dùng",
     "Permission:UserManagement.Delete": "Xóa người dùng",
     "Permission:UserManagement.ManageRoles": "Gán vai trò người dùng",
     "Permission:UserManagement.ManagePermissions": "Quản lý quyền người dùng",
-
-    "Permission:RoleManagement": "Quản lý vai trò",
+    "Permission:RoleManagement": "Vai trò",
     "Permission:RoleManagement.Create": "Tạo vai trò",
     "Permission:RoleManagement.Update": "Cập nhật vai trò",
     "Permission:RoleManagement.Delete": "Xóa vai trò",
     "Permission:RoleManagement.ManagePermissions": "Quản lý quyền vai trò",
-
-    "Permission:MobileUsers": "Quản lý người dùng app",
+    "Permission:MobileUsers": "Người dùng app",
     "Permission:MobileUsers.ViewAll": "Xem tất cả người dùng app",
-    "Permission:MobileUsers.Suspend": "Tạm ngưng/Mở khóa người dùng",
+    "Permission:MobileUsers.Suspend": "Tạm ngưng người dùng",
     "Permission:MobileUsers.WalletAdjust": "Điều chỉnh số dư ví",
-
-    "Permission:Vouchers": "Quản lý mã giảm giá",
+    "Permission:Vouchers": "Mã giảm giá",
     "Permission:Vouchers.Create": "Tạo mã giảm giá",
     "Permission:Vouchers.Update": "Cập nhật mã giảm giá",
     "Permission:Vouchers.Delete": "Xóa mã giảm giá",
-
-    "Permission:Promotions": "Quản lý khuyến mãi",
+    "Permission:Promotions": "Khuyến mãi",
     "Permission:Promotions.Create": "Tạo khuyến mãi",
     "Permission:Promotions.Update": "Cập nhật khuyến mãi",
     "Permission:Promotions.Delete": "Xóa khuyến mãi",
-
-    "Permission:Feedback": "Quản lý phản hồi",
+    "Permission:Feedback": "Phản hồi",
     "Permission:Feedback.Respond": "Phản hồi ý kiến",
-
-    "Permission:Notifications": "Quản lý thông báo",
+    "Permission:Notifications": "Thông báo",
     "Permission:Notifications.Broadcast": "Gửi thông báo hàng loạt",
-
-    "Permission:Maintenance": "Quản lý bảo trì",
+    "Permission:Maintenance": "Bảo trì",
     "Permission:Maintenance.Create": "Tạo tác vụ bảo trì",
     "Permission:Maintenance.Update": "Cập nhật tác vụ bảo trì",
     "Permission:Maintenance.Delete": "Xóa tác vụ bảo trì",
-
-    "Permission:Settings": "Cài đặt hệ thống",
-    "Permission:Settings.Update": "Cập nhật cài đặt hệ thống",
-
+    "Permission:Settings": "Cài đặt",
+    "Permission:Settings.Update": "Cập nhật cài đặt",
     "KLC:PowerSharing:NotFound": "Không tìm thấy nhóm chia sẻ công suất.",
     "KLC:PowerSharing:InvalidCapacity": "Công suất tối đa phải lớn hơn 0.",
     "KLC:PowerSharing:InvalidMinPower": "Công suất tối thiểu mỗi đầu sạc không được âm.",
@@ -213,13 +169,11 @@
     "KLC:PowerSharing:ConnectorNotInGroup": "Đầu sạc không phải thành viên của nhóm chia sẻ công suất này.",
     "KLC:PowerSharing:MaxMembersExceeded": "Chế độ LINK hỗ trợ tối đa 10 đầu sạc mỗi nhóm.",
     "KLC:PowerSharing:GroupNotActive": "Nhóm chia sẻ công suất không hoạt động.",
-
-    "Permission:PowerSharing": "Quản lý chia sẻ công suất",
+    "Permission:PowerSharing": "Chia sẻ công suất",
     "Permission:PowerSharing.Create": "Tạo nhóm chia sẻ công suất",
     "Permission:PowerSharing.Update": "Cập nhật nhóm chia sẻ công suất",
     "Permission:PowerSharing.Delete": "Xóa nhóm chia sẻ công suất",
     "Permission:PowerSharing.ManageMembers": "Quản lý thành viên nhóm chia sẻ công suất",
-
     "KLC:Operator:NotFound": "Không tìm thấy nhà điều hành.",
     "KLC:Operator:DuplicateName": "Tên nhà điều hành '{name}' đã tồn tại.",
     "KLC:Operator:InvalidApiKey": "API key không hợp lệ.",
@@ -228,14 +182,12 @@
     "KLC:Operator:StationNotAssigned": "Trạm sạc chưa được gán cho nhà điều hành này.",
     "KLC:Operator:RateLimitExceeded": "Vượt quá giới hạn tốc độ API.",
     "KLC:Operator:NoStationAccess": "Nhà điều hành không có quyền truy cập trạm sạc này.",
-
-    "Permission:Operators": "Quản lý nhà vận hành",
+    "Permission:Operators": "Nhà vận hành",
     "Permission:Operators.Create": "Tạo nhà vận hành",
     "Permission:Operators.Update": "Cập nhật nhà vận hành",
     "Permission:Operators.Delete": "Xóa nhà vận hành",
     "Permission:Operators.ManageStations": "Quản lý trạm sạc nhà vận hành",
     "Permission:Operators.ManageWebhooks": "Quản lý webhook nhà vận hành",
-
     "KLC:Fleet:NotFound": "Không tìm thấy đội xe.",
     "KLC:Fleet:InvalidBudget": "Cấu hình ngân sách không hợp lệ.",
     "KLC:Fleet:VehicleAlreadyInFleet": "Xe đã được gán cho đội xe này.",
@@ -245,8 +197,7 @@
     "KLC:Fleet:OutsideSchedule": "Không được phép sạc ngoài khung giờ cho phép.",
     "KLC:Fleet:StationNotAllowed": "Trạm sạc này không nằm trong danh sách trạm được phê duyệt của đội xe.",
     "KLC:Fleet:ChargingDenied": "Sạc bị từ chối theo chính sách đội xe.",
-
-    "Permission:Fleets": "Quản lý đội xe",
+    "Permission:Fleets": "Đội xe",
     "Permission:Fleets.Create": "Tạo đội xe",
     "Permission:Fleets.Update": "Cập nhật đội xe",
     "Permission:Fleets.Delete": "Xóa đội xe",
