@@ -213,8 +213,8 @@ public class SessionBffService : ISessionBffService
             Status = session.Status,
             StartTime = session.StartTime?.AddHours(7),
             EndTime = session.EndTime?.AddHours(7),
-            DurationSeconds = session.StartTime.HasValue && session.EndTime.HasValue
-                ? (int)(session.EndTime.Value - session.StartTime.Value).TotalSeconds : null,
+            DurationSeconds = session.StartTime.HasValue
+                ? (int)((session.EndTime ?? DateTime.UtcNow) - session.StartTime.Value).TotalSeconds : null,
             EnergyKwh = session.TotalEnergyKwh,
             TotalCost = session.TotalCost,
             RatePerKwh = session.RatePerKwh,

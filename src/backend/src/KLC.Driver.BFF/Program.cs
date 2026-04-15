@@ -103,6 +103,7 @@ if (FirebaseAdmin.FirebaseApp.DefaultInstance == null)
 // Typed configuration (Options Pattern)
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection(JwtSettings.Section));
 builder.Services.Configure<VnPaySettings>(builder.Configuration.GetSection(VnPaySettings.Section));
+builder.Services.Configure<ZaloPaySettings>(builder.Configuration.GetSection(ZaloPaySettings.Section));
 builder.Services.Configure<MoMoSettings>(builder.Configuration.GetSection(MoMoSettings.Section));
 builder.Services.Configure<WalletSettings>(builder.Configuration.GetSection(WalletSettings.Section));
 
@@ -111,6 +112,7 @@ builder.Services.AddScoped<IStationBffService, StationBffService>();
 builder.Services.AddScoped<ISessionBffService, SessionBffService>();
 builder.Services.AddScoped<IPaymentBffService, PaymentBffService>();
 builder.Services.AddTransient<KLC.Payments.IPaymentGatewayService, KLC.Payments.VnPayPaymentService>();
+builder.Services.AddTransient<KLC.Payments.IPaymentGatewayService, KLC.Payments.ZaloPayPaymentService>();
 builder.Services.AddScoped<KLC.Payments.IPaymentCallbackValidator, KLC.Payments.PaymentCallbackValidator>();
 builder.Services.AddScoped<IProfileBffService, ProfileBffService>();
 builder.Services.AddScoped<IVehicleBffService, VehicleBffService>();
@@ -183,7 +185,7 @@ builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-    // Auth endpoints: 30 requests per minute per IP (login, register, OTP)
+    // Auth endpoints: 10 requests per minute per IP (brute force protection)
     // Use X-Forwarded-For on Cloud Run (RemoteIpAddress is the GFE proxy)
     options.AddPolicy("auth", httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
@@ -191,7 +193,7 @@ builder.Services.AddRateLimiter(options =>
                 ?? httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 30,
+                PermitLimit = 10,
                 Window = TimeSpan.FromMinutes(1)
             }));
 
@@ -241,6 +243,17 @@ if (enableApiDocs)
     });
 }
 
+// Security headers
+app.Use(async (context, next) =>
+{
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers["X-Frame-Options"] = "DENY";
+    context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    context.Response.Headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
+    context.Response.Headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
+    await next();
+});
+
 app.UseMiddleware<GlobalExceptionMiddleware>();
 app.UseMiddleware<UnitOfWorkMiddleware>();
 app.UseSentryTracing();
@@ -248,6 +261,7 @@ app.UseCors("MobileApp");
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<SuspendedUserMiddleware>();
 
 // Liveness probe — always returns 200 if the process is running (no dependency checks)
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy" }));

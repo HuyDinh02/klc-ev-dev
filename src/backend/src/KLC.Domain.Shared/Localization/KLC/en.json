@@ -5,24 +5,19 @@
     "Menu:Home": "Home",
     "Welcome": "Welcome",
     "LongWelcomeMessage": "Welcome to the application. This is a startup project based on the ABP framework. For more information, visit abp.io.",
-
     "KLC:Station:DuplicateCode": "Station code '{stationCode}' already exists.",
     "KLC:Station:NotFound": "Station not found.",
     "KLC:Station:InvalidLatitude": "Latitude must be between -90 and 90.",
     "KLC:Station:InvalidLongitude": "Longitude must be between -180 and 180.",
     "KLC:Station:CannotEnableDecommissioned": "Decommissioned stations cannot be re-enabled.",
-
     "KLC:Connector:StationNotFound": "Station not found.",
     "KLC:Connector:DuplicateNumber": "Connector #{connectorNumber} already exists on this station.",
     "KLC:Connector:MaxPowerInvalid": "Max power must be greater than 0.",
-
     "KLC:Fault:InvalidStatusTransition": "Cannot transition fault from '{currentStatus}' to '{newStatus}'.",
     "KLC:Fault:InvalidPriority": "Priority must be between 1 and 4.",
-
     "KLC:Tariff:InvalidBaseRate": "Base rate cannot be negative.",
     "KLC:Tariff:InvalidTaxRate": "Tax rate must be between 0 and 100.",
     "KLC:Tariff:InvalidEffectivePeriod": "Effective end date must be after start date.",
-
     "KLC:Payment:SessionNotOwned": "You do not have access to this session.",
     "KLC:Payment:SessionNotCompleted": "Session is not completed.",
     "KLC:Payment:NotFound": "Payment not found.",
@@ -31,10 +26,8 @@
     "KLC:Payment:MethodNotOwned": "You do not have access to this payment method.",
     "KLC:Payment:InvalidRefund": "Only completed payments can be refunded.",
     "KLC:Payment:CannotCancel": "Completed payments cannot be cancelled.",
-
     "KLC:Vehicle:NotOwned": "You do not have access to this vehicle.",
     "KLC:Vehicle:HasActiveSession": "Cannot delete a vehicle with an active charging session.",
-
     "KLC:Session:ConnectorNotFound": "Connector not found.",
     "KLC:Session:ConnectorNotAvailable": "Connector #{connectorNumber} is not available (current status: {status}).",
     "KLC:Session:AlreadyActive": "You already have an active charging session.",
@@ -44,37 +37,29 @@
     "KLC:Session:InvalidStateTransition": "Cannot transition session from '{currentStatus}' to '{expectedStatus}'.",
     "KLC:Session:StartCommandFailed": "Failed to dispatch the remote start command to the charger.",
     "KLC:Session:StopCommandFailed": "Failed to dispatch the remote stop command to the charger.",
-
     "KLC:Profile:EmailAlreadyUsed": "This email address is already in use.",
     "KLC:Profile:PhoneAlreadyUsed": "This phone number is already in use.",
     "KLC:Profile:PasswordChangeFailed": "Password change failed: {errors}.",
     "KLC:Profile:HasActiveSession": "Cannot deactivate account while a charging session is active.",
-
     "KLC:StationGroup:StationAlreadyAssigned": "Station '{stationName}' is already assigned to another group.",
     "KLC:StationGroup:StationNotInGroup": "Station is not in this group.",
-
     "KLC:UserNameAlreadyExists": "Username '{UserName}' already exists.",
     "KLC:EmailAlreadyExists": "Email '{Email}' already exists.",
     "KLC:UserCreationFailed": "User creation failed: {Errors}.",
     "KLC:CannotDeleteCurrentUser": "You cannot delete your own account.",
     "KLC:CannotLockCurrentUser": "You cannot lock your own account.",
     "KLC:PasswordResetFailed": "Password reset failed: {Errors}.",
-
     "KLC:RoleNameAlreadyExists": "Role name '{Name}' already exists.",
     "KLC:CannotUpdateStaticRole": "Static roles cannot be updated.",
     "KLC:CannotDeleteStaticRole": "Static roles cannot be deleted.",
     "KLC:CannotDeleteRoleWithUsers": "Cannot delete role with {UserCount} assigned users.",
-
     "KLC:InvoiceNotFound": "Invoice not found.",
     "KLC:EInvoiceAlreadyExists": "An e-invoice already exists for this invoice.",
     "KLC:EInvoiceCannotRetry": "Cannot retry after {RetryCount} failed attempts.",
     "KLC:EInvoiceAlreadyCancelled": "This e-invoice has already been cancelled.",
-
     "KLC:Notification:NotOwned": "You do not have access to this notification.",
-
     "KLC:Alert:InvalidAcknowledge": "Can only acknowledge new alerts.",
     "KLC:Alert:InvalidPriority": "Priority must be between 1 and 4.",
-
     "KLC:Wallet:InsufficientBalance": "Insufficient wallet balance.",
     "KLC:Wallet:TransactionAlreadyCompleted": "Transaction has already been completed.",
     "KLC:Wallet:TopUpFailed": "Wallet top-up failed.",
@@ -82,7 +67,6 @@
     "KLC:Wallet:MinTopUpAmount": "Minimum top-up amount is {0} VND.",
     "KLC:Wallet:MaxTopUpAmount": "Maximum top-up amount is {0} VND.",
     "KLC:Wallet:InsufficientBalanceToCharge": "Insufficient balance. Minimum {0} VND required to start charging.",
-
     "KLC:Auth:InvalidOtp": "Invalid OTP code.",
     "KLC:Auth:OtpExpired": "OTP code has expired.",
     "KLC:Auth:PhoneAlreadyRegistered": "This phone number is already registered.",
@@ -90,122 +74,94 @@
     "KLC:Auth:AccountSuspended": "Your account has been suspended.",
     "KLC:Auth:InvalidRefreshToken": "Invalid or expired refresh token.",
     "KLC:Auth:SocialLoginFailed": "Social login failed.",
-
     "KLC:Voucher:NotFound": "Voucher not found.",
     "KLC:Voucher:NotValid": "Voucher is not valid.",
     "KLC:Voucher:AlreadyUsed": "Voucher has already been used.",
     "KLC:Voucher:Expired": "Voucher has expired.",
     "KLC:Voucher:DuplicateCode": "Voucher code already exists.",
-
     "KLC:Feedback:NotFound": "Feedback not found.",
     "KLC:Feedback:NotOwned": "You do not have access to this feedback.",
     "KLC:Feedback:AlreadyResolved": "Feedback has already been resolved.",
-
     "KLC:Favorite:AlreadyFavorited": "Station is already in favorites.",
     "KLC:Favorite:NotFavorited": "Station is not in favorites.",
-
     "KLC:Station:HasActiveSessions": "Cannot decommission station with active charging sessions.",
-
     "KLC:Wallet:MonthlyTopUpLimitExceeded": "Monthly top-up limit exceeded per SBV regulations.",
-
     "KLC:Maintenance:NotFound": "Maintenance task not found.",
     "KLC:Maintenance:InvalidStateTransition": "Invalid maintenance task state transition.",
-
     "KLC:EntityNotFound": "The requested resource was not found.",
-
-    "Permission:Stations": "Station Management",
+    "Permission:Stations": "Stations",
     "Permission:Stations.Create": "Create Stations",
     "Permission:Stations.Update": "Update Stations",
     "Permission:Stations.Delete": "Delete Stations",
-    "Permission:Stations.Decommission": "Decommission Stations",
-
-    "Permission:Connectors": "Connector Management",
+    "Permission:Stations.Decommission": "Disable Stations",
+    "Permission:Connectors": "Connectors",
     "Permission:Connectors.Create": "Create Connectors",
     "Permission:Connectors.Update": "Update Connectors",
     "Permission:Connectors.Delete": "Delete Connectors",
     "Permission:Connectors.Enable": "Enable Connectors",
     "Permission:Connectors.Disable": "Disable Connectors",
-
-    "Permission:Tariffs": "Tariff Management",
+    "Permission:Tariffs": "Tariffs",
     "Permission:Tariffs.Create": "Create Tariffs",
     "Permission:Tariffs.Update": "Update Tariffs",
     "Permission:Tariffs.Activate": "Activate Tariffs",
     "Permission:Tariffs.Deactivate": "Deactivate Tariffs",
-
-    "Permission:Sessions": "Session Management",
+    "Permission:Sessions": "Sessions",
     "Permission:Sessions.ViewAll": "View All Sessions",
-
-    "Permission:Faults": "Fault Management",
-    "Permission:Faults.Update": "Update Faults",
-
-    "Permission:Alerts": "Alert Management",
+    "Permission:Faults": "Faults & Alerts",
+    "Permission:Faults.Update": "Update Fault Status",
+    "Permission:Alerts": "Alerts",
     "Permission:Alerts.Acknowledge": "Acknowledge Alerts",
-
-    "Permission:Monitoring": "Real-time Monitoring",
+    "Permission:Monitoring": "Monitoring",
     "Permission:Monitoring.Dashboard": "View Monitoring Dashboard",
     "Permission:Monitoring.StatusHistory": "View Status History",
     "Permission:Monitoring.EnergySummary": "View Energy Summary",
-
-    "Permission:StationGroups": "Station Group Management",
+    "Permission:StationGroups": "Station Groups",
     "Permission:StationGroups.Create": "Create Station Groups",
     "Permission:StationGroups.Update": "Update Station Groups",
     "Permission:StationGroups.Delete": "Delete Station Groups",
     "Permission:StationGroups.Assign": "Assign Stations to Groups",
-
-    "Permission:Payments": "Payment Management",
+    "Permission:Payments": "Payments",
     "Permission:Payments.ViewAll": "View All Payments",
     "Permission:Payments.Refund": "Process Refunds",
-
-    "Permission:AuditLogs": "Audit Log Management",
+    "Permission:AuditLogs": "Audit Logs",
     "Permission:AuditLogs.Export": "Export Audit Logs",
-
-    "Permission:EInvoices": "E-Invoice Management",
+    "Permission:EInvoices": "E-Invoices",
     "Permission:EInvoices.Generate": "Generate E-Invoices",
     "Permission:EInvoices.Retry": "Retry E-Invoices",
     "Permission:EInvoices.Cancel": "Cancel E-Invoices",
-
-    "Permission:UserManagement": "User Management",
+    "Permission:UserManagement": "Users",
     "Permission:UserManagement.Create": "Create Users",
     "Permission:UserManagement.Update": "Update Users",
     "Permission:UserManagement.Delete": "Delete Users",
     "Permission:UserManagement.ManageRoles": "Assign User Roles",
     "Permission:UserManagement.ManagePermissions": "Manage User Permissions",
-
-    "Permission:RoleManagement": "Role Management",
+    "Permission:RoleManagement": "Roles",
     "Permission:RoleManagement.Create": "Create Roles",
     "Permission:RoleManagement.Update": "Update Roles",
     "Permission:RoleManagement.Delete": "Delete Roles",
     "Permission:RoleManagement.ManagePermissions": "Manage Role Permissions",
-
-    "Permission:MobileUsers": "Mobile User Management",
+    "Permission:MobileUsers": "Mobile Users",
     "Permission:MobileUsers.ViewAll": "View All Mobile Users",
-    "Permission:MobileUsers.Suspend": "Suspend/Unsuspend Mobile Users",
+    "Permission:MobileUsers.Suspend": "Suspend Mobile Users",
     "Permission:MobileUsers.WalletAdjust": "Adjust Wallet Balance",
-
-    "Permission:Vouchers": "Voucher Management",
+    "Permission:Vouchers": "Vouchers",
     "Permission:Vouchers.Create": "Create Vouchers",
     "Permission:Vouchers.Update": "Update Vouchers",
     "Permission:Vouchers.Delete": "Delete Vouchers",
-
-    "Permission:Promotions": "Promotion Management",
+    "Permission:Promotions": "Promotions",
     "Permission:Promotions.Create": "Create Promotions",
     "Permission:Promotions.Update": "Update Promotions",
     "Permission:Promotions.Delete": "Delete Promotions",
-
-    "Permission:Feedback": "Feedback Management",
+    "Permission:Feedback": "Feedback",
     "Permission:Feedback.Respond": "Respond to Feedback",
-
-    "Permission:Notifications": "Notification Management",
+    "Permission:Notifications": "Notifications",
     "Permission:Notifications.Broadcast": "Broadcast Notifications",
-
-    "Permission:Maintenance": "Maintenance Management",
+    "Permission:Maintenance": "Maintenance",
     "Permission:Maintenance.Create": "Create Maintenance Tasks",
     "Permission:Maintenance.Update": "Update Maintenance Tasks",
     "Permission:Maintenance.Delete": "Delete Maintenance Tasks",
-
-    "Permission:Settings": "System Settings",
-    "Permission:Settings.Update": "Update System Settings",
-
+    "Permission:Settings": "Settings",
+    "Permission:Settings.Update": "Update Settings",
     "KLC:PowerSharing:NotFound": "Power sharing group not found.",
     "KLC:PowerSharing:InvalidCapacity": "Max capacity must be greater than 0.",
     "KLC:PowerSharing:InvalidMinPower": "Minimum power per connector cannot be negative.",
@@ -213,13 +169,11 @@
     "KLC:PowerSharing:ConnectorNotInGroup": "Connector is not a member of this power sharing group.",
     "KLC:PowerSharing:MaxMembersExceeded": "LINK mode supports a maximum of 10 connectors per group.",
     "KLC:PowerSharing:GroupNotActive": "Power sharing group is not active.",
-
-    "Permission:PowerSharing": "Power Sharing Management",
+    "Permission:PowerSharing": "Power Sharing",
     "Permission:PowerSharing.Create": "Create Power Sharing Groups",
     "Permission:PowerSharing.Update": "Update Power Sharing Groups",
     "Permission:PowerSharing.Delete": "Delete Power Sharing Groups",
     "Permission:PowerSharing.ManageMembers": "Manage Power Sharing Members",
-
     "KLC:Operator:NotFound": "Operator not found.",
     "KLC:Operator:DuplicateName": "Operator name '{name}' already exists.",
     "KLC:Operator:InvalidApiKey": "Invalid API key.",
@@ -228,14 +182,12 @@
     "KLC:Operator:StationNotAssigned": "Station is not assigned to this operator.",
     "KLC:Operator:RateLimitExceeded": "API rate limit exceeded.",
     "KLC:Operator:NoStationAccess": "Operator does not have access to this station.",
-
-    "Permission:Operators": "Operator Management",
+    "Permission:Operators": "Operators",
     "Permission:Operators.Create": "Create Operators",
     "Permission:Operators.Update": "Update Operators",
     "Permission:Operators.Delete": "Delete Operators",
     "Permission:Operators.ManageStations": "Manage Operator Stations",
     "Permission:Operators.ManageWebhooks": "Manage Operator Webhooks",
-
     "KLC:Fleet:NotFound": "Fleet not found.",
     "KLC:Fleet:InvalidBudget": "Invalid budget configuration.",
     "KLC:Fleet:VehicleAlreadyInFleet": "Vehicle is already assigned to this fleet.",
@@ -245,8 +197,7 @@
     "KLC:Fleet:OutsideSchedule": "Charging is not allowed outside the scheduled time windows.",
     "KLC:Fleet:StationNotAllowed": "This station is not in the fleet's approved station list.",
     "KLC:Fleet:ChargingDenied": "Charging denied by fleet policy.",
-
-    "Permission:Fleets": "Fleet Management",
+    "Permission:Fleets": "Fleets",
     "Permission:Fleets.Create": "Create Fleets",
     "Permission:Fleets.Update": "Update Fleets",
     "Permission:Fleets.Delete": "Delete Fleets",

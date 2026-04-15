@@ -574,8 +574,8 @@ export default function MobileUsersPage() {
                                                   </Badge>
                                                 </td>
                                                 <td className="px-3 py-2 text-sm font-medium tabular-nums text-right">
-                                                  <span className={tx.type === 1 ? "text-destructive" : "text-emerald-600"}>
-                                                    {tx.type === 1 ? "-" : "+"}{formatCurrency(tx.amount)}
+                                                  <span className={tx.amount < 0 ? "text-destructive" : "text-emerald-600"}>
+                                                    {tx.amount < 0 ? "-" : "+"}{formatCurrency(Math.abs(tx.amount))}
                                                   </span>
                                                 </td>
                                                 <td className="px-3 py-2 text-sm text-muted-foreground">

@@ -136,6 +136,7 @@ public class KLCHttpApiHostModule : AbpModule
         // Typed configuration (Options Pattern)
         context.Services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.Section));
         context.Services.Configure<VnPaySettings>(configuration.GetSection(VnPaySettings.Section));
+        context.Services.Configure<ZaloPaySettings>(configuration.GetSection(ZaloPaySettings.Section));
         context.Services.Configure<MoMoSettings>(configuration.GetSection(MoMoSettings.Section));
         context.Services.Configure<WalletSettings>(configuration.GetSection(WalletSettings.Section));
 
@@ -143,6 +144,7 @@ public class KLCHttpApiHostModule : AbpModule
         // ABP's ITransientDependency uses TryAdd which only registers the first implementation.
         context.Services.AddTransient<IPaymentGatewayService, VnPayPaymentService>();
         context.Services.AddTransient<IPaymentGatewayService, MoMoPaymentService>();
+        context.Services.AddTransient<IPaymentGatewayService, ZaloPayPaymentService>();
 
         ConfigureAuthentication(context);
         ConfigureBundles();
@@ -545,6 +547,9 @@ public class KLCHttpApiHostModule : AbpModule
 
         // OCPP WebSocket middleware (before routing)
         app.UseMiddleware<OcppWebSocketMiddleware>();
+
+        // HSTS header (Cloud Run handles HTTPS but HSTS prevents downgrade attacks)
+        app.UseHsts();
 
         app.UseRouting();
         app.UseCors();
