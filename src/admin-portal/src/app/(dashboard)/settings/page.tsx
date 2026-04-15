@@ -84,7 +84,6 @@ export default function SettingsPage() {
 
   const tabs = [
     { id: "general", label: t("settings.general"), icon: Settings },
-    { id: "notifications", label: t("settings.notifications"), icon: Bell },
     { id: "security", label: t("settings.security"), icon: Lock },
   ];
 
@@ -370,28 +369,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{t("settings.requireMfa")}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {t("settings.requireMfaDesc")}
-                    </p>
-                  </div>
-                  <label className="relative inline-flex cursor-pointer items-center">
-                    <input
-                      type="checkbox"
-                      checked={settings.requireMfa}
-                      onChange={(e) =>
-                        updateSettings({
-                          requireMfa: e.target.checked,
-                        })
-                      }
-                      className="peer sr-only"
-                      aria-label={t("settings.requireMfa")}
-                    />
-                    <div className="h-6 w-11 rounded-full bg-muted border border-border after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full"></div>
-                  </label>
-                </div>
+                {/* MFA disabled for Vietnam launch */}
               </CardContent>
             </Card>
           )}
