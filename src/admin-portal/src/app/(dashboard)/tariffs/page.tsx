@@ -307,15 +307,7 @@ export default function TariffsPage() {
                   placeholder={t("tariffs.descriptionPlaceholder")}
                 />
               </div>
-              <Input
-                label={t("tariffs.effectiveFrom")}
-                type="date"
-                value={formData.effectiveFrom}
-                onChange={(e) =>
-                  setFormData({ ...formData, effectiveFrom: e.target.value })
-                }
-                required
-              />
+              {/* effectiveFrom auto-set to now — hidden for Vietnam launch */}
               <div className="grid gap-4 md:grid-cols-2">
                 <Input
                   label={t("tariffs.baseRatePerKwh")}
