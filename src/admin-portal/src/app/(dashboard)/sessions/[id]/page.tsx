@@ -121,6 +121,15 @@ export default function SessionDetailPage() {
     socPercent: mv.socPercent != null ? Number(mv.socPercent.toFixed(1)) : undefined,
   }));
 
+  // Live duration timer — hooks MUST be before any conditional returns
+  const isActive = session?.status === 2 || session?.status === 3;
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (!isActive) return;
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, [isActive]);
+
   if (sessionLoading) {
     return (
       <div className="flex flex-col">
@@ -153,15 +162,6 @@ export default function SessionDetailPage() {
       </div>
     );
   }
-
-  // Live duration timer for InProgress sessions
-  const isActive = session.status === 2 || session.status === 3; // InProgress or Suspended
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    if (!isActive) return;
-    const interval = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(interval);
-  }, [isActive]);
 
   const duration = isActive
     ? (session.startTime ? Math.floor((now - new Date(session.startTime).getTime()) / 1000) : 0)
