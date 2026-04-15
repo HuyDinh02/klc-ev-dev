@@ -85,8 +85,6 @@ export default function SettingsPage() {
   const tabs = [
     { id: "general", label: t("settings.general"), icon: Settings },
     { id: "notifications", label: t("settings.notifications"), icon: Bell },
-    { id: "ocpp", label: t("settings.ocpp"), icon: Zap },
-    { id: "payments", label: t("settings.payments"), icon: CreditCard },
     { id: "security", label: t("settings.security"), icon: Lock },
   ];
 
@@ -206,37 +204,6 @@ export default function SettingsPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium">{t("settings.timezone")}</label>
-                    <select
-                      value={settings.timezone}
-                      onChange={(e) =>
-                        updateSettings({ timezone: e.target.value })
-                      }
-                      className="mt-1 w-full rounded-md border px-3 py-2"
-                    >
-                      <option value="Asia/Ho_Chi_Minh">
-                        Asia/Ho_Chi_Minh (UTC+7)
-                      </option>
-                      <option value="Asia/Bangkok">Asia/Bangkok (UTC+7)</option>
-                      <option value="Asia/Singapore">
-                        Asia/Singapore (UTC+8)
-                      </option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">{t("settings.currency")}</label>
-                    <select
-                      value={settings.currency}
-                      onChange={(e) =>
-                        updateSettings({ currency: e.target.value })
-                      }
-                      className="mt-1 w-full rounded-md border px-3 py-2"
-                    >
-                      <option value="VND">VND - Vietnamese Dong</option>
-                      <option value="USD">USD - US Dollar</option>
-                    </select>
-                  </div>
-                  <div>
                     <label className="text-sm font-medium">{t("settings.language")}</label>
                     <select
                       value={settings.language}
@@ -250,6 +217,9 @@ export default function SettingsPage() {
                       <option value="en">English</option>
                     </select>
                   </div>
+                </div>
+                <div className="mt-4 rounded-md bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
+                  Múi giờ: UTC+7 (Việt Nam) · Đơn vị tiền tệ: VNĐ
                 </div>
               </CardContent>
             </Card>
@@ -353,167 +323,6 @@ export default function SettingsPage() {
           )}
 
           {/* OCPP Settings */}
-          {activeTab === "ocpp" && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Zap className="h-5 w-5" aria-hidden="true" />
-                  {t("settings.ocppSettings")}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="text-sm font-medium">{t("settings.webSocketPort")}</label>
-                    <input
-                      type="number"
-                      value={settings.ocppWebSocketPort}
-                      onChange={(e) =>
-                        updateSettings({
-                          ocppWebSocketPort: parseInt(e.target.value) || 0,
-                        })
-                      }
-                      className="mt-1 w-full rounded-md border px-3 py-2"
-                      min={1}
-                      max={65535}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">
-                      {t("settings.heartbeatInterval")}
-                    </label>
-                    <input
-                      type="number"
-                      value={settings.ocppHeartbeatInterval}
-                      onChange={(e) =>
-                        updateSettings({
-                          ocppHeartbeatInterval: parseInt(e.target.value) || 0,
-                        })
-                      }
-                      className="mt-1 w-full rounded-md border px-3 py-2"
-                      min={10}
-                      max={3600}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">
-                      {t("settings.meterValueInterval")}
-                    </label>
-                    <input
-                      type="number"
-                      value={settings.ocppMeterValueInterval}
-                      onChange={(e) =>
-                        updateSettings({
-                          ocppMeterValueInterval: parseInt(e.target.value) || 0,
-                        })
-                      }
-                      className="mt-1 w-full rounded-md border px-3 py-2"
-                      min={5}
-                      max={3600}
-                    />
-                  </div>
-                </div>
-                <div className="rounded-lg border p-4 bg-muted/30">
-                  <p className="text-sm text-muted-foreground">
-                    <strong>{t("settings.note")}</strong> {t("settings.ocppNote")}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3 pt-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => applyToChargersMutation.mutate()}
-                    disabled={applyToChargersMutation.isPending || !canUpdate}
-                  >
-                    {applyToChargersMutation.isPending ? (
-                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="mr-2 h-4 w-4" />
-                    )}
-                    {t("settings.applyToChargers")}
-                  </Button>
-                  <span className="text-xs text-muted-foreground">
-                    {t("settings.applyToChargersDesc")}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Payment Settings */}
-          {activeTab === "payments" && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5" aria-hidden="true" />
-                  {t("settings.paymentSettings")}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="text-sm font-medium">
-                      {t("settings.defaultPaymentGateway")}
-                    </label>
-                    <select
-                      value={settings.defaultPaymentGateway}
-                      onChange={(e) =>
-                        updateSettings({
-                          defaultPaymentGateway: e.target.value,
-                        })
-                      }
-                      className="mt-1 w-full rounded-md border px-3 py-2"
-                    >
-                      <option value="VNPay">VNPay</option>
-                      <option value="MoMo">MoMo</option>
-                      <option value="ZaloPay">ZaloPay</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">
-                      {t("settings.eInvoiceProvider")}
-                    </label>
-                    <select
-                      value={settings.eInvoiceProvider}
-                      onChange={(e) =>
-                        updateSettings({
-                          eInvoiceProvider: e.target.value,
-                        })
-                      }
-                      className="mt-1 w-full rounded-md border px-3 py-2"
-                    >
-                      <option value="MISA">MISA</option>
-                      <option value="Viettel">Viettel</option>
-                      <option value="VNPT">VNPT</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{t("settings.autoInvoiceGeneration")}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {t("settings.autoInvoiceGenerationDesc")}
-                    </p>
-                  </div>
-                  <label className="relative inline-flex cursor-pointer items-center">
-                    <input
-                      type="checkbox"
-                      checked={settings.autoInvoiceGeneration}
-                      onChange={(e) =>
-                        updateSettings({
-                          autoInvoiceGeneration: e.target.checked,
-                        })
-                      }
-                      className="peer sr-only"
-                      aria-label={t("settings.autoInvoiceGeneration")}
-                    />
-                    <div className="h-6 w-11 rounded-full bg-muted border border-border after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full"></div>
-                  </label>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
           {/* Security Settings */}
           {activeTab === "security" && (
             <Card>
