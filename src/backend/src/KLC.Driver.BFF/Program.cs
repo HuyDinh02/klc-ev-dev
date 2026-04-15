@@ -261,6 +261,7 @@ app.UseCors("MobileApp");
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<SuspendedUserMiddleware>();
 
 // Liveness probe — always returns 200 if the process is running (no dependency checks)
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy" }));
