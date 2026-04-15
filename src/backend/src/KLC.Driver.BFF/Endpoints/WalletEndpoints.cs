@@ -141,6 +141,52 @@ public static class WalletEndpoints
         .Produces<KLC.Payments.VnPayIpnResponse>(200)
         .AllowAnonymous();
 
+        // POST /api/v1/wallet/topup/zalopay-callback — ZaloPay IPN callback
+        group.MapPost("/topup/zalopay-callback", async (
+            HttpContext httpContext,
+            IWalletBffService walletService,
+            ILogger<WalletBffService> logger,
+            IEnumerable<KLC.Payments.IPaymentGatewayService> paymentGateways) =>
+        {
+            var body = await new StreamReader(httpContext.Request.Body).ReadToEndAsync();
+            logger.LogInformation("[ZaloPay Callback] Received: {Body}", body);
+
+            var gateway = paymentGateways.FirstOrDefault(g => g.Gateway == PaymentGateway.ZaloPay);
+            if (gateway == null)
+            {
+                return Results.Json(new { return_code = 2, return_message = "ZaloPay not configured" });
+            }
+
+            var verifyResult = await gateway.VerifyCallbackAsync(body, null);
+            if (!verifyResult.IsValid)
+            {
+                logger.LogWarning("[ZaloPay Callback] Invalid: {Error}", verifyResult.ErrorMessage);
+                return Results.Json(new { return_code = 2, return_message = verifyResult.ErrorMessage });
+            }
+
+            // Process the successful payment
+            if (verifyResult.IsSuccess && !string.IsNullOrEmpty(verifyResult.ReferenceCode))
+            {
+                var callbackRequest = new TopUpCallbackRequest
+                {
+                    ReferenceCode = verifyResult.ReferenceCode,
+                    GatewayTransactionId = verifyResult.GatewayTransactionId,
+                    Status = TransactionStatus.Completed,
+                    Gateway = PaymentGateway.ZaloPay
+                };
+                await walletService.ProcessTopUpCallbackAsync(callbackRequest);
+            }
+
+            logger.LogInformation("[ZaloPay Callback] Processed: Ref={Ref}, ZpTransId={ZpTransId}",
+                verifyResult.ReferenceCode, verifyResult.GatewayTransactionId);
+
+            return Results.Json(new { return_code = 1, return_message = "success" });
+        })
+        .WithName("ZaloPayTopUpCallback")
+        .WithSummary("ZaloPay callback for wallet top-up")
+        .Produces<object>(200)
+        .AllowAnonymous();
+
         // POST /api/v1/wallet/topup/callback
         // Case 12: This endpoint does NOT credit the wallet for VnPay.
         // VnPay payments are ONLY processed via IPN (server-to-server).
