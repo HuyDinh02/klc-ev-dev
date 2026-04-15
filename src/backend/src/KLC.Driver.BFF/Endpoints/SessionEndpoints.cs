@@ -121,8 +121,8 @@ public static class SessionEndpoints
                     endTime = s.EndTime?.AddHours(7),
                     energyKwh = s.EnergyKwh,
                     durationMinutes = s.DurationMinutes,
-                    durationSeconds = s.StartTime.HasValue && s.EndTime.HasValue
-                        ? (int)(s.EndTime.Value - s.StartTime.Value).TotalSeconds : 0,
+                    durationSeconds = s.StartTime.HasValue
+                        ? (int)((s.EndTime ?? DateTime.UtcNow) - s.StartTime.Value).TotalSeconds : 0,
                     actualCost = s.TotalCost,
                     estimatedCost = s.TotalCost,
                     ratePerKwh = s.RatePerKwh,
