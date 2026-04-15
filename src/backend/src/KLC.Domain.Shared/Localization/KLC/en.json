@@ -117,7 +117,7 @@
     "Permission:Stations.Create": "Create Stations",
     "Permission:Stations.Update": "Update Stations",
     "Permission:Stations.Delete": "Delete Stations",
-    "Permission:Stations.Decommission": "Decommission Stations",
+    "Permission:Stations.Decommission": "Disable Stations",
 
     "Permission:Connectors": "Connector Management",
     "Permission:Connectors.Create": "Create Connectors",

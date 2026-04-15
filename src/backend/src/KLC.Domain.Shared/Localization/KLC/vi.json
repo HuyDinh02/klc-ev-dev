@@ -117,7 +117,7 @@
     "Permission:Stations.Create": "Tạo trạm sạc",
     "Permission:Stations.Update": "Cập nhật trạm sạc",
     "Permission:Stations.Delete": "Xóa trạm sạc",
-    "Permission:Stations.Decommission": "Ngừng hoạt động trạm sạc",
+    "Permission:Stations.Decommission": "Vô hiệu hóa trạm sạc",
 
     "Permission:Connectors": "Quản lý đầu sạc",
     "Permission:Connectors.Create": "Tạo đầu sạc",
@@ -130,7 +130,7 @@
     "Permission:Tariffs.Create": "Tạo biểu giá",
     "Permission:Tariffs.Update": "Cập nhật biểu giá",
     "Permission:Tariffs.Activate": "Kích hoạt biểu giá",
-    "Permission:Tariffs.Deactivate": "Vô hiệu hóa biểu giá",
+    "Permission:Tariffs.Deactivate": "Tắt biểu giá",
 
     "Permission:Sessions": "Quản lý phiên sạc",
     "Permission:Sessions.ViewAll": "Xem tất cả phiên sạc",
@@ -156,8 +156,8 @@
     "Permission:Payments.ViewAll": "Xem tất cả thanh toán",
     "Permission:Payments.Refund": "Xử lý hoàn tiền",
 
-    "Permission:AuditLogs": "Quản lý nhật ký kiểm toán",
-    "Permission:AuditLogs.Export": "Xuất nhật ký kiểm toán",
+    "Permission:AuditLogs": "Quản lý nhật ký",
+    "Permission:AuditLogs.Export": "Xuất nhật ký",
 
     "Permission:EInvoices": "Quản lý hóa đơn điện tử",
     "Permission:EInvoices.Generate": "Tạo hóa đơn điện tử",
@@ -177,15 +177,15 @@
     "Permission:RoleManagement.Delete": "Xóa vai trò",
     "Permission:RoleManagement.ManagePermissions": "Quản lý quyền vai trò",
 
-    "Permission:MobileUsers": "Quản lý người dùng di động",
-    "Permission:MobileUsers.ViewAll": "Xem tất cả người dùng di động",
+    "Permission:MobileUsers": "Quản lý người dùng app",
+    "Permission:MobileUsers.ViewAll": "Xem tất cả người dùng app",
     "Permission:MobileUsers.Suspend": "Tạm ngưng/Mở khóa người dùng",
     "Permission:MobileUsers.WalletAdjust": "Điều chỉnh số dư ví",
 
-    "Permission:Vouchers": "Quản lý voucher",
-    "Permission:Vouchers.Create": "Tạo voucher",
-    "Permission:Vouchers.Update": "Cập nhật voucher",
-    "Permission:Vouchers.Delete": "Xóa voucher",
+    "Permission:Vouchers": "Quản lý mã giảm giá",
+    "Permission:Vouchers.Create": "Tạo mã giảm giá",
+    "Permission:Vouchers.Update": "Cập nhật mã giảm giá",
+    "Permission:Vouchers.Delete": "Xóa mã giảm giá",
 
     "Permission:Promotions": "Quản lý khuyến mãi",
     "Permission:Promotions.Create": "Tạo khuyến mãi",
@@ -229,12 +229,12 @@
     "KLC:Operator:RateLimitExceeded": "Vượt quá giới hạn tốc độ API.",
     "KLC:Operator:NoStationAccess": "Nhà điều hành không có quyền truy cập trạm sạc này.",
 
-    "Permission:Operators": "Quản lý nhà điều hành",
-    "Permission:Operators.Create": "Tạo nhà điều hành",
-    "Permission:Operators.Update": "Cập nhật nhà điều hành",
-    "Permission:Operators.Delete": "Xóa nhà điều hành",
-    "Permission:Operators.ManageStations": "Quản lý trạm sạc nhà điều hành",
-    "Permission:Operators.ManageWebhooks": "Quản lý webhook nhà điều hành",
+    "Permission:Operators": "Quản lý nhà vận hành",
+    "Permission:Operators.Create": "Tạo nhà vận hành",
+    "Permission:Operators.Update": "Cập nhật nhà vận hành",
+    "Permission:Operators.Delete": "Xóa nhà vận hành",
+    "Permission:Operators.ManageStations": "Quản lý trạm sạc nhà vận hành",
+    "Permission:Operators.ManageWebhooks": "Quản lý webhook nhà vận hành",
 
     "KLC:Fleet:NotFound": "Không tìm thấy đội xe.",
     "KLC:Fleet:InvalidBudget": "Cấu hình ngân sách không hợp lệ.",
