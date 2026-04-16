@@ -486,6 +486,9 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
     public async Task<PaymentTransactionDto> QueryVnPayTransactionAsync(Guid paymentId)
     {
         var payment = await _paymentRepository.GetAsync(paymentId);
+        // IDOR check: verify current user owns this payment
+        if (payment.UserId != CurrentUser.GetId())
+            throw new BusinessException("KLC:Payment:NotOwned");
 
         var vnpayGateway = _gateways.FirstOrDefault(g => g.Gateway == PaymentGateway.VnPay);
         if (vnpayGateway == null)
