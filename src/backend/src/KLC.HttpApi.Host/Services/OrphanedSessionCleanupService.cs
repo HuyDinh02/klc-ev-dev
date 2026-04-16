@@ -62,7 +62,7 @@ public class OrphanedSessionCleanupService : BackgroundService
             try
             {
                 await Task.Delay(_checkInterval, stoppingToken);
-                await CleanupOrphanedSessionsAsync();
+                await CleanupOrphanedSessionsAsync(stoppingToken);
             }
             catch (OperationCanceledException) { break; }
             catch (Exception ex)
@@ -72,7 +72,7 @@ public class OrphanedSessionCleanupService : BackgroundService
         }
     }
 
-    private async Task CleanupOrphanedSessionsAsync()
+    private async Task CleanupOrphanedSessionsAsync(CancellationToken cancellationToken = default)
     {
         using var scope = _serviceProvider.CreateScope();
         var sessionRepo = scope.ServiceProvider.GetRequiredService<IRepository<ChargingSession, Guid>>();

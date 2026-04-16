@@ -319,8 +319,11 @@ public class OcppTransactionHandler : DomainService
         }
 
         // Auto-deduct session cost from user's wallet and create PaymentTransaction
+        // Retry loop handles concurrent wallet updates (e.g., top-up during session stop)
         if (session.TotalCost > 0 && session.UserId != Guid.Empty)
         {
+            for (var attempt = 0; attempt < 3; attempt++)
+            {
             try
             {
                 var user = await _userRepository.FirstOrDefaultAsync(
@@ -382,10 +385,19 @@ public class OcppTransactionHandler : DomainService
                         session.Id, session.TotalCost);
                 }
             }
+            catch (Volo.Abp.Data.AbpDbConcurrencyException) when (attempt < 2)
+            {
+                _logger.LogWarning(
+                    "Wallet concurrency conflict on session {SessionId}, retrying (attempt {Attempt})",
+                    session.Id, attempt + 1);
+                continue;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to process payment for session {SessionId}. Manual billing required.", session.Id);
                 // Do NOT rethrow - session completion must not fail due to payment issues
+            }
+            break;
             }
         }
 

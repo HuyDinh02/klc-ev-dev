@@ -39,7 +39,7 @@ public class PromotionBffService : IPromotionBffService
                             && !p.IsDeleted
                             && p.StartDate <= now
                             && p.EndDate >= now)
-                .OrderByDescending(p => p.CreationTime);
+                .OrderByDescending(p => p.CreationTime).ThenByDescending(p => p.Id);
 
             if (cursor.HasValue)
             {
@@ -50,7 +50,8 @@ public class PromotionBffService : IPromotionBffService
                 if (cursorPromotion != null)
                 {
                     query = (IOrderedQueryable<KLC.Marketing.Promotion>)query
-                        .Where(p => p.CreationTime < cursorPromotion.CreationTime);
+                        .Where(p => p.CreationTime < cursorPromotion.CreationTime
+                            || (p.CreationTime == cursorPromotion.CreationTime && p.Id.CompareTo(cursorPromotion.Id) < 0));
                 }
             }
 

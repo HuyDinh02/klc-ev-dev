@@ -57,10 +57,13 @@ public class MobileUserAppService : KLCAppService, IMobileUserAppService
         {
             var cursorUser = await _userRepository.FirstOrDefaultAsync(u => u.Id == input.Cursor.Value);
             if (cursorUser != null)
-                query = query.Where(u => u.CreationTime < cursorUser.CreationTime);
+                // Tie-breaker: if CreationTime is the same, use Id ordering
+                query = query.Where(u =>
+                    u.CreationTime < cursorUser.CreationTime ||
+                    (u.CreationTime == cursorUser.CreationTime && u.Id.CompareTo(cursorUser.Id) < 0));
         }
 
-        query = query.OrderByDescending(u => u.CreationTime);
+        query = query.OrderByDescending(u => u.CreationTime).ThenByDescending(u => u.Id);
 
         var users = await AsyncExecuter.ToListAsync(query.Take(pageSize + 1));
         var hasMore = users.Count > pageSize;

@@ -322,6 +322,9 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
     {
         var invoice = await _invoiceRepository.GetAsync(id);
         var payment = await _paymentRepository.GetAsync(invoice.PaymentTransactionId);
+        // IDOR check: verify current user owns this payment
+        if (payment.UserId != CurrentUser.GetId())
+            throw new BusinessException("KLC:Payment:NotOwned");
         var session = await _sessionRepository.GetAsync(payment.SessionId);
         var station = await _stationRepository.GetAsync(session.StationId);
 
@@ -334,6 +337,9 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
         if (invoice == null) return null;
 
         var payment = await _paymentRepository.GetAsync(paymentId);
+        // IDOR check: verify current user owns this payment
+        if (payment.UserId != CurrentUser.GetId())
+            throw new BusinessException("KLC:Payment:NotOwned");
         var session = await _sessionRepository.GetAsync(payment.SessionId);
         var station = await _stationRepository.GetAsync(session.StationId);
 
@@ -480,6 +486,9 @@ public class PaymentAppService : KLCAppService, IPaymentAppService
     public async Task<PaymentTransactionDto> QueryVnPayTransactionAsync(Guid paymentId)
     {
         var payment = await _paymentRepository.GetAsync(paymentId);
+        // IDOR check: verify current user owns this payment
+        if (payment.UserId != CurrentUser.GetId())
+            throw new BusinessException("KLC:Payment:NotOwned");
 
         var vnpayGateway = _gateways.FirstOrDefault(g => g.Gateway == PaymentGateway.VnPay);
         if (vnpayGateway == null)

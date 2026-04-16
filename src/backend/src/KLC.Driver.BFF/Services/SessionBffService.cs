@@ -175,12 +175,13 @@ public class SessionBffService : ISessionBffService
                     }
                 }
 
-                // Calculate duration and convert to UTC+7
+                // Calculate duration from UTC, then convert display time to UTC+7
                 if (session.StartTime.HasValue)
                 {
-                    session.DurationMinutes = (int)(DateTime.UtcNow - session.StartTime.Value).TotalMinutes;
-                    session.DurationSeconds = (int)(DateTime.UtcNow - session.StartTime.Value).TotalSeconds;
-                    session.StartTime = session.StartTime.Value.AddHours(7);
+                    var utcStart = session.StartTime.Value;
+                    session.DurationMinutes = (int)(DateTime.UtcNow - utcStart).TotalMinutes;
+                    session.DurationSeconds = (int)(DateTime.UtcNow - utcStart).TotalSeconds;
+                    session.StartTime = utcStart.AddHours(7);
                 }
             }
 

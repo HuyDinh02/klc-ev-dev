@@ -40,10 +40,11 @@ public class VoucherAppService : KLCAppService, IVoucherAppService
         {
             var cursorVoucher = await _voucherRepository.FirstOrDefaultAsync(v => v.Id == input.Cursor.Value);
             if (cursorVoucher != null)
-                query = query.Where(v => v.CreationTime < cursorVoucher.CreationTime);
+                query = query.Where(v => v.CreationTime < cursorVoucher.CreationTime
+                    || (v.CreationTime == cursorVoucher.CreationTime && v.Id.CompareTo(cursorVoucher.Id) < 0));
         }
 
-        query = query.OrderByDescending(v => v.CreationTime);
+        query = query.OrderByDescending(v => v.CreationTime).ThenByDescending(v => v.Id);
 
         var vouchers = await AsyncExecuter.ToListAsync(query.Take(pageSize + 1));
         var hasMore = vouchers.Count > pageSize;

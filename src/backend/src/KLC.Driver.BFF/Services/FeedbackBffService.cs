@@ -65,7 +65,7 @@ public class FeedbackBffService : IFeedbackBffService
         var query = _dbContext.UserFeedbacks
             .AsNoTracking()
             .Where(f => f.UserId == userId)
-            .OrderByDescending(f => f.CreationTime);
+            .OrderByDescending(f => f.CreationTime).ThenByDescending(f => f.Id);
 
         if (cursor.HasValue)
         {
@@ -76,7 +76,8 @@ public class FeedbackBffService : IFeedbackBffService
             if (cursorFeedback != null)
             {
                 query = (IOrderedQueryable<UserFeedback>)query
-                    .Where(f => f.CreationTime < cursorFeedback.CreationTime);
+                    .Where(f => f.CreationTime < cursorFeedback.CreationTime
+                        || (f.CreationTime == cursorFeedback.CreationTime && f.Id.CompareTo(cursorFeedback.Id) < 0));
             }
         }
 

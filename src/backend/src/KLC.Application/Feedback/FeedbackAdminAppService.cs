@@ -42,10 +42,11 @@ public class FeedbackAdminAppService : KLCAppService, IFeedbackAdminAppService
         {
             var cursorFeedback = await _feedbackRepository.FirstOrDefaultAsync(f => f.Id == input.Cursor.Value);
             if (cursorFeedback != null)
-                query = query.Where(f => f.CreationTime < cursorFeedback.CreationTime);
+                query = query.Where(f => f.CreationTime < cursorFeedback.CreationTime
+                    || (f.CreationTime == cursorFeedback.CreationTime && f.Id.CompareTo(cursorFeedback.Id) < 0));
         }
 
-        query = query.OrderByDescending(f => f.CreationTime);
+        query = query.OrderByDescending(f => f.CreationTime).ThenByDescending(f => f.Id);
 
         var items = await AsyncExecuter.ToListAsync(query.Take(pageSize + 1));
         var hasMore = items.Count > pageSize;

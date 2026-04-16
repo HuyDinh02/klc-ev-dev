@@ -339,6 +339,12 @@ public class WalletAppService : IWalletAppService
                         "[VnPay IPN] Concurrency conflict on wallet update for {UserId}, retrying (attempt {Attempt})",
                         transaction.UserId, attempt + 1);
                 }
+                catch (Exception ex) when (attempt < 2)
+                {
+                    _logger.LogWarning(ex,
+                        "[VnPay IPN] Transient error on wallet update for {UserId}, retrying (attempt {Attempt})",
+                        transaction.UserId, attempt + 1);
+                }
             }
 
             // Create in-app notification for successful top-up

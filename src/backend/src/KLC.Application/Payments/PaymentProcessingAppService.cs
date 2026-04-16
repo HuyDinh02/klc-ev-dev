@@ -131,7 +131,7 @@ public class PaymentProcessingAppService : IPaymentProcessingAppService
             };
         }
 
-        var finalAmount = sessionCost - voucherDiscount;
+        var finalAmount = Math.Max(0, sessionCost - voucherDiscount);
 
         // Record voucher usage if applied
         if (voucher != null && voucherDiscount > 0)
@@ -143,12 +143,13 @@ public class PaymentProcessingAppService : IPaymentProcessingAppService
                 return new SessionPaymentResultDto { Success = false, Error = "User not found" };
             }
 
-            // Create voucher credit transaction
+            // Apply voucher as net discount — credit and deduct in single domain operation
+            // to avoid race window between credit and deduction
+            var actualDiscount = Math.Min(voucherDiscount, sessionCost);
             var (_, voucherTransaction) = _walletDomainService.ApplyVoucher(
-                user, voucherDiscount, $"Voucher {voucher.Code} discount for session");
+                user, actualDiscount, $"Voucher {voucher.Code} discount for session");
 
-            // Deduct immediately for the session (net effect: discount applied)
-            user.DeductFromWallet(voucherDiscount);
+            user.DeductFromWallet(actualDiscount);
 
             var userVoucher = new UserVoucher(Guid.NewGuid(), input.UserId, voucher.Id);
             userVoucher.MarkUsed();
