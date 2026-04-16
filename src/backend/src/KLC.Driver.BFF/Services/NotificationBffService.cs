@@ -38,7 +38,7 @@ public class NotificationBffService : INotificationBffService
         var query = _dbContext.Notifications
             .AsNoTracking()
             .Where(n => n.UserId == userId )
-            .OrderByDescending(n => n.CreationTime);
+            .OrderByDescending(n => n.CreationTime).ThenByDescending(n => n.Id);
 
         if (cursor.HasValue)
         {
@@ -49,7 +49,8 @@ public class NotificationBffService : INotificationBffService
             if (cursorNotification != null)
             {
                 query = (IOrderedQueryable<Notification>)query
-                    .Where(n => n.CreationTime < cursorNotification.CreationTime);
+                    .Where(n => n.CreationTime < cursorNotification.CreationTime
+                        || (n.CreationTime == cursorNotification.CreationTime && n.Id.CompareTo(cursorNotification.Id) < 0));
             }
         }
 

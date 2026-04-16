@@ -265,7 +265,7 @@ public class WalletBffService : IWalletBffService
         var query = _dbContext.WalletTransactions
             .AsNoTracking()
             .Where(t => t.UserId == userId)
-            .OrderByDescending(t => t.CreationTime);
+            .OrderByDescending(t => t.CreationTime).ThenByDescending(t => t.Id);
 
         if (type.HasValue)
         {
@@ -282,7 +282,8 @@ public class WalletBffService : IWalletBffService
             if (cursorTransaction != null)
             {
                 query = (IOrderedQueryable<WalletTransaction>)query
-                    .Where(t => t.CreationTime < cursorTransaction.CreationTime);
+                    .Where(t => t.CreationTime < cursorTransaction.CreationTime
+                        || (t.CreationTime == cursorTransaction.CreationTime && t.Id.CompareTo(cursorTransaction.Id) < 0));
             }
         }
 

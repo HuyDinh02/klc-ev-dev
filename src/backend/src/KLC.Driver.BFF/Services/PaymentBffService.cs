@@ -80,7 +80,7 @@ public class PaymentBffService : IPaymentBffService
         var query = _dbContext.PaymentTransactions
             .AsNoTracking()
             .Where(p => p.UserId == userId)
-            .OrderByDescending(p => p.CreationTime);
+            .OrderByDescending(p => p.CreationTime).ThenByDescending(p => p.Id);
 
         if (cursor.HasValue)
         {
@@ -91,7 +91,8 @@ public class PaymentBffService : IPaymentBffService
             if (cursorPayment != null)
             {
                 query = (IOrderedQueryable<PaymentTransaction>)query
-                    .Where(p => p.CreationTime < cursorPayment.CreationTime);
+                    .Where(p => p.CreationTime < cursorPayment.CreationTime
+                        || (p.CreationTime == cursorPayment.CreationTime && p.Id.CompareTo(cursorPayment.Id) < 0));
             }
         }
 
