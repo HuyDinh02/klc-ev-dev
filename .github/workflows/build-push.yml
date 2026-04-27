@@ -69,6 +69,40 @@ jobs:
         with:
           submodules: false
 
+      # TEMPORARY: Check out klc-infrastructure to access admin-portal patch files.
+      # Remove this step once the multi-env CSP fix is merged into klc-ev-charging
+      # (i.e., when next.config.ts reads domains from NEXT_PUBLIC_API_URL / NEXT_PUBLIC_BFF_URL
+      # instead of hard-coding prod domains).
+      # Removal checklist:
+      #   [ ] PR merged in klc-ev-charging: src/admin-portal/next.config.ts reads from env vars
+      #   [ ] Remove this checkout step
+      #   [ ] Remove the "Apply admin-portal patch" step below
+      #   [ ] Delete klc-infrastructure/patches/admin-portal/next.config.ts
+      - name: Checkout klc-infrastructure (for temporary patches)
+        uses: actions/checkout@v4
+        with:
+          repository: K-Charge/klc-infrastructure
+          token: ${{ secrets.GH_PAT }}
+          path: klc-infrastructure
+
+      # TEMPORARY: Overwrite next.config.ts and Dockerfile with patched versions from
+      # klc-infrastructure. Both patches work together:
+      #   - Dockerfile patch: declares NEXT_PUBLIC_BFF_URL and NEXT_PUBLIC_SIGNALR_URL
+      #     as ARG/ENV so Docker does not silently drop them.
+      #   - next.config.ts patch: reads those env vars to build a correct CSP header
+      #     for each environment instead of hard-coding prod domains.
+      # Without both patches the staging image will block API calls to stag.* domains.
+      # Remove this step (and the klc-infrastructure checkout above) once both fixes
+      # are merged into klc-ev-charging as a single PR.
+      - name: Apply admin-portal patches (TEMPORARY — remove after fix PR is merged)
+        if: needs.changes.outputs.admin-portal == 'true'
+        run: |
+          cp klc-infrastructure/patches/admin-portal/Dockerfile \
+             src/admin-portal/Dockerfile
+          cp klc-infrastructure/patches/admin-portal/next.config.ts \
+             src/admin-portal/next.config.ts
+          echo "Applied patches: Dockerfile (multi-env build-args) + next.config.ts (dynamic CSP)."
+
       - name: Login to CMC Container Registry
         run: |
           echo "${{ secrets.CMC_REGISTRY_PASS }}" | docker login registry-01.cloud.cmctelecom.vn \
@@ -121,10 +155,9 @@ jobs:
           docker push "${IMAGE}:${SHORT_SHA}"
           docker push "${IMAGE}:latest"
 
-      # Admin Portal — NEXT_PUBLIC_* must be set at build time (not runtime) since it's a static frontend app. 
-      # We build 2 images with different NEXT_PUBLIC_* values for prod vs stag, since they point to different backend URLs.
-      # Build 2 image variants with different NEXT_PUBLIC_* values for prod vs stag, 
-      # since they point to different backend URLs.
+      # Admin Portal — NEXT_PUBLIC_* vars are baked into the JS bundle at build time and
+      # cannot be changed at runtime via K8s ConfigMap. Two separate images are built so
+      # each environment gets the correct URLs hard-coded into its bundle.
       - name: Build Admin Portal image (prod)
         if: needs.changes.outputs.admin-portal == 'true'
         run: |
@@ -133,6 +166,8 @@ jobs:
           docker build -t "${IMAGE}:${SHORT_SHA}" \
                        -t "${IMAGE}:latest" \
                        --build-arg NEXT_PUBLIC_API_URL=https://api.ev.klcenergy.com.vn \
+                       --build-arg NEXT_PUBLIC_BFF_URL=https://bff.ev.klcenergy.com.vn \
+                       --build-arg NEXT_PUBLIC_SIGNALR_URL=https://api.ev.klcenergy.com.vn/hubs/monitoring \
                        --build-arg NEXT_PUBLIC_OCPP_URL=https://ocpp.ev.klcenergy.com.vn \
                        -f src/admin-portal/Dockerfile src/admin-portal
           docker push "${IMAGE}:${SHORT_SHA}"
@@ -146,6 +181,8 @@ jobs:
           docker build -t "${IMAGE}:${SHORT_SHA}" \
                        -t "${IMAGE}:latest" \
                        --build-arg NEXT_PUBLIC_API_URL=https://stag.api.ev.klcenergy.com.vn \
+                       --build-arg NEXT_PUBLIC_BFF_URL=https://stag.bff.ev.klcenergy.com.vn \
+                       --build-arg NEXT_PUBLIC_SIGNALR_URL=https://stag.api.ev.klcenergy.com.vn/hubs/monitoring \
                        --build-arg NEXT_PUBLIC_OCPP_URL=https://stag.ocpp.ev.klcenergy.com.vn \
                        -f src/admin-portal/Dockerfile src/admin-portal
           docker push "${IMAGE}:${SHORT_SHA}"
