@@ -4,8 +4,8 @@ import { withSentryConfig } from "@sentry/nextjs";
 const isDev = process.env.NODE_ENV === "development";
 
 const cspConnectSrc = isDev
-  ? "connect-src 'self' https://localhost:44305 wss://localhost:44305 https://api.ev.odcall.com https://bff.ev.odcall.com wss://api.ev.odcall.com wss://bff.ev.odcall.com"
-  : "connect-src 'self' https://api.ev.odcall.com https://bff.ev.odcall.com wss://api.ev.odcall.com wss://bff.ev.odcall.com";
+  ? "connect-src 'self' https://localhost:44305 wss://localhost:44305 https://api.ev.klcenergy.com.vn https://bff.ev.klcenergy.com.vn wss://api.ev.klcenergy.com.vn wss://bff.ev.klcenergy.com.vn"
+  : "connect-src 'self' https://api.ev.klcenergy.com.vn https://bff.ev.klcenergy.com.vn wss://api.ev.klcenergy.com.vn wss://bff.ev.klcenergy.com.vn";
 
 const nextConfig: NextConfig = {
   output: "standalone",
